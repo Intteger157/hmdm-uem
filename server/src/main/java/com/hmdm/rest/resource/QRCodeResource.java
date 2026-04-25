@@ -354,7 +354,7 @@ public class QRCodeResource {
         String configurationEntry = "";
         String customerEntry = "";
         if (createOnDemand != null && createOnDemand.equals("1")) {
-            configurationEntry = "\"com.hmdm.CONFIG\":\"" + Integer.toString(configuration.getId()) + "\",\n";
+            configurationEntry = "\"com.hmdm.CONFIG\":\"" + configuration.getQrCodeKey() + "\",\n";
 
             if (!unsecureDAO.isSingleCustomer()) {
                 Customer customer = customerDAO.findById(configuration.getCustomerId());
