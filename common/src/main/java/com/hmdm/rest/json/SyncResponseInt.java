@@ -167,11 +167,21 @@ public interface SyncResponseInt {
 
     Boolean getFactoryReset();
 
+    void setFactoryReset(Boolean factoryReset);
+
     Boolean getReboot();
+
+    void setReboot(Boolean reboot);
 
     Boolean getLock();
 
+    void setLock(Boolean lock);
+
     String getLockMessage();
 
+    void setLockMessage(String lockMessage);
+
     String getPasswordReset();
+
+    void setPasswordReset(String passwordReset);
 }

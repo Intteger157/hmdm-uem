@@ -929,6 +929,7 @@ public class SyncResponse implements Serializable, SyncResponseInt {
         return factoryReset;
     }
 
+    @Override
     public void setFactoryReset(Boolean factoryReset) {
         this.factoryReset = factoryReset;
     }
@@ -938,6 +939,7 @@ public class SyncResponse implements Serializable, SyncResponseInt {
         return reboot;
     }
 
+    @Override
     public void setReboot(Boolean reboot) {
         this.reboot = reboot;
     }
@@ -947,6 +949,7 @@ public class SyncResponse implements Serializable, SyncResponseInt {
         return lock;
     }
 
+    @Override
     public void setLock(Boolean lock) {
         this.lock = lock;
     }
@@ -956,6 +959,7 @@ public class SyncResponse implements Serializable, SyncResponseInt {
         return lockMessage;
     }
 
+    @Override
     public void setLockMessage(String lockMessage) {
         this.lockMessage = lockMessage;
     }
@@ -965,6 +969,7 @@ public class SyncResponse implements Serializable, SyncResponseInt {
         return passwordReset;
     }
 
+    @Override
     public void setPasswordReset(String passwordReset) {
         this.passwordReset = passwordReset;
     }

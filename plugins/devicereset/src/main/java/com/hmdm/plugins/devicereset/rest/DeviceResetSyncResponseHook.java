@@ -4,7 +4,6 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.hmdm.plugins.devicereset.persistence.DeviceResetDAO;
 import com.hmdm.plugins.devicereset.persistence.domain.DeviceResetStatus;
-import com.hmdm.rest.json.SyncResponse;
 import com.hmdm.rest.json.SyncResponseHook;
 import com.hmdm.rest.json.SyncResponseInt;
 
@@ -20,31 +19,26 @@ public class DeviceResetSyncResponseHook implements SyncResponseHook {
 
     @Override
     public SyncResponseInt handle(int deviceId, SyncResponseInt original) {
-        if (!(original instanceof SyncResponse)) {
-            return original;
-        }
-
         DeviceResetStatus status = deviceResetDAO.getByDeviceId(deviceId);
         if (status == null) {
             return original;
         }
 
-        SyncResponse response = (SyncResponse) original;
         if (status.isFactoryReset()) {
-            response.setFactoryReset(true);
+            original.setFactoryReset(true);
         }
         if (status.isReboot()) {
-            response.setReboot(true);
+            original.setReboot(true);
         }
         if (status.isLock()) {
-            response.setLock(true);
+            original.setLock(true);
             if (status.getLockMessage() != null && !status.getLockMessage().trim().isEmpty()) {
-                response.setLockMessage(status.getLockMessage());
+                original.setLockMessage(status.getLockMessage());
             }
         }
         if (status.getPasswordReset() != null && !status.getPasswordReset().trim().isEmpty()) {
-            response.setPasswordReset(status.getPasswordReset());
+            original.setPasswordReset(status.getPasswordReset());
         }
-        return response;
+        return original;
     }
 }
