@@ -1,0 +1,22 @@
+{
+  "breadcrumb.plugin.devicereset.main": "Перезагрузка, блокировка, сброс",
+  "plugin.devicereset.localization.key.name": "Перезагрузка, блокировка, сброс",
+  "plugin.devicereset.tab.hint": "Выберите устройство в списке и откройте этот плагин через меню устройства.",
+  "plugin.devicereset.modal.title": "Управление устройством",
+  "plugin.devicereset.modal.device": "Устройство:",
+  "plugin.devicereset.label.lockMessage": "Сообщение на экране блокировки (необязательно)",
+  "plugin.devicereset.label.password": "Новый пароль устройства",
+  "plugin.devicereset.button.reboot": "Перезагрузить",
+  "plugin.devicereset.button.lock": "Заблокировать",
+  "plugin.devicereset.button.unlock": "Разблокировать",
+  "plugin.devicereset.button.password": "Сбросить пароль",
+  "plugin.devicereset.button.reset": "Сброс к заводским",
+  "plugin.devicereset.confirm.reboot": "Перезагрузить это устройство?",
+  "plugin.devicereset.confirm.lock": "Заблокировать это устройство?",
+  "plugin.devicereset.confirm.password": "Сбросить пароль устройства?",
+  "plugin.devicereset.confirm.reset": "Сброс удалит все данные на устройстве. Продолжить?",
+  "plugin.devicereset.error.empty.password": "Введите новый пароль",
+  "plugin.devicereset.status.reset": "Ожидается сброс",
+  "plugin.devicereset.status.reboot": "Ожидается перезагрузка",
+  "plugin.devicereset.status.lock": "Заблокировано"
+}

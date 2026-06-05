@@ -1,0 +1,22 @@
+{
+  "breadcrumb.plugin.devicereset.main": "Reboot, lock, reset",
+  "plugin.devicereset.localization.key.name": "Reboot, lock, reset",
+  "plugin.devicereset.tab.hint": "Select a device in the Devices list and use the plugin menu to manage reboot, lock, and factory reset.",
+  "plugin.devicereset.modal.title": "Device control",
+  "plugin.devicereset.modal.device": "Device:",
+  "plugin.devicereset.label.lockMessage": "Lock screen message (optional)",
+  "plugin.devicereset.label.password": "New device password",
+  "plugin.devicereset.button.reboot": "Reboot",
+  "plugin.devicereset.button.lock": "Lock",
+  "plugin.devicereset.button.unlock": "Unlock",
+  "plugin.devicereset.button.password": "Reset password",
+  "plugin.devicereset.button.reset": "Factory reset",
+  "plugin.devicereset.confirm.reboot": "Reboot this device?",
+  "plugin.devicereset.confirm.lock": "Lock this device?",
+  "plugin.devicereset.confirm.password": "Reset the device password?",
+  "plugin.devicereset.confirm.reset": "Factory reset will erase all data on this device. Continue?",
+  "plugin.devicereset.error.empty.password": "Enter a new password",
+  "plugin.devicereset.status.reset": "Reset pending",
+  "plugin.devicereset.status.reboot": "Reboot pending",
+  "plugin.devicereset.status.lock": "Locked"
+}

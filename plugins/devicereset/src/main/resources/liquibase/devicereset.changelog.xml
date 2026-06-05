@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.0.xsd"
+        logicalFilePath="devicereset.changelog.xml">
+
+    <changeSet id="plugin-devicereset-05.06.2026-10:00" author="custom" context="common">
+        <comment>Plugin,new: devicereset</comment>
+        <sql>
+            INSERT INTO plugins (
+            identifier, name, description,
+            javascriptModuleFile,
+            functionsViewTemplate,
+            settingsViewTemplate,
+            namelocalizationkey,
+            settingsPermission, functionsPermission, deviceFunctionsPermission,
+            enabledForDevice
+            )
+            VALUES (
+            'devicereset', 'Device Reset', 'Remote reboot, lock and factory reset',
+            'app/components/plugins/devicereset/devicereset.module.js',
+            'app/components/plugins/devicereset/views/devicereset.html',
+            NULL,
+            'plugin.devicereset.localization.key.name',
+            'plugin_devicereset_access',
+            'plugin_devicereset_access',
+            'plugin_devicereset_access',
+            TRUE
+            );
+        </sql>
+        <rollback>
+            DELETE FROM plugins WHERE identifier = 'devicereset';
+        </rollback>
+    </changeSet>
+
+    <changeSet id="plugin-devicereset-05.06.2026-10:01" author="custom" context="common">
+        <comment>Permission,new: plugin_devicereset_access</comment>
+        <sql>
+            INSERT INTO permissions (name, description)
+            VALUES ('plugin_devicereset_access', 'Reset and reboot devices');
+            INSERT INTO userRolePermissions (roleId, permissionId)
+            SELECT id, currval('permissions_id_seq')
+            FROM userroles;
+        </sql>
+        <rollback>
+            DELETE FROM permissions WHERE name = 'plugin_devicereset_access';
+        </rollback>
+    </changeSet>
+
+    <changeSet id="plugin-devicereset-05.06.2026-10:02" author="custom" context="common">
+        <comment>Table,new: plugin_devicereset_status</comment>
+        <sql>
+            CREATE TABLE plugin_devicereset_status (
+                id serial NOT NULL CONSTRAINT plugin_devicereset_status_pr_key PRIMARY KEY,
+                customerId INT NOT NULL REFERENCES customers (id) ON DELETE CASCADE,
+                deviceId INT NOT NULL UNIQUE REFERENCES devices (id) ON DELETE CASCADE,
+                factoryReset BOOLEAN NOT NULL DEFAULT FALSE,
+                reboot BOOLEAN NOT NULL DEFAULT FALSE,
+                lock BOOLEAN NOT NULL DEFAULT FALSE,
+                lockMessage VARCHAR(500),
+                passwordReset VARCHAR(100)
+            );
+        </sql>
+        <rollback>
+            DROP TABLE plugin_devicereset_status;
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

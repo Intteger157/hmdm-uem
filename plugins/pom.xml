@@ -44,6 +44,7 @@
         <module>deviceinfo</module>
         <module>messaging</module>
         <module>push</module>
+        <module>devicereset</module>
         <module>xtra</module>
     </modules>
 

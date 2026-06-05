@@ -164,4 +164,14 @@ public interface SyncResponseInt {
     String getVendor();
 
     String getDescription();
+
+    Boolean getFactoryReset();
+
+    Boolean getReboot();
+
+    Boolean getLock();
+
+    String getLockMessage();
+
+    String getPasswordReset();
 }

@@ -270,6 +270,26 @@ public class SyncResponse implements Serializable, SyncResponseInt {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private String description;
 
+    @ApiModelProperty("A flag requesting factory reset of the device")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Boolean factoryReset;
+
+    @ApiModelProperty("A flag requesting reboot of the device")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Boolean reboot;
+
+    @ApiModelProperty("A flag requesting lock of the device")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Boolean lock;
+
+    @ApiModelProperty("A message to display on the lock screen")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private String lockMessage;
+
+    @ApiModelProperty("A new password to set on the device")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private String passwordReset;
+
     public SyncResponse() {
     }
 
@@ -902,5 +922,50 @@ public class SyncResponse implements Serializable, SyncResponseInt {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    @Override
+    public Boolean getFactoryReset() {
+        return factoryReset;
+    }
+
+    public void setFactoryReset(Boolean factoryReset) {
+        this.factoryReset = factoryReset;
+    }
+
+    @Override
+    public Boolean getReboot() {
+        return reboot;
+    }
+
+    public void setReboot(Boolean reboot) {
+        this.reboot = reboot;
+    }
+
+    @Override
+    public Boolean getLock() {
+        return lock;
+    }
+
+    public void setLock(Boolean lock) {
+        this.lock = lock;
+    }
+
+    @Override
+    public String getLockMessage() {
+        return lockMessage;
+    }
+
+    public void setLockMessage(String lockMessage) {
+        this.lockMessage = lockMessage;
+    }
+
+    @Override
+    public String getPasswordReset() {
+        return passwordReset;
+    }
+
+    public void setPasswordReset(String passwordReset) {
+        this.passwordReset = passwordReset;
     }
 }
