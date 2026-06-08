@@ -3,6 +3,8 @@
 The server plugin stores application lists uploaded by a small helper app on each device.
 You do **not** need to fork [hmdm-android](https://github.com/h-mdm/hmdm-android) for this.
 
+**Ready-to-build project:** `android-helper/` — see [android-helper/README.md](android-helper/README.md).
+
 ## Package
 
 `com.hmdm.inventory`

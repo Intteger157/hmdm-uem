@@ -1,0 +1,59 @@
+apply plugin: 'com.android.application'
+
+def localProps = new Properties()
+def localPropsFile = rootProject.file("local.properties")
+if (localPropsFile.exists()) {
+    localProps.load(new FileInputStream(localPropsFile))
+}
+
+android {
+    namespace 'com.hmdm.inventory'
+    compileSdk 34
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    defaultConfig {
+        applicationId "com.hmdm.inventory"
+        minSdk 24
+        targetSdk 34
+        versionCode 2
+        versionName "1.0.1"
+
+        // Must match hash.secret on the MDM server (ROOT.xml / SHARED_SECRET)
+        buildConfigField "String", "REQUEST_SIGNATURE", "\"changeme-C3z9vi54\""
+    }
+
+    signingConfigs {
+        release {
+            if (localProps.getProperty("KEY_ALIAS")) {
+                keyAlias localProps.getProperty("KEY_ALIAS")
+                keyPassword localProps.getProperty("KEY_PASSWORD")
+                storePassword localProps.getProperty("STORE_PASSWORD")
+                storeFile file(localProps.getProperty("STORE_FILE", "keystore/keystore.jks"))
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (localProps.getProperty("KEY_ALIAS")) {
+                signingConfig signingConfigs.release
+            }
+        }
+        debug {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    implementation files('libs/hmdm-1.1.8.aar')
+}
