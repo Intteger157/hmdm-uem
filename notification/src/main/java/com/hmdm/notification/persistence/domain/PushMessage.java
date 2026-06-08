@@ -46,6 +46,7 @@ public class PushMessage implements Serializable {
     public static final String TYPE_APP_CONFIG_UPDATED = "appConfigUpdated";
     public static final String TYPE_CONFIG_UPDATED = "configUpdated";
     public static final String TYPE_RUN_APP = "runApp";
+    public static final String TYPE_INVENTORY_SCAN = "inventoryScan";
 
     /**
      * <p>Constructs new <code>PushMessage</code> instance. This implementation does nothing.</p>

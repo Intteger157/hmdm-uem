@@ -1,0 +1,17 @@
+{
+  "breadcrumb.plugin.deviceinventory.main": "Installed Apps",
+  "plugin.deviceinventory.localization.key.name": "Installed Apps",
+  "plugin.deviceinventory.title": "Installed Applications",
+  "plugin.deviceinventory.last.update": "Last scan:",
+  "plugin.deviceinventory.no.data": "No data yet",
+  "plugin.deviceinventory.search.placeholder": "Search by name or package",
+  "plugin.deviceinventory.button.scan": "Request scan",
+  "plugin.deviceinventory.button.refresh": "Refresh",
+  "plugin.deviceinventory.scan.requested": "Scan requested. Data will appear after the inventory agent syncs.",
+  "plugin.deviceinventory.column.name": "Name",
+  "plugin.deviceinventory.column.pkg": "Package",
+  "plugin.deviceinventory.column.version": "Version",
+  "plugin.deviceinventory.column.system": "System",
+  "plugin.deviceinventory.empty": "No applications reported yet. Deploy the inventory helper APK and wait for sync.",
+  "plugin.deviceinventory.hint": "Install com.hmdm.inventory helper on devices. It scans installed apps and uploads the list to the server."
+}

@@ -1,0 +1,59 @@
+<div class="width-1000" ng-controller="PluginDeviceInventoryController">
+
+    <div class="text-center row">
+        <h4 localized>plugin.deviceinventory.title</h4>
+        <h4>{{deviceNumber}}</h4>
+    </div>
+
+    <div class='form-group' ng-if='errorMessage'>
+        <div class='error'><span>{{errorMessage}}</span></div>
+    </div>
+    <div class='form-group' ng-if='successMessage'>
+        <div class='success'><span>{{successMessage}}</span></div>
+    </div>
+
+    <div class="row margin-bottom">
+        <div class="col-sm-4">
+            <strong localized>plugin.deviceinventory.last.update</strong>
+            {{getLastUpdateText()}}
+        </div>
+        <div class="col-sm-4">
+            <input type="text" class="form-control"
+                   ng-model="filterText"
+                   localized-placeholder="plugin.deviceinventory.search.placeholder"/>
+        </div>
+        <div class="col-sm-4 text-right">
+            <button class="btn btn-default" ng-click="requestScan()" ng-disabled="busy"
+                    localized>plugin.deviceinventory.button.scan</button>
+            <button class="btn btn-default" ng-click="loadInventory()" ng-disabled="busy"
+                    localized>plugin.deviceinventory.button.refresh</button>
+        </div>
+    </div>
+
+    <div ng-if="busy" class="text-center">...</div>
+
+    <table class="table" ng-if="!busy && inventory">
+        <thead>
+        <tr>
+            <th localized>plugin.deviceinventory.column.name</th>
+            <th localized>plugin.deviceinventory.column.pkg</th>
+            <th localized>plugin.deviceinventory.column.version</th>
+            <th localized>plugin.deviceinventory.column.system</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr ng-repeat="app in inventory.applications | filter:filterApps | orderBy:'name'">
+            <td>{{app.name}}</td>
+            <td>{{app.pkg}}</td>
+            <td>{{app.version}}</td>
+            <td>{{app.system ? '✓' : ''}}</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <div class="text-center" ng-if="!busy && inventory && (!inventory.applications || inventory.applications.length === 0)"
+         localized>plugin.deviceinventory.empty</div>
+
+    <div class="configuration-hint margin-top" localized>plugin.deviceinventory.hint</div>
+
+</div>

@@ -1,0 +1,17 @@
+{
+  "breadcrumb.plugin.deviceinventory.main": "Установленные приложения",
+  "plugin.deviceinventory.localization.key.name": "Установленные приложения",
+  "plugin.deviceinventory.title": "Установленные приложения",
+  "plugin.deviceinventory.last.update": "Последнее сканирование:",
+  "plugin.deviceinventory.no.data": "Данных пока нет",
+  "plugin.deviceinventory.search.placeholder": "Поиск по имени или package",
+  "plugin.deviceinventory.button.scan": "Запросить сканирование",
+  "plugin.deviceinventory.button.refresh": "Обновить",
+  "plugin.deviceinventory.scan.requested": "Сканирование запрошено. Данные появятся после синхронизации агента.",
+  "plugin.deviceinventory.column.name": "Название",
+  "plugin.deviceinventory.column.pkg": "Package",
+  "plugin.deviceinventory.column.version": "Версия",
+  "plugin.deviceinventory.column.system": "Системное",
+  "plugin.deviceinventory.empty": "Приложения ещё не переданы. Установите helper APK и дождитесь синхронизации.",
+  "plugin.deviceinventory.hint": "Установите helper com.hmdm.inventory на устройства. Он сканирует все приложения и отправляет список на сервер."
+}

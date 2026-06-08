@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.0.xsd"
+        logicalFilePath="deviceinventory.changelog.xml">
+
+    <changeSet id="plugin-deviceinventory-05.06.2026-12:00" author="custom" context="common">
+        <comment>Plugin,new: deviceinventory</comment>
+        <sql>
+            INSERT INTO plugins (
+            identifier, name, description,
+            javascriptModuleFile,
+            functionsViewTemplate,
+            settingsViewTemplate,
+            namelocalizationkey,
+            settingsPermission, functionsPermission, deviceFunctionsPermission,
+            enabledForDevice
+            )
+            VALUES (
+            'deviceinventory', 'Installed Apps', 'View all applications installed on devices',
+            'app/components/plugins/deviceinventory/deviceinventory.module.js',
+            'app/components/plugins/deviceinventory/views/deviceinventory.html',
+            NULL,
+            'plugin.deviceinventory.localization.key.name',
+            'plugin_deviceinventory_access',
+            'plugin_deviceinventory_access',
+            'plugin_deviceinventory_access',
+            TRUE
+            );
+        </sql>
+        <rollback>
+            DELETE FROM plugins WHERE identifier = 'deviceinventory';
+        </rollback>
+    </changeSet>
+
+    <changeSet id="plugin-deviceinventory-05.06.2026-12:01" author="custom" context="common">
+        <comment>Permission,new: plugin_deviceinventory_access</comment>
+        <sql>
+            INSERT INTO permissions (name, description)
+            VALUES ('plugin_deviceinventory_access', 'View installed applications on devices');
+            INSERT INTO userRolePermissions (roleId, permissionId)
+            SELECT id, currval('permissions_id_seq')
+            FROM userroles;
+        </sql>
+        <rollback>
+            DELETE FROM permissions WHERE name = 'plugin_deviceinventory_access';
+        </rollback>
+    </changeSet>
+
+    <changeSet id="plugin-deviceinventory-05.06.2026-12:02" author="custom" context="common">
+        <comment>Table,new: plugin_deviceinventory</comment>
+        <sql>
+            CREATE TABLE plugin_deviceinventory (
+                id serial NOT NULL CONSTRAINT plugin_deviceinventory_pr_key PRIMARY KEY,
+                customerId INT NOT NULL REFERENCES customers (id) ON DELETE CASCADE,
+                deviceId INT NOT NULL UNIQUE REFERENCES devices (id) ON DELETE CASCADE,
+                lastUpdate BIGINT NOT NULL DEFAULT 0,
+                apps JSONB NOT NULL DEFAULT '[]'
+            );
+        </sql>
+        <rollback>
+            DROP TABLE plugin_deviceinventory;
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

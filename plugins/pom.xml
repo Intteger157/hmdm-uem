@@ -45,6 +45,7 @@
         <module>messaging</module>
         <module>push</module>
         <module>devicereset</module>
+        <module>deviceinventory</module>
         <module>xtra</module>
     </modules>
 
