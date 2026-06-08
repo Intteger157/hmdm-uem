@@ -9,6 +9,7 @@ import com.hmdm.plugins.deviceinventory.persistence.DeviceInventoryDAO;
 import com.hmdm.plugins.deviceinventory.persistence.domain.DeviceInventoryRecord;
 import com.hmdm.plugins.deviceinventory.rest.json.DeviceInventoryView;
 import com.hmdm.plugins.deviceinventory.rest.json.InventoryUploadRequest;
+import com.hmdm.plugins.deviceinventory.rest.json.ScanRequest;
 import com.hmdm.rest.json.Response;
 import com.hmdm.security.SecurityContext;
 import com.hmdm.security.SecurityException;
@@ -102,6 +103,22 @@ public class DeviceInventoryResource {
     @Path("/private/scan/{deviceNumber}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response requestScan(@PathParam("deviceNumber") String deviceNumber) {
+        return doRequestScan(deviceNumber);
+    }
+
+    @ApiOperation(value = "Request inventory scan on device (legacy POST body)", authorizations = {@Authorization("Bearer Token")})
+    @POST
+    @Path("/private/scan")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response requestScanPost(ScanRequest request) {
+        if (request == null || StringUtil.isEmpty(request.getDeviceNumber())) {
+            return Response.ERROR("deviceNumber is required");
+        }
+        return doRequestScan(request.getDeviceNumber());
+    }
+
+    private Response doRequestScan(String deviceNumber) {
         if (!hasAccess()) {
             return Response.PERMISSION_DENIED();
         }

@@ -32,7 +32,8 @@ angular.module('plugin-deviceinventory', ['ngResource', 'ui.bootstrap', 'ui.rout
             },
             requestScan: {
                 url: 'rest/plugins/deviceinventory/private/scan/:deviceNumber',
-                method: 'GET'
+                method: 'GET',
+                params: {deviceNumber: '@deviceNumber'}
             }
         });
     })
