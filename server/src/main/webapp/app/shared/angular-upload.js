@@ -26,6 +26,12 @@ angular.module('lr.upload.directives').directive('uploadButton', [
         var el = angular.element(element);
         var fileInput = angular.element('<input type="file" />');
         el.append(fileInput);
+        el.on('click', function () {
+          fileInput[0].click();
+        });
+        fileInput.on('click', function (event) {
+          event.stopPropagation();
+        });
         fileInput.on('change', function uploadButtonFileInputChange() {
           var fileInput = angular.element(this);
           if (fileInput[0].files && fileInput[0].files.length === 0) {

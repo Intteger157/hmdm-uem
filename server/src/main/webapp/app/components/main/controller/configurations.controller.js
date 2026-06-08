@@ -330,7 +330,12 @@ angular.module('headwind-kiosk')
                 var modalInstance = $modal.open({
                     templateUrl: 'app/components/main/view/modal/file.html',
                     // Defined in files.controller.js
-                    controller: 'FileModalController'
+                    controller: 'FileModalController',
+                    resolve: {
+                        file: function () {
+                            return {};
+                        }
+                    }
                 });
 
                 modalInstance.result.then(function (data) {
