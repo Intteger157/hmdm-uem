@@ -84,16 +84,24 @@ angular.module('plugin-deviceinventory', ['ngResource', 'ui.bootstrap', 'ui.rout
 
         $scope.requestScan = function () {
             $scope.busy = true;
+            $scope.errorMessage = undefined;
+            $scope.successMessage = undefined;
             pluginDeviceInventoryService.requestScan({deviceNumber: $scope.deviceNumber}, function (response) {
                 $scope.busy = false;
                 if (response.status === 'OK') {
+                    $scope.errorMessage = undefined;
                     $scope.successMessage = localization.localize('plugin.deviceinventory.scan.requested');
                 } else {
+                    $scope.successMessage = undefined;
                     $scope.errorMessage = localization.localizeServerResponse(response);
                 }
-            }, function () {
+            }, function (response) {
                 $scope.busy = false;
+                $scope.successMessage = undefined;
                 $scope.errorMessage = localization.localize('error.request.failure');
+                if (response && response.status) {
+                    console.error('Inventory scan request failed:', response.status, response.data);
+                }
             });
         };
 
