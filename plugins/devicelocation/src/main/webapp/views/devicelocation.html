@@ -1,0 +1,52 @@
+<div class="width-1000" ng-controller="PluginDeviceLocationController">
+
+    <div class="text-center row">
+        <h4 localized>plugin.devicelocation.title</h4>
+        <h4>{{deviceNumber}}</h4>
+    </div>
+
+    <div class='form-group' ng-if='errorMessage'>
+        <div class='error'><span>{{errorMessage}}</span></div>
+    </div>
+
+    <div class="row margin-bottom">
+        <div class="col-sm-8">
+            <strong localized>plugin.devicelocation.last.update</strong>
+            {{getLastUpdateText()}}
+        </div>
+        <div class="col-sm-4 text-right">
+            <button class="btn btn-default" ng-click="loadLocation()" ng-disabled="busy"
+                    localized>plugin.devicelocation.button.refresh</button>
+            <a class="btn btn-default" ng-if="mapUrl" ng-href="{{mapUrl}}" target="_blank" rel="noopener"
+               localized>plugin.devicelocation.button.open.map</a>
+        </div>
+    </div>
+
+    <div ng-if="busy" class="text-center">...</div>
+
+    <table class="table" ng-if="!busy && location && location.lat != null">
+        <tbody>
+        <tr>
+            <th localized>plugin.devicelocation.column.lat</th>
+            <td>{{location.lat}}</td>
+        </tr>
+        <tr>
+            <th localized>plugin.devicelocation.column.lon</th>
+            <td>{{location.lon}}</td>
+        </tr>
+        <tr>
+            <th localized>plugin.devicelocation.column.source</th>
+            <td>{{getSourceText()}}</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <div id="device-location-map" style="height: 400px; width: 100%; margin-top: 15px;"
+         ng-if="!busy && location && location.lat != null"></div>
+
+    <div class="text-center margin-top" ng-if="!busy && (!location || location.lat == null)"
+         localized>plugin.devicelocation.empty</div>
+
+    <div class="configuration-hint margin-top" localized>plugin.devicelocation.hint</div>
+
+</div>

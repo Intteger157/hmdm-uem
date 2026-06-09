@@ -1,0 +1,16 @@
+{
+  "breadcrumb.plugin.devicelocation.main": "Местоположение",
+  "plugin.devicelocation.localization.key.name": "Местоположение",
+  "plugin.devicelocation.title": "Местоположение устройства",
+  "plugin.devicelocation.last.update": "Последнее обновление:",
+  "plugin.devicelocation.no.data": "Данных пока нет",
+  "plugin.devicelocation.button.refresh": "Обновить",
+  "plugin.devicelocation.button.open.map": "Открыть в OSM",
+  "plugin.devicelocation.column.lat": "Широта",
+  "plugin.devicelocation.column.lon": "Долгота",
+  "plugin.devicelocation.column.source": "Источник",
+  "plugin.devicelocation.source.sync": "Синхронизация MDM",
+  "plugin.devicelocation.source.deviceinfo": "Детальная информация",
+  "plugin.devicelocation.empty": "Координаты ещё не получены. Включите GPS в конфигурации устройства и дождитесь синхронизации.",
+  "plugin.devicelocation.hint": "Включите отслеживание в Конфигурация → MDM Settings → Отслеживать по GPS. Координаты сохраняются при отправке данных лаунчером или плагином deviceinfo."
+}

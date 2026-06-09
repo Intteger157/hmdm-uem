@@ -1085,6 +1085,7 @@ document.localization ['en_US'] = {
     'permission.plugin_devicelog_access': 'View device logs',
     'permission.plugin_devicereset_access': 'Reset and reboot devices',
     'permission.plugin_deviceinventory_access': 'View installed applications on devices',
+    'permission.plugin_devicelocation_access': 'View device GPS coordinates',
     'permission.plugin_licensing_access': 'Access to the license (deprecated)',
     'permission.plugin_messaging_send': 'Send messages',
     'permission.plugin_messaging_delete': 'Delete sent messages',

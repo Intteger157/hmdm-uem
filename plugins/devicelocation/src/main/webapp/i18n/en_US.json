@@ -1,0 +1,16 @@
+{
+  "breadcrumb.plugin.devicelocation.main": "Location",
+  "plugin.devicelocation.localization.key.name": "Location",
+  "plugin.devicelocation.title": "Device Location",
+  "plugin.devicelocation.last.update": "Last update:",
+  "plugin.devicelocation.no.data": "No data yet",
+  "plugin.devicelocation.button.refresh": "Refresh",
+  "plugin.devicelocation.button.open.map": "Open in OSM",
+  "plugin.devicelocation.column.lat": "Latitude",
+  "plugin.devicelocation.column.lon": "Longitude",
+  "plugin.devicelocation.column.source": "Source",
+  "plugin.devicelocation.source.sync": "MDM sync",
+  "plugin.devicelocation.source.deviceinfo": "Detailed info",
+  "plugin.devicelocation.empty": "No location reported yet. Enable GPS tracking in device configuration and wait for sync.",
+  "plugin.devicelocation.hint": "Enable GPS tracking in Configuration → MDM Settings → Track by GPS. Location is saved when the launcher or deviceinfo plugin sends coordinates."
+}

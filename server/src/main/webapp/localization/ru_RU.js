@@ -1086,6 +1086,7 @@ document.localization[ 'ru_RU' ] = {
     'permission.plugin_devicelog_access': 'Просмотр журналов устройства',
     'permission.plugin_devicereset_access': 'Сброс и перезагрузка устройств',
     'permission.plugin_deviceinventory_access': 'Просмотр установленных приложений на устройствах',
+    'permission.plugin_devicelocation_access': 'Просмотр GPS-координат устройств',
     'permission.plugin_licensing_access': 'Доступ к лицензии (устарело)',
     'permission.plugin_messaging_send': 'Отправка сообщений',
     'permission.plugin_messaging_delete': 'Удаление отправленных сообщений',
