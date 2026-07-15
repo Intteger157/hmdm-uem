@@ -1,6 +1,12 @@
 package com.hmdm.plugins.deviceremote.persistence.domain;
 
-public class DeviceRemoteSession {
+import com.hmdm.persistence.domain.CustomerData;
+
+import java.io.Serializable;
+
+public class DeviceRemoteSession implements CustomerData, Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     public static final String STATUS_IDLE = "idle";
     public static final String STATUS_PENDING = "pending";
@@ -9,7 +15,7 @@ public class DeviceRemoteSession {
     public static final String STATUS_FAILED = "failed";
     public static final String STATUS_STOPPED = "stopped";
 
-    private int id;
+    private Integer id;
     private int customerId;
     private int deviceId;
     private String sessionId;
@@ -19,14 +25,16 @@ public class DeviceRemoteSession {
     private Long requestedAt;
     private Long updatedAt;
 
-    public int getId() {
+    @Override
+    public Integer getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 
+    @Override
     public int getCustomerId() {
         return customerId;
     }

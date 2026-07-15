@@ -1,20 +1,28 @@
 package com.hmdm.plugins.deviceremote.persistence.domain;
 
-public class DeviceRemoteSettings {
+import com.hmdm.persistence.domain.CustomerData;
 
-    private int id;
+import java.io.Serializable;
+
+public class DeviceRemoteSettings implements CustomerData, Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    private Integer id;
     private int customerId;
     private String serverUrl;
     private String serverSecret;
 
-    public int getId() {
+    @Override
+    public Integer getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 
+    @Override
     public int getCustomerId() {
         return customerId;
     }

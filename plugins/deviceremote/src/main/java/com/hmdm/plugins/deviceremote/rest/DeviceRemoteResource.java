@@ -332,19 +332,11 @@ public class DeviceRemoteResource {
     }
 
     private boolean isDeviceAccessible(Device device) {
-        try {
-            return SecurityContext.get().getCustomerId() == device.getCustomerId();
-        } catch (SecurityException e) {
-            return false;
-        }
+        return SecurityContext.get().getCurrentCustomerId().get().equals(device.getCustomerId());
     }
 
     private int getCustomerId() {
-        try {
-            return SecurityContext.get().getCustomerId();
-        } catch (SecurityException e) {
-            return 0;
-        }
+        return SecurityContext.get().getCurrentCustomerId().get();
     }
 
     private static String randomToken(int length) {
