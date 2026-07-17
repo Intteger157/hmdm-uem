@@ -74,6 +74,7 @@ public class MainActivity extends AppCompatActivity implements SharingEngineJanu
     private static final int SHARE_START_GRACE_MS = 20000;
     private static final int SHARE_LEAVE_DEBOUNCE_MS = 3000;
     private static final int ICE_FAILURE_RECONNECT_MAX = 2;
+    private static final long SOFT_RECONNECT_COOLDOWN_MS = 8000L;
     // ColorOS often flaps TextRoom ICE for ~10–20s after VirtualDisplay starts; delay "ready"
     // so MDM Open Viewer is not used during that window (first Connect → browser Disconnected).
     private static final long READY_REPORT_DELAY_MS = 12000L;
@@ -84,6 +85,8 @@ public class MainActivity extends AppCompatActivity implements SharingEngineJanu
     private static final int CONSENT_PREP_STABLE_CHECKS = 3;
     private int accessibilityRetryCount = 0;
     private int iceFailureReconnectAttempts = 0;
+    private boolean softReconnectInProgress;
+    private long lastSoftReconnectMs;
     private int sessionFetchGeneration = 0;
     private int prepareScreenCaptureStableCount = 0;
     private Runnable accessibilityRetryRunnable;
@@ -968,10 +971,22 @@ public class MainActivity extends AppCompatActivity implements SharingEngineJanu
         if (sessionId == null || password == null) {
             return;
         }
+        if (softReconnectInProgress) {
+            Log.i(Const.LOG_TAG, "Soft TextRoom reconnect already in progress — skip");
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (now - lastSoftReconnectMs < SOFT_RECONNECT_COOLDOWN_MS) {
+            Log.i(Const.LOG_TAG, "Soft TextRoom reconnect cooldown — skip");
+            return;
+        }
+        softReconnectInProgress = true;
+        lastSoftReconnectMs = now;
         // Allowed while consent is open: heal TextRoom without stopSharing / re-prompt.
         Runnable reconnect = () -> {
             sharingEngine.setUsername(settingsHelper.getString(SettingsHelper.KEY_DEVICE_NAME));
             sharingEngine.connect(this, sessionId, password, (success, errorReason) -> {
+                softReconnectInProgress = false;
                 if (!success) {
                     Log.w(Const.LOG_TAG, "Soft TextRoom reconnect failed: " + errorReason);
                 } else {

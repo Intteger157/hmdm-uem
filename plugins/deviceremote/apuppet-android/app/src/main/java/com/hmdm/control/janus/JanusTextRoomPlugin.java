@@ -64,6 +64,8 @@ public class JanusTextRoomPlugin extends JanusPlugin {
     private volatile boolean dataChannelReadyNotified;
     private volatile boolean iceRestartAttempted;
     private volatile boolean iceRestartInProgress;
+    /** True after teardown — ignore stale PeerConnection ICE callbacks from a disposed session. */
+    private volatile boolean disposed;
 
     private Handler handler = new Handler();
     private Context appContext;
@@ -123,6 +125,13 @@ public class JanusTextRoomPlugin extends JanusPlugin {
 
     public void createPeerConnection(final SharingEngine.EventListener eventListener) {
         this.eventListener = eventListener;
+        disposed = false;
+        iceConnected = false;
+        dataChannelOpen = false;
+        webRtcUp = false;
+        dataChannelReadyNotified = false;
+        iceRestartAttempted = false;
+        iceRestartInProgress = false;
         List<PeerConnection.IceServer> iceServers = new ArrayList<>();
         iceServers.add(PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer());
         iceServers.add(PeerConnection.IceServer.builder("stun:stun1.l.google.com:19302").createIceServer());
@@ -142,6 +151,9 @@ public class JanusTextRoomPlugin extends JanusPlugin {
 
             @Override
             public void onIceConnectionChange(PeerConnection.IceConnectionState iceConnectionState) {
+                if (disposed) {
+                    return;
+                }
                 Log.i(Const.LOG_TAG, "Textroom plugin: iceConnectionState changed to " + iceConnectionState);
                 if (iceConnectionState == PeerConnection.IceConnectionState.CONNECTED
                         || iceConnectionState == PeerConnection.IceConnectionState.COMPLETED) {
@@ -157,7 +169,7 @@ public class JanusTextRoomPlugin extends JanusPlugin {
                     startDataChannelKeepalive();
                 } else if (iceConnectionState == PeerConnection.IceConnectionState.FAILED && appContext != null) {
                     iceConnected = false;
-                    if (!iceRestartAttempted && !iceRestartInProgress && peerConnection != null) {
+                    if (!iceRestartAttempted && !iceRestartInProgress && peerConnection != null && !disposed) {
                         iceRestartAttempted = true;
                         iceRestartInProgress = true;
                         Log.w(Const.LOG_TAG, "ICE failed, attempting Janus TextRoom ICE restart");
@@ -171,8 +183,15 @@ public class JanusTextRoomPlugin extends JanusPlugin {
             }
 
             private void runJanusIceRestart() {
+                if (disposed) {
+                    iceRestartInProgress = false;
+                    return;
+                }
                 boolean ok = performJanusIceRestart();
                 iceRestartInProgress = false;
+                if (disposed) {
+                    return;
+                }
                 if (ok) {
                     Log.i(Const.LOG_TAG, "Janus ICE restart completed");
                     return;
@@ -182,11 +201,19 @@ public class JanusTextRoomPlugin extends JanusPlugin {
             }
 
             private void notifyIceConnectionFailed() {
+                if (disposed || appContext == null) {
+                    return;
+                }
                 stopDataChannelKeepalive();
                 errorReason = "ICE connection failed";
                 Log.e(Const.LOG_TAG, errorReason);
-                handler.post(() -> LocalBroadcastManager.getInstance(appContext)
-                        .sendBroadcast(new Intent(Const.ACTION_CONNECTION_FAILURE)));
+                handler.post(() -> {
+                    if (disposed || appContext == null) {
+                        return;
+                    }
+                    LocalBroadcastManager.getInstance(appContext)
+                            .sendBroadcast(new Intent(Const.ACTION_CONNECTION_FAILURE));
+                });
             }
 
             @Override
@@ -417,7 +444,7 @@ public class JanusTextRoomPlugin extends JanusPlugin {
      * Bare {@code PeerConnection.restartIce()} without this renegotiation does not recover.
      */
     private boolean performJanusIceRestart() {
-        if (peerConnection == null) {
+        if (disposed || peerConnection == null) {
             return false;
         }
         try {
@@ -941,9 +968,49 @@ public class JanusTextRoomPlugin extends JanusPlugin {
         return Const.SUCCESS;
     }
 
+    /**
+     * Invalidate this plugin immediately so stale PeerConnection ICE events cannot
+     * trigger ICE restart / CONNECTION_FAILURE against a destroyed Janus session.
+     * Safe to call more than once; called from destroy() and SharingEngine teardown.
+     */
+    public void disposePeerConnection() {
+        disposed = true;
+        stopDataChannelKeepalive();
+        iceConnected = false;
+        dataChannelOpen = false;
+        iceRestartInProgress = false;
+        webRtcUp = false;
+        dataChannelReadyNotified = false;
+        eventListener = null;
+        DataChannel dc = dataChannel;
+        dataChannel = null;
+        if (dc != null) {
+            try {
+                dc.close();
+            } catch (Exception ignored) {
+            }
+            try {
+                dc.dispose();
+            } catch (Exception ignored) {
+            }
+        }
+        PeerConnection pc = peerConnection;
+        peerConnection = null;
+        if (pc != null) {
+            try {
+                pc.close();
+            } catch (Exception ignored) {
+            }
+            try {
+                pc.dispose();
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
     @Override
     public int destroy() {
-        stopDataChannelKeepalive();
+        disposePeerConnection();
  /*       if (dataChannel != null) {
             String destroyMessage = "{\"textroom\":\"destroy\",\"room\":\"" + roomId + "\",\"permanent\":false,\"transaction\":\"" + Utils.generateTransactionId() + "\"}";
             sendToDataChannel(destroyMessage);

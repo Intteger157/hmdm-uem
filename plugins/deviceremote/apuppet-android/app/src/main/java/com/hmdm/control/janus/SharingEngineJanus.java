@@ -26,10 +26,16 @@ public class SharingEngineJanus extends SharingEngine {
     }
 
     private void stopActiveSession(Context context) {
+        JanusTextRoomPlugin textRoom = janusTextRoomPlugin;
         JanusSession session = janusSession;
         janusSession = null;
         janusStreamingPlugin = null;
         janusTextRoomPlugin = null;
+        // Close PeerConnection immediately so stale ICE FAILED from the old PC
+        // cannot fire CONNECTION_FAILURE after a soft reconnect has started.
+        if (textRoom != null) {
+            textRoom.disposePeerConnection();
+        }
         if (context != null && session != null) {
             session.stopPolling(context.getApplicationContext());
         }
@@ -251,6 +257,13 @@ public class SharingEngineJanus extends SharingEngine {
         final int token = ++connectToken;
         errorReason = null;
         setState(Const.STATE_DISCONNECTING);
+
+        // Invalidate PC immediately (before async Janus destroy) so soft-reconnect
+        // cannot race with stale ICE FAILED from the old PeerConnection.
+        JanusTextRoomPlugin textRoom = janusTextRoomPlugin;
+        if (textRoom != null) {
+            textRoom.disposePeerConnection();
+        }
 
         final JanusSession session = janusSession;
 
