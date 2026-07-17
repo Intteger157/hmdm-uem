@@ -78,12 +78,18 @@ public class MainActivity extends AppCompatActivity implements SharingEngineJanu
     // so MDM Open Viewer is not used during that window (first Connect → browser Disconnected).
     private static final long READY_REPORT_DELAY_MS = 12000L;
     private static final long READY_REPORT_RETRY_MS = 500L;
+    // Defer MediaProjection dialog until TextRoom ICE is stable. Opening consent during ColorOS
+    // ICE flap triggers auto-reconnect → stop → new consent in a loop (force-stop after ~20 dialogs).
+    private static final long CONSENT_PREP_STABLE_CHECK_MS = 1000L;
+    private static final int CONSENT_PREP_STABLE_CHECKS = 3;
     private int accessibilityRetryCount = 0;
     private int iceFailureReconnectAttempts = 0;
     private int sessionFetchGeneration = 0;
+    private int prepareScreenCaptureStableCount = 0;
     private Runnable accessibilityRetryRunnable;
     private Runnable pendingStopSharingRunnable;
     private Runnable reportReadyRunnable;
+    private Runnable prepareScreenCaptureWhenStableRunnable;
     private boolean readyStatusReported;
 
     private boolean screenCaptureGranted;
@@ -111,12 +117,18 @@ public class MainActivity extends AppCompatActivity implements SharingEngineJanu
                 lastShareStartMs = 0;
                 readyStatusReported = false;
                 cancelReadyStatusReport();
-                clearScreenCaptureConsent();
-                notifySharingStop();
-                adminName = null;
-                updateUI();
-                cancelSharingTimeout();
-                scheduleExitOnIdle();
+                // Do not clear pending consent: ICE reconnect used to stop the service while the
+                // system dialog was still up, which cleared state and caused another consent request.
+                if (!screenCaptureRequestPending) {
+                    clearScreenCaptureConsent();
+                    notifySharingStop();
+                    adminName = null;
+                    updateUI();
+                    cancelSharingTimeout();
+                    scheduleExitOnIdle();
+                } else {
+                    Log.w(Const.LOG_TAG, "Ignoring share-stop cleanup while MediaProjection consent pending");
+                }
 
             } else if (intent.getAction().equals(Const.ACTION_SCREEN_SHARING_FAILED)) {
                 String message = intent.getStringExtra(Const.EXTRA_MESSAGE);
@@ -150,13 +162,17 @@ public class MainActivity extends AppCompatActivity implements SharingEngineJanu
                 updateUI();
 
             } else if (intent.getAction().equals(Const.ACTION_SCREEN_SHARING_PERMISSION_NEEDED)) {
-                if (isScreenShareRunning()) {
-                    Log.d(Const.LOG_TAG, "Ignoring PERMISSION_NEEDED while screen share is already running");
+                if (isScreenShareRunning() || screenCaptureGranted) {
+                    Log.d(Const.LOG_TAG, "Ignoring PERMISSION_NEEDED while screen share is already available");
                     return;
                 }
-                screenCaptureGranted = false;
-                screenCaptureResultData = null;
-                requestScreenCapturePermission();
+                if (screenCaptureRequestPending) {
+                    Log.d(Const.LOG_TAG, "Ignoring PERMISSION_NEEDED while MediaProjection consent is pending");
+                    return;
+                }
+                // Wait for TextRoom ICE to settle before opening ColorOS consent.
+                // Immediate request here races with ICE flaps and stacks dialogs until force-stop.
+                schedulePrepareScreenCaptureWhenStable();
 
             } else if (intent.getAction().equals(Const.ACTION_SCREEN_CAPTURE_CONSENT_RESULT)) {
                 handleScreenCaptureConsentResult(
@@ -213,9 +229,11 @@ public class MainActivity extends AppCompatActivity implements SharingEngineJanu
     }
 
     private void clearScreenCaptureConsent() {
+        cancelPrepareScreenCaptureWhenStable();
         screenCaptureGranted = false;
         screenCaptureResultData = null;
         screenCaptureResultCode = 0;
+        screenCaptureRequestPending = false;
     }
 
     /**
@@ -244,7 +262,12 @@ public class MainActivity extends AppCompatActivity implements SharingEngineJanu
         }
         screenCaptureConsentLaunchTime = System.currentTimeMillis();
         try {
-            startActivity(new Intent(this, ScreenCaptureConsentActivity.class));
+            Intent intent = new Intent(this, ScreenCaptureConsentActivity.class);
+            // singleTask + CLEAR_TOP: ColorOS must not stack translucent consent hosts on ICE flaps.
+            intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    | Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            startActivity(intent);
         } catch (Exception e) {
             screenCaptureRequestPending = false;
             Log.e(Const.LOG_TAG, "Failed to launch ScreenCaptureConsentActivity", e);
@@ -261,9 +284,14 @@ public class MainActivity extends AppCompatActivity implements SharingEngineJanu
             // delays ACTION_SCREEN_SHARING_START ("Your device is remotely controlled!")
             // by many seconds when consent was prepared on STATE_CONNECTED.
             // Admin rejoin then skips a second prompt via isScreenShareRunning().
+            // Do NOT start ping-timeout here: admin has not joined yet. Starting it at
+            // consent caused a 20s disconnect→reconnect→second MediaProjection prompt
+            // while waiting for Open Viewer (see onStartSharing for the real schedule).
             cancelExitOnIdle();
-            scheduleSharingTimeout();
             consumeAndStartSharing(resultCode, data);
+            // Consent dialog often flaps TextRoom ICE; heal the control channel without
+            // tearing down MediaProjection (which would reopen the dialog).
+            softReconnectTextRoomIfUnhealthy();
             return;
         }
 
@@ -312,6 +340,64 @@ public class MainActivity extends AppCompatActivity implements SharingEngineJanu
         requestScreenCapturePermission();
     }
 
+    /**
+     * Wait until TextRoom control channel stays healthy before showing MediaProjection consent.
+     * On ColorOS, requesting consent while ICE is still settling causes DISCONNECTED/FAILED →
+     * auto-reconnect → another consent dialog (activity stack grows until the OS force-stops us).
+     */
+    private void schedulePrepareScreenCaptureWhenStable() {
+        if (screenCaptureGranted || screenCaptureRequestPending || isScreenShareRunning()) {
+            return;
+        }
+        int state = sharingEngine.getState();
+        if (state != Const.STATE_CONNECTED && state != Const.STATE_SHARING) {
+            return;
+        }
+        if (prepareScreenCaptureWhenStableRunnable != null) {
+            return;
+        }
+        prepareScreenCaptureStableCount = 0;
+        prepareScreenCaptureWhenStableRunnable = this::tickPrepareScreenCaptureWhenStable;
+        Log.i(Const.LOG_TAG, "Deferring MediaProjection consent until TextRoom ICE is stable");
+        handler.post(prepareScreenCaptureWhenStableRunnable);
+    }
+
+    private void cancelPrepareScreenCaptureWhenStable() {
+        if (prepareScreenCaptureWhenStableRunnable != null) {
+            handler.removeCallbacks(prepareScreenCaptureWhenStableRunnable);
+            prepareScreenCaptureWhenStableRunnable = null;
+        }
+        prepareScreenCaptureStableCount = 0;
+    }
+
+    private void tickPrepareScreenCaptureWhenStable() {
+        prepareScreenCaptureWhenStableRunnable = null;
+        if (screenCaptureGranted || screenCaptureRequestPending || isScreenShareRunning()) {
+            prepareScreenCaptureStableCount = 0;
+            return;
+        }
+        int state = sharingEngine.getState();
+        if (state != Const.STATE_CONNECTED && state != Const.STATE_SHARING) {
+            prepareScreenCaptureStableCount = 0;
+            return;
+        }
+        if (!isControlChannelHealthy()) {
+            prepareScreenCaptureStableCount = 0;
+            prepareScreenCaptureWhenStableRunnable = this::tickPrepareScreenCaptureWhenStable;
+            handler.postDelayed(prepareScreenCaptureWhenStableRunnable, CONSENT_PREP_STABLE_CHECK_MS);
+            return;
+        }
+        prepareScreenCaptureStableCount++;
+        if (prepareScreenCaptureStableCount < CONSENT_PREP_STABLE_CHECKS) {
+            prepareScreenCaptureWhenStableRunnable = this::tickPrepareScreenCaptureWhenStable;
+            handler.postDelayed(prepareScreenCaptureWhenStableRunnable, CONSENT_PREP_STABLE_CHECK_MS);
+            return;
+        }
+        prepareScreenCaptureStableCount = 0;
+        Log.i(Const.LOG_TAG, "TextRoom ICE stable, preparing MediaProjection consent");
+        prepareScreenCapturePermission();
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -354,7 +440,19 @@ public class MainActivity extends AppCompatActivity implements SharingEngineJanu
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        String previousSessionId = sessionId;
         handleRemoteControlIntent(intent);
+        boolean sessionChanged = remoteSessionIdChanged(previousSessionId, sessionId);
+        if (sessionChanged) {
+            Log.i(Const.LOG_TAG, "Remote session changed via intent: " + previousSessionId + " -> " + sessionId
+                    + " — forcing reconnect so MDM Open Viewer can enable");
+            readyStatusReported = false;
+            cancelReadyStatusReport();
+            if (Utils.isAccessibilityPermissionGranted(this)) {
+                connectRemoteSession();
+            }
+            return;
+        }
         if (shouldIgnoreReconnectOnNewIntent(intent)) {
             Log.d(Const.LOG_TAG, "Skipping reconnect onNewIntent during consent or active session");
             return;
@@ -362,6 +460,13 @@ public class MainActivity extends AppCompatActivity implements SharingEngineJanu
         if (Utils.isAccessibilityPermissionGranted(this)) {
             connectRemoteSession();
         }
+    }
+
+    private static boolean remoteSessionIdChanged(String previous, String next) {
+        if (next == null || next.isEmpty()) {
+            return false;
+        }
+        return previous == null || !previous.equals(next);
     }
 
     private boolean shouldIgnoreReconnectOnNewIntent(Intent intent) {
@@ -815,6 +920,14 @@ public class MainActivity extends AppCompatActivity implements SharingEngineJanu
         if (!settingsHelper.getBoolean(SettingsHelper.KEY_AUTO_CONNECT, false)) {
             return false;
         }
+        // ColorOS: MediaProjectionPermissionActivity flaps TextRoom ICE.
+        // Hard reconnect stops capture / re-prompts consent → stack → ColorOS force-stops the app.
+        // Soft-heal TextRoom only; never clear the grant or tear down sharing while consent is open.
+        if (screenCaptureRequestPending || screenCaptureGranted || isScreenShareRunning()) {
+            Log.i(Const.LOG_TAG, "ICE failed during MediaProjection consent/share — soft TextRoom reconnect only");
+            softReconnectTextRoomIfUnhealthy();
+            return true;
+        }
         if (iceFailureReconnectAttempts >= ICE_FAILURE_RECONNECT_MAX) {
             return false;
         }
@@ -835,9 +948,56 @@ public class MainActivity extends AppCompatActivity implements SharingEngineJanu
         return true;
     }
 
+    /**
+     * Soft-heal TextRoom after MediaProjection UI flaps ICE, without clearing the grant
+     * or calling stopSharing (which would invalidate the token and re-prompt).
+     */
+    private void softReconnectTextRoomIfUnhealthy() {
+        if (sessionId == null || password == null) {
+            return;
+        }
+        if (isControlChannelHealthy()) {
+            Log.i(Const.LOG_TAG, "TextRoom healthy after consent — no soft reconnect needed");
+            return;
+        }
+        Log.i(Const.LOG_TAG, "TextRoom unhealthy after consent — soft reconnect without clearing MediaProjection");
+        softReconnectTextRoomConnect();
+    }
+
+    private void softReconnectTextRoomConnect() {
+        if (sessionId == null || password == null) {
+            return;
+        }
+        // Allowed while consent is open: heal TextRoom without stopSharing / re-prompt.
+        Runnable reconnect = () -> {
+            sharingEngine.setUsername(settingsHelper.getString(SettingsHelper.KEY_DEVICE_NAME));
+            sharingEngine.connect(this, sessionId, password, (success, errorReason) -> {
+                if (!success) {
+                    Log.w(Const.LOG_TAG, "Soft TextRoom reconnect failed: " + errorReason);
+                } else {
+                    Log.i(Const.LOG_TAG, "Soft TextRoom reconnect succeeded");
+                    iceFailureReconnectAttempts = 0;
+                    if (isScreenShareRunning()) {
+                        scheduleReadyStatusReport();
+                    }
+                }
+            });
+        };
+        int engineState = sharingEngine.getState();
+        if (engineState != Const.STATE_DISCONNECTED && engineState != Const.STATE_DISCONNECTING) {
+            sharingEngine.disconnect(this, (success, errorReason) -> handler.postDelayed(reconnect, 500));
+        } else {
+            sharingEngine.setState(Const.STATE_DISCONNECTED);
+            handler.postDelayed(reconnect, 500);
+        }
+    }
+
     private void reconnectExistingSession() {
-        screenCaptureRequestPending = false;
-        screenCaptureConsentRetried = false;
+        // Keep MediaProjection consent/grant across ICE reconnect — clearing pending here
+        // caused ColorOS to stack dialogs after each ICE flap.
+        if (!screenCaptureRequestPending && !screenCaptureGranted) {
+            screenCaptureConsentRetried = false;
+        }
         sharingEngine.setUsername(settingsHelper.getString(SettingsHelper.KEY_DEVICE_NAME));
         sharingEngine.connect(this, sessionId, password, (success, errorReason) -> {
             if (!success) {
@@ -851,14 +1011,20 @@ public class MainActivity extends AppCompatActivity implements SharingEngineJanu
     }
 
     private void connectWithCredentials() {
-        screenCaptureGranted = false;
-        screenCaptureRequestPending = false;
-        screenCaptureConsentRetried = false;
-        screenCaptureResultData = null;
-        sharingActive = false;
-        lastShareStartMs = 0;
-        readyStatusReported = false;
-        cancelReadyStatusReport();
+        // Never wipe an already-running capture across Janus reconnect — that made ColorOS
+        // ask for MediaProjection again even though VirtualDisplay/encoder were still up.
+        if (!isScreenShareRunning()) {
+            screenCaptureGranted = false;
+            screenCaptureRequestPending = false;
+            screenCaptureConsentRetried = false;
+            screenCaptureResultData = null;
+            sharingActive = false;
+            lastShareStartMs = 0;
+            readyStatusReported = false;
+            cancelReadyStatusReport();
+        } else {
+            Log.i(Const.LOG_TAG, "Keeping MediaProjection/capture state across Janus reconnect");
+        }
         sharingEngine.setUsername(settingsHelper.getString(SettingsHelper.KEY_DEVICE_NAME));
         sharingEngine.connect(this, sessionId, password, (success, errorReason) -> {
             if (!success) {
@@ -869,6 +1035,9 @@ public class MainActivity extends AppCompatActivity implements SharingEngineJanu
                 MdmReporter.reportAgentStatus(settingsHelper, sessionId, "failed");
             } else {
                 MdmReporter.reportAgentStatus(settingsHelper, sessionId, "connected");
+                if (isScreenShareRunning()) {
+                    scheduleReadyStatusReport();
+                }
             }
         });
 
@@ -893,14 +1062,19 @@ public class MainActivity extends AppCompatActivity implements SharingEngineJanu
             Log.i(Const.LOG_TAG, "Screen share already active, skipping consent on admin rejoin");
             return;
         }
+        if (screenCaptureRequestPending) {
+            Log.i(Const.LOG_TAG, "MediaProjection consent already pending — waiting for user");
+            return;
+        }
         if (screenCaptureGranted && screenCaptureResultData != null) {
             consumeAndStartSharing(screenCaptureResultCode, screenCaptureResultData);
         } else if (screenCaptureGranted) {
-            // Consent flag without Intent — cannot reuse; ask again.
+            // Consent flag without Intent — cannot reuse; ask again after ICE is stable.
             clearScreenCaptureConsent();
-            requestScreenCapturePermission();
+            schedulePrepareScreenCaptureWhenStable();
         } else {
-            requestScreenCapturePermission();
+            // Defer until TextRoom ICE is healthy — otherwise ColorOS loops consent on ICE flaps.
+            schedulePrepareScreenCaptureWhenStable();
         }
     }
 
@@ -995,9 +1169,16 @@ public class MainActivity extends AppCompatActivity implements SharingEngineJanu
                     rtpAudioPort,
                     rtpVideoPort
                     );
-            // Ask for MediaProjection as soon as Janus is ready so the dialog is not racing
-            // admin join through a flaky TextRoom ICE reconnect.
-            prepareScreenCapturePermission();
+            // Capture already up (e.g. Janus reconnect while VirtualDisplay still running):
+            // never re-open MediaProjection consent — token is single-use on Android 14+.
+            if (isScreenShareRunning()) {
+                Log.i(Const.LOG_TAG, "STATE_CONNECTED with capture already running — skip MediaProjection consent");
+                scheduleReadyStatusReport();
+                return;
+            }
+            // Defer consent until TextRoom is stable. Immediate prepare opens the ColorOS
+            // MediaProjection dialog which flaps ICE and previously triggered reconnect/consent loops.
+            schedulePrepareScreenCaptureWhenStable();
         }
     }
 
@@ -1054,8 +1235,8 @@ public class MainActivity extends AppCompatActivity implements SharingEngineJanu
     private void scheduleSharingTimeout() {
         int pingTimeout = settingsHelper.getInt(SettingsHelper.KEY_PING_TIMEOUT);
         if (pingTimeout > 0) {
-            Log.d(Const.LOG_TAG, "Scheduling sharing stop in " + (pingTimeout * 1000) + " sec");
-            handler.postDelayed(sharingStopByPingTimeoutRunnable, pingTimeout * 1000);
+            Log.d(Const.LOG_TAG, "Scheduling sharing stop in " + pingTimeout + " sec");
+            handler.postDelayed(sharingStopByPingTimeoutRunnable, pingTimeout * 1000L);
         }
     }
 
@@ -1067,6 +1248,13 @@ public class MainActivity extends AppCompatActivity implements SharingEngineJanu
     private Runnable sharingStopByPingTimeoutRunnable = new Runnable() {
         @Override
         public void run() {
+            // Capture already running without admin (early consent): do not tear down Janus.
+            // Full disconnect→connect() clears sharingActive and re-prompts MediaProjection.
+            // Ping timeout is only meaningful after admin has joined (onStartSharing).
+            if (isScreenShareRunning() && adminName == null) {
+                Log.w(Const.LOG_TAG, "Ignoring ping timeout while capture is up and no admin has joined yet");
+                return;
+            }
             Toast.makeText(MainActivity.this, R.string.app_sharing_session_ping_timeout, Toast.LENGTH_LONG).show();
             if (adminName != null) {
                 notifySharingStop();
@@ -1076,6 +1264,11 @@ public class MainActivity extends AppCompatActivity implements SharingEngineJanu
             updateUI();
             cancelSharingTimeout();
             scheduleExitOnIdle();
+            if (isScreenShareRunning()) {
+                Log.w(Const.LOG_TAG, "Ping timeout with capture still up — soft TextRoom reconnect only");
+                softReconnectTextRoomConnect();
+                return;
+            }
             sharingEngine.disconnect(MainActivity.this, (success, errorReason) -> connect());
         }
     };
@@ -1134,9 +1327,59 @@ public class MainActivity extends AppCompatActivity implements SharingEngineJanu
             handler.postDelayed(reportReadyRunnable, READY_REPORT_RETRY_MS);
             return;
         }
-        readyStatusReported = true;
+        final String reportSessionId = sessionId;
         Log.i(Const.LOG_TAG, "Reporting MDM agentStatus=ready (capture up, TextRoom ICE healthy)");
-        MdmReporter.reportAgentStatus(settingsHelper, sessionId, "ready");
+        MdmReporter.reportAgentStatus(settingsHelper, reportSessionId, "ready", (ok, message) -> handler.post(() -> {
+            if (ok) {
+                readyStatusReported = true;
+                return;
+            }
+            Log.w(Const.LOG_TAG, "MDM ready report failed: " + message);
+            if (message != null && message.toLowerCase().contains("session mismatch")) {
+                resyncSessionAfterMismatch();
+                return;
+            }
+            // Transient failure — retry while capture is still up.
+            if (sharingActive && adminName == null) {
+                reportReadyRunnable = this::tryReportReadyStatus;
+                handler.postDelayed(reportReadyRunnable, READY_REPORT_RETRY_MS * 4);
+            }
+        }));
+    }
+
+    /**
+     * MDM rotated the session (e.g. Start clicked again) while the agent stayed on the old room.
+     * Status updates are rejected → Open Viewer never enables. Re-fetch and reconnect.
+     */
+    private void resyncSessionAfterMismatch() {
+        if (!shouldFetchMdmSession()) {
+            return;
+        }
+        final int fetchId = ++sessionFetchGeneration;
+        Log.i(Const.LOG_TAG, "Session mismatch on ready report — fetching current MDM session");
+        MdmSessionFetcher.fetch(settingsHelper, (fetchedSessionId, fetchedPassword, error) -> handler.post(() -> {
+            if (fetchId != sessionFetchGeneration) {
+                return;
+            }
+            if (fetchedSessionId == null || fetchedPassword == null) {
+                Log.w(Const.LOG_TAG, "MDM session re-fetch after mismatch failed: " + error);
+                return;
+            }
+            if (fetchedSessionId.equals(sessionId)) {
+                Log.w(Const.LOG_TAG, "MDM session re-fetch returned same sessionId; will retry ready later");
+                if (sharingActive && adminName == null) {
+                    reportReadyRunnable = this::tryReportReadyStatus;
+                    handler.postDelayed(reportReadyRunnable, READY_REPORT_RETRY_MS * 4);
+                }
+                return;
+            }
+            Log.i(Const.LOG_TAG, "Adopting MDM session after mismatch: " + sessionId + " -> " + fetchedSessionId);
+            sessionId = fetchedSessionId;
+            password = fetchedPassword;
+            readyStatusReported = false;
+            cancelReadyStatusReport();
+            connectRemoteSession();
+        }));
     }
 
     private boolean isControlChannelHealthy() {

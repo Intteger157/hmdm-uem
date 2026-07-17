@@ -10,8 +10,8 @@ android {
         applicationId "com.hmdm.control"
         minSdkVersion 24
         targetSdkVersion 34
-        versionCode 50
-        versionName "1.16.35-intermark"
+        versionCode 57
+        versionName "1.16.42-intermark"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 

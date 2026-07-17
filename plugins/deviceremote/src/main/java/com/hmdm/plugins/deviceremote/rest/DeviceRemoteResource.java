@@ -256,9 +256,12 @@ public class DeviceRemoteResource {
         if (session == null || session.getSessionId() == null) {
             return Response.ERROR("No active remote session");
         }
-        if (report != null && report.getSessionId() != null
+        if (report != null && report.getSessionId() != null && !report.getSessionId().isEmpty()
                 && !report.getSessionId().equals(session.getSessionId())) {
-            return Response.ERROR("Session mismatch");
+            // Device is on a stale room while MDM already rotated the session (e.g. Start clicked again).
+            // Keep rejecting the update so Open Viewer stays tied to the MDM session; agent must re-sync.
+            return Response.ERROR("Session mismatch: device=" + report.getSessionId()
+                    + " mdm=" + session.getSessionId());
         }
         if (report != null && report.getAgentStatus() != null) {
             session.setAgentStatus(report.getAgentStatus());

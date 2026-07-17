@@ -23,7 +23,8 @@
         <button class="btn btn-success" ng-click="openViewer()" ng-disabled="!canOpenViewer()" localized>plugin.deviceremote.button.openViewer</button>
     </div>
 
-    <p class="help-block" ng-if="!canOpenViewer() && status.viewerUrl" localized>plugin.deviceremote.modal.waitReady</p>
+    <p class="help-block" ng-if="!canOpenViewer() && status.viewerUrl && (status.agentStatus || '').toLowerCase() === 'connected'" localized>plugin.deviceremote.modal.waitReady</p>
+    <p class="help-block" ng-if="!canOpenViewer() && status.viewerUrl && !status.agentStatus" localized>plugin.deviceremote.modal.waitReady</p>
     <p class="help-block" localized>plugin.deviceremote.modal.hint</p>
 </div>
 <div class="modal-footer">

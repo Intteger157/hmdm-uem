@@ -124,6 +124,8 @@ angular.module('plugin-deviceremote', ['ngResource', 'ui.bootstrap', 'ui.router'
                 return false;
             }
             var agent = ($scope.status.agentStatus || '').toLowerCase();
+            // ready = capture + stable TextRoom; sharing = admin already joined.
+            // connected alone is too early (before MediaProjection on Realme).
             return agent === 'ready' || agent === 'sharing';
         };
 

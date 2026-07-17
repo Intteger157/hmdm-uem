@@ -16,12 +16,26 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 public class ScreenCaptureConsentActivity extends AppCompatActivity {
 
+    /**
+     * ColorOS often ignores singleTop for translucent activities and stacks many hosts
+     * until "transparent activity is too much" force-stops the process.
+     */
+    private static volatile boolean instanceActive;
+
     private boolean consentLaunched;
+    private boolean claimedInstance;
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (instanceActive) {
+            Log.w(Const.LOG_TAG, "ScreenCaptureConsentActivity already active — finishing duplicate");
+            finish();
+            return;
+        }
+        instanceActive = true;
+        claimedInstance = true;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true);
             setTurnScreenOn(true);
@@ -36,9 +50,29 @@ public class ScreenCaptureConsentActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        Log.i(Const.LOG_TAG, "ScreenCaptureConsentActivity onNewIntent — reusing existing host");
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
+        if (isFinishing() || !claimedInstance) {
+            return;
+        }
         handler.post(this::launchConsentIfNeeded);
+    }
+
+    @Override
+    protected void onDestroy() {
+        handler.removeCallbacksAndMessages(null);
+        if (claimedInstance) {
+            instanceActive = false;
+            claimedInstance = false;
+        }
+        super.onDestroy();
     }
 
     private void launchConsentIfNeeded() {
