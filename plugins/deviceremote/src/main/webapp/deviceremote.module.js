@@ -129,6 +129,14 @@ angular.module('plugin-deviceremote', ['ngResource', 'ui.bootstrap', 'ui.router'
             return agent === 'ready' || agent === 'sharing';
         };
 
+        $scope.isWaitingForReady = function () {
+            if ($scope.canOpenViewer() || !$scope.status || !$scope.status.viewerUrl) {
+                return false;
+            }
+            var agent = ($scope.status.agentStatus || '').toLowerCase();
+            return !agent || agent === 'connected' || agent === 'launched';
+        };
+
         var runAction = function (requestFactory, onSuccess) {
             $scope.errorMessage = undefined;
             $scope.busy = true;

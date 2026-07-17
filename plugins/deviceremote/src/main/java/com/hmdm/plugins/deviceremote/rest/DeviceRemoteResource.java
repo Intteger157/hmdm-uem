@@ -264,18 +264,46 @@ public class DeviceRemoteResource {
                     + " mdm=" + session.getSessionId());
         }
         if (report != null && report.getAgentStatus() != null) {
-            session.setAgentStatus(report.getAgentStatus());
-            if ("sharing".equalsIgnoreCase(report.getAgentStatus())
-                    || "connected".equalsIgnoreCase(report.getAgentStatus())
-                    || "ready".equalsIgnoreCase(report.getAgentStatus())) {
-                session.setStatus(DeviceRemoteSession.STATUS_ACTIVE);
-            } else if ("failed".equalsIgnoreCase(report.getAgentStatus())) {
-                session.setStatus(DeviceRemoteSession.STATUS_FAILED);
+            String incoming = report.getAgentStatus();
+            if (isAgentStatusDowngrade(session.getAgentStatus(), incoming)) {
+                logger.info("Ignoring agentStatus downgrade for device {}: {} -> {}",
+                        device.getNumber(), session.getAgentStatus(), incoming);
+            } else {
+                session.setAgentStatus(incoming);
+                if ("sharing".equalsIgnoreCase(incoming)
+                        || "connected".equalsIgnoreCase(incoming)
+                        || "ready".equalsIgnoreCase(incoming)) {
+                    session.setStatus(DeviceRemoteSession.STATUS_ACTIVE);
+                } else if ("failed".equalsIgnoreCase(incoming)) {
+                    session.setStatus(DeviceRemoteSession.STATUS_FAILED);
+                }
             }
         }
         session.setUpdatedAt(System.currentTimeMillis());
         deviceRemoteDAO.saveSession(session);
         return Response.OK();
+    }
+
+    /**
+     * Keep Open Viewer enabled once the agent has reached ready/sharing.
+     * Soft TextRoom reconnects used to re-report "connected" and disable the button.
+     */
+    static boolean isAgentStatusDowngrade(String current, String incoming) {
+        if (current == null || incoming == null) {
+            return false;
+        }
+        String from = current.trim().toLowerCase();
+        String to = incoming.trim().toLowerCase();
+        if (from.equals(to)) {
+            return false;
+        }
+        if ("sharing".equals(from)) {
+            return "ready".equals(to) || "connected".equals(to) || "launched".equals(to);
+        }
+        if ("ready".equals(from)) {
+            return "connected".equals(to) || "launched".equals(to);
+        }
+        return false;
     }
 
     private Response updateFromDevice(String number, DeviceInfo deviceInfo, String status,

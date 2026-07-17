@@ -1019,7 +1019,7 @@ public class MainActivity extends AppCompatActivity implements SharingEngineJanu
                 Log.w(Const.LOG_TAG, "ICE reconnect failed: " + errorReason);
                 MdmReporter.reportAgentStatus(settingsHelper, sessionId, "failed");
             } else {
-                MdmReporter.reportAgentStatus(settingsHelper, sessionId, "connected");
+                reportConnectedOrPreserveReady();
             }
         });
         scheduleExitOnIdle();
@@ -1049,14 +1049,28 @@ public class MainActivity extends AppCompatActivity implements SharingEngineJanu
                 editTextPassword.setText(null);
                 MdmReporter.reportAgentStatus(settingsHelper, sessionId, "failed");
             } else {
-                MdmReporter.reportAgentStatus(settingsHelper, sessionId, "connected");
-                if (isScreenShareRunning()) {
-                    scheduleReadyStatusReport();
-                }
+                reportConnectedOrPreserveReady();
             }
         });
 
         scheduleExitOnIdle();
+    }
+
+    /**
+     * Report "connected" only before capture. After capture is up, never downgrade MDM
+     * agentStatus from ready→connected (that disables Open Viewer until the next ready report).
+     */
+    private void reportConnectedOrPreserveReady() {
+        if (adminName != null) {
+            MdmReporter.reportAgentStatus(settingsHelper, sessionId, "sharing");
+            return;
+        }
+        if (isScreenShareRunning()) {
+            Log.i(Const.LOG_TAG, "Capture already running — skip connected status (preserve MDM ready)");
+            scheduleReadyStatusReport();
+            return;
+        }
+        MdmReporter.reportAgentStatus(settingsHelper, sessionId, "connected");
     }
 
     @Override
@@ -1314,6 +1328,13 @@ public class MainActivity extends AppCompatActivity implements SharingEngineJanu
      */
     private void scheduleReadyStatusReport() {
         cancelReadyStatusReport();
+        // Soft-reconnect reconfirm: if we already told MDM "ready" and ICE is healthy again,
+        // re-report immediately so Open Viewer stays enabled without another 12s wait.
+        if (readyStatusReported && isScreenShareRunning() && adminName == null && isControlChannelHealthy()) {
+            Log.i(Const.LOG_TAG, "Reconfirming MDM agentStatus=ready after reconnect");
+            tryReportReadyStatus();
+            return;
+        }
         readyStatusReported = false;
         reportReadyRunnable = this::tryReportReadyStatus;
         Log.i(Const.LOG_TAG, "Scheduling ready status report in " + READY_REPORT_DELAY_MS + "ms");
