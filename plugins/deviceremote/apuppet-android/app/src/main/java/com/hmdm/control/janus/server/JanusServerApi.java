@@ -8,6 +8,7 @@ import com.hmdm.control.janus.json.JanusRequest;
 import com.hmdm.control.janus.json.JanusResponse;
 import com.hmdm.control.janus.json.JanusStreamingCreateRequest;
 import com.hmdm.control.janus.json.JanusStreamingCreateResponse;
+import com.hmdm.control.janus.json.JanusTrickleRequest;
 
 import retrofit2.Call;
 import retrofit2.http.Body;
@@ -34,6 +35,10 @@ public interface JanusServerApi {
     @POST("/janus/{session}/{handle}")
     @Headers("Content-Type: application/json")
     Call<JanusResponse> sendMessage(@Path("session") String sessionId, @Path("handle") String handleId, @Body JanusMessageRequest request);
+
+    @POST("/janus/{session}/{handle}")
+    @Headers("Content-Type: application/json")
+    Call<JanusResponse> sendTrickle(@Path("session") String sessionId, @Path("handle") String handleId, @Body JanusTrickleRequest request);
 
     @POST("/janus/{session}/{handle}")
     @Headers("Content-Type: application/json")

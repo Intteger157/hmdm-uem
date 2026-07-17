@@ -12,6 +12,9 @@ public class JanusMessageRequest extends JanusPluginRequest {
 
         // For textroom messages
         private String room;
+        private String pin;
+        private Boolean is_private;
+        private Boolean permanent;
 
         public Body() {
         }
@@ -49,6 +52,30 @@ public class JanusMessageRequest extends JanusPluginRequest {
 
         public void setRoom(String room) {
             this.room = room;
+        }
+
+        public String getPin() {
+            return pin;
+        }
+
+        public void setPin(String pin) {
+            this.pin = pin;
+        }
+
+        public Boolean getIs_private() {
+            return is_private;
+        }
+
+        public void setIs_private(Boolean is_private) {
+            this.is_private = is_private;
+        }
+
+        public Boolean getPermanent() {
+            return permanent;
+        }
+
+        public void setPermanent(Boolean permanent) {
+            this.permanent = permanent;
         }
     }
 

@@ -6,6 +6,7 @@ import android.os.IBinder;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.hmdm.control.Const;
 import com.hmdm.control.ServerApiHelper;
@@ -84,12 +85,12 @@ public class JanusSessionPollService extends Service {
                     } else if (janus.equalsIgnoreCase("webrtcup")) {
                         Intent intent = new Intent(Const.ACTION_JANUS_SESSION_POLL);
                         intent.putExtra(Const.EXTRA_EVENT, Const.EXTRA_WEBRTCUP);
-                        sendBroadcast(intent);
+                        LocalBroadcastManager.getInstance(JanusSessionPollService.this).sendBroadcast(intent);
                     } else if (janus.equalsIgnoreCase("event")) {
                         Intent intent = new Intent(Const.ACTION_JANUS_SESSION_POLL);
                         intent.putExtra(Const.EXTRA_EVENT, Const.EXTRA_EVENT);
                         intent.putExtra(Const.EXTRA_MESSAGE, response.body());
-                        sendBroadcast(intent);
+                        LocalBroadcastManager.getInstance(JanusSessionPollService.this).sendBroadcast(intent);
                     } else {
                         Log.w(Const.LOG_TAG, "Unknown poll result: " + response.body().toString());
                     }

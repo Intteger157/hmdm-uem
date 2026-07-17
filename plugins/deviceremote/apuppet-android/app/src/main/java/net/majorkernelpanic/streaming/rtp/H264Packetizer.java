@@ -183,8 +183,9 @@ public class H264Packetizer extends AbstractPacketizer implements Runnable {
 			}
 		}
 
-		// We send two packets containing NALU type 7 (SPS) and 8 (PPS)
+        // We send two packets containing NALU type 7 (SPS) and 8 (PPS)
 		// Those should allow the H264 stream to be decoded even if no SDP was sent to the decoder.
+		// Always prepend SPS/PPS before every IDR so Janus Streaming / late watchers can resync.
 		if (type == 5 && sps != null && pps != null) {
 			buffer = socket.requestBuffer();
 			socket.markNextPacket();

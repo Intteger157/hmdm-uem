@@ -2,6 +2,7 @@ package com.hmdm.control.janus.json;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonSetter;
 
 import java.io.Serializable;
 
@@ -25,10 +26,6 @@ public class JanusPluginResponse implements Serializable {
         return session_id;
     }
 
-    public void setSession_id(String session_id) {
-        this.session_id = session_id;
-    }
-
     public String getTransaction() {
         return transaction;
     }
@@ -41,8 +38,14 @@ public class JanusPluginResponse implements Serializable {
         return sender;
     }
 
-    public void setSender(String sender) {
-        this.sender = sender;
+    @JsonSetter("sender")
+    public void setSender(Object sender) {
+        this.sender = sender != null ? String.valueOf(sender) : null;
+    }
+
+    @JsonSetter("session_id")
+    public void setSession_id(Object sessionId) {
+        this.session_id = sessionId != null ? String.valueOf(sessionId) : null;
     }
 
     @Override

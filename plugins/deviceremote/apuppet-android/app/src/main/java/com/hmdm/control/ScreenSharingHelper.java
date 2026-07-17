@@ -3,6 +3,7 @@ package com.hmdm.control;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Point;
 import android.os.Build;
 import android.util.DisplayMetrics;
@@ -14,6 +15,17 @@ import android.view.WindowManager;
  * Helper API for interaction between MainActivity and ScreenSharingService
  */
 public class ScreenSharingHelper {
+    private static final String PREFS = "com.hmdm.control.SCREEN_SHARING";
+    private static final String KEY_SCREEN_WIDTH = "screenWidth";
+    private static final String KEY_SCREEN_HEIGHT = "screenHeight";
+    private static final String KEY_SCREEN_DENSITY = "screenDensity";
+    private static final String KEY_FRAME_RATE = "frameRate";
+    private static final String KEY_BITRATE = "bitrate";
+    private static final String KEY_RTP_HOST = "rtpHost";
+    private static final String KEY_RTP_HOST_IP = "rtpHostIp";
+    private static final String KEY_RTP_AUDIO_PORT = "rtpAudioPort";
+    private static final String KEY_RTP_VIDEO_PORT = "rtpVideoPort";
+
     // Scale down screen size to reduce the video traffic
     public static float adjustScreenMetrics(DisplayMetrics metrics) {
         int srcWidth = metrics.widthPixels;
@@ -51,6 +63,7 @@ public class ScreenSharingHelper {
     }
 
     public static void setScreenMetrics(Activity activity, int screenWidth, int screenHeight, int screenDensity) {
+        saveScreenMetrics(activity, screenWidth, screenHeight, screenDensity);
         Intent intent = new Intent(activity, ScreenSharingService.class);
         intent.setAction(ScreenSharingService.ACTION_SET_METRICS);
         intent.putExtra(ScreenSharingService.ATTR_SCREEN_WIDTH, screenWidth);
@@ -59,7 +72,32 @@ public class ScreenSharingHelper {
         executeCommand(activity, intent);
     }
 
+    public static void saveScreenMetrics(Context context, int screenWidth, int screenHeight, int screenDensity) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putInt(KEY_SCREEN_WIDTH, screenWidth)
+                .putInt(KEY_SCREEN_HEIGHT, screenHeight)
+                .putInt(KEY_SCREEN_DENSITY, screenDensity)
+                .apply();
+    }
+
+    public static void applyPersistedMetrics(Context context, Intent intent) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        intent.putExtra(ScreenSharingService.ATTR_SCREEN_WIDTH, prefs.getInt(KEY_SCREEN_WIDTH, 0));
+        intent.putExtra(ScreenSharingService.ATTR_SCREEN_HEIGHT, prefs.getInt(KEY_SCREEN_HEIGHT, 0));
+        intent.putExtra(ScreenSharingService.ATTR_SCREEN_DENSITY, prefs.getInt(KEY_SCREEN_DENSITY, 0));
+        intent.putExtra(ScreenSharingService.ATTR_FRAME_RATE, prefs.getInt(KEY_FRAME_RATE, 0));
+        intent.putExtra(ScreenSharingService.ATTR_BITRATE, prefs.getInt(KEY_BITRATE, 0));
+    }
+
     public static void configure(Activity activity, boolean audio, int videoFrameRate, int videoBitRate, String host, int audioPort, int videoPort) {
+        activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putInt(KEY_FRAME_RATE, videoFrameRate)
+                .putInt(KEY_BITRATE, videoBitRate)
+                .putString(KEY_RTP_HOST, host)
+                .remove(KEY_RTP_HOST_IP)
+                .putInt(KEY_RTP_AUDIO_PORT, audioPort)
+                .putInt(KEY_RTP_VIDEO_PORT, videoPort)
+                .apply();
         Intent intent = new Intent(activity, ScreenSharingService.class);
         intent.setAction(ScreenSharingService.ACTION_CONFIGURE);
         intent.putExtra(ScreenSharingService.ATTR_AUDIO, audio);
@@ -71,9 +109,35 @@ public class ScreenSharingHelper {
         executeCommand(activity, intent);
     }
 
+    public static String getPersistedRtpHost(Context context) {
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_RTP_HOST, null);
+    }
+
+    public static String getPersistedRtpHostIp(Context context) {
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_RTP_HOST_IP, null);
+    }
+
+    public static void persistRtpHostIp(Context context, String ip) {
+        if (ip == null || ip.isEmpty()) {
+            return;
+        }
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putString(KEY_RTP_HOST_IP, ip)
+                .apply();
+    }
+
+    public static int getPersistedRtpVideoPort(Context context) {
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY_RTP_VIDEO_PORT, 0);
+    }
+
+    public static int getPersistedRtpAudioPort(Context context) {
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY_RTP_AUDIO_PORT, 0);
+    }
+
     public static void requestSharing(Activity activity) {
         Intent intent = new Intent(activity, ScreenSharingService.class);
         intent.setAction(ScreenSharingService.ACTION_REQUEST_SHARING);
+        applyPersistedMetrics(activity, intent);
         executeCommand(activity, intent);
     }
 
@@ -82,6 +146,7 @@ public class ScreenSharingHelper {
         intent.setAction(ScreenSharingService.ACTION_START_SHARING);
         intent.putExtra(ScreenSharingService.ATTR_RESULT_CODE, resultCode);
         intent.putExtra(ScreenSharingService.ATTR_DATA, data);
+        applyPersistedMetrics(activity, intent);
         executeCommand(activity, intent);
     }
 
@@ -93,7 +158,9 @@ public class ScreenSharingHelper {
     }
 
     private static void executeCommand(Activity activity, Intent intent) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        String action = intent.getAction();
+        boolean needsForeground = ScreenSharingService.ACTION_START_SHARING.equals(action);
+        if (needsForeground && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             activity.startForegroundService(intent);
         } else {
             activity.startService(intent);

@@ -7,6 +7,8 @@ import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.provider.Settings;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.hmdm.launcher.BuildConfig;
@@ -152,11 +154,75 @@ public class SystemUtils {
     }
 
     // https://stackoverflow.com/questions/10061154/how-to-programmatically-enable-disable-accessibility-service-in-android
-    public static void autoSetAccessibilityPermission(Context context, String packageName, String className) {
-/*        Settings.Secure.putString(context.getContentResolver(),
-                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, packageName + "/" + className);
-        Settings.Secure.putString(context.getContentResolver(),
-                Settings.Secure.ACCESSIBILITY_ENABLED, "1"); */
+    public static boolean autoSetAccessibilityPermission(Context context, String packageName, String className) {
+        String flatName = packageName + "/" + className;
+        if (isAccessibilityServiceEnabled(context, flatName)) {
+            return true;
+        }
+
+        String existing = Settings.Secure.getString(context.getContentResolver(),
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+        String newValue;
+        if (existing == null || existing.isEmpty()) {
+            newValue = flatName;
+        } else if (containsAccessibilityService(existing, flatName)) {
+            return true;
+        } else {
+            newValue = existing + ":" + flatName;
+        }
+
+        boolean success = false;
+        try {
+            success = Settings.Secure.putString(context.getContentResolver(),
+                    Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, newValue);
+            Settings.Secure.putString(context.getContentResolver(),
+                    Settings.Secure.ACCESSIBILITY_ENABLED, "1");
+        } catch (Exception e) {
+            Log.w(Const.LOG_TAG, "Failed to write accessibility settings: " + e.getMessage());
+        }
+
+        if (!isAccessibilityServiceEnabled(context, flatName)) {
+            String shellValue = newValue.replace("'", "'\\''");
+            executeShellCommand("settings put secure enabled_accessibility_services '" + shellValue + "'", true);
+            executeShellCommand("settings put secure accessibility_enabled 1", true);
+        }
+
+        return isAccessibilityServiceEnabled(context, flatName);
+    }
+
+    public static boolean isAccessibilityServiceEnabled(Context context, String flatName) {
+        try {
+            if (Settings.Secure.getInt(context.getContentResolver(),
+                    Settings.Secure.ACCESSIBILITY_ENABLED) != 1) {
+                return false;
+            }
+        } catch (Settings.SettingNotFoundException e) {
+            return false;
+        }
+        String settingValue = Settings.Secure.getString(context.getContentResolver(),
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+        if (settingValue == null) {
+            return false;
+        }
+        TextUtils.SimpleStringSplitter splitter = new TextUtils.SimpleStringSplitter(':');
+        splitter.setString(settingValue);
+        while (splitter.hasNext()) {
+            if (flatName.equalsIgnoreCase(splitter.next())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean containsAccessibilityService(String enabledServices, String flatName) {
+        TextUtils.SimpleStringSplitter splitter = new TextUtils.SimpleStringSplitter(':');
+        splitter.setString(enabledServices);
+        while (splitter.hasNext()) {
+            if (flatName.equalsIgnoreCase(splitter.next())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     static final int OP_WRITE_SETTINGS = 23;

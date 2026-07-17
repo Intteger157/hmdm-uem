@@ -27,6 +27,7 @@ public class JanusStreamingCreateRequest extends JanusPluginRequest {
         public int videoport;
         public int videopt;
         public String videortpmap;
+        public String videofmtp;
         public boolean videobufferkf;
 
         public String getRequest() {
@@ -163,6 +164,14 @@ public class JanusStreamingCreateRequest extends JanusPluginRequest {
 
         public void setVideortpmap(String videortpmap) {
             this.videortpmap = videortpmap;
+        }
+
+        public String getVideofmtp() {
+            return videofmtp;
+        }
+
+        public void setVideofmtp(String videofmtp) {
+            this.videofmtp = videofmtp;
         }
 
         public boolean isVideobufferkf() {

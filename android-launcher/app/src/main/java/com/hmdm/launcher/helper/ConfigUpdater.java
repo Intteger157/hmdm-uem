@@ -1184,6 +1184,10 @@ public class ConfigUpdater {
                     }
                 }
             };
+        } else if (!pendingInstallations.isEmpty()) {
+            // Parallel config updates must not tear down the receiver while install is in progress
+            Log.d(Const.LOG_TAG, "Install in progress, keeping completion receiver");
+            return;
         } else {
             // Renewed the configuration multiple times?
             unregisterAppInstallReceiver();

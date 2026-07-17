@@ -3,26 +3,22 @@ apply plugin: 'com.google.gms.google-services'
 apply plugin: 'com.google.firebase.crashlytics'
 
 android {
-    compileSdkVersion 29
-    buildToolsVersion "29.0.3"
+    namespace 'com.hmdm.control'
+    compileSdk 34
 
     defaultConfig {
         applicationId "com.hmdm.control"
         minSdkVersion 24
-        targetSdkVersion 29
-        versionCode 16
-        versionName "1.16"
+        targetSdkVersion 34
+        versionCode 49
+        versionName "1.16.34-intermark"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
-        // Default server URL (including last "/", for example: https://srv.apuppet.org/web-admin/ )
-        // Leave empty if you do not need to preconfigure any server URL
-        buildConfigField("String", "DEFAULT_SERVER_URL", "\"\"")
-        // Default server secret (leave empty if no secret should be preconfigured;
-        // secret is required to connect to the server)
-        buildConfigField("String", "DEFAULT_SECRET", "\"\"")
+        // Default server URL (including trailing slash)
+        buildConfigField("String", "DEFAULT_SERVER_URL", "\"https://remote.intermark.global/web-admin/\"")
+        buildConfigField("String", "DEFAULT_SECRET", "\"HKtxVakQ\"")
 
-        // Build variant displayed on the "About" screen
         buildConfigField("String", "VARIANT", "\"opensource\"")
     }
 
@@ -37,31 +33,33 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+
+    buildFeatures {
+        buildConfig = true
+    }
 }
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
-    implementation 'androidx.appcompat:appcompat:1.2.0'
-    implementation 'com.google.android.material:material:1.2.0'
-    implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
-    testImplementation 'junit:junit:4.12'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.11.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 
-    // Retrofit
-    implementation 'com.squareup.retrofit2:retrofit:2.3.0'
-    implementation 'com.squareup.retrofit2:converter-jackson:2.3.0'
-    implementation 'com.squareup.okhttp3:logging-interceptor:3.8.0'
+    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+    implementation 'com.squareup.retrofit2:converter-jackson:2.9.0'
+    implementation 'com.squareup.okhttp3:logging-interceptor:4.12.0'
 
-    // Jackson
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.9.4'
-    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.9.4'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.9.4'
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.13.5'
+    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.13.5'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.5'
 
-    implementation 'com.google.firebase:firebase-crashlytics:17.2.1'
+    implementation 'com.google.firebase:firebase-crashlytics:18.6.4'
 
-    // WebRTC
-    implementation 'org.webrtc:google-webrtc:1.0.+'
-    implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.0.0'
+    // Complete WebRTC build (infobip mirror was missing org.webrtc.Environment)
+    implementation 'io.github.webrtc-sdk:android:125.6422.07'
+    implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.1.0'
 }

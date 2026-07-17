@@ -19,6 +19,7 @@ Admin UI (deviceremote plugin)
 |------|---------|
 | `plugins/deviceremote/` | MDM server plugin (Java + Angular UI) |
 | `plugins/deviceremote/apuppet-android/` | Patched Android agent (`com.hmdm.control`) |
+| `plugins/deviceremote/h-mdm-remote-control/` | Headwind Remote server (Janus/WebRTC), Ubuntu 22.04/24.04 |
 | `android-launcher/` | Launcher patches: `RemoteControlHelper`, sync handling |
 
 ## Server deploy
@@ -37,13 +38,16 @@ docker run --rm -v "$(pwd)":/usr/src/mymaven -v "$HOME/.m2":/root/.m2 -w /usr/sr
 4. **Plugins → Remote control → Settings**: set aPuppet web-admin URL and secret, e.g.  
    `https://remote.intermark.global/web-admin/`
 
-## Headwind Remote server (aPuppet server)
+## Headwind Remote server
 
-Deploy separately on Linux (Docker). Clone upstream:
+Deploy on Ubuntu **22.04 or 24.04** (same host as MDM is OK if ports differ):
 
 ```bash
-git clone https://github.com/skdhruv/apuppet-server.git
-# follow README: docker compose, certbot, settings.js secret
+git clone https://github.com/Intteger157/h-mdm-remote-control.git
+cd h-mdm-remote-control
+# edit config.yaml — see INSTALL-INTERMARK.md (use web_https_port: 9443 if MDM uses 443)
+sudo ./install.sh
+cat deploy/dist/credentials/janus_api_secret
 ```
 
 Use the **same secret** in MDM plugin settings and in agent `build.gradle` (`DEFAULT_SECRET`).

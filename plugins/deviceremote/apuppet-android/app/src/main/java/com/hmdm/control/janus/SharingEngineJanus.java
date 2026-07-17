@@ -10,6 +10,8 @@ import com.hmdm.control.janus.server.JanusServerApi;
 import com.hmdm.control.janus.server.JanusServerApiFactory;
 
 public class SharingEngineJanus extends SharingEngine {
+    private static final int OP_CANCELLED = -1;
+
     private JanusServerApi apiInstance;
 
     private JanusSession janusSession;
@@ -17,6 +19,21 @@ public class SharingEngineJanus extends SharingEngine {
     private JanusStreamingPlugin janusStreamingPlugin;
 
     private Handler handler = new Handler();
+    private volatile int connectToken = 0;
+
+    private boolean isConnectActive(int token) {
+        return token == connectToken;
+    }
+
+    private void stopActiveSession(Context context) {
+        JanusSession session = janusSession;
+        janusSession = null;
+        janusStreamingPlugin = null;
+        janusTextRoomPlugin = null;
+        if (context != null && session != null) {
+            session.stopPolling(context.getApplicationContext());
+        }
+    }
 
     @Override
     public void connect(final Context context, final String sessionId, final String password, final CompletionHandler completionHandler) {
@@ -34,47 +51,61 @@ public class SharingEngineJanus extends SharingEngine {
             return;
         }
 
-        reset();
+        final int token = ++connectToken;
+        stopActiveSession(context);
         this.sessionId = sessionId;
         this.password = password;
         setState(Const.STATE_CONNECTING);
 
-        janusSession = new JanusSession();
-        janusSession.init(context);
+        final JanusSession session = new JanusSession();
+        session.init(context);
+        janusSession = session;
 
         // This must be initialized in the main thread because it uses a handler to run commands in UI thread
-        janusTextRoomPlugin = new JanusTextRoomPlugin();
+        final JanusTextRoomPlugin textRoomPlugin = new JanusTextRoomPlugin();
+        janusTextRoomPlugin = textRoomPlugin;
 
         // Start Janus connection flow
         new AsyncTask<Void, Void, Integer>() {
             @Override
             protected Integer doInBackground(Void... voids) {
-                int result = janusSession.create();
+                if (!isConnectActive(token)) {
+                    return OP_CANCELLED;
+                }
+
+                int result = session.create();
+                if (!isConnectActive(token)) {
+                    return OP_CANCELLED;
+                }
                 if (result != Const.SUCCESS) {
-                    errorReason = janusSession.getErrorReason();
+                    errorReason = session.getErrorReason();
                     return result;
                 }
 
-                janusSession.startPolling(context);
+                session.startPolling(context);
 
-                janusTextRoomPlugin.init(context);
-                result = janusSession.attachPlugin(janusTextRoomPlugin);
+                if (!isConnectActive(token)) {
+                    return OP_CANCELLED;
+                }
+
+                textRoomPlugin.init(context);
+                result = session.attachPlugin(textRoomPlugin);
+                if (!isConnectActive(token)) {
+                    return OP_CANCELLED;
+                }
                 if (result != Const.SUCCESS) {
                     return result;
                 }
 
-                // The successful flow is continued after creating a data channel
-                janusTextRoomPlugin.createPeerConnection((success, errorReason) -> {
-                            if (!success) {
-                                handler.post(() -> completionHandler.onComplete(false, errorReason));
-                            } else {
-                                dataChannelCreated(context, completionHandler);
-                            }
-                        }, new EventListener() {
+                textRoomPlugin.setDataChannelReadyCallback(() ->
+                        dataChannelCreated(context, token, session, textRoomPlugin, completionHandler));
+
+                // The successful flow is continued after WebRTC data channel is ready
+                textRoomPlugin.createPeerConnection(new EventListener() {
                             @Override
                             public void onStartSharing(String username) {
                                 // Send screen resolution before starting sharing
-                                janusTextRoomPlugin.sendMessage(screenResolutionMessage(), false);
+                                textRoomPlugin.sendMessage(screenResolutionMessage(), false);
                                 if (eventListener != null) {
                                     eventListener.onStartSharing(username);
                                 }
@@ -102,8 +133,20 @@ public class SharingEngineJanus extends SharingEngine {
                             }
                         });
 
+                if (!isConnectActive(token)) {
+                    return OP_CANCELLED;
+                }
+
+                if (textRoomPlugin.getPeerConnection() == null) {
+                    errorReason = textRoomPlugin.getErrorReason();
+                    return Const.INTERNAL_ERROR;
+                }
+
                 // Completion handler is needed here to handle errors
-                janusTextRoomPlugin.setupRtcSession((success, errorReason) -> {
+                textRoomPlugin.setupRtcSession((success, errorReason) -> {
+                    if (!isConnectActive(token)) {
+                        return;
+                    }
                     handler.post(() -> completionHandler.onComplete(false, errorReason));
                 });
 
@@ -112,50 +155,89 @@ public class SharingEngineJanus extends SharingEngine {
 
             @Override
             protected void onPostExecute(Integer result) {
+                if (result == OP_CANCELLED) {
+                    return;
+                }
                 if (result != Const.SUCCESS) {
                     setState(Const.STATE_DISCONNECTED);
                     completionHandler.onComplete(false, errorReason);
-                    reset();
+                    if (isConnectActive(token)) {
+                        ++connectToken;
+                        stopActiveSession(context);
+                        resetFields();
+                    }
                 }
                 // On success, the flow is continued in createPeerConnection when data channel is created
             }
         }.execute();
     }
 
-    private void dataChannelCreated(Context context, CompletionHandler completionHandler) {
+    private void dataChannelCreated(Context context, int token, JanusSession session,
+                                    JanusTextRoomPlugin textRoomPlugin, CompletionHandler completionHandler) {
         new AsyncTask<Void, Void, Integer>() {
 
             @Override
             protected Integer doInBackground(Void... voids) {
-                int result = janusTextRoomPlugin.createRoom(sessionId, password);
+                if (!isConnectActive(token)) {
+                    return OP_CANCELLED;
+                }
+
+                int result = textRoomPlugin.createRoom(SharingEngineJanus.this.sessionId, SharingEngineJanus.this.password);
+                if (!isConnectActive(token)) {
+                    return OP_CANCELLED;
+                }
                 if (result != Const.SUCCESS) {
                     return result;
                 }
 
-                result = janusTextRoomPlugin.joinRoom("device:" + username, username);
+                result = textRoomPlugin.joinRoom("device:" + username, username);
+                if (!isConnectActive(token)) {
+                    return OP_CANCELLED;
+                }
                 if (result != Const.SUCCESS) {
                     return result;
                 }
 
                 // Streaming
-                janusStreamingPlugin = new JanusStreamingPlugin();
-                janusStreamingPlugin.init(context);
-                result = janusSession.attachPlugin(janusStreamingPlugin);
+                JanusStreamingPlugin streamingPlugin = new JanusStreamingPlugin();
+                streamingPlugin.init(context);
+                if (!isConnectActive(token)) {
+                    return OP_CANCELLED;
+                }
+
+                janusStreamingPlugin = streamingPlugin;
+                result = session.attachPlugin(streamingPlugin);
+                if (!isConnectActive(token)) {
+                    return OP_CANCELLED;
+                }
                 if (result != Const.SUCCESS) {
                     return result;
                 }
 
-                result = janusStreamingPlugin.create(sessionId, password, isAudio());
+                result = streamingPlugin.create(SharingEngineJanus.this.sessionId, SharingEngineJanus.this.password, isAudio());
 
                 return result;
             }
 
             @Override
             protected void onPostExecute(Integer result) {
+                if (result == OP_CANCELLED) {
+                    return;
+                }
                 if (result != Const.SUCCESS) {
                     setState(Const.STATE_DISCONNECTED);
+                    if (errorReason == null && textRoomPlugin != null) {
+                        errorReason = textRoomPlugin.getErrorReason();
+                    }
+                    if (errorReason == null && janusStreamingPlugin != null) {
+                        errorReason = janusStreamingPlugin.getErrorReason();
+                    }
                     completionHandler.onComplete(false, errorReason);
-                    reset();
+                    if (isConnectActive(token)) {
+                        ++connectToken;
+                        stopActiveSession(context);
+                        resetFields();
+                    }
                 } else {
                     setState(Const.STATE_CONNECTED);
                     completionHandler.onComplete(true, null);
@@ -166,39 +248,48 @@ public class SharingEngineJanus extends SharingEngine {
 
     @Override
     public void disconnect(final Context context, final CompletionHandler completionHandler) {
+        final int token = ++connectToken;
         errorReason = null;
         setState(Const.STATE_DISCONNECTING);
+
+        final JanusSession session = janusSession;
 
         new AsyncTask<Void, Void, Integer>() {
             @Override
             protected Integer doInBackground(Void... voids) {
+                if (!isConnectActive(token)) {
+                    return OP_CANCELLED;
+                }
                 // Registered plugins are destroyed in janusSession.destroy()
-                if (janusSession != null) {
-                    janusSession.destroy();
+                if (session != null) {
+                    session.destroy();
                 }
                 return Const.SUCCESS;
             }
 
             @Override
             protected void onPostExecute(Integer result) {
-                if (janusSession != null) {
-                    janusSession.stopPolling(context);
+                if (result == OP_CANCELLED) {
+                    return;
+                }
+                if (session != null) {
+                    session.stopPolling(context.getApplicationContext());
                 }
                 // Not really fair, but it's unclear how to handle destroying errors!
                 setState(Const.STATE_DISCONNECTED);
-                reset();
+                if (isConnectActive(token)) {
+                    stopActiveSession(context);
+                    resetFields();
+                }
                 completionHandler.onComplete(result == Const.SUCCESS, errorReason);
             }
         }.execute();
 
     }
 
-    private void reset() {
+    private void resetFields() {
         sessionId = null;
         password = null;
-        janusSession = null;
-        janusStreamingPlugin = null;
-        janusTextRoomPlugin = null;
     }
 
     @Override

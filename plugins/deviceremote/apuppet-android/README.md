@@ -19,11 +19,28 @@ The aPuppet Premium:
 * doesn't require user interaction and is suitable for kiosk devices;
 * supports any HTTPS certificates.
 
-## Building aPuppet
+## Building aPuppet (Intermark / Java 21)
 
-To build aPuppet, open the project in Android Studio, place the SDK location in the *local.properties* file, and build the project. 
+Requires **Android Studio** with **JDK 17 or 21** (Gradle 8.13 + AGP 8.13).
 
-Once the project built successfully, you can set up your aPuppet server URL and secret in the *app/build.gradle*. This will simplify the initial setup of the application by setting your server as default.
+1. Open `plugins/deviceremote/apuppet-android` in Android Studio.
+2. **File → Sync Project with Gradle Files**.
+3. In `app/build.gradle`, set your remote server defaults:
+
+```gradle
+buildConfigField("String", "DEFAULT_SERVER_URL", "\"https://remote.intermark.global/web-admin/\"")
+buildConfigField("String", "DEFAULT_SECRET", "\"YOUR_JANUS_SECRET\"")
+```
+
+4. Build: **Build → Build Bundle(s) / APK(s) → Build APK(s)** or:
+
+```bash
+gradlew.bat assembleRelease
+```
+
+APK: `app/build/outputs/apk/release/app-release.apk`
+
+## Building aPuppet (legacy)
 
 ## Running the app
 

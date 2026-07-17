@@ -192,6 +192,28 @@ public class DeviceRemoteResource {
         return Response.OK(toStatusView(device.getCustomerId(), device.getId()));
     }
 
+    @ApiOperation(value = "Get remote session credentials for device agent")
+    @GET
+    @Path("/public/session/{number}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getSessionForDevice(@PathParam("number") String number) {
+        Device device = resolveDevice(number, null);
+        if (device == null) {
+            return Response.DEVICE_NOT_FOUND_ERROR();
+        }
+        DeviceRemoteSession session = deviceRemoteDAO.getSessionByDeviceId(device.getId());
+        if (session == null || session.getSessionId() == null || session.getPassword() == null) {
+            return Response.ERROR("No active remote session");
+        }
+        String status = session.getStatus();
+        if (DeviceRemoteSession.STATUS_IDLE.equals(status)
+                || DeviceRemoteSession.STATUS_STOPPED.equals(status)
+                || DeviceRemoteSession.STATUS_FAILED.equals(status)) {
+            return Response.ERROR("No active remote session");
+        }
+        return Response.OK(toStatusView(device.getCustomerId(), device.getId()));
+    }
+
     @ApiOperation(value = "Confirm remote agent launch from device")
     @POST
     @Path("/public/launch/{number}")

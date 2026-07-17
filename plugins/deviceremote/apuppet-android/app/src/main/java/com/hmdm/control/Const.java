@@ -54,7 +54,10 @@ public class Const {
     public static final String ACTION_SCREEN_SHARING_START = "SCREEN_SHARING_START";
     public static final String ACTION_SCREEN_SHARING_STOP = "SCREEN_SHARING_STOP";
     public static final String ACTION_SCREEN_SHARING_PERMISSION_NEEDED = "SCREEN_SHARING_PERMISSION_NEEDED";
+    public static final String ACTION_SCREEN_CAPTURE_CONSENT_RESULT = "SCREEN_CAPTURE_CONSENT_RESULT";
     public static final String ACTION_SCREEN_SHARING_FAILED = "SCREEN_SHARING_FAILED";
+    public static final String EXTRA_RESULT_CODE = "resultCode";
+    public static final String EXTRA_RESULT_DATA = "resultData";
     public static final String ACTION_CONNECTION_FAILURE = "CONNECTION_FAILURE";
     public static final String ACTION_GESTURE = "GESTURE";
 

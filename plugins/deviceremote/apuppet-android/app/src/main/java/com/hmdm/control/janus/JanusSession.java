@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.util.Log;
 
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
 import com.hmdm.control.Const;
 import com.hmdm.control.ServerApiHelper;
 import com.hmdm.control.janus.json.JanusAttachRequest;
@@ -44,18 +46,41 @@ public class JanusSession {
         @Override
         public void onReceive(Context context, Intent intent) {
             String event = intent.getStringExtra(Const.EXTRA_EVENT);
-            for (Map.Entry<String,JanusPlugin> entry : pluginMap.entrySet()) {
-                if (Const.EXTRA_WEBRTCUP.equalsIgnoreCase(event)) {
-                    entry.getValue().onWebRtcUp(context);
-                } else if (Const.EXTRA_EVENT.equalsIgnoreCase(event)) {
-                    JanusPollResponse message = (JanusPollResponse) intent.getSerializableExtra(Const.EXTRA_MESSAGE);
-                    if (message != null && message.getPlugindata() != null) {
-                        String pluginName = message.getPlugindata().getPlugin();
-                        if (entry.getKey().equalsIgnoreCase(pluginName)) {
-                            entry.getValue().onPollingEvent(message);
-                        }
+            if (Const.EXTRA_WEBRTCUP.equalsIgnoreCase(event)) {
+                for (JanusPlugin plugin : pluginMap.values()) {
+                    plugin.onWebRtcUp(context);
+                }
+                return;
+            }
+            if (!Const.EXTRA_EVENT.equalsIgnoreCase(event)) {
+                return;
+            }
+
+            JanusPollResponse message = (JanusPollResponse) intent.getSerializableExtra(Const.EXTRA_MESSAGE);
+            if (message == null) {
+                return;
+            }
+
+            JanusPlugin target = null;
+            String sender = message.getSender();
+            if (sender != null) {
+                for (JanusPlugin plugin : pluginMap.values()) {
+                    if (sender.equals(plugin.getHandleId())) {
+                        target = plugin;
+                        break;
                     }
                 }
+            }
+            if (target == null && message.getPlugindata() != null) {
+                target = pluginMap.get(message.getPlugindata().getPlugin());
+            }
+            if (target == null && message.getJsep() != null && pluginMap.size() == 1) {
+                target = pluginMap.values().iterator().next();
+            }
+            if (target != null) {
+                target.onPollingEvent(message);
+            } else {
+                Log.w(Const.LOG_TAG, "Ignored Janus poll event for unknown handle: " + message);
             }
         }
     };
@@ -101,7 +126,8 @@ public class JanusSession {
     }
 
     public void startPolling(Context context) {
-        context.registerReceiver(pollServiceReceiver, new IntentFilter(Const.ACTION_JANUS_SESSION_POLL));
+        LocalBroadcastManager.getInstance(context).registerReceiver(
+                pollServiceReceiver, new IntentFilter(Const.ACTION_JANUS_SESSION_POLL));
         Intent intent = new Intent(context, JanusSessionPollService.class);
         intent.putExtra(Const.EXTRA_SESSION, sessionId);
         context.startService(intent);
@@ -111,7 +137,7 @@ public class JanusSession {
         Intent intent = new Intent(context, JanusSessionPollService.class);
         context.stopService(intent);
         try {
-            context.unregisterReceiver(pollServiceReceiver);
+            LocalBroadcastManager.getInstance(context).unregisterReceiver(pollServiceReceiver);
         } catch (Exception e) {
             // IllegalArgumentException: receiver not registered
             e.printStackTrace();

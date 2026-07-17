@@ -55,9 +55,12 @@ public class JanusStreamingPlugin extends JanusPlugin {
             body.setAudiortpmap("opus/48000/2");
         }
         body.setVideoport(0);
-        body.setVideopt(100);
+        // libstreaming RtpSocket hardcodes RTP payload type 96 — keep Janus in sync.
+        body.setVideopt(96);
         body.setVideortpmap("H264/90000");
-        body.setVideobufferkf(false);
+        body.setVideofmtp("profile-level-id=42e01f;packetization-mode=1");
+        // Buffer last keyframe so late watchers (browser) get a decodable frame immediately.
+        body.setVideobufferkf(true);
         createRequest.setBody(body);
 
         Response<JanusStreamingCreateResponse> response = ServerApiHelper.execute(apiInstance.createStreaming(sessionId, getHandleId(), createRequest), "create streaming");

@@ -30,11 +30,11 @@ public class MdmReporter {
         EXECUTOR.execute(() -> {
             HttpURLConnection connection = null;
             try {
-                String project = serverProject != null ? serverProject : "";
-                if (project.length() > 0 && !project.startsWith("/")) {
-                    project = "/" + project;
-                }
-                String endpoint = serverUrl + project + "/rest/plugins/deviceremote/public/status/" + deviceNumber;
+                String endpoint = MdmApiUrls.buildRestUrl(
+                        serverUrl,
+                        serverProject,
+                        "/plugins/deviceremote/public/status/" + deviceNumber);
+                Log.d(Const.LOG_TAG, "MDM remote status report url=" + endpoint);
                 URL url = new URL(endpoint);
                 connection = (HttpURLConnection) url.openConnection();
                 connection.setRequestMethod("POST");

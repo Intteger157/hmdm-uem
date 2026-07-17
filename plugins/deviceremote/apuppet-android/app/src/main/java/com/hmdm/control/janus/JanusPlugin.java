@@ -14,7 +14,9 @@ public abstract class JanusPlugin {
     protected String errorReason;
 
     protected JanusPollResponse pollingEvent;
-    protected Object pollingEventLock = new Object();
+    protected final Object pollingEventLock = new Object();
+
+    private Runnable dataChannelReadyCallback;
 
     public String getHandleId() {
         return handleId;
@@ -47,7 +49,44 @@ public abstract class JanusPlugin {
     public void onPollingEvent(JanusPollResponse event) {
         synchronized (pollingEventLock) {
             pollingEvent = event;
-            pollingEventLock.notify();
+            pollingEventLock.notifyAll();
+        }
+    }
+
+    public void setDataChannelReadyCallback(Runnable callback) {
+        dataChannelReadyCallback = callback;
+    }
+
+    protected void clearPollingEvent() {
+        synchronized (pollingEventLock) {
+            pollingEvent = null;
+        }
+    }
+
+    protected boolean waitForPollingEvent(long timeoutMs) {
+        synchronized (pollingEventLock) {
+            long deadline = System.currentTimeMillis() + timeoutMs;
+            while (pollingEvent == null) {
+                long remaining = deadline - System.currentTimeMillis();
+                if (remaining <= 0) {
+                    errorReason = "Timeout waiting for Janus event";
+                    return false;
+                }
+                try {
+                    pollingEventLock.wait(remaining);
+                } catch (InterruptedException e) {
+                    errorReason = "Interrupted";
+                    Thread.currentThread().interrupt();
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    protected void notifyDataChannelReady() {
+        if (dataChannelReadyCallback != null) {
+            dataChannelReadyCallback.run();
         }
     }
 
