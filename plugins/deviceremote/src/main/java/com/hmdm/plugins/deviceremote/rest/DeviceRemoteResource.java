@@ -264,7 +264,7 @@ public class DeviceRemoteResource {
                     + " mdm=" + session.getSessionId());
         }
         if (report != null && report.getAgentStatus() != null) {
-            String incoming = report.getAgentStatus();
+            String incoming = report.getAgentStatus().trim();
             if (isAgentStatusDowngrade(session.getAgentStatus(), incoming)) {
                 logger.info("Ignoring agentStatus downgrade for device {}: {} -> {}",
                         device.getNumber(), session.getAgentStatus(), incoming);
@@ -335,18 +335,24 @@ public class DeviceRemoteResource {
             return view;
         }
         view.setStatus(session.getStatus());
-        view.setAgentStatus(session.getAgentStatus());
+        view.setAgentStatus(session.getAgentStatus() != null ? session.getAgentStatus().trim() : null);
         view.setSessionId(session.getSessionId());
         view.setPassword(session.getPassword());
         view.setRequestedAt(session.getRequestedAt());
         view.setUpdatedAt(session.getUpdatedAt());
-        if (settings != null && session.getSessionId() != null && session.getPassword() != null) {
-            view.setViewerUrl(buildViewerUrl(settings.getServerUrl(), session.getSessionId(), session.getPassword()));
+        if (settings != null && settings.getServerUrl() != null && !settings.getServerUrl().trim().isEmpty()) {
+            view.setServerUrl(normalizeServerUrl(settings.getServerUrl()));
+            if (session.getSessionId() != null && session.getPassword() != null) {
+                view.setViewerUrl(buildViewerUrl(settings.getServerUrl(), session.getSessionId(), session.getPassword()));
+            }
         }
         return view;
     }
 
     static String buildViewerUrl(String serverUrl, String sessionId, String password) {
+        if (serverUrl == null || serverUrl.trim().isEmpty() || sessionId == null || password == null) {
+            return null;
+        }
         String base = normalizeServerUrl(serverUrl);
         if (base.contains("?")) {
             return base + "&session=" + sessionId + "&pin=" + password;
@@ -355,7 +361,13 @@ public class DeviceRemoteResource {
     }
 
     static String normalizeServerUrl(String serverUrl) {
+        if (serverUrl == null) {
+            return "";
+        }
         String url = serverUrl.trim();
+        if (url.isEmpty()) {
+            return "";
+        }
         if (!url.endsWith("/")) {
             url += "/";
         }

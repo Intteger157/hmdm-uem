@@ -102,11 +102,74 @@ angular.module('plugin-deviceremote', ['ngResource', 'ui.bootstrap', 'ui.router'
         $scope.busy = false;
         $scope.errorMessage = undefined;
         $scope.status = {};
+        $scope.viewerBaseUrl = '';
+
+        // Plain copy avoids ngResource Resource quirks (toLowerCase / truthiness on wrapped fields).
+        var applyStatus = function (data) {
+            data = data || {};
+            var agent = data.agentStatus != null ? String(data.agentStatus).trim() : '';
+            $scope.status = {
+                status: data.status,
+                agentStatus: agent || undefined,
+                sessionId: data.sessionId,
+                password: data.password,
+                viewerUrl: data.viewerUrl,
+                serverUrl: data.serverUrl,
+                requestedAt: data.requestedAt,
+                updatedAt: data.updatedAt
+            };
+            if (data.serverUrl) {
+                $scope.viewerBaseUrl = String(data.serverUrl).trim();
+            }
+        };
+
+        var normalizeAgent = function () {
+            return String(($scope.status && $scope.status.agentStatus) || '').trim().toLowerCase();
+        };
+
+        var isAgentViewerReady = function () {
+            var agent = normalizeAgent();
+            // ready = capture + stable TextRoom; sharing = admin already joined.
+            return agent === 'ready' || agent === 'sharing';
+        };
+
+        var buildViewerUrl = function (base, sessionId, password) {
+            if (!base || !sessionId || !password) {
+                return null;
+            }
+            var url = String(base).trim();
+            if (url.length === 0) {
+                return null;
+            }
+            if (url.charAt(url.length - 1) !== '/') {
+                url += '/';
+            }
+            return url.indexOf('?') >= 0
+                ? (url + '&session=' + encodeURIComponent(sessionId) + '&pin=' + encodeURIComponent(password))
+                : (url + '?session=' + encodeURIComponent(sessionId) + '&pin=' + encodeURIComponent(password));
+        };
+
+        var resolveViewerUrl = function () {
+            if (!$scope.status) {
+                return null;
+            }
+            if ($scope.status.viewerUrl) {
+                return String($scope.status.viewerUrl).trim();
+            }
+            var base = $scope.viewerBaseUrl || $scope.status.serverUrl || '';
+            return buildViewerUrl(base, $scope.status.sessionId, $scope.status.password);
+        };
+
+        pluginDeviceRemoteService.getSettings({}, function (response) {
+            if (response.status === 'OK' && response.data && response.data.serverUrl) {
+                $scope.viewerBaseUrl = String(response.data.serverUrl).trim();
+            }
+        });
 
         var refreshStatus = function () {
             pluginDeviceRemoteService.getStatus({deviceId: device.id}, function (response) {
                 if (response.status === 'OK') {
-                    $scope.status = response.data || {};
+                    applyStatus(response.data);
                 }
             });
         };
@@ -120,21 +183,20 @@ angular.module('plugin-deviceremote', ['ngResource', 'ui.bootstrap', 'ui.router'
         });
 
         $scope.canOpenViewer = function () {
-            if (!$scope.status || !$scope.status.viewerUrl) {
-                return false;
-            }
-            var agent = ($scope.status.agentStatus || '').toLowerCase();
-            // ready = capture + stable TextRoom; sharing = admin already joined.
-            // connected alone is too early (before MediaProjection on Realme).
-            return agent === 'ready' || agent === 'sharing';
+            return isAgentViewerReady() && !!resolveViewerUrl();
         };
 
         $scope.isWaitingForReady = function () {
-            if ($scope.canOpenViewer() || !$scope.status || !$scope.status.viewerUrl) {
+            // Never keep "wait for ready" once the agent already reports ready/sharing.
+            if (!$scope.status || isAgentViewerReady() || $scope.canOpenViewer()) {
                 return false;
             }
-            var agent = ($scope.status.agentStatus || '').toLowerCase();
+            var agent = normalizeAgent();
             return !agent || agent === 'connected' || agent === 'launched';
+        };
+
+        $scope.isReadyButViewerBlocked = function () {
+            return isAgentViewerReady() && !$scope.canOpenViewer();
         };
 
         var runAction = function (requestFactory, onSuccess) {
@@ -143,7 +205,7 @@ angular.module('plugin-deviceremote', ['ngResource', 'ui.bootstrap', 'ui.router'
             requestFactory().$promise.then(function (response) {
                 $scope.busy = false;
                 if (response.status === 'OK') {
-                    $scope.status = response.data || {};
+                    applyStatus(response.data);
                     if (onSuccess) {
                         onSuccess();
                     }
@@ -169,8 +231,13 @@ angular.module('plugin-deviceremote', ['ngResource', 'ui.bootstrap', 'ui.router'
         };
 
         $scope.openViewer = function () {
-            if ($scope.status.viewerUrl) {
-                $window.open($scope.status.viewerUrl, '_blank');
+            var url = resolveViewerUrl();
+            if (url) {
+                $window.open(url, '_blank');
+                return;
+            }
+            if (isAgentViewerReady()) {
+                $scope.errorMessage = localization.localize('plugin.deviceremote.error.missing.viewerUrl');
             }
         };
 
@@ -181,7 +248,8 @@ angular.module('plugin-deviceremote', ['ngResource', 'ui.bootstrap', 'ui.router'
     .run(function ($rootScope, $modal, localization) {
         $rootScope.$on('plugin-deviceremote-device-selected', function (event, device) {
             $modal.open({
-                templateUrl: 'app/components/plugins/deviceremote/views/deviceremote.modal.html',
+                // Cache-bust so admins pick up Open Viewer gating fixes after WAR deploy.
+                templateUrl: 'app/components/plugins/deviceremote/views/deviceremote.modal.html?v=20260717b',
                 controller: 'DeviceRemoteModalController',
                 size: 'lg',
                 resolve: {

@@ -15,6 +15,7 @@
   "plugin.deviceremote.button.stop": "Stop remote session",
   "plugin.deviceremote.button.openViewer": "Open viewer",
   "plugin.deviceremote.error.empty.serverUrl": "Enter the remote server URL",
+  "plugin.deviceremote.error.missing.viewerUrl": "Agent is ready, but viewer URL is missing. Set Remote server URL in plugin settings, then Start remote session again.",
   "plugin.deviceremote.settings.saved": "Remote control settings saved",
   "plugin.deviceremote.settings.hint": "Use the Headwind Remote (aPuppet) web-admin URL, e.g. https://remote.example.com/web-admin/"
 }

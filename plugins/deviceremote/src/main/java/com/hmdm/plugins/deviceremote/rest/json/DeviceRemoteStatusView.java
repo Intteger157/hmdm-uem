@@ -7,6 +7,8 @@ public class DeviceRemoteStatusView {
     private String sessionId;
     private String password;
     private String viewerUrl;
+    /** Base remote web-admin URL from plugin settings (fallback when viewerUrl is absent). */
+    private String serverUrl;
     private Long requestedAt;
     private Long updatedAt;
 
@@ -48,6 +50,14 @@ public class DeviceRemoteStatusView {
 
     public void setViewerUrl(String viewerUrl) {
         this.viewerUrl = viewerUrl;
+    }
+
+    public String getServerUrl() {
+        return serverUrl;
+    }
+
+    public void setServerUrl(String serverUrl) {
+        this.serverUrl = serverUrl;
     }
 
     public Long getRequestedAt() {

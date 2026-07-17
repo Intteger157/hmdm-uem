@@ -15,6 +15,7 @@
   "plugin.deviceremote.button.stop": "Остановить remote-сессию",
   "plugin.deviceremote.button.openViewer": "Открыть viewer",
   "plugin.deviceremote.error.empty.serverUrl": "Укажите URL remote-сервера",
+  "plugin.deviceremote.error.missing.viewerUrl": "Агент ready, но нет URL viewer. Укажите URL remote-сервера в настройках плагина и снова нажмите Start remote session.",
   "plugin.deviceremote.settings.saved": "Настройки remote control сохранены",
   "plugin.deviceremote.settings.hint": "Укажите URL web-admin Headwind Remote (aPuppet), например https://remote.example.com/web-admin/"
 }

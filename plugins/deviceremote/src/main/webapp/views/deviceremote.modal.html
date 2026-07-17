@@ -24,6 +24,7 @@
     </div>
 
     <p class="help-block" ng-if="isWaitingForReady()" localized>plugin.deviceremote.modal.waitReady</p>
+    <p class="help-block text-danger" ng-if="isReadyButViewerBlocked()" localized>plugin.deviceremote.error.missing.viewerUrl</p>
     <p class="help-block" localized>plugin.deviceremote.modal.hint</p>
 </div>
 <div class="modal-footer">
