@@ -18,6 +18,8 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import com.hmdm.launcher.Const;
 import com.hmdm.launcher.helper.SettingsHelper;
 import com.hmdm.launcher.json.ServerConfig;
+import com.hmdm.launcher.util.RemoteLogger;
+import com.hmdm.launcher.util.SystemUtils;
 import com.hmdm.launcher.util.Utils;
 
 import java.util.Timer;
@@ -118,6 +120,10 @@ public class StatusControlService extends Service {
 
     @SuppressLint("MissingPermission")
     private void controlStatus() {
+        // Always re-enable overlay even while policy control is temporarily paused:
+        // users can turn it off in Settings; Device Owner can put it back.
+        ensureOverlayPermission();
+
         ServerConfig config = settingsHelper.getConfig();
         if (config == null || controlDisabled) {
             return;
@@ -187,6 +193,34 @@ public class StatusControlService extends Service {
                     // Some problem access private API
                 }
             }
+        }
+    }
+
+    private void ensureOverlayPermission() {
+        try {
+            if (Utils.canDrawOverlays(this)) {
+                return;
+            }
+            String packageName = getPackageName();
+            if (SystemUtils.autoSetOverlayPermission(this, packageName)) {
+                if (Utils.canDrawOverlays(this)) {
+                    RemoteLogger.log(this, Const.LOG_INFO,
+                            "Overlay permission was disabled; re-enabled for " + packageName);
+                } else {
+                    RemoteLogger.log(this, Const.LOG_WARN,
+                            "Overlay re-enable reported success but Settings.canDrawOverlays is still false");
+                }
+            } else {
+                RemoteLogger.log(this, Const.LOG_WARN,
+                        "Failed to auto-re-enable overlay permission (need Device Owner?)");
+            }
+
+            // Keep remote control agent usable if installed
+            if (!Const.APUPPET_PACKAGE_NAME.equals(packageName)) {
+                SystemUtils.autoSetOverlayPermission(this, Const.APUPPET_PACKAGE_NAME);
+            }
+        } catch (Exception e) {
+            Log.w(Const.LOG_TAG, "ensureOverlayPermission failed", e);
         }
     }
 
