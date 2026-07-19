@@ -30,6 +30,7 @@ import com.hmdm.launcher.util.DeviceInfoProvider;
 import com.hmdm.launcher.util.InstallUtils;
 import com.hmdm.launcher.util.RemoteLogger;
 import com.hmdm.launcher.util.Utils;
+import com.hmdm.launcher.receiver.ConfigPollReceiver;
 import com.hmdm.launcher.worker.PushNotificationWorker;
 import com.hmdm.launcher.worker.ScheduledAppUpdateWorker;
 import com.hmdm.launcher.worker.SendDeviceInfoWorker;
@@ -73,6 +74,8 @@ public class Initializer {
                     PushNotificationWorker.schedule(context);
                 }
                 ScheduledAppUpdateWorker.schedule(context);
+                // Fallback when push is delayed: poll server for lock/unlock and other admin actions
+                ConfigPollReceiver.schedule(context);
 
                 // Run completion in the UI thread
                 uiHandler.post(completion);

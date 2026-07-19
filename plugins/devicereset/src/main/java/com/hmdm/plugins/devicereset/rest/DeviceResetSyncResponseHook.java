@@ -35,6 +35,10 @@ public class DeviceResetSyncResponseHook implements SyncResponseHook {
             if (status.getLockMessage() != null && !status.getLockMessage().trim().isEmpty()) {
                 original.setLockMessage(status.getLockMessage());
             }
+        } else {
+            // Explicitly clear lock on unlock so the device does not keep a stale lock=true
+            original.setLock(false);
+            original.setLockMessage(null);
         }
         if (status.getPasswordReset() != null && !status.getPasswordReset().trim().isEmpty()) {
             original.setPasswordReset(status.getPasswordReset());
