@@ -86,10 +86,7 @@ function normalizeDeviceView(raw: DeviceView): DeviceView {
   return {
     ...raw,
     platform,
-    enrollTime:
-      typeof raw.enrollTime === 'number' && raw.enrollTime > 0
-        ? raw.enrollTime
-        : undefined,
+    enrollTime: parseEnrollTime(raw.enrollTime),
     androidVersion: raw.androidVersion ?? info?.androidVersion,
     imei: raw.imei ?? info?.imei,
     phone: raw.phone ?? info?.phone,
