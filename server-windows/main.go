@@ -9,7 +9,10 @@ import (
 	"github.com/hmdm/server-windows/internal/handlers"
 )
 
-const defaultDSN = "host=localhost user=postgres password=postgres dbname=hmdm port=5432 sslmode=disable"
+const (
+	defaultDSN       = "host=localhost user=postgres password=postgres dbname=hmdm port=5432 sslmode=disable"
+	defaultListenAddr = ":8082"
+)
 
 func main() {
 	dsn := os.Getenv("DATABASE_URL")
@@ -19,6 +22,11 @@ func main() {
 
 	if _, err := db.InitDB(dsn); err != nil {
 		log.Fatalf("database init failed: %v", err)
+	}
+
+	listenAddr := os.Getenv("LISTEN_ADDR")
+	if listenAddr == "" {
+		listenAddr = defaultListenAddr
 	}
 
 	router := gin.Default()
@@ -33,8 +41,8 @@ func main() {
 		}
 	}
 
-	log.Println("server-windows listening on :8081")
-	if err := router.Run(":8081"); err != nil {
+	log.Printf("server-windows listening on %s", listenAddr)
+	if err := router.Run(listenAddr); err != nil {
 		log.Fatal(err)
 	}
 }

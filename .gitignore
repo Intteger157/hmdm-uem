@@ -14,6 +14,10 @@ agent-transcripts/
 # local agent debug output
 agent-windows/*.txt
 
+# deploy runtime data
+deploy/.env
+deploy/volumes/
+
 # Android binaries / build outputs
 *.apk
 *.exe

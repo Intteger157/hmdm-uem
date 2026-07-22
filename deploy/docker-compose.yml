@@ -1,0 +1,74 @@
+services:
+  postgresql:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${SQL_USER}
+      POSTGRES_PASSWORD: ${SQL_PASS}
+      POSTGRES_DB: ${SQL_BASE}
+    volumes:
+      - ./volumes/db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${SQL_USER} -d ${SQL_BASE}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  hmdm:
+    image: headwindmdm/hmdm:0.1.8
+    restart: unless-stopped
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    expose:
+      - "8080"
+    ports:
+      - "31000:31000"
+    environment:
+      SQL_HOST: postgresql
+      SQL_USER: ${SQL_USER}
+      SQL_BASE: ${SQL_BASE}
+      SQL_PASS: ${SQL_PASS}
+      BASE_DOMAIN: ${BASE_DOMAIN}
+      LOCAL_IP: ${LOCAL_IP}
+      PROTOCOL: ${PROTOCOL}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      SHARED_SECRET: ${SHARED_SECRET}
+      HMDM_VARIANT: ${HMDM_VARIANT}
+      DOWNLOAD_CREDENTIALS: ${DOWNLOAD_CREDENTIALS}
+      HMDM_URL: ${HMDM_URL}
+      CLIENT_VERSION: ${CLIENT_VERSION}
+      FORCE_RECONFIGURE: ${FORCE_RECONFIGURE}
+    volumes:
+      - ./volumes/work:/usr/local/tomcat/work
+      - ./volumes/hmdm-config:/usr/local/tomcat/conf/Catalina/localhost
+      - ./volumes/webapps:/usr/local/tomcat/webapps
+
+  server-windows:
+    build:
+      context: ../server-windows
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    expose:
+      - "8082"
+    ports:
+      - "${SERVER_WINDOWS_PORT:-8082}:8082"
+    environment:
+      DATABASE_URL: host=postgresql user=${SQL_USER} password=${SQL_PASS} dbname=${SQL_BASE} port=5432 sslmode=disable
+      LISTEN_ADDR: ":8082"
+      GIN_MODE: ${GIN_MODE:-release}
+
+  gateway:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      - hmdm
+      - server-windows
+    ports:
+      - "${GATEWAY_PORT:-8080}:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
