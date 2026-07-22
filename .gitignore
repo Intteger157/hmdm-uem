@@ -21,6 +21,7 @@ deploy/volumes/
 # Android binaries / build outputs
 *.apk
 *.exe
+*.exe~
 **/app/release/
 **/.gradle/
 **/local.properties
