@@ -115,17 +115,19 @@ cd hmdm-uem
 cp deploy/.env.example deploy/.env
 ```
 
-Edit `deploy/.env`:
+Edit `deploy/.env` (layout B):
 
 ```env
 BASE_DOMAIN=test-dev-mdm.intteger.uk
 LOCAL_IP=192.168.31.247
-PROTOCOL=https
+PROTOCOL=http
 ADMIN_EMAIL=admin@your-domain.com
 GATEWAY_PORT=8080
 SQL_PASS=<strong-password>
 SHARED_SECRET=<random-secret>
 ```
+
+After install, set public QR base URL: `bash deploy/scripts/fix-hmdm-base-url.sh`
 
 Install and start:
 
