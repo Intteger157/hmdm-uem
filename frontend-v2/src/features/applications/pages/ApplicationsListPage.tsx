@@ -1,11 +1,15 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Trash2 } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
+import { ApplicationFormDialog } from '@/features/applications/components/ApplicationFormDialog'
 import {
   useApplicationsQuery,
   useDeleteApplicationMutation,
 } from '@/features/applications/hooks/use-applications'
 import type { Application } from '@/features/applications/api/applications-api'
+import {
+  setShowSystemAppsPreference,
+} from '@/features/configurations/utils/configuration-app-utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,9 +18,29 @@ import { ListPagination } from '@/shared/components/ListPagination'
 import { usePaginatedList } from '@/shared/hooks/use-paginated-list'
 import { toast } from 'sonner'
 
+const SHOW_SYSTEM_APPS_KEY = 'HMDM_showSystemApps'
+
+function getApplicationsShowSystemAppsPreference(): boolean {
+  if (typeof window === 'undefined') {
+    return true
+  }
+  const stored = window.localStorage.getItem(SHOW_SYSTEM_APPS_KEY)
+  if (stored == null) {
+    return true
+  }
+  return stored === 'true'
+}
+
 const matchApplication = (application: Application, query: string): boolean =>
   application.name.toLowerCase().includes(query) ||
   (application.pkg ?? '').toLowerCase().includes(query)
+
+function canManageApplication(application: Application): boolean {
+  if (!application.commonApplication) {
+    return true
+  }
+  return Boolean(application.customerId)
+}
 
 export function ApplicationsListPage() {
   const { t } = useTranslation()
@@ -26,10 +50,20 @@ export function ApplicationsListPage() {
   const [searchInput, setSearchInput] = useState('')
   const [searchValue, setSearchValue] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Application | null>(null)
+  const [addOpen, setAddOpen] = useState(false)
+  const [showSystemApps, setShowSystemApps] = useState(getApplicationsShowSystemAppsPreference)
+
+  const filteredData = useMemo(() => {
+    const apps = data ?? []
+    if (showSystemApps) {
+      return apps
+    }
+    return apps.filter((app) => !app.system)
+  }, [data, showSystemApps])
 
   const matcher = useCallback(matchApplication, [])
   const { pageItems, pageNum, setPageNum, totalItems, totalPages, from, to } = usePaginatedList(
-    data ?? [],
+    filteredData,
     searchValue,
     matcher,
   )
@@ -37,6 +71,11 @@ export function ApplicationsListPage() {
   const handleSearch = (event: React.FormEvent) => {
     event.preventDefault()
     setSearchValue(searchInput)
+  }
+
+  const handleShowSystemAppsChange = (checked: boolean) => {
+    setShowSystemApps(checked)
+    setShowSystemAppsPreference(checked)
   }
 
   const handleDelete = async () => {
@@ -49,15 +88,25 @@ export function ApplicationsListPage() {
       toast.success(t('applications.delete.success'))
       setDeleteTarget(null)
     } catch {
-      toast.error(t('applications.delete.error'))
+      toast.error(
+        deleteTarget.deletionProhibited
+          ? t('applications.delete.inUse')
+          : t('applications.delete.error')
+      )
     }
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t('applications.title')}</h1>
-        <p className="text-sm text-muted-foreground">{t('applications.subtitle')}</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('applications.title')}</h1>
+          <p className="text-sm text-muted-foreground">{t('applications.subtitle')}</p>
+        </div>
+        <Button type="button" onClick={() => setAddOpen(true)}>
+          <Plus className="size-4" />
+          {t('applications.add')}
+        </Button>
       </div>
 
       <form onSubmit={handleSearch} className="flex max-w-xl gap-2">
@@ -70,6 +119,15 @@ export function ApplicationsListPage() {
           {t('common.search')}
         </Button>
       </form>
+
+      <label className="flex w-fit items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={showSystemApps}
+          onChange={(e) => handleShowSystemAppsChange(e.target.checked)}
+        />
+        {t('configurations.editor.showSystemApps')}
+      </label>
 
       {error != null && (
         <div className="rounded-lg border border-destructive/40 bg-card p-6 text-center">
@@ -105,40 +163,56 @@ export function ApplicationsListPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {pageItems.map((application) => (
-                    <tr
-                      key={application.id}
-                      className="border-b last:border-b-0 hover:bg-muted/30"
-                    >
-                      <td className="px-4 py-3 font-medium">{application.name}</td>
-                      <td className="px-4 py-3 font-mono text-xs">{application.pkg ?? '—'}</td>
-                      <td className="px-4 py-3">{application.version ?? '—'}</td>
-                      <td className="px-4 py-3">
-                        {application.system ? (
-                          <Badge variant="secondary">{t('applications.badges.system')}</Badge>
-                        ) : application.commonApplication ? (
-                          <Badge variant="secondary">{t('applications.badges.common')}</Badge>
-                        ) : (
-                          '—'
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-xs"
-                            title={t('common.delete')}
-                            className="text-destructive hover:text-destructive"
-                            disabled={application.deletionProhibited === true}
-                            onClick={() => setDeleteTarget(application)}
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {pageItems.map((application) => {
+                    const manageable = canManageApplication(application)
+
+                    return (
+                      <tr
+                        key={application.id}
+                        className="border-b last:border-b-0 hover:bg-muted/30"
+                      >
+                        <td className="px-4 py-3 font-medium">{application.name}</td>
+                        <td className="px-4 py-3 font-mono text-xs">{application.pkg ?? '—'}</td>
+                        <td className="px-4 py-3">{application.version ?? '—'}</td>
+                        <td className="px-4 py-3">
+                          {application.system ? (
+                            <Badge variant="secondary">{t('applications.badges.system')}</Badge>
+                          ) : application.commonApplication ? (
+                            <Badge variant="secondary">{t('applications.badges.common')}</Badge>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end">
+                            {manageable ? (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-xs"
+                                title={
+                                  application.deletionProhibited
+                                    ? t('applications.delete.inUse')
+                                    : t('common.delete')
+                                }
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => setDeleteTarget(application)}
+                              >
+                                <Trash2 className="size-3.5" />
+                              </Button>
+                            ) : (
+                              <span
+                                className="text-xs text-muted-foreground"
+                                title={t('applications.delete.commonApp')}
+                              >
+                                —
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -155,6 +229,15 @@ export function ApplicationsListPage() {
         </>
       )}
 
+      <ApplicationFormDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        closeOnSave
+        onSavedApplication={() => {
+          void refetch()
+        }}
+      />
+
       <ConfirmDeleteDialog
         open={deleteTarget != null}
         onOpenChange={(open) => {
@@ -163,7 +246,11 @@ export function ApplicationsListPage() {
           }
         }}
         title={t('applications.delete.title')}
-        description={t('applications.delete.confirm', { name: deleteTarget?.name ?? '' })}
+        description={
+          deleteTarget?.deletionProhibited
+            ? t('applications.delete.inUseConfirm', { name: deleteTarget?.name ?? '' })
+            : t('applications.delete.confirm', { name: deleteTarget?.name ?? '' })
+        }
         isPending={deleteMutation.isPending}
         onConfirm={() => void handleDelete()}
       />

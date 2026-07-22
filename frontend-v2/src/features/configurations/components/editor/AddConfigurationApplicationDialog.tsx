@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ApplicationFormDialog } from '@/features/configurations/components/editor/ApplicationFormDialog'
+import { ApplicationFormDialog } from '@/features/applications/components/ApplicationFormDialog'
 import { ConfigurationAppSearchInput } from '@/features/configurations/components/editor/ConfigurationAppSearchInput'
 import type { Configuration } from '@/features/configurations/types/configuration'
 import type { ConfigurationApplication } from '@/features/configurations/types/configuration'
@@ -182,7 +182,7 @@ export function AddConfigurationApplicationDialog({
         open={newAppOpen}
         onOpenChange={setNewAppOpen}
         closeOnSave
-        onSaved={handleNewAppSaved}
+        onSavedForConfiguration={handleNewAppSaved}
       />
     </>
   )

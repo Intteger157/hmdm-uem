@@ -137,3 +137,78 @@ export async function deleteApplication(id: number): Promise<void> {
   const response = await api.delete<ApiResponse<unknown>>(`/private/applications/${id}`)
   unwrapApiResponse(response.data)
 }
+
+export class SaveAndroidApplicationError extends Error {
+  readonly code: 'VERSION_TOO_OLD' | 'VERSION_EXISTS' | 'VALIDATION'
+
+  constructor(code: 'VERSION_TOO_OLD' | 'VERSION_EXISTS' | 'VALIDATION') {
+    super(code)
+    this.code = code
+  }
+}
+
+export interface SaveAndroidApplicationResult {
+  application: Application
+  versionId?: number
+  createdNewVersion: boolean
+}
+
+/** Create a new app or add a new version when package already exists (legacy behavior). */
+export async function saveAndroidApplicationRequest(
+  request: Application,
+  options: { uploadComplete?: boolean; fileSelected?: boolean } = {}
+): Promise<SaveAndroidApplicationResult> {
+  if (request.id) {
+    const saved = await upsertAndroidApplication(request)
+    return { application: saved ?? request, createdNewVersion: false }
+  }
+
+  const existingApps = await validateApplicationPackage(request)
+
+  if (existingApps.length === 0) {
+    const saved = await upsertAndroidApplication(request)
+    return { application: saved, createdNewVersion: false }
+  }
+
+  const existing =
+    existingApps.find(
+      (app) => app.pkg?.toLowerCase() === request.pkg?.trim().toLowerCase()
+    ) ?? existingApps[0]
+
+  const reqCode = request.versionCode ?? 0
+  const existCode = existing.versionCode ?? 0
+
+  if (reqCode > 0 && existCode > 0 && reqCode < existCode) {
+    throw new SaveAndroidApplicationError('VERSION_TOO_OLD')
+  }
+
+  if (
+    reqCode > 0 &&
+    existCode > 0 &&
+    reqCode === existCode &&
+    options.uploadComplete &&
+    options.fileSelected
+  ) {
+    throw new SaveAndroidApplicationError('VERSION_EXISTS')
+  }
+
+  const version = await upsertApplicationVersion({
+    applicationId: existing.id,
+    version: request.version,
+    versionCode: request.versionCode,
+    arch: request.arch || undefined,
+    filePath: request.filePath,
+  })
+
+  return {
+    application: {
+      ...existing,
+      name: request.name.trim() || existing.name,
+      version: version.version ?? request.version,
+      latestVersion: version.id,
+      usedVersionId: version.id,
+    },
+    versionId: version.id,
+    createdNewVersion: true,
+  }
+}

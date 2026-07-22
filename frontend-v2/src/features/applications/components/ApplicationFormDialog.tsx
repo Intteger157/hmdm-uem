@@ -1,10 +1,9 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  saveAndroidApplicationRequest,
+  SaveAndroidApplicationError,
   uploadApkFile,
-  upsertAndroidApplication,
-  upsertApplicationVersion,
-  validateApplicationPackage,
   type Application,
   type ApkFileDetails,
 } from '@/features/applications/api/applications-api'
@@ -26,9 +25,11 @@ import { toast } from 'sonner'
 interface ApplicationFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  /** When true, closes with created app for configuration assignment. */
   closeOnSave?: boolean
-  onSaved?: (app: ConfigurationApplication) => void
+  /** Applications list page — app repository saved. */
+  onSavedApplication?: (app: Application, createdNewVersion: boolean) => void
+  /** Configuration editor — assign to configuration. */
+  onSavedForConfiguration?: (app: ConfigurationApplication) => void
 }
 
 const emptyApplication = (): Application => ({
@@ -45,7 +46,8 @@ export function ApplicationFormDialog({
   open,
   onOpenChange,
   closeOnSave = true,
-  onSaved,
+  onSavedApplication,
+  onSavedForConfiguration,
 }: ApplicationFormDialogProps) {
   const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -60,7 +62,7 @@ export function ApplicationFormDialog({
   const [uploadMessage, setUploadMessage] = useState<string | undefined>()
   const [warning, setWarning] = useState<string | undefined>()
   const [successHint, setSuccessHint] = useState<string | undefined>()
-  const [uploadComplete, setUploadComplete] = useState<boolean | false>(false)
+  const [uploadComplete, setUploadComplete] = useState(false)
   const [saving, setSaving] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | undefined>()
 
@@ -90,14 +92,15 @@ export function ApplicationFormDialog({
     onOpenChange(nextOpen)
   }
 
-  const applyUploadResult = (details: ApkFileDetails, existing?: Application, meta?: {
-    exists?: boolean
-    complete?: boolean
-  }) => {
+  const applyUploadResult = (
+    details: ApkFileDetails,
+    existing?: Application,
+    meta?: { exists?: boolean; complete?: boolean }
+  ) => {
     setApplication((prev) => ({
       ...prev,
       pkg: details.pkg ?? prev.pkg,
-      name: prev.name || details.name || prev.name,
+      name: existing?.name || details.name || prev.name,
       version: details.version ?? prev.version,
       versionCode: details.versionCode ?? prev.versionCode,
       arch: details.arch ?? prev.arch ?? '',
@@ -128,9 +131,7 @@ export function ApplicationFormDialog({
       setSuccessHint(t('configurations.editor.archCompleteSuccess'))
       setUploadComplete(true)
     } else if (details.arch) {
-      setWarning(
-        t('configurations.editor.archWarning', { arch: details.arch })
-      )
+      setWarning(t('configurations.editor.archWarning', { arch: details.arch }))
     }
   }
 
@@ -208,15 +209,6 @@ export function ApplicationFormDialog({
     ...(filePath ? { filePath } : {}),
   })
 
-  const mapToConfigurationApp = (saved: Application, versionId?: number): ConfigurationApplication => ({
-    ...saved,
-    action: 1,
-    actionChanged: true,
-    isNew: true,
-    usedVersionId: versionId ?? saved.latestVersion,
-    version: saved.version ?? application.version,
-  })
-
   const handleSave = async () => {
     setErrorMessage(undefined)
 
@@ -237,58 +229,45 @@ export function ApplicationFormDialog({
     setSaving(true)
 
     try {
-      const existingApps = await validateApplicationPackage(request)
+      const result = await saveAndroidApplicationRequest(request, {
+        fileSelected,
+        uploadComplete,
+      })
 
-      if (existingApps.length > 0 && !request.id) {
-        const existing = existingApps[0]
-        const sameVersionCode =
-          existing.versionCode != null &&
-          request.versionCode != null &&
-          existing.versionCode === request.versionCode
-
-        if (
-          existing.versionCode != null &&
-          request.versionCode != null &&
-          (existing.versionCode > request.versionCode ||
-            (sameVersionCode && !uploadComplete) ||
-            existing.name !== request.name)
-        ) {
-          setErrorMessage(t('configurations.editor.duplicatePkgHint'))
-          setSaving(false)
-          return
-        }
-
-        const version = await upsertApplicationVersion({
-          applicationId: existing.id,
-          version: request.version,
-          versionCode: request.versionCode,
-          arch: request.arch || undefined,
-          filePath: request.filePath,
-        })
-
-        const configApp = mapToConfigurationApp(
-          { ...existing, version: version.version ?? request.version },
-          version.id
-        )
-
+      if (result.createdNewVersion) {
+        toast.success(t('applications.versionAdded'))
+      } else {
         toast.success(t('configurations.editor.appSaved'))
-        onSaved?.(configApp)
-        if (closeOnSave) {
-          handleOpenChange(false)
-        }
-        return
       }
 
-      const saved = await upsertAndroidApplication(request)
-      const configApp = mapToConfigurationApp(saved)
+      onSavedApplication?.(result.application, result.createdNewVersion)
 
-      toast.success(t('configurations.editor.appSaved'))
-      onSaved?.(configApp)
+      if (onSavedForConfiguration) {
+        onSavedForConfiguration({
+          ...result.application,
+          action: 1,
+          actionChanged: true,
+          isNew: true,
+          usedVersionId: result.versionId ?? result.application.latestVersion,
+          version: result.application.version ?? request.version,
+        })
+      }
+
       if (closeOnSave) {
         handleOpenChange(false)
       }
-    } catch {
-      setErrorMessage(t('configurations.editor.appSaveError'))
+    } catch (error) {
+      if (error instanceof SaveAndroidApplicationError) {
+        if (error.code === 'VERSION_TOO_OLD') {
+          setErrorMessage(t('applications.errorVersionTooOld'))
+        } else if (error.code === 'VERSION_EXISTS') {
+          setErrorMessage(t('configurations.editor.versionExistsWarning'))
+        } else {
+          setErrorMessage(t('configurations.editor.appSaveError'))
+        }
+      } else {
+        setErrorMessage(t('configurations.editor.appSaveError'))
+      }
     } finally {
       setSaving(false)
     }
