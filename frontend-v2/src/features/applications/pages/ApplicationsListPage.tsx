@@ -24,11 +24,11 @@ const SHOW_SYSTEM_APPS_KEY = 'HMDM_showSystemApps'
 
 function getApplicationsShowSystemAppsPreference(): boolean {
   if (typeof window === 'undefined') {
-    return true
+    return false
   }
   const stored = window.localStorage.getItem(SHOW_SYSTEM_APPS_KEY)
   if (stored == null) {
-    return true
+    return false
   }
   return stored === 'true'
 }
