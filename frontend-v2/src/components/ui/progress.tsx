@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { Progress as ProgressPrimitive } from "@base-ui/react/progress"
 
 import { cn } from "@/lib/utils"
@@ -10,6 +11,10 @@ function Progress({
   value,
   ...props
 }: ProgressPrimitive.Root.Props) {
+  const hasTrack = React.Children.toArray(children).some(
+    (child) => React.isValidElement(child) && child.type === ProgressTrack
+  )
+
   return (
     <ProgressPrimitive.Root
       value={value}
@@ -18,9 +23,11 @@ function Progress({
       {...props}
     >
       {children}
-      <ProgressTrack>
-        <ProgressIndicator />
-      </ProgressTrack>
+      {!hasTrack && (
+        <ProgressTrack>
+          <ProgressIndicator />
+        </ProgressTrack>
+      )}
     </ProgressPrimitive.Root>
   )
 }
