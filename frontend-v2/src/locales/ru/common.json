@@ -750,6 +750,7 @@
   "deviceDetail.actions.powershell": "Запуск PowerShell",
   "deviceDetail.actions.wipe": "Сброс / Wipe",
   "deviceDetail.actions.run": "Выполнить",
+  "deviceDetail.actions.open": "Открыть",
   "deviceDetail.actions.mockHint": "Mock-действие — команда не отправляется",
   "deviceDetail.actions.toast": "Действие в mock-режиме: {{action}}",
   "deviceDetail.actions.pageSubtitle": "Команды удалённого управления",

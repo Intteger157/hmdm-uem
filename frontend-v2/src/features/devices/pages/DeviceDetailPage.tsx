@@ -1,13 +1,12 @@
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, ChevronRight, Monitor } from 'lucide-react'
+import { ArrowLeft, ChevronRight } from 'lucide-react'
 import { DeviceActionsPanel } from '@/features/devices/components/DeviceActionsPanel'
-import { DeviceRemoteDialog } from '@/features/plugins/deviceremote/components/DeviceRemoteDialog'
 import { useDeviceByNumber } from '@/features/devices/hooks/use-device-by-number-query'
 import { resolveDeviceOnlineStatusCode } from '@/features/devices/utils/device-online-status'
 import { usePeriodicNow } from '@/shared/hooks/use-periodic-now'
 import { Badge } from '@/components/ui/badge'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress, ProgressLabel, ProgressValue } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -55,7 +54,6 @@ export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
   const now = usePeriodicNow()
   const { data: device, isLoading, error } = useDeviceByNumber(deviceNumber)
   const [activeTab, setActiveTab] = useState('software')
-  const [remoteOpen, setRemoteOpen] = useState(false)
 
   if (isLoading) {
     return <DeviceDetailSkeleton />
@@ -114,17 +112,6 @@ export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
             {device.mdmMode && <Badge variant="secondary">MDM</Badge>}
           </div>
           <p className="font-mono text-sm text-muted-foreground">{device.number}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {device.platform === 'android' && (
-            <Button type="button" variant="outline" onClick={() => setRemoteOpen(true)}>
-              <Monitor className="mr-2 size-4" />
-              {t('deviceDetail.remoteControl')}
-            </Button>
-          )}
-          <Button type="button" onClick={() => setActiveTab('actions')}>
-            {t('deviceDetail.deviceActions')}
-          </Button>
         </div>
       </div>
 
@@ -312,13 +299,6 @@ export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
           <DeviceActionsPanel device={device} platform={device.platform} />
         </TabsContent>
       </Tabs>
-
-      <DeviceRemoteDialog
-        open={remoteOpen}
-        onOpenChange={setRemoteOpen}
-        deviceId={device.id}
-        deviceLabel={deviceIdentifier(device)}
-      />
     </div>
   )
 }

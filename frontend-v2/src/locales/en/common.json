@@ -750,6 +750,7 @@
   "deviceDetail.actions.powershell": "Run PowerShell Script",
   "deviceDetail.actions.wipe": "Wipe / Reset Device",
   "deviceDetail.actions.run": "Run",
+  "deviceDetail.actions.open": "Open",
   "deviceDetail.actions.mockHint": "Mock action — no command sent",
   "deviceDetail.actions.toast": "Action triggered in mock mode: {{action}}",
   "deviceDetail.actions.pageSubtitle": "Remote management commands",
