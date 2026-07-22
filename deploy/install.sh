@@ -10,6 +10,7 @@ WEBAPPS_DIR="${DEPLOY_DIR}/volumes/webapps"
 SKIP_BUILD=0
 SKIP_JAVA=0
 SKIP_DOCKER=0
+DEV_MODE=0
 
 usage() {
   cat <<'EOF'
@@ -22,6 +23,7 @@ Options:
   --skip-build     Do not rebuild Java WAR or Docker images
   --skip-java      Skip Maven WAR build (expects server/target/launcher.war)
   --skip-docker    Build artifacts only, do not start containers
+  --dev            Allow BASE_DOMAIN=localhost (local dev only)
   -h, --help       Show this help
 
 Examples:
@@ -54,6 +56,9 @@ while [[ $# -gt 0 ]]; do
       ;;
     --skip-docker)
       SKIP_DOCKER=1
+      ;;
+    --dev)
+      DEV_MODE=1
       ;;
     -h|--help)
       usage
@@ -106,9 +111,52 @@ ensure_env_defaults() {
   fi
 }
 
+read_env_value() {
+  local key="$1"
+  grep "^${key}=" "${ENV_FILE}" 2>/dev/null | cut -d= -f2- || true
+}
+
+validate_deploy_env() {
+  local base_domain protocol
+
+  base_domain="$(read_env_value BASE_DOMAIN)"
+  protocol="$(read_env_value PROTOCOL)"
+  protocol="${protocol:-http}"
+
+  if [[ -z "${base_domain}" || "${base_domain}" == "localhost" ]]; then
+    if [[ "${DEV_MODE}" -eq 0 ]]; then
+      die "Set BASE_DOMAIN in ${ENV_FILE} to your public hostname BEFORE the first start (e.g. test-dev-mdm.example.com). For local dev only, re-run with --dev."
+    fi
+    log "Dev mode: BASE_DOMAIN=${base_domain:-localhost}"
+    return 0
+  fi
+
+  if [[ "${protocol}" != "https" ]]; then
+    log "WARNING: PROTOCOL=${protocol} with BASE_DOMAIN=${base_domain}. Android enrollment requires https on the public hostname."
+  fi
+
+  log "Deploy target: ${protocol}://${base_domain}"
+}
+
+is_first_database_bootstrap() {
+  [[ ! -f "${DEPLOY_DIR}/volumes/db/PG_VERSION" ]]
+}
+
+validate_deploy_env_for_first_boot() {
+  if is_first_database_bootstrap && [[ "${DEV_MODE}" -eq 0 ]]; then
+    local base_domain
+    base_domain="$(read_env_value BASE_DOMAIN)"
+    if [[ -z "${base_domain}" || "${base_domain}" == "localhost" ]]; then
+      die "First install: edit ${ENV_FILE} and set BASE_DOMAIN + PROTOCOL=https before starting containers."
+    fi
+  fi
+}
+
 ensure_env_defaults
+validate_deploy_env
 
 mkdir -p "${WEBAPPS_DIR}" "${DEPLOY_DIR}/volumes/work" "${DEPLOY_DIR}/volumes/hmdm-config" "${DEPLOY_DIR}/volumes/db"
+validate_deploy_env_for_first_boot
 
 ensure_build_properties() {
   local docker_template="${ROOT_DIR}/server/build.properties.docker"
@@ -165,6 +213,21 @@ for _ in $(seq 1 30); do
   fi
   sleep 2
 done
+
+log "Waiting for MDM backend (launcher APK URLs are written on first boot)"
+for _ in $(seq 1 60); do
+  if docker compose --env-file "${ENV_FILE}" -f "${DEPLOY_DIR}/docker-compose.yml" exec -T hmdm \
+    wget -q -O /dev/null http://127.0.0.1:8080/ 2>/dev/null; then
+    break
+  fi
+  sleep 5
+done
+
+SYNC_SCRIPT="${DEPLOY_DIR}/scripts/sync-file-urls.sh"
+if [[ -f "${SYNC_SCRIPT}" ]]; then
+  log "Syncing stored /files/ URLs to public BASE_DOMAIN"
+  bash "${SYNC_SCRIPT}"
+fi
 
 WINDOWS_PORT="$(grep '^SERVER_WINDOWS_PORT=' "${ENV_FILE}" | cut -d= -f2-)"
 WINDOWS_PORT="${WINDOWS_PORT:-8082}"

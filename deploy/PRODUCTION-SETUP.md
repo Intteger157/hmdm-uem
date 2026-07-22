@@ -21,7 +21,7 @@ Use config **B** if your reverse proxy and certbot live on another machine (your
 The repo is **functionally ready**, but Android enrollment will fail without:
 
 1. Stack running on the server (`deploy/install.sh`)
-2. `deploy/.env` with your public hostname and `PROTOCOL=https`
+2. `deploy/.env` with `BASE_DOMAIN` and `PROTOCOL=https` **before the first container start**
 3. Valid TLS certificate on `test-dev-mdm.intteger.uk`
 4. A **Configuration** with enrollment QR in the MDM console
 5. Factory-reset Android device (or work profile flow) to scan QR
@@ -201,11 +201,34 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.yml restart hmdm 
 4. Factory-reset the phone (or use QR provisioning on Android 7+).
 5. On welcome screen, tap 6 times / connect Wi‑Fi → scan QR.
 
-If enrollment stalls, check:
+If enrollment stalls on **«Подготовка к настройке рабочего профиля»** (downloading the launcher APK), check:
 
-- HTTPS certificate is trusted (not self-signed)
-- Port `31000` reachable from the phone
-- `BASE_DOMAIN` / server URL in MDM settings matches the public hostname
+1. **APK URL is reachable** — QR embeds `PROVISIONING_DEVICE_ADMIN_PACKAGE_DOWNLOAD_LOCATION` (usually `https://<domain>/files/...`). From any machine on the internet:
+   ```bash
+   curl -I "https://test-dev-mdm.intteger.uk/files/<path-from-app-version>"
+   ```
+   Expect `HTTP/2 200` and `Content-Type: application/vnd.android.package-archive` (or `application/octet-stream`). If you get `200` with `text/html`, the Docker gateway is routing `/files/` to frontend-v2 instead of Java MDM — ensure `deploy/nginx/default.conf` has a `/files/` location → `hmdm:8080`, then:
+   ```bash
+   docker compose --env-file deploy/.env -f deploy/docker-compose.yml restart gateway
+   ```
+2. **HTTPS certificate** is trusted (Let's Encrypt, not self-signed).
+3. **`PROTOCOL=https`** and **`BASE_DOMAIN=test-dev-mdm.intteger.uk`** in `deploy/.env`; server URL in **Settings → Common** matches.
+4. **Port `31000`** reachable from the phone (needed after APK install for push, not during the first screen):
+   ```bash
+   nc -vz test-dev-mdm.intteger.uk 31000
+   ```
+5. **Configuration** has a **main app** with a valid download URL (Applications → version URL).
+
+### Preventing `localhost` APK URLs on new installs
+
+1. Set **`BASE_DOMAIN`** and **`PROTOCOL=https`** in `deploy/.env` **before** the first `./deploy/install.sh` or `docker compose up`.
+2. `./deploy/install.sh` refuses a first boot with `BASE_DOMAIN=localhost` unless you pass **`--dev`** (local dev only).
+3. After every install/start, the installer runs **`deploy/scripts/sync-file-urls.sh`**, which rewrites stored `/files/...` URLs from `http://localhost` (or `LOCAL_IP`) to `https://<BASE_DOMAIN>`.
+4. If you change the public hostname later, update `.env` and run:
+   ```bash
+   bash deploy/scripts/sync-file-urls.sh
+   docker compose --env-file deploy/.env -f deploy/docker-compose.yml restart hmdm gateway
+   ```
 
 ---
 
