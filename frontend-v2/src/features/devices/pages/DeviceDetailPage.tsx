@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Battery, BatteryFull, BatteryLow, BatteryMedium, ChevronRight } from 'lucide-react'
+import { ArrowLeft, ChevronRight } from 'lucide-react'
 import { DeviceActionsPanel } from '@/features/devices/components/DeviceActionsPanel'
 import { useDeviceByNumber } from '@/features/devices/hooks/use-device-by-number-query'
 import {
@@ -11,11 +11,15 @@ import {
 } from '@/features/devices/utils/device-detail-formatters'
 import { resolveDeviceOnlineStatusCode } from '@/features/devices/utils/device-online-status'
 import { usePeriodicNow } from '@/shared/hooks/use-periodic-now'
-import { AndroidIcon } from '@/components/icons/android-icon'
+import {
+  ANDROID_BRAND_COLOR,
+  AndroidIcon,
+  BatteryStatusIcon,
+} from '@/components/icons/platform-icons'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Progress, ProgressLabel, ProgressValue } from '@/components/ui/progress'
+import { Progress, ProgressIndicator, ProgressLabel, ProgressTrack, ProgressValue } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { DeviceView } from '@/shared/api/types/device'
@@ -45,14 +49,6 @@ function deviceIdentifier(device: DeviceView): string {
 function formatDefaultLauncher(value?: boolean): string {
   if (value == null) return NA
   return value ? 'Yes' : 'No'
-}
-
-function BatteryLevelIcon({ level }: { level: number }) {
-  const className = 'size-4 shrink-0 text-green-500'
-  if (level >= 80) return <BatteryFull className={className} aria-hidden="true" />
-  if (level >= 40) return <BatteryMedium className={className} aria-hidden="true" />
-  if (level >= 15) return <Battery className={className} aria-hidden="true" />
-  return <BatteryLow className={className} aria-hidden="true" />
 }
 
 interface DeviceDetailPageProps {
@@ -196,13 +192,30 @@ export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
             <MetricCard
               label={t('devices.columns.androidVersion')}
               value={androidVersion ?? NA}
-              icon={androidVersion ? <AndroidIcon className="text-green-500" /> : undefined}
+              icon={androidVersion ? <AndroidIcon className={ANDROID_BRAND_COLOR} /> : undefined}
             />
-            <MetricCard
-              label={t('devices.columns.battery')}
-              value={batteryLevel != null ? `${batteryLevel}%` : NA}
-              icon={batteryLevel != null ? <BatteryLevelIcon level={batteryLevel} /> : undefined}
-            />
+            {batteryLevel != null ? (
+              <Card>
+                <CardHeader className="px-4 py-3 pb-1">
+                  <CardTitle className="text-xs font-medium text-muted-foreground">
+                    {t('devices.columns.battery')}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 px-4 pb-3 pt-0">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <BatteryStatusIcon className={ANDROID_BRAND_COLOR} />
+                    <span>{batteryLevel}%</span>
+                  </div>
+                  <Progress value={batteryLevel}>
+                    <ProgressTrack>
+                      <ProgressIndicator className="bg-[#3DDC84]" />
+                    </ProgressTrack>
+                  </Progress>
+                </CardContent>
+              </Card>
+            ) : (
+              <MetricCard label={t('devices.columns.battery')} value={NA} />
+            )}
             <MetricCard
               label={t('devices.columns.launcherVersion')}
               value={launcherVersion ?? NA}
@@ -365,9 +378,9 @@ function MetricCard({
         <CardTitle className="text-xs font-medium text-muted-foreground">{label}</CardTitle>
       </CardHeader>
       <CardContent className={cn('px-4 pb-3 pt-0 text-sm font-medium', mono && 'font-mono text-xs')}>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 leading-none">
           {icon}
-          <span>{value}</span>
+          <span className="leading-snug">{value}</span>
         </div>
       </CardContent>
     </Card>
