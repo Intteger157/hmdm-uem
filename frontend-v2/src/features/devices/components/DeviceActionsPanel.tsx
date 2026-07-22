@@ -145,10 +145,6 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
     void runAndroidCommand(action.id as AndroidCommandAction)
   }
 
-  const runWindowsAction = (_actionId: string, label: string) => {
-    toast.info(t('deviceDetail.actions.toast', { action: label }))
-  }
-
   const handleReset = async () => {
     try {
       await resetMutation.mutateAsync(device.id)
@@ -271,34 +267,37 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
   }
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {WINDOWS_ACTIONS.map(({ id, icon: Icon, labelKey, variant = 'outline' }) => {
-        const label = t(labelKey)
-        return (
-          <Card key={id} className="transition-colors hover:bg-muted/30">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2">
-                <div className="flex size-8 items-center justify-center rounded-md bg-muted">
-                  <Icon className="size-4" />
+    <div className="space-y-4">
+      <Card className="border-amber-500/40 bg-amber-500/5">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">{t('deviceDetail.actions.windowsNotImplementedTitle')}</CardTitle>
+          <CardDescription>{t('deviceDetail.actions.windowsNotImplemented')}</CardDescription>
+        </CardHeader>
+      </Card>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {WINDOWS_ACTIONS.map(({ id, icon: Icon, labelKey, variant = 'outline' }) => {
+          const label = t(labelKey)
+          return (
+            <Card key={id} className="transition-colors hover:bg-muted/30">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <div className="flex size-8 items-center justify-center rounded-md bg-muted">
+                    <Icon className="size-4" />
+                  </div>
+                  <CardTitle className="text-sm font-medium">{label}</CardTitle>
                 </div>
-                <CardTitle className="text-sm font-medium">{label}</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <CardDescription className="text-xs">{t('deviceDetail.actions.mockHint')}</CardDescription>
-              <Button
-                type="button"
-                size="sm"
-                variant={variant}
-                className="mt-3 w-full"
-                onClick={() => runWindowsAction(id, label)}
-              >
-                {t('deviceDetail.actions.run')}
-              </Button>
-            </CardContent>
-          </Card>
-        )
-      })}
+              </CardHeader>
+              <CardContent className="pt-0">
+                <CardDescription className="text-xs">{t('deviceDetail.actions.mockHint')}</CardDescription>
+                <Button type="button" size="sm" variant={variant} className="mt-3 w-full" disabled>
+                  {t('deviceDetail.actions.comingSoon')}
+                </Button>
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
     </div>
   )
 }

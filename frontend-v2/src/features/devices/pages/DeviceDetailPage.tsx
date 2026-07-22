@@ -36,6 +36,9 @@ const NA = 'N/A'
 const METRIC_ICON_CLASS = 'size-8'
 
 function deviceTitle(device: DeviceView): string {
+  if (device.platform === 'windows') {
+    return device.hostname ?? device.model ?? device.number
+  }
   return device.description ?? device.hostname ?? device.number
 }
 
@@ -128,15 +131,17 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
         <MetricCard label={t('devices.columns.number')} value={device.number} mono />
         <MetricCard
           label={t('deviceDetail.metrics.model')}
-          value={device.model ?? device.info?.model ?? NA}
+          value={device.model ?? device.manufacturer ?? device.info?.model ?? NA}
         />
         <MetricCard label={t('deviceDetail.metrics.lastOnline')} value={formatDeviceTimestamp(device.lastUpdate)} />
         <MetricCard
           label={t('deviceDetail.metrics.serial')}
-          value={device.serial ?? device.info?.serial ?? NA}
+          value={device.serialNumber ?? device.serial ?? device.info?.serial ?? NA}
           mono
         />
-        <MetricCard label={t('devices.columns.imei')} value={device.imei ?? device.info?.imei ?? NA} mono />
+        {device.platform !== 'windows' && (
+          <MetricCard label={t('devices.columns.imei')} value={device.imei ?? device.info?.imei ?? NA} mono />
+        )}
 
         {device.platform === 'windows' && (
           <>

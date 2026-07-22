@@ -16,12 +16,19 @@ import (
 
 // DeviceInfo holds inventory fields reported to the MDM server.
 type DeviceInfo struct {
-	Hostname     string `json:"hostname"`
-	OSVersion    string `json:"os_version"`
-	CPU          string `json:"cpu"`
-	RAM_GB       int    `json:"ram_gb"`
-	DiskTotal_GB int    `json:"disk_total_gb"`
-	DiskUsed_GB  int    `json:"disk_used_gb"`
+	Hostname          string                  `json:"hostname"`
+	OSVersion         string                  `json:"os_version"`
+	CPU               string                  `json:"cpu"`
+	RAM_GB            int                     `json:"ram_gb"`
+	DiskTotal_GB      int                     `json:"disk_total_gb"`
+	DiskUsed_GB       int                     `json:"disk_used_gb"`
+	Manufacturer      string                  `json:"manufacturer,omitempty"`
+	Model             string                  `json:"model,omitempty"`
+	SerialNumber      string                  `json:"serial_number,omitempty"`
+	CurrentUser       string                  `json:"current_user,omitempty"`
+	DiskEncrypted     bool                    `json:"disk_encrypted"`
+	LocalUsers        []LocalUserInfo         `json:"local_users,omitempty"`
+	InstalledSoftware []InstalledSoftwareInfo `json:"installed_software,omitempty"`
 }
 
 // Collector gathers hardware and OS information from the local machine.
@@ -88,13 +95,25 @@ func CollectInfo() (*DeviceInfo, error) {
 		return nil, fmt.Errorf("disk: %w", err)
 	}
 
+	manufacturer, model, serialNumber, currentUser, diskEncrypted, localUsers, installedSoftware, err := collectExtendedInventory()
+	if err != nil {
+		return nil, fmt.Errorf("extended inventory: %w", err)
+	}
+
 	return &DeviceInfo{
-		Hostname:     hostname,
-		OSVersion:    formatOSVersion(hostInfo),
-		CPU:          cpuModel,
-		RAM_GB:       bytesToRoundedGB(memInfo.Total),
-		DiskTotal_GB: bytesToRoundedGB(diskUsage.Total),
-		DiskUsed_GB:  bytesToRoundedGB(diskUsage.Used),
+		Hostname:          hostname,
+		OSVersion:         formatOSVersion(hostInfo),
+		CPU:               cpuModel,
+		RAM_GB:            bytesToRoundedGB(memInfo.Total),
+		DiskTotal_GB:      bytesToRoundedGB(diskUsage.Total),
+		DiskUsed_GB:       bytesToRoundedGB(diskUsage.Used),
+		Manufacturer:      manufacturer,
+		Model:             model,
+		SerialNumber:      serialNumber,
+		CurrentUser:       currentUser,
+		DiskEncrypted:     diskEncrypted,
+		LocalUsers:        localUsers,
+		InstalledSoftware: installedSoftware,
 	}, nil
 }
 

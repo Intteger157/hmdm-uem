@@ -96,7 +96,24 @@ func (h *WindowsHandler) Inventory(c *gin.Context) {
 	device.RAM_GB = req.RAM_GB
 	device.DiskTotal_GB = req.DiskTotal_GB
 	device.DiskUsed_GB = req.DiskUsed_GB
+	device.Manufacturer = req.Manufacturer
+	device.Model = req.Model
+	device.SerialNumber = req.SerialNumber
+	device.CurrentUser = req.CurrentUser
+	device.DiskEncrypted = req.DiskEncrypted
 	device.LastCheckin = time.Now()
+
+	if localUsers, err := models.EncodeLocalUsers(req.LocalUsers); err != nil {
+		log.Printf("[inventory] encode local users failed: hardware_id=%q err=%v", deviceID, err)
+	} else {
+		device.LocalUsers = localUsers
+	}
+
+	if installedSoftware, err := models.EncodeInstalledSoftware(req.InstalledSoftware); err != nil {
+		log.Printf("[inventory] encode installed software failed: hardware_id=%q err=%v", deviceID, err)
+	} else {
+		device.InstalledSoftware = installedSoftware
+	}
 
 	if err := db.DB.Save(&device).Error; err != nil {
 		log.Printf("[inventory] save failed: hardware_id=%q err=%v", deviceID, err)

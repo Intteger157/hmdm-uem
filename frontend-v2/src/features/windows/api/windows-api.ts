@@ -7,6 +7,7 @@ import type {
   DeviceSearchParams,
   DeviceView,
 } from '@/shared/api/types/device'
+import type { InstalledSoftware, LocalUser } from '@/shared/api/types/device-detail'
 
 /** Go server-windows list item (GET /rest/windows/devices). */
 export interface WindowsDeviceDto {
@@ -18,6 +19,13 @@ export interface WindowsDeviceDto {
   ramGb: number
   diskTotalGb: number
   diskUsedGb: number
+  manufacturer?: string
+  model?: string
+  serialNumber?: string
+  currentUser?: string
+  diskEncrypted?: boolean
+  localUsers?: LocalUser[]
+  installedSoftware?: InstalledSoftware[]
   lastCheckin: string
 }
 
@@ -35,6 +43,10 @@ const windowsApi = axios.create({
 
 function mapWindowsDeviceToView(raw: WindowsDeviceDto): DeviceView {
   const lastUpdate = raw.lastCheckin ? Date.parse(raw.lastCheckin) : undefined
+  const modelLabel =
+    raw.manufacturer && raw.model
+      ? `${raw.manufacturer} ${raw.model}`
+      : raw.model || raw.manufacturer || undefined
 
   return {
     id: raw.id,
@@ -42,14 +54,22 @@ function mapWindowsDeviceToView(raw: WindowsDeviceDto): DeviceView {
     configurationId: 0,
     number: raw.hardwareId,
     hostname: raw.hostname || raw.hardwareId,
-    description: raw.cpu ? `${raw.cpu}, ${raw.ramGb} GB RAM` : undefined,
+    description: modelLabel,
+    manufacturer: raw.manufacturer || undefined,
+    model: raw.model || undefined,
+    serialNumber: raw.serialNumber || undefined,
+    serial: raw.serialNumber || undefined,
+    currentUser: raw.currentUser || undefined,
     windowsBuild: raw.osVersion || undefined,
     cpu: raw.cpu || undefined,
     ramGb: raw.ramGb || undefined,
     diskTotalGb: raw.diskTotalGb || undefined,
     diskUsedGb: raw.diskUsedGb || undefined,
-    bitlockerStatus: 'unknown',
+    diskEncrypted: raw.diskEncrypted,
+    bitlockerStatus: raw.diskEncrypted ? 'on' : raw.diskEncrypted === false ? 'off' : 'unknown',
     powershellExecStatus: 'idle',
+    localUsers: raw.localUsers ?? [],
+    installedSoftware: raw.installedSoftware ?? [],
     lastUpdate: Number.isFinite(lastUpdate) ? lastUpdate : undefined,
   }
 }
