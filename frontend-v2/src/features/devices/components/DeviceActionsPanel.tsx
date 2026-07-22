@@ -240,7 +240,7 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
         <DeviceInstalledAppsDialog
           open={activeDialog === 'installedApps'}
           onOpenChange={(open) => setActiveDialog(open ? 'installedApps' : null)}
-          deviceNumber={device.number}
+          device={device}
         />
 
         <DeviceLocationDialog

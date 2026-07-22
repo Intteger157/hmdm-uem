@@ -28,7 +28,7 @@ export function FileConfigurationsDialog({
   file,
 }: FileConfigurationsDialogProps) {
   const { t } = useTranslation()
-  const { data, isLoading } = useFileConfigurationsQuery(file?.id)
+  const { data, isLoading, error, refetch } = useFileConfigurationsQuery(file?.id, open)
   const updateMutation = useUpdateFileConfigurationsMutation()
   const [links, setLinks] = useState<FileConfigurationLink[]>([])
 
@@ -67,6 +67,13 @@ export function FileConfigurationsDialog({
 
         {isLoading ? (
           <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+        ) : error ? (
+          <div className="space-y-2 rounded-lg border border-destructive/40 p-4">
+            <p className="text-sm text-destructive">{t('files.configurations.loadError')}</p>
+            <Button type="button" variant="outline" size="sm" onClick={() => void refetch()}>
+              {t('common.retry')}
+            </Button>
+          </div>
         ) : links.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t('files.configurations.empty')}</p>
         ) : (

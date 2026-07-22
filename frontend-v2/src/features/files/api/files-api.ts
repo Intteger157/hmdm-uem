@@ -43,11 +43,13 @@ export interface FileConfigurationLink {
 }
 
 export async function fetchFiles(search = ''): Promise<FileEntry[]> {
-  const path = search
-    ? `/private/web-ui-files/search/${encodeURIComponent(search)}`
+  const trimmed = search.trim()
+  const path = trimmed
+    ? `/private/web-ui-files/search/${encodeURIComponent(trimmed)}`
     : '/private/web-ui-files/search'
   const response = await api.get<ApiResponse<FileEntry[]>>(path)
-  return unwrapApiResponse(response.data)
+  const data = unwrapApiResponse(response.data)
+  return Array.isArray(data) ? data : []
 }
 
 export async function deleteFile(file: FileEntry): Promise<void> {
@@ -95,7 +97,8 @@ export async function fetchFileConfigurations(fileId: number): Promise<FileConfi
   const response = await api.get<ApiResponse<FileConfigurationLink[]>>(
     `/private/web-ui-files/configurations/${fileId}`
   )
-  return unwrapApiResponse(response.data)
+  const data = unwrapApiResponse(response.data)
+  return Array.isArray(data) ? data : []
 }
 
 export async function updateFileConfigurations(request: {

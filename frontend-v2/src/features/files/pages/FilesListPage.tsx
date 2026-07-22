@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { FileConfigurationsDialog } from '@/features/files/components/FileConfigurationsDialog'
@@ -14,10 +14,7 @@ import { ListPagination } from '@/shared/components/ListPagination'
 import { usePaginatedList } from '@/shared/hooks/use-paginated-list'
 import { toast } from 'sonner'
 
-const matchFile = (file: FileEntry, query: string): boolean =>
-  (file.filePath ?? '').toLowerCase().includes(query) ||
-  (file.description ?? '').toLowerCase().includes(query) ||
-  (file.url ?? '').toLowerCase().includes(query)
+const matchAll = () => true
 
 function formatUploadTime(ms?: number): string {
   if (!ms) {
@@ -28,20 +25,20 @@ function formatUploadTime(ms?: number): string {
 
 export function FilesListPage() {
   const { t } = useTranslation()
-  const { data, isLoading, error, refetch } = useFilesQuery()
-  const deleteMutation = useDeleteFileMutation()
-
   const [searchInput, setSearchInput] = useState('')
   const [searchValue, setSearchValue] = useState('')
+  const { data, isLoading, error, refetch } = useFilesQuery(searchValue)
+  const deleteMutation = useDeleteFileMutation()
+
   const [deleteTarget, setDeleteTarget] = useState<FileEntry | null>(null)
   const [formOpen, setFormOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<FileEntry | null>(null)
   const [assignTarget, setAssignTarget] = useState<FileEntry | null>(null)
 
-  const matcher = useCallback(matchFile, [])
+  const matcher = matchAll
   const { pageItems, pageNum, setPageNum, totalItems, totalPages, from, to } = usePaginatedList(
     data ?? [],
-    searchValue,
+    '',
     matcher,
   )
 

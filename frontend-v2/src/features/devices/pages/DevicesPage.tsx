@@ -295,7 +295,7 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
             closeMenuDialog()
           }
         }}
-        deviceNumber={menuDevice?.number}
+        device={menuDevice}
       />
 
       <DeviceLocationDialog

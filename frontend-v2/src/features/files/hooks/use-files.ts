@@ -32,11 +32,11 @@ export function useFileStorageLimitQuery(enabled = true) {
   })
 }
 
-export function useFileConfigurationsQuery(fileId: number | undefined) {
+export function useFileConfigurationsQuery(fileId: number | undefined, open = true) {
   return useQuery({
     queryKey: fileQueryKeys.configurations(fileId ?? 0),
     queryFn: () => fetchFileConfigurations(fileId!),
-    enabled: fileId != null && fileId > 0,
+    enabled: open && fileId != null && fileId > 0,
   })
 }
 
