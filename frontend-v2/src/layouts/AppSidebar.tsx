@@ -34,12 +34,7 @@ import {
   SidebarMenuSubItem,
   SidebarSeparator,
 } from '@/components/ui/sidebar'
-import {
-  ANDROID_BRAND_COLOR,
-  AndroidIcon,
-  WINDOWS_BRAND_COLOR,
-  WindowsIcon,
-} from '@/components/icons/platform-icons'
+import { AndroidIcon, WindowsIcon } from '@/components/icons/platform-icons'
 
 function useNavState() {
   const pathname = useRouterState({ select: (state) => state.location.pathname })
@@ -120,7 +115,7 @@ export function AppSidebar() {
                           />
                         }
                       >
-                        <AndroidIcon className={ANDROID_BRAND_COLOR} />
+                        <AndroidIcon />
                         <span>{t('nav.devicesAndroid')}</span>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
@@ -135,7 +130,7 @@ export function AppSidebar() {
                           />
                         }
                       >
-                        <WindowsIcon className={WINDOWS_BRAND_COLOR} />
+                        <WindowsIcon />
                         <span>{t('nav.devicesWindows')}</span>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>

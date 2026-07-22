@@ -2,7 +2,6 @@ import type { SVGProps } from 'react'
 import { cn } from '@/lib/utils'
 
 export const ANDROID_BRAND_COLOR = 'text-[#3DDC84]'
-export const WINDOWS_BRAND_COLOR = 'text-[#00A4EF]'
 
 type IconProps = SVGProps<SVGSVGElement>
 
@@ -21,18 +20,20 @@ function BrandSvg({ className, children, ...props }: IconProps) {
   )
 }
 
+/** Classic Bugdroid silhouette (single-color). */
 export function AndroidIcon({ className, ...props }: IconProps) {
   return (
     <BrandSvg className={className} {...props}>
-      <path d="M17.523 15.341c-.551 0-.999-.449-.999-1s.448-1 .999-1 .999.449.999 1-.448 1-.999 1m-11.046 0c-.551 0-.999-.449-.999-1s.448-1 .999-1 .999.449.999 1-.448 1-.999 1m11.405-6.02 1.997-3.459a.416.416 0 0 0-.152-.568.416.416 0 0 0-.568.152l-2.022 3.503C15.59 8.244 13.853 7.851 12 7.851s-3.59.393-5.137 1.099L4.841 5.447a.416.416 0 0 0-.568-.152.416.416 0 0 0-.152.568l1.997 3.459C2.689 11.187.343 14.659 0 18.761h24c-.343-4.102-2.689-7.574-6.119-9.44" />
+      <path d="M17.6 9.48 19.44 6.3c.16-.28.06-.64-.22-.8-.28-.16-.64-.06-.8.22l-1.87 3.24a8.77 8.77 0 0 0-3.55 0L10.13 5.72c-.16-.28-.52-.38-.8-.22-.28.16-.38.52-.22.8l1.84 3.18a7.01 7.01 0 0 0-2.75 2.27H6.5c-.28 0-.5.22-.5.5v7c0 .28.22.5.5.5h1v2.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V20h5v2.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V20h1c.28 0 .5-.22.5-.5v-7c0-.28-.22-.5-.5-.5h-1.7a7.01 7.01 0 0 0-2.75-2.27zM8.5 14.25c-.41 0-.75-.34-.75-.75s.34-.75.75-.75.75.34.75.75-.34.75-.75.75zm7 0c-.41 0-.75-.34-.75-.75s.34-.75.75-.75.75.34.75.75-.34.75-.75.75z" />
     </BrandSvg>
   )
 }
 
+/** Windows logo with perspective panes (single-color). */
 export function WindowsIcon({ className, ...props }: IconProps) {
   return (
     <BrandSvg className={className} {...props}>
-      <path d="M3 3h8v8H3V3zm0 10h8v8H3v-8zm10-10h8v8h-8V3zm0 10h8v8h-8v-8z" />
+      <path d="M2.5 5.2 10.8 4.1v7.4L2.5 12.6V5.2zm0 9.2 8.3-.9v7.2l-8.3 1.1v-7.4zm10.1-10.3 8.4-1.3v7.2l-8.4 1.2V4.1zm0 9.1 8.4-1.2v7.2l-8.4 1.3v-7.3z" />
     </BrandSvg>
   )
 }
