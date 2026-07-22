@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import axios from 'axios'
 import { useTranslation } from 'react-i18next'
 import {
   saveAndroidApplicationRequest,
@@ -8,6 +9,7 @@ import {
   type ApkFileDetails,
 } from '@/features/applications/api/applications-api'
 import type { ConfigurationApplication } from '@/features/configurations/types/configuration'
+import { ApiError } from '@/shared/api/types/api-response'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -201,10 +203,20 @@ export function ApplicationFormDialog({
           complete: result.complete,
         })
       }
-    } catch {
+    } catch (error) {
       setUploadProgress(null)
       setUploadMessage(undefined)
-      setErrorMessage(t('configurations.editor.apkParseError'))
+      if (error instanceof ApiError) {
+        setErrorMessage(error.messageKey ?? t('configurations.editor.apkParseError'))
+      } else if (axios.isAxiosError(error)) {
+        if (error.response?.status === 413) {
+          setErrorMessage(t('configurations.editor.apkUploadTooLarge'))
+        } else {
+          setErrorMessage(t('configurations.editor.apkParseError'))
+        }
+      } else {
+        setErrorMessage(t('configurations.editor.apkParseError'))
+      }
     }
   }
 

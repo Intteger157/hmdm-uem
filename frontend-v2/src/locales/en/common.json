@@ -297,6 +297,7 @@
   "configurations.editor.fileUploaded": "File uploaded successfully.",
   "configurations.editor.apkRequired": "APK or XAPK file is required.",
   "configurations.editor.apkParseError": "Failed to parse APK file.",
+  "configurations.editor.apkUploadTooLarge": "APK is too large for the server upload limit. Ask admin to raise nginx client_max_body_size (gateway + edge proxy).",
   "configurations.editor.errorEmptyAppName": "Application name is required.",
   "configurations.editor.errorEmptyAppPkg": "Package ID is required.",
   "configurations.editor.errorEmptyAppVersion": "Version is required.",
