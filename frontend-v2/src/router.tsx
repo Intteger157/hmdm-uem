@@ -8,6 +8,7 @@ import {
 import { LoginPage } from '@/features/auth/pages/LoginPage'
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage'
 import { DevicesPage } from '@/features/devices/pages/DevicesPage'
+import { DeviceDetailPage } from '@/features/devices/pages/DeviceDetailPage'
 import { AppLayout } from '@/layouts/AppLayout'
 import { AuthLayout } from '@/layouts/AuthLayout'
 import { useAuthStore } from '@/features/auth/store/auth-store'
@@ -65,6 +66,15 @@ const devicesRoute = createRoute({
   },
 })
 
+const deviceDetailRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/devices/$deviceId',
+  component: function DeviceDetailRoute() {
+    const { deviceId } = deviceDetailRoute.useParams()
+    return <DeviceDetailPage deviceId={deviceId} />
+  },
+})
+
 const indexRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/',
@@ -75,7 +85,7 @@ const indexRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   authLayoutRoute.addChildren([loginRoute]),
-  appLayoutRoute.addChildren([indexRoute, dashboardRoute, devicesRoute]),
+  appLayoutRoute.addChildren([indexRoute, dashboardRoute, devicesRoute, deviceDetailRoute]),
 ])
 
 export const router = createRouter({

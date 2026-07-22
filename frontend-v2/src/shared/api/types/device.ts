@@ -1,9 +1,13 @@
 import type { Platform } from '@/shared/api/types/platform'
+import type { InstalledSoftware, LocalUser } from '@/shared/api/types/device-detail'
 
 export interface LookupItem {
   id: number
   name: string
 }
+
+export type BitLockerStatus = 'on' | 'off' | 'unknown'
+export type PowerShellExecStatus = 'idle' | 'running' | 'failed'
 
 export interface DeviceInfoView {
   model?: string
@@ -36,6 +40,23 @@ export interface DeviceView {
   statusCode?: string
   info?: DeviceInfoView
   platform: Platform
+  /** Windows-only list columns */
+  hostname?: string
+  windowsBuild?: string
+  bitlockerStatus?: BitLockerStatus
+  powershellExecStatus?: PowerShellExecStatus
+  /** Detail view — hardware & inventory */
+  serialNumber?: string
+  manufacturer?: string
+  model?: string
+  cpu?: string
+  ramGb?: number
+  diskTotalGb?: number
+  diskUsedGb?: number
+  diskEncrypted?: boolean
+  currentUser?: string
+  installedSoftware?: InstalledSoftware[]
+  localUsers?: LocalUser[]
 }
 
 export interface ConfigurationView {

@@ -11,8 +11,12 @@ openspec/
 .agent/
 agent-transcripts/
 
+# local agent debug output
+agent-windows/*.txt
+
 # Android binaries / build outputs
 *.apk
+*.exe
 **/app/release/
 **/.gradle/
 **/local.properties

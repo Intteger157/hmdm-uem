@@ -1,4 +1,6 @@
 import { api, publicApi } from '@/shared/api/client'
+import { isMockApiEnabled } from '@/shared/api/mock-utils'
+import { mockFetchCurrentUser, mockLoginWithJwt } from '@/shared/api/mocks/auth'
 import type { ApiResponse } from '@/shared/api/types/api-response'
 import { unwrapApiResponse } from '@/shared/api/types/api-response'
 import type { User } from '@/shared/api/types/user'
@@ -9,6 +11,10 @@ interface JwtLoginResponse {
 }
 
 export async function loginWithJwt(login: string, plainPassword: string): Promise<string> {
+  if (isMockApiEnabled()) {
+    return mockLoginWithJwt(login, plainPassword)
+  }
+
   const response = await publicApi.post<JwtLoginResponse>('/public/jwt/login', {
     login,
     password: hashPassword(plainPassword),
@@ -26,6 +32,10 @@ export async function loginWithJwt(login: string, plainPassword: string): Promis
 }
 
 export async function fetchCurrentUser(): Promise<User> {
+  if (isMockApiEnabled()) {
+    return mockFetchCurrentUser()
+  }
+
   const response = await api.get<ApiResponse<User>>('/private/users/current')
   return unwrapApiResponse(response.data)
 }
