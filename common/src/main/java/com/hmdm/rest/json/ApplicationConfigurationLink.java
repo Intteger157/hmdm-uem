@@ -55,6 +55,14 @@ public class ApplicationConfigurationLink implements CustomerData {
     private int action;
     @ApiModelProperty("A flag indicating if icon is to be shown on mobile device")
     private Boolean showIcon;
+    @ApiModelProperty("Order of applications on the screen")
+    private Integer screenOrder;
+    @ApiModelProperty("Key code for fast app start")
+    private Integer keyCode;
+    @ApiModelProperty("A flag indicating if application must be displayed at the bottom of the launcher")
+    private boolean bottom;
+    @ApiModelProperty("A flag indicating if app settings could be opened by a long tap")
+    private boolean longTap;
     @ApiModelProperty(value = "A flag indicating that application is to be removed from the application")
     private boolean remove;
     @ApiModelProperty(value = "A flag indicating if more recent version of application exists")
@@ -139,6 +147,38 @@ public class ApplicationConfigurationLink implements CustomerData {
         this.showIcon = showIcon;
     }
 
+    public Integer getScreenOrder() {
+        return screenOrder;
+    }
+
+    public void setScreenOrder(Integer screenOrder) {
+        this.screenOrder = screenOrder;
+    }
+
+    public Integer getKeyCode() {
+        return keyCode;
+    }
+
+    public void setKeyCode(Integer keyCode) {
+        this.keyCode = keyCode;
+    }
+
+    public boolean isBottom() {
+        return bottom;
+    }
+
+    public void setBottom(boolean bottom) {
+        this.bottom = bottom;
+    }
+
+    public boolean isLongTap() {
+        return longTap;
+    }
+
+    public void setLongTap(boolean longTap) {
+        this.longTap = longTap;
+    }
+
     public boolean isRemove() {
         return remove;
     }
@@ -190,6 +230,10 @@ public class ApplicationConfigurationLink implements CustomerData {
                 ", applicationName='" + applicationName + '\'' +
                 ", action=" + action +
                 ", showIcon=" + showIcon +
+                ", screenOrder=" + screenOrder +
+                ", keyCode=" + keyCode +
+                ", bottom=" + bottom +
+                ", longTap=" + longTap +
                 ", remove=" + remove +
                 ", outdated=" + outdated +
                 ", currentVersionText=" + currentVersionText +

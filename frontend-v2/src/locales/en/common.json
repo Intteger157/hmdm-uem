@@ -430,6 +430,7 @@
   "applications.configurations.error": "Failed to save configuration assignments",
   "applications.configurations.selectAll": "Select all",
   "applications.configurations.bulkAction": "Set action for selected",
+  "applications.configurations.outdatedVersion": "Installed: {{current}}, latest: {{latest}}",
   "groups.title": "Groups",
   "groups.subtitle": "Manage device groups",
   "groups.searchPlaceholder": "Search by name…",

@@ -163,6 +163,10 @@ public interface ApplicationMapper {
             "       applications.id                    AS applicationId, " +
             "       applications.name                  AS applicationName, " +
             "       COALESCE(configurationApplications.showIcon, applications.showIcon) AS showIcon, " +
+            "       COALESCE(configurationApplications.screenOrder, applications.screenOrder) AS screenOrder, " +
+            "       COALESCE(configurationApplications.keyCode, applications.keyCode) AS keyCode, " +
+            "       COALESCE(configurationApplications.bottom, applications.bottom) AS bottom, " +
+            "       COALESCE(configurationApplications.longTap, applications.longTap) AS longTap, " +
             "       applications.useKiosk              AS useKiosk, " +
             "       configurationApplications.remove   AS remove, " +
             "       latestAppVersion.version   AS latestVersionText, " +
@@ -470,7 +474,8 @@ public interface ApplicationMapper {
             "LIMIT 1")
     Integer getPrecedingVersion(@Param("id") Integer applicationId);
 
-    @Update("UPDATE configurationApplications SET showIcon = #{showIcon}, remove = #{remove}, action = #{action} WHERE id = #{id}")
+    @Update("UPDATE configurationApplications SET showIcon = #{showIcon}, remove = #{remove}, action = #{action}, " +
+            "screenOrder = #{screenOrder}, keyCode = #{keyCode}, bottom = #{bottom}, longTap = #{longTap} WHERE id = #{id}")
     void updateApplicationConfigurationLink(ApplicationConfigurationLink link);
 
     @Delete("DELETE FROM configurationApplications WHERE id = #{id}")

@@ -82,6 +82,10 @@ export interface ApplicationConfigurationLink {
   applicationName?: string
   action?: number
   showIcon?: boolean
+  screenOrder?: number
+  keyCode?: number
+  bottom?: boolean
+  longTap?: boolean
   remove?: boolean
   outdated?: boolean
   latestVersionText?: string

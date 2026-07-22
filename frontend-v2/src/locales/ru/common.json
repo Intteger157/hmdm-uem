@@ -430,6 +430,7 @@
   "applications.configurations.error": "Не удалось сохранить назначения",
   "applications.configurations.selectAll": "Выбрать все",
   "applications.configurations.bulkAction": "Действие для выбранных",
+  "applications.configurations.outdatedVersion": "В конфигурации: {{current}}, актуальная: {{latest}}",
   "groups.title": "Группы",
   "groups.subtitle": "Управление группами устройств",
   "groups.searchPlaceholder": "Поиск по имени…",
