@@ -1,10 +1,17 @@
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Battery, BatteryFull, BatteryLow, BatteryMedium, ChevronRight } from 'lucide-react'
 import { DeviceActionsPanel } from '@/features/devices/components/DeviceActionsPanel'
 import { useDeviceByNumber } from '@/features/devices/hooks/use-device-by-number-query'
+import {
+  formatDeviceEnrollTime,
+  formatDeviceTimestamp,
+  resolveLauncherVersion,
+  resolvePublicIp,
+} from '@/features/devices/utils/device-detail-formatters'
 import { resolveDeviceOnlineStatusCode } from '@/features/devices/utils/device-online-status'
 import { usePeriodicNow } from '@/shared/hooks/use-periodic-now'
+import { AndroidIcon } from '@/components/icons/android-icon'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,7 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { DeviceView } from '@/shared/api/types/device'
 import { cn } from '@/lib/utils'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 
 const STATUS_BADGE: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   green: 'default',
@@ -24,11 +31,6 @@ const STATUS_BADGE: Record<string, 'default' | 'secondary' | 'destructive' | 'ou
 }
 
 const NA = 'N/A'
-
-function formatTimestamp(ms?: number): string {
-  if (!ms) return '—'
-  return new Date(ms).toLocaleString()
-}
 
 function deviceTitle(device: DeviceView): string {
   return device.description ?? device.hostname ?? device.number
@@ -43,6 +45,14 @@ function deviceIdentifier(device: DeviceView): string {
 function formatDefaultLauncher(value?: boolean): string {
   if (value == null) return NA
   return value ? 'Yes' : 'No'
+}
+
+function BatteryLevelIcon({ level }: { level: number }) {
+  const className = 'size-4 shrink-0 text-green-500'
+  if (level >= 80) return <BatteryFull className={className} aria-hidden="true" />
+  if (level >= 40) return <BatteryMedium className={className} aria-hidden="true" />
+  if (level >= 15) return <Battery className={className} aria-hidden="true" />
+  return <BatteryLow className={className} aria-hidden="true" />
 }
 
 interface DeviceDetailPageProps {
@@ -86,8 +96,9 @@ export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
 
   const androidVersion = device.androidVersion ?? device.info?.androidVersion
   const batteryLevel = device.info?.batteryLevel
-  const launcherVersion = device.launcherVersion
+  const launcherVersion = resolveLauncherVersion(device)
   const defaultLauncher = device.info?.defaultLauncher
+  const publicIp = resolvePublicIp(device)
   const onlineStatus = resolveDeviceOnlineStatusCode(device, now)
   const showLocalUsers = device.platform === 'windows'
   const tabValue = !showLocalUsers && activeTab === 'users' ? 'software' : activeTab
@@ -123,7 +134,7 @@ export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
           label={t('deviceDetail.metrics.model')}
           value={device.model ?? device.info?.model ?? NA}
         />
-        <MetricCard label={t('deviceDetail.metrics.lastOnline')} value={formatTimestamp(device.lastUpdate)} />
+        <MetricCard label={t('deviceDetail.metrics.lastOnline')} value={formatDeviceTimestamp(device.lastUpdate)} />
         <MetricCard
           label={t('deviceDetail.metrics.serial')}
           value={device.serial ?? device.info?.serial ?? NA}
@@ -185,10 +196,12 @@ export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
             <MetricCard
               label={t('devices.columns.androidVersion')}
               value={androidVersion ?? NA}
+              icon={androidVersion ? <AndroidIcon className="text-green-500" /> : undefined}
             />
             <MetricCard
               label={t('devices.columns.battery')}
               value={batteryLevel != null ? `${batteryLevel}%` : NA}
+              icon={batteryLevel != null ? <BatteryLevelIcon level={batteryLevel} /> : undefined}
             />
             <MetricCard
               label={t('devices.columns.launcherVersion')}
@@ -200,10 +213,10 @@ export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
             />
             <MetricCard
               label={t('deviceDetail.metrics.enrolled')}
-              value={formatTimestamp(device.enrollTime)}
+              value={formatDeviceEnrollTime(device.enrollTime)}
             />
             <MetricCard label={t('deviceDetail.metrics.phone')} value={device.phone ?? device.info?.phone ?? NA} />
-            <MetricCard label={t('deviceDetail.metrics.publicIp')} value={device.publicIp ?? NA} mono />
+            <MetricCard label={t('deviceDetail.metrics.publicIp')} value={publicIp ?? NA} mono />
           </>
         )}
       </div>
@@ -339,10 +352,12 @@ function MetricCard({
   label,
   value,
   mono,
+  icon,
 }: {
   label: string
   value: string
   mono?: boolean
+  icon?: ReactNode
 }) {
   return (
     <Card>
@@ -350,7 +365,10 @@ function MetricCard({
         <CardTitle className="text-xs font-medium text-muted-foreground">{label}</CardTitle>
       </CardHeader>
       <CardContent className={cn('px-4 pb-3 pt-0 text-sm font-medium', mono && 'font-mono text-xs')}>
-        {value}
+        <div className="flex items-center gap-2">
+          {icon}
+          <span>{value}</span>
+        </div>
       </CardContent>
     </Card>
   )

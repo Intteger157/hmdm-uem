@@ -15,6 +15,10 @@ import type {
   SelectOption,
 } from '@/shared/api/types/device'
 import type { InstalledSoftware } from '@/shared/api/types/device-detail'
+import {
+  resolveLauncherVersion,
+  resolvePublicIp,
+} from '@/features/devices/utils/device-detail-formatters'
 
 function normalizeConfigurationsMap(
   raw: DeviceListView['configurations'],
@@ -85,6 +89,8 @@ function normalizeDeviceView(raw: DeviceView): DeviceView {
     kioskMode: raw.kioskMode ?? info?.kioskMode,
     serialNumber: raw.serialNumber ?? raw.serial ?? info?.serial,
     model: raw.model ?? info?.model,
+    launcherVersion: resolveLauncherVersion(raw),
+    publicIp: resolvePublicIp(raw),
     installedSoftware,
   }
 }

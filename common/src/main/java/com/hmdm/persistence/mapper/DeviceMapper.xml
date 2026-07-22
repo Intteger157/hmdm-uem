@@ -26,13 +26,27 @@
     <sql id="deviceWithGroupsSelect">
         SELECT devices.id AS deviceId, devices.number, devices.description, devices.lastUpdate,
                devices.configurationId, devices.info, devices.imei, devices.phone, devices.customerId,
-               devices.custom1, devices.custom2, devices.custom3, devices.oldNumber,
+               devices.enrollTime, devices.publicIp,
+               (devices.infojson ->> 'mdmMode')::BOOLEAN AS mdmMode,
+               (devices.infojson ->> 'kioskMode')::BOOLEAN AS kioskMode,
+               devices.infojson ->> 'androidVersion' AS androidVersion,
+               devices.infojson ->> 'serial' AS serial,
+               devices.custom1, devices.custom2, devices.custom3, devices.oldNumber, devices.fastSearch,
                groups.id AS groupId, groups.name AS groupName,
-               configurations.name as configName
+               configurations.name as configName,
+               applications.pkg AS launcherPkg,
+               applicationVersions.version AS launcherVersion,
+               CASE
+                   WHEN (EXTRACT(EPOCH FROM NOW()) * 1000 - devices.lastupdate) &lt; (20 * 60 * 1000) THEN 'green'
+                   WHEN (EXTRACT(EPOCH FROM NOW()) * 1000 - devices.lastupdate) &lt; (2 * 3600 * 1000) THEN 'yellow'
+                   ELSE 'red'
+               END AS statusCode
         FROM devices
                  LEFT JOIN configurations ON devices.configurationId = configurations.id
                  LEFT JOIN deviceGroups ON devices.id = deviceGroups.deviceId
                  LEFT JOIN groups ON deviceGroups.groupId = groups.id
+                 LEFT JOIN applicationVersions ON configurations.mainAppId = applicationVersions.id
+                 LEFT JOIN applications ON applications.id = applicationVersions.applicationid
     </sql>
     
     <resultMap id="deviceResult" type="Device">

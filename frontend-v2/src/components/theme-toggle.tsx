@@ -20,36 +20,22 @@ export function ThemeIconToggle({ className }: { className?: string }) {
       : theme
     : 'light'
 
+  const isDark = activeTheme === 'dark'
+
+  const handleToggle = () => {
+    setTheme(isDark ? 'light' : 'dark')
+  }
+
   return (
-    <div className={cn('flex items-center gap-0.5', className)}>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        aria-label={t('theme.light')}
-        aria-pressed={activeTheme === 'light'}
-        className={cn(
-          'text-muted-foreground',
-          activeTheme === 'light' && 'bg-muted text-foreground',
-        )}
-        onClick={() => setTheme('light')}
-      >
-        <Sun />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        aria-label={t('theme.dark')}
-        aria-pressed={activeTheme === 'dark'}
-        className={cn(
-          'text-muted-foreground',
-          activeTheme === 'dark' && 'bg-muted text-foreground',
-        )}
-        onClick={() => setTheme('dark')}
-      >
-        <Moon />
-      </Button>
-    </div>
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon-sm"
+      aria-label={isDark ? t('theme.light') : t('theme.dark')}
+      className={cn('text-muted-foreground hover:text-foreground', className)}
+      onClick={handleToggle}
+    >
+      {isDark ? <Sun /> : <Moon />}
+    </Button>
   )
 }
