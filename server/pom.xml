@@ -29,11 +29,6 @@
     <version>0.1.0</version>
     <name>MDM Server</name>
 
-    <properties>
-        <!-- Committed Docker/Linux defaults; override locally with -Plocal and server/build.properties -->
-        <build.properties.file>build.properties.docker</build.properties.file>
-    </properties>
-
     <parent>
         <groupId>com.hmdm</groupId>
         <artifactId>root</artifactId>
@@ -139,7 +134,7 @@
                         <configuration>
                             <outputDirectory>${basedir}/target</outputDirectory>
                             <filters>
-                                <filter>${build.properties.file}</filter>
+                                <filter>build.properties.docker</filter>
                             </filters>
                             <resources>
                                 <resource>
@@ -271,14 +266,5 @@
             </plugin>
         </plugins>
     </build>
-
-    <profiles>
-        <profile>
-            <id>local</id>
-            <properties>
-                <build.properties.file>build.properties</build.properties.file>
-            </properties>
-        </profile>
-    </profiles>
 
 </project>

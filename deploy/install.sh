@@ -84,40 +84,11 @@ fi
 mkdir -p "${WEBAPPS_DIR}" "${DEPLOY_DIR}/volumes/work" "${DEPLOY_DIR}/volumes/hmdm-config" "${DEPLOY_DIR}/volumes/db"
 
 ensure_build_properties() {
-  local props="${ROOT_DIR}/server/build.properties"
   local docker_template="${ROOT_DIR}/server/build.properties.docker"
-  local example="${ROOT_DIR}/server/build.properties.example"
 
-  if [[ ! -f "${props}" ]]; then
-    if [[ -f "${docker_template}" ]]; then
-      log "Creating server/build.properties from build.properties.docker"
-      cp "${docker_template}" "${props}"
-    elif [[ -f "${example}" ]]; then
-      log "Creating server/build.properties from build.properties.example"
-      cp "${example}" "${props}"
-    else
-      die "Missing server/build.properties.docker or build.properties.example"
-    fi
+  if [[ ! -f "${docker_template}" ]]; then
+    die "Missing ${docker_template}. Run git pull to update the repository."
   fi
-
-  local sql_user sql_pass sql_base
-  sql_user="$(grep '^SQL_USER=' "${ENV_FILE}" | cut -d= -f2-)"
-  sql_pass="$(grep '^SQL_PASS=' "${ENV_FILE}" | cut -d= -f2-)"
-  sql_base="$(grep '^SQL_BASE=' "${ENV_FILE}" | cut -d= -f2-)"
-  sql_user="${sql_user:-hmdm}"
-  sql_pass="${sql_pass:-hmdm}"
-  sql_base="${sql_base:-hmdm}"
-
-  sed -i \
-    -e 's|^jdbc.url=.*|jdbc.url=jdbc:postgresql://postgresql:5432/'"${sql_base}"'|' \
-    -e 's|^jdbc.username=.*|jdbc.username='"${sql_user}"'|' \
-    -e 's|^jdbc.password=.*|jdbc.password='"${sql_pass}"'|' \
-    -e 's|^base.directory=.*|base.directory=/opt/hmdm|' \
-    -e 's|^files.directory=.*|files.directory=/opt/hmdm/files|' \
-    -e 's|^plugins.files.directory=.*|plugins.files.directory=/opt/hmdm/plugins|' \
-    -e 's|^initialization.completion.signal.file=.*|initialization.completion.signal.file=/opt/hmdm/initialized.txt|' \
-    -e 's|^base.url=.*|base.url=http://localhost:'"${GATEWAY_PORT:-8080}"'|' \
-    "${props}"
 }
 
 GATEWAY_PORT="$(grep '^GATEWAY_PORT=' "${ENV_FILE}" | cut -d= -f2-)"
