@@ -34,6 +34,8 @@ import {
   SidebarMenuSubItem,
   SidebarSeparator,
 } from '@/components/ui/sidebar'
+import { AndroidIcon } from '@/components/icons/android-icon'
+import { WindowsIcon } from '@/components/icons/windows-icon'
 
 function useNavState() {
   const pathname = useRouterState({ select: (state) => state.location.pathname })
@@ -114,6 +116,7 @@ export function AppSidebar() {
                           />
                         }
                       >
+                        <AndroidIcon />
                         <span>{t('nav.devicesAndroid')}</span>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
@@ -128,6 +131,7 @@ export function AppSidebar() {
                           />
                         }
                       >
+                        <WindowsIcon />
                         <span>{t('nav.devicesWindows')}</span>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
