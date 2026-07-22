@@ -159,7 +159,7 @@ export function ApplicationConfigurationsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-5xl">
         <DialogHeader>
           <DialogTitle>{t('applications.configurations.title')}</DialogTitle>
           <DialogDescription>{t('applications.configurations.description')}</DialogDescription>
