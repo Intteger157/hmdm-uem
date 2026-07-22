@@ -28,14 +28,11 @@ export function AndroidIcon({ className, ...props }: IconProps) {
   )
 }
 
-/** Windows logo — perspective via pane offsets, axis-aligned for crisp 16px render. */
+/** Classic Windows logo — perspective panes (path, not rects). */
 export function WindowsIcon({ className, ...props }: IconProps) {
   return (
     <BrandSvg className={className} {...props}>
-      <rect x="2" y="4" width="9" height="8" />
-      <rect x="13" y="3" width="9" height="9" />
-      <rect x="2" y="13" width="9" height="8" />
-      <rect x="13" y="12" width="9" height="9" />
+      <path d="M0 3.449 9.75 2.1v9.451H0V3.449zm10.949-1.349L24 0v11.4H10.949V2.1zM0 12.6h9.75v9.451L0 20.699V12.6zm10.949 0H24V24l-13.051-1.351V12.6z" />
     </BrandSvg>
   )
 }
