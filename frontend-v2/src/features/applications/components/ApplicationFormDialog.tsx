@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   saveAndroidApplicationRequest,
@@ -26,6 +26,8 @@ interface ApplicationFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   closeOnSave?: boolean
+  /** When adding a version to an existing application. */
+  parentApplication?: Application
   /** Applications list page — app repository saved. */
   onSavedApplication?: (app: Application, createdNewVersion: boolean) => void
   /** Configuration editor — assign to configuration. */
@@ -46,6 +48,7 @@ export function ApplicationFormDialog({
   open,
   onOpenChange,
   closeOnSave = true,
+  parentApplication,
   onSavedApplication,
   onSavedForConfiguration,
 }: ApplicationFormDialogProps) {
@@ -91,6 +94,34 @@ export function ApplicationFormDialog({
     }
     onOpenChange(nextOpen)
   }
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    if (parentApplication) {
+      setApplication({
+        ...emptyApplication(),
+        name: parentApplication.name,
+        pkg: parentApplication.pkg,
+        type: parentApplication.type ?? 'app',
+        system: parentApplication.system,
+        showIcon: parentApplication.showIcon,
+        runAfterInstall: parentApplication.runAfterInstall,
+        runAtBoot: parentApplication.runAtBoot,
+      })
+      setFilePath(undefined)
+      setFileName(undefined)
+      setFileSelected(false)
+      setParsedPkg(undefined)
+      setParsedVersion(undefined)
+      setErrorMessage(undefined)
+      setWarning(undefined)
+      setSuccessHint(undefined)
+      setUploadComplete(false)
+    }
+  }, [open, parentApplication])
 
   const applyUploadResult = (
     details: ApkFileDetails,
@@ -200,14 +231,22 @@ export function ApplicationFormDialog({
     }
   }
 
-  const buildSaveRequest = (): Application => ({
-    ...application,
-    name: application.name.trim(),
-    pkg: application.pkg?.trim(),
-    version: application.version?.trim(),
-    type: 'app',
-    ...(filePath ? { filePath } : {}),
-  })
+  const buildSaveRequest = (): Application => {
+    const request: Application = {
+      ...application,
+      name: application.name.trim(),
+      pkg: application.pkg?.trim(),
+      version: application.version?.trim(),
+      type: 'app',
+      ...(filePath ? { filePath } : {}),
+    }
+
+    if (parentApplication) {
+      delete request.id
+    }
+
+    return request
+  }
 
   const handleSave = async () => {
     setErrorMessage(undefined)
@@ -277,8 +316,16 @@ export function ApplicationFormDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>{t('configurations.editor.newApplicationTitle')}</DialogTitle>
-          <DialogDescription>{t('configurations.editor.newApplicationDescription')}</DialogDescription>
+          <DialogTitle>
+            {parentApplication
+              ? t('applications.versions.addVersionTitle', { name: parentApplication.name })
+              : t('configurations.editor.newApplicationTitle')}
+          </DialogTitle>
+          <DialogDescription>
+            {parentApplication
+              ? t('applications.versions.addVersionDescription')
+              : t('configurations.editor.newApplicationDescription')}
+          </DialogDescription>
         </DialogHeader>
 
         {(uploadMessage || errorMessage) && (

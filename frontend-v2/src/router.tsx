@@ -12,6 +12,7 @@ import { DeviceDetailPage } from '@/features/devices/pages/DeviceDetailPage'
 import { ConfigurationsListPage } from '@/features/configurations/pages/ConfigurationsListPage'
 import { ConfigurationEditorPage } from '@/features/configurations/pages/ConfigurationEditorPage'
 import { ApplicationsListPage } from '@/features/applications/pages/ApplicationsListPage'
+import { ApplicationVersionsPage } from '@/features/applications/pages/ApplicationVersionsPage'
 import { GroupsListPage } from '@/features/groups/pages/GroupsListPage'
 import { UsersListPage } from '@/features/users/pages/UsersListPage'
 import { AppLayout } from '@/layouts/AppLayout'
@@ -103,6 +104,15 @@ const applicationsRoute = createRoute({
   component: ApplicationsListPage,
 })
 
+const applicationVersionsRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/applications/$applicationId',
+  component: function ApplicationVersionsRoute() {
+    const { applicationId } = applicationVersionsRoute.useParams()
+    return <ApplicationVersionsPage applicationId={Number(applicationId)} />
+  },
+})
+
 const filesRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/files',
@@ -151,6 +161,7 @@ const routeTree = rootRoute.addChildren([
     configurationsRoute,
     configurationEditorRoute,
     applicationsRoute,
+    applicationVersionsRoute,
     filesRoute,
     groupsRoute,
     usersRoute,

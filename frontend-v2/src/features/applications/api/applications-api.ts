@@ -48,8 +48,12 @@ export interface ApplicationVersion {
   url?: string
   urlArm64?: string
   urlArmeabi?: string
+  split?: boolean
   arch?: string
   filePath?: string
+  deletionProhibited?: boolean
+  system?: boolean
+  type?: string
 }
 
 export interface ApkFileDetails {
@@ -71,6 +75,11 @@ export interface FileUploadResult {
 
 export async function fetchApplications(): Promise<Application[]> {
   const response = await api.get<ApiResponse<Application[]>>('/private/applications/search')
+  return unwrapApiResponse(response.data)
+}
+
+export async function fetchApplicationById(id: number): Promise<Application> {
+  const response = await api.get<ApiResponse<Application>>(`/private/applications/${id}`)
   return unwrapApiResponse(response.data)
 }
 
@@ -135,6 +144,13 @@ export async function upsertApplicationVersion(
 
 export async function deleteApplication(id: number): Promise<void> {
   const response = await api.delete<ApiResponse<unknown>>(`/private/applications/${id}`)
+  unwrapApiResponse(response.data)
+}
+
+export async function deleteApplicationVersion(versionId: number): Promise<void> {
+  const response = await api.delete<ApiResponse<unknown>>(
+    `/private/applications/versions/${versionId}`
+  )
   unwrapApiResponse(response.data)
 }
 

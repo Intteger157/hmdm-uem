@@ -1,6 +1,7 @@
+import { Link } from '@tanstack/react-router'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Trash2 } from 'lucide-react'
+import { Layers, Plus, Trash2 } from 'lucide-react'
 import { ApplicationFormDialog } from '@/features/applications/components/ApplicationFormDialog'
 import {
   useApplicationsQuery,
@@ -171,9 +172,33 @@ export function ApplicationsListPage() {
                         key={application.id}
                         className="border-b last:border-b-0 hover:bg-muted/30"
                       >
-                        <td className="px-4 py-3 font-medium">{application.name}</td>
+                        <td className="px-4 py-3 font-medium">
+                          {application.id != null ? (
+                            <Link
+                              to="/applications/$applicationId"
+                              params={{ applicationId: String(application.id) }}
+                              className="text-primary underline-offset-4 hover:underline"
+                            >
+                              {application.name}
+                            </Link>
+                          ) : (
+                            application.name
+                          )}
+                        </td>
                         <td className="px-4 py-3 font-mono text-xs">{application.pkg ?? '—'}</td>
-                        <td className="px-4 py-3">{application.version ?? '—'}</td>
+                        <td className="px-4 py-3">
+                        {application.id != null ? (
+                          <Link
+                            to="/applications/$applicationId"
+                            params={{ applicationId: String(application.id) }}
+                            className="text-primary underline-offset-4 hover:underline"
+                          >
+                            {application.version ?? '—'}
+                          </Link>
+                        ) : (
+                          application.version ?? '—'
+                        )}
+                      </td>
                         <td className="px-4 py-3">
                           {application.system ? (
                             <Badge variant="secondary">{t('applications.badges.system')}</Badge>
@@ -184,7 +209,23 @@ export function ApplicationsListPage() {
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex items-center justify-end">
+                          <div className="flex items-center justify-end gap-1">
+                            {application.id != null && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-xs"
+                                title={t('applications.versions.open')}
+                                render={
+                                  <Link
+                                    to="/applications/$applicationId"
+                                    params={{ applicationId: String(application.id) }}
+                                  />
+                                }
+                              >
+                                <Layers className="size-3.5" />
+                              </Button>
+                            )}
                             {manageable ? (
                               <Button
                                 type="button"

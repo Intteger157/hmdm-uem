@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   deleteApplication,
+  deleteApplicationVersion,
+  fetchApplicationById,
+  fetchApplicationVersions,
   fetchApplications,
   upsertAndroidApplication,
 } from '@/features/applications/api/applications-api'
@@ -9,12 +12,30 @@ import type { Application } from '@/features/applications/api/applications-api'
 export const applicationQueryKeys = {
   all: ['applications'] as const,
   list: () => [...applicationQueryKeys.all, 'list'] as const,
+  detail: (id: number) => [...applicationQueryKeys.all, 'detail', id] as const,
+  versions: (id: number) => [...applicationQueryKeys.all, 'versions', id] as const,
 }
 
 export function useApplicationsQuery() {
   return useQuery({
     queryKey: applicationQueryKeys.list(),
     queryFn: fetchApplications,
+  })
+}
+
+export function useApplicationQuery(id: number | undefined) {
+  return useQuery({
+    queryKey: applicationQueryKeys.detail(id ?? 0),
+    queryFn: () => fetchApplicationById(id!),
+    enabled: id != null && id > 0,
+  })
+}
+
+export function useApplicationVersionsQuery(applicationId: number | undefined) {
+  return useQuery({
+    queryKey: applicationQueryKeys.versions(applicationId ?? 0),
+    queryFn: () => fetchApplicationVersions(applicationId!),
+    enabled: applicationId != null && applicationId > 0,
   })
 }
 
@@ -36,6 +57,20 @@ export function useDeleteApplicationMutation() {
     mutationFn: (id: number) => deleteApplication(id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: applicationQueryKeys.all })
+    },
+  })
+}
+
+export function useDeleteApplicationVersionMutation(applicationId: number) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (versionId: number) => deleteApplicationVersion(versionId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: applicationQueryKeys.all })
+      await queryClient.invalidateQueries({
+        queryKey: applicationQueryKeys.versions(applicationId),
+      })
     },
   })
 }
