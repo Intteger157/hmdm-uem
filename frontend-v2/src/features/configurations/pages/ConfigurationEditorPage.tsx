@@ -2,33 +2,23 @@ import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft } from 'lucide-react'
+import { ConfigurationApplicationsTab } from '@/features/configurations/components/editor/ConfigurationApplicationsTab'
+import { ConfigurationCommonTab } from '@/features/configurations/components/editor/ConfigurationCommonTab'
+import { ConfigurationDesignTab } from '@/features/configurations/components/editor/ConfigurationDesignTab'
+import { ConfigurationFilesTab } from '@/features/configurations/components/editor/ConfigurationFilesTab'
+import { ConfigurationMdmTab } from '@/features/configurations/components/editor/ConfigurationMdmTab'
 import {
   useConfigurationQuery,
   useUpsertConfigurationMutation,
 } from '@/features/configurations/hooks/use-configurations'
+import type { Configuration } from '@/features/configurations/types/configuration'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 
 interface ConfigurationEditorPageProps {
   configId: number
-}
-
-function PlaceholderTab({ messageKey }: { messageKey: string }) {
-  const { t } = useTranslation()
-
-  return (
-    <Card>
-      <CardContent className="p-8 text-center text-sm text-muted-foreground">
-        {t(messageKey)}
-      </CardContent>
-    </Card>
-  )
 }
 
 export function ConfigurationEditorPage({ configId }: ConfigurationEditorPageProps) {
@@ -36,29 +26,28 @@ export function ConfigurationEditorPage({ configId }: ConfigurationEditorPagePro
   const { data: configuration, isLoading, error } = useConfigurationQuery(configId)
   const upsertMutation = useUpsertConfigurationMutation()
 
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [password, setPassword] = useState('')
+  const [draft, setDraft] = useState<Configuration | null>(null)
 
   useEffect(() => {
     if (configuration) {
-      setName(configuration.name ?? '')
-      setDescription(configuration.description ?? '')
-      setPassword(typeof configuration.password === 'string' ? configuration.password : '')
+      setDraft(structuredClone(configuration))
     }
   }, [configuration])
 
+  const handleChange = (patch: Partial<Configuration>) => {
+    setDraft((prev) => (prev ? { ...prev, ...patch } : prev))
+  }
+
   const handleSave = async () => {
-    if (!configuration || !name.trim()) {
+    if (!draft?.name.trim()) {
       return
     }
 
     try {
       await upsertMutation.mutateAsync({
-        ...configuration,
-        name: name.trim(),
-        description: description.trim() || undefined,
-        password: password || undefined,
+        ...draft,
+        name: draft.name.trim(),
+        description: draft.description?.trim() || undefined,
       })
       toast.success(t('configurations.editor.saved'))
     } catch {
@@ -75,7 +64,7 @@ export function ConfigurationEditorPage({ configId }: ConfigurationEditorPagePro
     )
   }
 
-  if (error != null || !configuration) {
+  if (error != null || !configuration || !draft) {
     return (
       <div className="rounded-lg border border-destructive/40 bg-card p-8 text-center">
         <p className="text-sm text-destructive">{t('common.loadError')}</p>
@@ -94,13 +83,13 @@ export function ConfigurationEditorPage({ configId }: ConfigurationEditorPagePro
             <ArrowLeft className="size-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">{configuration.name}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">{draft.name}</h1>
             <p className="text-sm text-muted-foreground">{t('configurations.editor.subtitle')}</p>
           </div>
         </div>
         <Button
           type="button"
-          disabled={upsertMutation.isPending || !name.trim()}
+          disabled={upsertMutation.isPending || !draft.name.trim()}
           onClick={() => void handleSave()}
         >
           {upsertMutation.isPending ? t('common.saving') : t('common.save')}
@@ -108,7 +97,7 @@ export function ConfigurationEditorPage({ configId }: ConfigurationEditorPagePro
       </div>
 
       <Tabs defaultValue="common">
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="common">{t('configurations.editor.tabs.common')}</TabsTrigger>
           <TabsTrigger value="design">{t('configurations.editor.tabs.design')}</TabsTrigger>
           <TabsTrigger value="applications">
@@ -119,63 +108,19 @@ export function ConfigurationEditorPage({ configId }: ConfigurationEditorPagePro
         </TabsList>
 
         <TabsContent value="common">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('configurations.editor.commonTitle')}</CardTitle>
-              <CardDescription>{t('configurations.editor.commonDescription')}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="config-name">{t('configurations.editor.fields.name')}</Label>
-                <Input
-                  id="config-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  autoComplete="off"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="config-description">
-                  {t('configurations.editor.fields.description')}
-                </Label>
-                <Textarea
-                  id="config-description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={3}
-                  className="resize-none"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="config-password">
-                  {t('configurations.editor.fields.password')}
-                </Label>
-                <Input
-                  id="config-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="off"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>{t('configurations.editor.fields.qrCodeKey')}</Label>
-                <Input value={configuration.qrCodeKey ?? '—'} readOnly disabled />
-              </div>
-            </CardContent>
-          </Card>
+          <ConfigurationCommonTab draft={draft} onChange={handleChange} />
         </TabsContent>
-
         <TabsContent value="design">
-          <PlaceholderTab messageKey="configurations.editor.placeholder" />
+          <ConfigurationDesignTab draft={draft} onChange={handleChange} />
         </TabsContent>
         <TabsContent value="applications">
-          <PlaceholderTab messageKey="configurations.editor.placeholder" />
+          <ConfigurationApplicationsTab draft={draft} onChange={handleChange} />
         </TabsContent>
         <TabsContent value="mdm">
-          <PlaceholderTab messageKey="configurations.editor.placeholder" />
+          <ConfigurationMdmTab draft={draft} onChange={handleChange} />
         </TabsContent>
         <TabsContent value="files">
-          <PlaceholderTab messageKey="configurations.editor.placeholder" />
+          <ConfigurationFilesTab draft={draft} />
         </TabsContent>
       </Tabs>
     </div>

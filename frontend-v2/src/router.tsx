@@ -16,6 +16,7 @@ import { GroupsListPage } from '@/features/groups/pages/GroupsListPage'
 import { UsersListPage } from '@/features/users/pages/UsersListPage'
 import { AppLayout } from '@/layouts/AppLayout'
 import { AuthLayout } from '@/layouts/AuthLayout'
+import { FilesListPage } from '@/features/files/pages/FilesListPage'
 import { ComingSoonPage } from '@/shared/pages/ComingSoonPage'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { isPlatform } from '@/shared/api/types/platform'
@@ -105,7 +106,7 @@ const applicationsRoute = createRoute({
 const filesRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/files',
-  component: () => <ComingSoonPage titleKey="nav.files" />,
+  component: FilesListPage,
 })
 
 const groupsRoute = createRoute({
