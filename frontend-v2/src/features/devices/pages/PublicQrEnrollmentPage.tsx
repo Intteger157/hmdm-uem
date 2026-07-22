@@ -111,8 +111,8 @@ export function PublicQrEnrollmentPage({
           </p>
         </div>
 
-        <Card className="w-full border-slate-200/80 shadow-lg shadow-slate-200/60">
-          <CardHeader className="space-y-3 border-b bg-slate-50/80 pb-4">
+        <Card className="w-full gap-0 overflow-hidden border-slate-200/80 py-0 shadow-lg shadow-slate-200/60">
+          <CardHeader className="space-y-3 rounded-none border-b border-slate-200 bg-slate-50 px-6 pb-4 pt-5">
             <div className="flex items-start gap-3">
               <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-slate-700 shadow-sm ring-1 ring-slate-200">
                 <Smartphone className="size-4" />
@@ -130,7 +130,7 @@ export function PublicQrEnrollmentPage({
             </div>
           </CardHeader>
 
-          <CardContent className="space-y-6 pt-6">
+          <CardContent className="space-y-6 px-6 pb-6 pt-6">
             <div className="flex justify-center">
               {!imageError ? (
                 <div className="rounded-2xl border bg-white p-4 shadow-sm">
