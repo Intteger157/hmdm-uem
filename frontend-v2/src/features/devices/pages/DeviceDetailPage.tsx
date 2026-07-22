@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress, ProgressLabel, ProgressValue } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import type { Platform } from '@/shared/api/types/platform'
 import type { DeviceView } from '@/shared/api/types/device'
 import { cn } from '@/lib/utils'
 import { useState, type ReactNode } from 'react'
@@ -46,12 +47,13 @@ function deviceIdentifier(device: DeviceView): string {
 
 interface DeviceDetailPageProps {
   deviceNumber: string
+  platform?: Platform
 }
 
-export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
+export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceDetailPageProps) {
   const { t } = useTranslation()
   const now = usePeriodicNow()
-  const { data: device, isLoading, error } = useDeviceByNumber(deviceNumber)
+  const { data: device, isLoading, error } = useDeviceByNumber(deviceNumber, platform)
   const [activeTab, setActiveTab] = useState('software')
 
   if (isLoading) {
@@ -67,7 +69,7 @@ export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
         <CardContent>
           <Link
             to="/devices"
-            search={{ platform: 'android' }}
+            search={{ platform }}
             className={buttonVariants({ variant: 'outline' })}
           >
             <ArrowLeft className="mr-2 size-4" />

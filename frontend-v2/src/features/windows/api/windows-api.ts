@@ -82,3 +82,21 @@ export async function searchWindowsDevices(params: DeviceSearchParams): Promise<
   const response = await windowsApi.get<WindowsDeviceListDto>(`/devices?${query.toString()}`)
   return toDeviceListView(response.data)
 }
+
+/** Fetches one Windows agent by hardware ID (UUID). */
+export async function getWindowsDeviceByHardwareId(hardwareId: string): Promise<DeviceView> {
+  if (isMockApiEnabled()) {
+    const list = await mockSearchDevices({ platform: 'windows', pageNum: 1, pageSize: 100 })
+    const device = list.devices.items.find(
+      (item) => item.number === hardwareId || String(item.id) === hardwareId,
+    )
+    if (!device) {
+      throw new Error('Device not found')
+    }
+    return device
+  }
+
+  const encoded = encodeURIComponent(hardwareId)
+  const response = await windowsApi.get<WindowsDeviceDto>(`/devices/${encoded}`)
+  return mapWindowsDeviceToView(response.data)
+}

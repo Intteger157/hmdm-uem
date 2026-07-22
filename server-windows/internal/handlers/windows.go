@@ -166,6 +166,29 @@ func (h *WindowsHandler) ListDevices(c *gin.Context) {
 	})
 }
 
+// GetDevice returns a single Windows agent by hardware ID (UUID from the agent).
+func (h *WindowsHandler) GetDevice(c *gin.Context) {
+	hardwareID := strings.TrimSpace(c.Param("hardwareId"))
+	if hardwareID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing hardware id"})
+		return
+	}
+
+	var device models.WindowsDevice
+	if err := db.DB.Where("hardware_id = ?", hardwareID).First(&device).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "device not found"})
+			return
+		}
+
+		log.Printf("[get-device] lookup failed: hardware_id=%q err=%v", hardwareID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup device"})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.ToWindowsDeviceJSON(device))
+}
+
 func parsePositiveInt(raw string, fallback int) int {
 	value, err := strconv.Atoi(raw)
 	if err != nil || value < 1 {

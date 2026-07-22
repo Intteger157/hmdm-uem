@@ -82,9 +82,15 @@ const devicesRoute = createRoute({
 const deviceDetailRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/devices/$deviceNumber',
+  validateSearch: (search: Record<string, unknown>) => ({
+    platform: isPlatform(search.platform as string | undefined)
+      ? (search.platform as 'android' | 'windows')
+      : 'android',
+  }),
   component: function DeviceDetailRoute() {
     const { deviceNumber } = deviceDetailRoute.useParams()
-    return <DeviceDetailPage deviceNumber={deviceNumber} />
+    const { platform } = deviceDetailRoute.useSearch()
+    return <DeviceDetailPage deviceNumber={deviceNumber} platform={platform} />
   },
 })
 

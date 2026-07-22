@@ -37,6 +37,7 @@ func main() {
 		windows := rest.Group("/windows")
 		{
 			windows.GET("/devices", windowsHandler.ListDevices)
+			windows.GET("/devices/:hardwareId", windowsHandler.GetDevice)
 			windows.POST("/enroll", windowsHandler.Enroll)
 			windows.POST("/inventory", windowsHandler.Inventory)
 		}

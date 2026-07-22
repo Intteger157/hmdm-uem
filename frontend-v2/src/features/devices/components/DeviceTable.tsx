@@ -328,6 +328,7 @@ function AndroidDeviceRow({
         <Link
           to="/devices/$deviceNumber"
           params={{ deviceNumber: device.number }}
+          search={{ platform: 'android' }}
           className="text-primary hover:underline"
         >
           {device.number}
@@ -412,6 +413,7 @@ function WindowsDeviceRow({
         <Link
           to="/devices/$deviceNumber"
           params={{ deviceNumber: device.number }}
+          search={{ platform: 'windows' }}
           className="text-primary hover:underline"
         >
           {device.hostname ?? device.number}
