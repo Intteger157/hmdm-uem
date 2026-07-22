@@ -23,19 +23,27 @@ type Config struct {
 	HardwareID      string
 }
 
-// LoadConfig reads agent settings from the registry with CLI fallbacks for debugging.
-func LoadConfig(cliEnrollmentToken string) Config {
+// DebugOverrides supplies CLI values used when registry keys are missing (debug mode).
+type DebugOverrides struct {
+	ServerURL       string
+	EnrollmentToken string
+}
+
+// LoadConfig reads agent settings from the registry with optional CLI fallbacks for debugging.
+func LoadConfig(overrides DebugOverrides) Config {
 	cfg := Config{
 		ServerURL: defaultServerURL,
 	}
 
 	if serverURL := readRegistryString(registryServerURL); serverURL != "" {
 		cfg.ServerURL = serverURL
+	} else if overrides.ServerURL != "" {
+		cfg.ServerURL = overrides.ServerURL
 	}
 
 	cfg.EnrollmentToken = readRegistryString(registryEnrollmentToken)
 	if cfg.EnrollmentToken == "" {
-		cfg.EnrollmentToken = cliEnrollmentToken
+		cfg.EnrollmentToken = overrides.EnrollmentToken
 	}
 
 	cfg.AuthToken = readRegistryString(registryAuthToken)

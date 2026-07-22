@@ -24,6 +24,7 @@ const (
 
 var (
 	debugMode       = flag.Bool("debug", false, "run in console mode for debugging")
+	serverURL       = flag.String("server", "", "MDM server URL for debug when registry value is empty (e.g. https://mdm.example.com)")
 	enrollmentToken = flag.String("token", "", "enrollment token for debug when registry value is empty")
 )
 
@@ -36,7 +37,11 @@ func main() {
 }
 
 func run() error {
-	cfg := config.LoadConfig(*enrollmentToken)
+	cfg := config.LoadConfig(config.DebugOverrides{
+		ServerURL:       *serverURL,
+		EnrollmentToken: *enrollmentToken,
+	})
+	log.Printf("using server URL: %s", cfg.ServerURL)
 	apiClient := api.NewAPIClient(cfg)
 
 	inService, err := svc.IsWindowsService()
