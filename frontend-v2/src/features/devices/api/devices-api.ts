@@ -1,9 +1,11 @@
-import { api, publicApi } from '@/shared/api/client'
+import { API_BASE } from '@/shared/api/config'
+import { api } from '@/shared/api/client'
 import { isMockApiEnabled, mockNetworkDelay } from '@/shared/api/mock-utils'
 import { mockGetDeviceById, mockSearchDevices } from '@/shared/api/mocks/devices'
 import type { ApiResponse } from '@/shared/api/types/api-response'
 import { unwrapApiResponse } from '@/shared/api/types/api-response'
 import type {
+  ConfigurationView,
   DeviceListView,
   DeviceSearchParams,
   DeviceSearchRequest,
@@ -13,6 +15,33 @@ import type {
   SelectOption,
 } from '@/shared/api/types/device'
 import type { InstalledSoftware } from '@/shared/api/types/device-detail'
+
+function normalizeConfigurationsMap(
+  raw: DeviceListView['configurations'],
+): Record<string, ConfigurationView> {
+  const normalized: Record<string, ConfigurationView> = {}
+
+  for (const [key, configuration] of Object.entries(raw ?? {})) {
+    if (configuration == null) {
+      continue
+    }
+    normalized[String(key)] = configuration
+    normalized[String(configuration.id)] = configuration
+  }
+
+  return normalized
+}
+
+function resolveConfigurationView(
+  configurations: DeviceListView['configurations'],
+  configurationId: number,
+): ConfigurationView | undefined {
+  const map = normalizeConfigurationsMap(configurations)
+  return (
+    map[String(configurationId)] ??
+    Object.values(map).find((configuration) => configuration.id === configurationId)
+  )
+}
 
 function normalizeDeviceListView(raw: DeviceListView): DeviceListView {
   const items = raw.devices.items.map(
@@ -24,6 +53,7 @@ function normalizeDeviceListView(raw: DeviceListView): DeviceListView {
 
   return {
     ...raw,
+    configurations: normalizeConfigurationsMap(raw.configurations),
     devices: {
       ...raw.devices,
       items,
@@ -112,14 +142,14 @@ export function getConfigurationName(
   configurations: DeviceListView['configurations'],
   configurationId: number,
 ): string {
-  return configurations[String(configurationId)]?.name ?? `#${configurationId}`
+  return resolveConfigurationView(configurations, configurationId)?.name ?? `#${configurationId}`
 }
 
 export function getConfigurationQrCodeKey(
   configurations: DeviceListView['configurations'],
   configurationId: number,
 ): string | undefined {
-  return configurations[String(configurationId)]?.qrCodeKey
+  return resolveConfigurationView(configurations, configurationId)?.qrCodeKey
 }
 
 function toSelectOption(id: number, name: string): SelectOption {
@@ -196,16 +226,31 @@ export async function fetchDeviceQrCodeBlob(
     return new Blob([bytes], { type: 'image/png' })
   }
 
-  const response = await publicApi.get<Blob>(`/public/qr/${encodeURIComponent(qrCodeKey)}`, {
-    params: {
-      deviceId,
-      size,
+  const params = new URLSearchParams({
+    deviceId,
+    size: String(size),
+  })
+  const url = `${API_BASE}/public/qr/${encodeURIComponent(qrCodeKey)}?${params.toString()}`
+
+  const response = await fetch(url, {
+    method: 'GET',
+    credentials: 'same-origin',
+    headers: {
+      Accept: 'image/png,*/*',
     },
-    responseType: 'blob',
   })
 
-  const blob = response.data
-  if (!(blob instanceof Blob) || blob.size === 0) {
+  if (!response.ok) {
+    throw new Error(`QR code request failed (${response.status})`)
+  }
+
+  const blob = await response.blob()
+  if (blob.size === 0) {
+    throw new Error('QR code image is empty')
+  }
+
+  const contentType = blob.type || response.headers.get('Content-Type') || ''
+  if (contentType.includes('json') || contentType.includes('html') || contentType.includes('text')) {
     throw new Error('QR code image is empty')
   }
 
@@ -216,8 +261,13 @@ export async function fetchDeviceQrCodeBlob(
 export function buildDeviceQrCodePublicUrl(
   qrCodeKey: string,
   deviceId: string,
-  origin = typeof window !== 'undefined' ? window.location.origin : '',
+  options?: { size?: number; origin?: string },
 ): string {
+  const origin =
+    options?.origin ?? (typeof window !== 'undefined' ? window.location.origin : '')
   const params = new URLSearchParams({ deviceId })
+  if (options?.size != null) {
+    params.set('size', String(options.size))
+  }
   return `${origin}/rest/public/qr/${encodeURIComponent(qrCodeKey)}?${params.toString()}`
 }

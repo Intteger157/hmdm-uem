@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AlertCircle, Copy, Loader2 } from 'lucide-react'
-import {
-  buildDeviceQrCodePublicUrl,
-} from '@/features/devices/api/devices-api'
-import { useDeviceQrCode } from '@/features/devices/hooks/use-device-qr-code'
+import { buildDeviceQrCodePublicUrl } from '@/features/devices/api/devices-api'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -22,6 +19,8 @@ interface DeviceQrDialogProps {
   deviceNumber: string
   qrCodeKey?: string
 }
+
+type QrImageState = 'idle' | 'loading' | 'loaded' | 'error'
 
 function QrCallout({ message }: { message: string }) {
   return (
@@ -44,25 +43,34 @@ export function DeviceQrDialog({
   const { t } = useTranslation()
   const hasQrCodeKey = qrCodeKey != null && qrCodeKey.length > 0
 
-  const { data: blob, isLoading, isError } = useDeviceQrCode(qrCodeKey, deviceNumber, open)
+  const imageUrl = hasQrCodeKey
+    ? buildDeviceQrCodePublicUrl(qrCodeKey, deviceNumber, { size: 280 })
+    : undefined
 
-  const [objectUrl, setObjectUrl] = useState<string | null>(null)
+  const [imageState, setImageState] = useState<QrImageState>('idle')
 
   useEffect(() => {
-    if (!blob) {
-      setObjectUrl(null)
-      return undefined
+    if (!open || !imageUrl) {
+      setImageState('idle')
+      return
     }
 
-    const url = URL.createObjectURL(blob)
-    setObjectUrl(url)
+    setImageState('loading')
+
+    const probe = new Image()
+    probe.onload = () => {
+      setImageState(probe.naturalWidth > 0 ? 'loaded' : 'error')
+    }
+    probe.onerror = () => {
+      setImageState('error')
+    }
+    probe.src = imageUrl
 
     return () => {
-      URL.revokeObjectURL(url)
+      probe.onload = null
+      probe.onerror = null
     }
-  }, [blob])
-
-  const showQrImage = hasQrCodeKey && !isLoading && !isError && objectUrl != null
+  }, [open, imageUrl])
 
   const handleCopyLink = async () => {
     if (!qrCodeKey) {
@@ -70,7 +78,7 @@ export function DeviceQrDialog({
     }
 
     try {
-      const url = buildDeviceQrCodePublicUrl(qrCodeKey, deviceNumber)
+      const url = buildDeviceQrCodePublicUrl(qrCodeKey, deviceNumber, { size: 280 })
       await navigator.clipboard.writeText(url)
       toast.success(t('devices.qr.linkCopied'))
     } catch {
@@ -90,7 +98,7 @@ export function DeviceQrDialog({
 
         {!hasQrCodeKey ? (
           <QrCallout message={t('devices.qr.loadError')} />
-        ) : isLoading ? (
+        ) : imageState === 'loading' ? (
           <div className="flex flex-col items-center gap-3 py-2">
             <Skeleton className="size-64 rounded-lg" />
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -98,21 +106,27 @@ export function DeviceQrDialog({
               {t('devices.qr.loading')}
             </div>
           </div>
-        ) : isError || !objectUrl ? (
-          <QrCallout message={t('devices.qr.loadError')} />
-        ) : (
-          <div className="flex flex-col items-center gap-3 py-2">
-            <img
-              src={objectUrl}
-              alt={t('devices.qr.alt', { number: deviceNumber })}
-              className="size-64 rounded-lg border bg-white object-contain p-2"
-            />
-            {showQrImage && (
+        ) : imageState === 'error' ? (
+          <div className="space-y-3">
+            <QrCallout message={t('devices.qr.loadError')} />
+            <div className="flex justify-center">
               <Button type="button" variant="outline" size="sm" onClick={() => void handleCopyLink()}>
                 <Copy className="size-4" />
                 {t('devices.qr.copyLink')}
               </Button>
-            )}
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-3 py-2">
+            <img
+              src={imageUrl}
+              alt={t('devices.qr.alt', { number: deviceNumber })}
+              className="size-64 rounded-lg border bg-white object-contain p-2"
+            />
+            <Button type="button" variant="outline" size="sm" onClick={() => void handleCopyLink()}>
+              <Copy className="size-4" />
+              {t('devices.qr.copyLink')}
+            </Button>
           </div>
         )}
       </DialogContent>
