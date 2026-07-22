@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
+import { Moon, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
-type ThemeOption = 'light' | 'dark' | 'system'
-
-export function ThemeToggle() {
+export function ThemeIconToggle({ className }: { className?: string }) {
   const { t } = useTranslation()
   const { theme, setTheme, resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
@@ -13,29 +14,42 @@ export function ThemeToggle() {
     setMounted(true)
   }, [])
 
-  const value: ThemeOption =
-    theme === 'light' || theme === 'dark' || theme === 'system' ? theme : 'system'
+  const activeTheme = mounted
+    ? theme === 'system' || !theme
+      ? resolvedTheme
+      : theme
+    : 'light'
 
   return (
-    <div className="space-y-2">
-      <label className="block text-xs font-medium text-muted-foreground" htmlFor="theme-select">
-        {t('nav.theme')}
-      </label>
-      <select
-        id="theme-select"
-        className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-        value={mounted ? value : 'system'}
-        onChange={(event) => setTheme(event.target.value as ThemeOption)}
+    <div className={cn('flex items-center gap-0.5', className)}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        aria-label={t('theme.light')}
+        aria-pressed={activeTheme === 'light'}
+        className={cn(
+          'text-muted-foreground',
+          activeTheme === 'light' && 'bg-muted text-foreground',
+        )}
+        onClick={() => setTheme('light')}
       >
-        <option value="light">{t('theme.light')}</option>
-        <option value="dark">{t('theme.dark')}</option>
-        <option value="system">{t('theme.system')}</option>
-      </select>
-      {mounted && value === 'system' && (
-        <p className="text-xs text-muted-foreground">
-          {resolvedTheme === 'dark' ? t('theme.usingDark') : t('theme.usingLight')}
-        </p>
-      )}
+        <Sun />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        aria-label={t('theme.dark')}
+        aria-pressed={activeTheme === 'dark'}
+        className={cn(
+          'text-muted-foreground',
+          activeTheme === 'dark' && 'bg-muted text-foreground',
+        )}
+        onClick={() => setTheme('dark')}
+      >
+        <Moon />
+      </Button>
     </div>
   )
 }

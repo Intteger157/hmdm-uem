@@ -89,6 +89,8 @@ export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
   const launcherVersion = device.launcherVersion
   const defaultLauncher = device.info?.defaultLauncher
   const onlineStatus = resolveDeviceOnlineStatusCode(device, now)
+  const showLocalUsers = device.platform === 'windows'
+  const tabValue = !showLocalUsers && activeTab === 'users' ? 'software' : activeTab
 
   return (
     <div className="space-y-4">
@@ -206,10 +208,12 @@ export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
         )}
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={tabValue} onValueChange={setActiveTab}>
         <TabsList variant="line">
           <TabsTrigger value="software">{t('deviceDetail.tabs.software')}</TabsTrigger>
-          <TabsTrigger value="users">{t('deviceDetail.tabs.users')}</TabsTrigger>
+          {showLocalUsers ? (
+            <TabsTrigger value="users">{t('deviceDetail.tabs.users')}</TabsTrigger>
+          ) : null}
           <TabsTrigger value="actions">{t('deviceDetail.tabs.actions')}</TabsTrigger>
         </TabsList>
 
@@ -249,51 +253,53 @@ export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
           </Card>
         </TabsContent>
 
-        <TabsContent value="users" className="mt-4">
-          <Card>
-            <CardContent className="p-0">
-              <table className="w-full text-left text-sm">
-                <thead className="border-b bg-muted/40 text-muted-foreground">
-                  <tr>
-                    <th className="px-4 py-2.5 font-medium">{t('deviceDetail.users.username')}</th>
-                    <th className="px-4 py-2.5 font-medium">{t('deviceDetail.users.admin')}</th>
-                    <th className="px-4 py-2.5 font-medium">{t('deviceDetail.users.status')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(device.localUsers ?? []).map((user) => (
-                    <tr key={user.username} className="border-b last:border-0">
-                      <td className="px-4 py-2.5 font-mono text-xs">{user.username}</td>
-                      <td className="px-4 py-2.5">
-                        {user.isAdmin ? t('deviceDetail.users.yes') : t('deviceDetail.users.no')}
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <Badge
-                          variant={
-                            user.status === 'active'
-                              ? 'default'
-                              : user.status === 'locked'
-                                ? 'destructive'
-                                : 'secondary'
-                          }
-                        >
-                          {user.status}
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))}
-                  {(device.localUsers ?? []).length === 0 && (
+        {showLocalUsers ? (
+          <TabsContent value="users" className="mt-4">
+            <Card>
+              <CardContent className="p-0">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b bg-muted/40 text-muted-foreground">
                     <tr>
-                      <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
-                        {t('deviceDetail.users.empty')}
-                      </td>
+                      <th className="px-4 py-2.5 font-medium">{t('deviceDetail.users.username')}</th>
+                      <th className="px-4 py-2.5 font-medium">{t('deviceDetail.users.admin')}</th>
+                      <th className="px-4 py-2.5 font-medium">{t('deviceDetail.users.status')}</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                  </thead>
+                  <tbody>
+                    {(device.localUsers ?? []).map((user) => (
+                      <tr key={user.username} className="border-b last:border-0">
+                        <td className="px-4 py-2.5 font-mono text-xs">{user.username}</td>
+                        <td className="px-4 py-2.5">
+                          {user.isAdmin ? t('deviceDetail.users.yes') : t('deviceDetail.users.no')}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <Badge
+                            variant={
+                              user.status === 'active'
+                                ? 'default'
+                                : user.status === 'locked'
+                                  ? 'destructive'
+                                  : 'secondary'
+                            }
+                          >
+                            {user.status}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                    {(device.localUsers ?? []).length === 0 && (
+                      <tr>
+                        <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
+                          {t('deviceDetail.users.empty')}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        ) : null}
 
         <TabsContent value="actions" className="mt-4">
           <DeviceActionsPanel device={device} platform={device.platform} />

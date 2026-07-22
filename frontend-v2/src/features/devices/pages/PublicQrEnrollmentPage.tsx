@@ -9,6 +9,7 @@ import {
 import { BoolField } from '@/shared/components/BoolField'
 import { FormSelect } from '@/shared/components/FormSelect'
 import { copyTextToClipboard } from '@/shared/lib/copy-to-clipboard'
+import { useForceLightTheme } from '@/shared/hooks/use-force-light-theme'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -30,6 +31,7 @@ export function PublicQrEnrollmentPage({
 }: PublicQrEnrollmentPageProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  useForceLightTheme()
 
   const [deviceNumber, setDeviceNumber] = useState(initialDeviceId)
   const [useId, setUseId] = useState('')

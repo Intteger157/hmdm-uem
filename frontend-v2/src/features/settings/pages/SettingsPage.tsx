@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { setAppLanguage } from '@/shared/lib/i18n'
 import {
   DEVICE_COLUMN_FIELDS,
   type Settings,
@@ -23,7 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 
 export function SettingsPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { data: settings, isLoading } = useSettingsQuery()
   const rolesQuery = useUserRolesQuery()
   const designMutation = useUpdateDesignSettingsMutation()
@@ -182,15 +183,35 @@ export function SettingsPage() {
         <TabsContent value="language">
           <Card>
             <CardHeader><CardTitle>{t('settings.tabs.language')}</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <BoolField id="use-default-language" label={t('settings.language.useDefault')} checked={draft.useDefaultLanguage === true} onCheckedChange={(checked) => setDraft({ ...draft, useDefaultLanguage: checked })} />
-              <FormSelect id="settings-language" label={t('settings.language.label')} value={draft.language ?? 'en_US'} disabled={draft.useDefaultLanguage === true} onChange={(v) => setDraft({ ...draft, language: v })} options={[
-                { value: 'en_US', label: 'English' },
-                { value: 'ru_RU', label: 'Русский' },
-              ]} />
-              <Button type="button" onClick={() => void handleSaveMiscLang()} disabled={miscLangMutation.isPending}>
-                {t('common.save')}
-              </Button>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="settings-console-language">{t('settings.language.consoleLabel')}</Label>
+                <p className="text-xs text-muted-foreground">{t('settings.language.consoleHint')}</p>
+                <select
+                  id="settings-console-language"
+                  className="w-full max-w-xs rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+                  value={i18n.language.startsWith('ru') ? 'ru' : 'en'}
+                  onChange={(e) => setAppLanguage(e.target.value as 'en' | 'ru')}
+                >
+                  <option value="en">{t('language.en')}</option>
+                  <option value="ru">{t('language.ru')}</option>
+                </select>
+              </div>
+
+              <div className="space-y-4 border-t border-border pt-6">
+                <div>
+                  <p className="text-sm font-medium">{t('settings.language.deviceDefault')}</p>
+                  <p className="text-xs text-muted-foreground">{t('settings.language.deviceDefaultHint')}</p>
+                </div>
+                <BoolField id="use-default-language" label={t('settings.language.useDefault')} checked={draft.useDefaultLanguage === true} onCheckedChange={(checked) => setDraft({ ...draft, useDefaultLanguage: checked })} />
+                <FormSelect id="settings-language" label={t('settings.language.label')} value={draft.language ?? 'en_US'} disabled={draft.useDefaultLanguage === true} onChange={(v) => setDraft({ ...draft, language: v })} options={[
+                  { value: 'en_US', label: 'English' },
+                  { value: 'ru_RU', label: 'Русский' },
+                ]} />
+                <Button type="button" onClick={() => void handleSaveMiscLang()} disabled={miscLangMutation.isPending}>
+                  {t('common.save')}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
