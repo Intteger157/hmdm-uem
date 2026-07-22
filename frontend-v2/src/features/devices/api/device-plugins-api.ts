@@ -46,9 +46,11 @@ export interface DeviceLocationView {
 }
 
 export interface DeviceResetStatus {
-  locked?: boolean
+  lock?: boolean
   lockMessage?: string
-  pendingAction?: string
+  factoryReset?: boolean
+  reboot?: boolean
+  passwordReset?: string
 }
 
 export async function fetchDeviceApplicationSettings(deviceId: number): Promise<ApplicationSetting[]> {
@@ -139,6 +141,17 @@ export async function requestDeviceLock(deviceId: number, lockMessage?: string):
 export async function requestDeviceUnlock(deviceId: number): Promise<void> {
   const response = await api.put<ApiResponse<unknown>>('/plugins/devicereset/private/unlock', {
     deviceId,
+  })
+  unwrapApiResponse(response.data)
+}
+
+export async function requestDevicePasswordReset(
+  deviceId: number,
+  password: string,
+): Promise<void> {
+  const response = await api.put<ApiResponse<unknown>>('/plugins/devicereset/private/password', {
+    deviceId,
+    password,
   })
   unwrapApiResponse(response.data)
 }
