@@ -108,9 +108,8 @@ export async function fetchDeviceInventory(deviceNumber: string): Promise<Device
 }
 
 export async function requestDeviceInventoryScan(deviceNumber: string): Promise<void> {
-  const response = await api.post<ApiResponse<unknown>>(
+  const response = await api.get<ApiResponse<unknown>>(
     `/plugins/deviceinventory/private/scan/${encodeURIComponent(deviceNumber)}`,
-    {},
   )
   unwrapApiResponse(response.data)
 }
