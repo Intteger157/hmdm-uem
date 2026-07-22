@@ -1,6 +1,11 @@
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
-import { getConfigurationName } from '@/features/devices/api/devices-api'
+import { Pencil, QrCode, Trash2 } from 'lucide-react'
+import {
+  getConfigurationName,
+  getConfigurationQrCodeKey,
+} from '@/features/devices/api/devices-api'
+import { Button } from '@/components/ui/button'
 import type { DeviceListView, DeviceView } from '@/shared/api/types/device'
 import type { Platform } from '@/shared/api/types/platform'
 import { cn } from '@/lib/utils'
@@ -36,11 +41,22 @@ interface DeviceTableProps {
   data: DeviceListView
   platform: Platform
   isLoading?: boolean
+  onEditDevice?: (device: DeviceView) => void
+  onQrDevice?: (device: DeviceView) => void
+  onDeleteDevice?: (device: DeviceView) => void
 }
 
-export function DeviceTable({ data, platform, isLoading }: DeviceTableProps) {
+export function DeviceTable({
+  data,
+  platform,
+  isLoading,
+  onEditDevice,
+  onQrDevice,
+  onDeleteDevice,
+}: DeviceTableProps) {
   const { t } = useTranslation()
   const devices = data.devices.items
+  const showActions = platform === 'android' && onEditDevice != null
 
   if (isLoading && devices.length === 0) {
     return (
@@ -102,6 +118,9 @@ export function DeviceTable({ data, platform, isLoading }: DeviceTableProps) {
             <th className="px-4 py-3 font-medium">{t('devices.columns.launcherVersion')}</th>
             <th className="px-4 py-3 font-medium">{t('devices.columns.lastUpdate')}</th>
             <th className="px-4 py-3 font-medium">{t('devices.columns.imei')}</th>
+            {showActions && (
+              <th className="px-4 py-3 font-medium text-right">{t('devices.columns.actions')}</th>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -110,6 +129,10 @@ export function DeviceTable({ data, platform, isLoading }: DeviceTableProps) {
               key={device.id}
               device={device}
               configurations={data.configurations}
+              showActions={showActions}
+              onEditDevice={onEditDevice}
+              onQrDevice={onQrDevice}
+              onDeleteDevice={onDeleteDevice}
             />
           ))}
         </tbody>
@@ -128,12 +151,71 @@ function StatusDot({ statusCode }: { statusCode?: string }) {
   )
 }
 
-function AndroidDeviceRow({
+function DeviceRowActions({
   device,
   configurations,
+  onEditDevice,
+  onQrDevice,
+  onDeleteDevice,
 }: {
   device: DeviceView
   configurations: DeviceListView['configurations']
+  onEditDevice?: (device: DeviceView) => void
+  onQrDevice?: (device: DeviceView) => void
+  onDeleteDevice?: (device: DeviceView) => void
+}) {
+  const { t } = useTranslation()
+  const qrCodeKey = getConfigurationQrCodeKey(configurations, device.configurationId)
+
+  return (
+    <div className="flex items-center justify-end gap-0.5">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-xs"
+        title={t('devices.actions.edit')}
+        onClick={() => onEditDevice?.(device)}
+      >
+        <Pencil className="size-3.5" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-xs"
+        title={t('devices.actions.qr')}
+        disabled={!qrCodeKey}
+        onClick={() => onQrDevice?.(device)}
+      >
+        <QrCode className="size-3.5" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-xs"
+        title={t('devices.actions.delete')}
+        className="text-destructive hover:text-destructive"
+        onClick={() => onDeleteDevice?.(device)}
+      >
+        <Trash2 className="size-3.5" />
+      </Button>
+    </div>
+  )
+}
+
+function AndroidDeviceRow({
+  device,
+  configurations,
+  showActions,
+  onEditDevice,
+  onQrDevice,
+  onDeleteDevice,
+}: {
+  device: DeviceView
+  configurations: DeviceListView['configurations']
+  showActions: boolean
+  onEditDevice?: (device: DeviceView) => void
+  onQrDevice?: (device: DeviceView) => void
+  onDeleteDevice?: (device: DeviceView) => void
 }) {
   const battery = device.info?.batteryLevel
 
@@ -174,6 +256,17 @@ function AndroidDeviceRow({
       <td className="px-4 py-3">{device.launcherVersion ?? '—'}</td>
       <td className="px-4 py-3 whitespace-nowrap">{formatTimestamp(device.lastUpdate)}</td>
       <td className="px-4 py-3 font-mono text-xs">{device.imei ?? device.info?.imei ?? '—'}</td>
+      {showActions && (
+        <td className="px-4 py-3">
+          <DeviceRowActions
+            device={device}
+            configurations={configurations}
+            onEditDevice={onEditDevice}
+            onQrDevice={onQrDevice}
+            onDeleteDevice={onDeleteDevice}
+          />
+        </td>
+      )}
     </tr>
   )
 }

@@ -73,6 +73,18 @@ export interface DeviceView {
 export interface ConfigurationView {
   id: number
   name: string
+  qrCodeKey?: string
+  baseUrl?: string
+}
+
+export interface DeviceUpsertPayload {
+  id?: number
+  number: string
+  description?: string
+  configurationId: number
+  groups?: LookupItem[]
+  imei?: string
+  phone?: string
 }
 
 export interface PaginatedData<T> {

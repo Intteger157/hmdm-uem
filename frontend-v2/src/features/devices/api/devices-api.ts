@@ -1,5 +1,6 @@
+import { API_BASE } from '@/shared/api/config'
 import { api } from '@/shared/api/client'
-import { isMockApiEnabled } from '@/shared/api/mock-utils'
+import { isMockApiEnabled, mockNetworkDelay } from '@/shared/api/mock-utils'
 import { mockGetDeviceById, mockSearchDevices } from '@/shared/api/mocks/devices'
 import type { ApiResponse } from '@/shared/api/types/api-response'
 import { unwrapApiResponse } from '@/shared/api/types/api-response'
@@ -7,7 +8,9 @@ import type {
   DeviceListView,
   DeviceSearchParams,
   DeviceSearchRequest,
+  DeviceUpsertPayload,
   DeviceView,
+  LookupItem,
 } from '@/shared/api/types/device'
 import type { InstalledSoftware } from '@/shared/api/types/device-detail'
 
@@ -110,4 +113,77 @@ export function getConfigurationName(
   configurationId: number,
 ): string {
   return configurations[String(configurationId)]?.name ?? `#${configurationId}`
+}
+
+export function getConfigurationQrCodeKey(
+  configurations: DeviceListView['configurations'],
+  configurationId: number,
+): string | undefined {
+  return configurations[String(configurationId)]?.qrCodeKey
+}
+
+export async function fetchConfigurationOptions(): Promise<LookupItem[]> {
+  if (isMockApiEnabled()) {
+    return Object.values(
+      (await mockSearchDevices({ platform: 'android', pageNum: 1, pageSize: 1 })).configurations,
+    ).map((c) => ({ id: c.id, name: c.name }))
+  }
+
+  const response = await api.get<ApiResponse<LookupItem[]>>('/private/configurations/list')
+  return unwrapApiResponse(response.data)
+}
+
+export async function fetchGroupOptions(): Promise<LookupItem[]> {
+  if (isMockApiEnabled()) {
+    await mockNetworkDelay()
+    return [
+      { id: 1, name: 'Retail' },
+      { id: 2, name: 'Sales' },
+      { id: 3, name: 'Warehouse' },
+    ]
+  }
+
+  const response = await api.get<ApiResponse<LookupItem[]>>('/private/groups/search')
+  return unwrapApiResponse(response.data).map((g) => ({
+    id: g.id,
+    name: g.name,
+  }))
+}
+
+export async function upsertDevice(payload: DeviceUpsertPayload): Promise<void> {
+  if (isMockApiEnabled()) {
+    await mockNetworkDelay()
+    return
+  }
+
+  const body: DeviceUpsertPayload = {
+    ...payload,
+    groups: payload.groups?.map((g) => ({ id: g.id, name: g.name ?? '' })),
+  }
+
+  const response = await api.put<ApiResponse<unknown>>('/private/devices', body)
+  unwrapApiResponse(response.data)
+}
+
+export async function deleteDevice(id: number): Promise<void> {
+  if (isMockApiEnabled()) {
+    await mockNetworkDelay()
+    return
+  }
+
+  const response = await api.delete<ApiResponse<unknown>>(`/private/devices/${id}`)
+  unwrapApiResponse(response.data)
+}
+
+/** Public QR PNG for device enrollment (same as legacy UI). */
+export function buildDeviceQrCodeImageUrl(
+  qrCodeKey: string,
+  deviceNumber: string,
+  size = 280,
+): string {
+  const params = new URLSearchParams({
+    size: String(size),
+    deviceId: deviceNumber,
+  })
+  return `${API_BASE}/public/qr/${encodeURIComponent(qrCodeKey)}?${params.toString()}`
 }

@@ -1,13 +1,19 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
+import { Plus } from 'lucide-react'
+import { DeviceDeleteDialog } from '@/features/devices/components/DeviceDeleteDialog'
+import { DeviceFormDialog } from '@/features/devices/components/DeviceFormDialog'
+import { DeviceQrDialog } from '@/features/devices/components/DeviceQrDialog'
 import { DeviceTable } from '@/features/devices/components/DeviceTable'
+import { getConfigurationQrCodeKey } from '@/features/devices/api/devices-api'
 import { useDevicesQuery } from '@/features/devices/hooks/use-devices-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { isMockApiEnabled } from '@/shared/api/mock-utils'
 import { isPlatform } from '@/shared/api/types/platform'
+import type { DeviceView } from '@/shared/api/types/device'
 
 const PAGE_SIZE = isMockApiEnabled() ? 5 : 50
 
@@ -23,6 +29,11 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
   const [pageNum, setPageNum] = useState(1)
   const [searchInput, setSearchInput] = useState('')
   const [searchValue, setSearchValue] = useState<string | undefined>()
+
+  const [formOpen, setFormOpen] = useState(false)
+  const [editingDevice, setEditingDevice] = useState<DeviceView | null>(null)
+  const [qrDevice, setQrDevice] = useState<DeviceView | null>(null)
+  const [deleteDevice, setDeleteDevice] = useState<DeviceView | null>(null)
 
   useEffect(() => {
     setPageNum(1)
@@ -50,6 +61,21 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
       search: { platform: next },
     })
   }
+
+  const openAdd = () => {
+    setEditingDevice(null)
+    setFormOpen(true)
+  }
+
+  const openEdit = (device: DeviceView) => {
+    setEditingDevice(device)
+    setFormOpen(true)
+  }
+
+  const qrCodeKey =
+    qrDevice && data
+      ? getConfigurationQrCodeKey(data.configurations, qrDevice.configurationId)
+      : undefined
 
   return (
     <div className="space-y-6">
@@ -80,16 +106,24 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
         </div>
       </div>
 
-      <form onSubmit={handleSearch} className="flex max-w-xl gap-2">
-        <Input
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          placeholder={t('devices.searchPlaceholder')}
-        />
-        <Button type="submit" variant="secondary">
-          {t('devices.search')}
-        </Button>
-      </form>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <form onSubmit={handleSearch} className="flex max-w-xl flex-1 gap-2">
+          <Input
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder={t('devices.searchPlaceholder')}
+          />
+          <Button type="submit" variant="secondary">
+            {t('devices.search')}
+          </Button>
+        </form>
+        {platform === 'android' && (
+          <Button type="button" onClick={openAdd}>
+            <Plus className="size-4" />
+            {t('devices.add')}
+          </Button>
+        )}
+      </div>
 
       {error && (
         <Card className="border-destructive/40">
@@ -111,6 +145,9 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
             data={data}
             platform={platform}
             isLoading={isLoading || isFetching}
+            onEditDevice={platform === 'android' ? openEdit : undefined}
+            onQrDevice={platform === 'android' ? setQrDevice : undefined}
+            onDeleteDevice={platform === 'android' ? setDeleteDevice : undefined}
           />
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -147,6 +184,33 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
           </div>
         </>
       )}
+
+      <DeviceFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        device={editingDevice}
+      />
+
+      <DeviceQrDialog
+        open={qrDevice != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setQrDevice(null)
+          }
+        }}
+        deviceNumber={qrDevice?.number ?? ''}
+        qrCodeKey={qrCodeKey}
+      />
+
+      <DeviceDeleteDialog
+        open={deleteDevice != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteDevice(null)
+          }
+        }}
+        device={deleteDevice}
+      />
     </div>
   )
 }

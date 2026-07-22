@@ -12,10 +12,10 @@ const hour = 3_600_000
 const day = 86_400_000
 
 export const MOCK_CONFIGURATIONS: Record<string, ConfigurationView> = {
-  '1': { id: 1, name: 'Warehouse Kiosk' },
-  '2': { id: 2, name: 'Field Sales' },
-  '3': { id: 3, name: 'Corporate Standard' },
-  '4': { id: 4, name: 'Windows Office' },
+  '1': { id: 1, name: 'Warehouse Kiosk', qrCodeKey: 'mock-qr-warehouse' },
+  '2': { id: 2, name: 'Field Sales', qrCodeKey: 'mock-qr-sales' },
+  '3': { id: 3, name: 'Corporate Standard', qrCodeKey: 'mock-qr-corp' },
+  '4': { id: 4, name: 'Windows Office', qrCodeKey: 'mock-qr-windows' },
 }
 
 const BASE_MOCK_DEVICES: DeviceView[] = [
