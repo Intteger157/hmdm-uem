@@ -38,10 +38,42 @@ export function WindowsIcon({ className, ...props }: IconProps) {
   )
 }
 
-export function BatteryStatusIcon({ className, ...props }: IconProps) {
+type BatteryLevelIconProps = IconProps & {
+  level: number
+}
+
+/** Vertical battery with fill level (0–100), similar to classic status-bar icon. */
+export function BatteryLevelIcon({ level, className, ...props }: BatteryLevelIconProps) {
+  const clamped = Math.max(0, Math.min(100, level))
+  const innerX = 8.25
+  const innerY = 7.25
+  const innerW = 7.5
+  const innerH = 13.5
+  const fillH = (clamped / 100) * innerH
+  const fillY = innerY + innerH - fillH
+
   return (
-    <BrandSvg className={className} {...props}>
-      <path d="M7 7h10a2 2 0 0 1 2 2v.25H19a1 1 0 0 1 0 2h-.25V15a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2zm0 2v8h10V9H7z" />
-    </BrandSvg>
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      shapeRendering="geometricPrecision"
+      className={cn('size-5 shrink-0', className)}
+      {...props}
+    >
+      <rect x="9.5" y="3.5" width="5" height="2" rx="0.75" className="fill-muted-foreground/70" />
+      <rect
+        x="6.75"
+        y="6"
+        width="10.5"
+        height="15"
+        rx="2"
+        className="fill-none stroke-muted-foreground"
+        strokeWidth="1.5"
+      />
+      <rect x={innerX} y={innerY} width={innerW} height={innerH} rx="1" className="fill-background" />
+      {fillH > 0 ? (
+        <rect x={innerX} y={fillY} width={innerW} height={fillH} rx="1" className="fill-[#3DDC84]" />
+      ) : null}
+    </svg>
   )
 }

@@ -11,15 +11,11 @@ import {
 } from '@/features/devices/utils/device-detail-formatters'
 import { resolveDeviceOnlineStatusCode } from '@/features/devices/utils/device-online-status'
 import { usePeriodicNow } from '@/shared/hooks/use-periodic-now'
-import {
-  ANDROID_BRAND_COLOR,
-  AndroidIcon,
-  BatteryStatusIcon,
-} from '@/components/icons/platform-icons'
+import { ANDROID_BRAND_COLOR, AndroidIcon, BatteryLevelIcon } from '@/components/icons/platform-icons'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Progress, ProgressIndicator, ProgressLabel, ProgressTrack, ProgressValue } from '@/components/ui/progress'
+import { Progress, ProgressLabel, ProgressValue } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { DeviceView } from '@/shared/api/types/device'
@@ -98,6 +94,9 @@ export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
   const onlineStatus = resolveDeviceOnlineStatusCode(device, now)
   const showLocalUsers = device.platform === 'windows'
   const tabValue = !showLocalUsers && activeTab === 'users' ? 'software' : activeTab
+  const title = deviceTitle(device)
+  const identifier = deviceIdentifier(device)
+  const showIdentifierSubtitle = identifier !== title
 
   return (
     <div className="space-y-4">
@@ -112,7 +111,7 @@ export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
       <div className="flex flex-col gap-4 border-b pb-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-xl font-semibold tracking-tight">{deviceTitle(device)}</h1>
+            <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
             <Badge variant={STATUS_BADGE[onlineStatus] ?? 'secondary'}>
               {t(`devices.status.${onlineStatus}`)}
             </Badge>
@@ -120,7 +119,9 @@ export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
             {device.kioskMode && <Badge variant="secondary">Kiosk</Badge>}
             {device.mdmMode && <Badge variant="secondary">MDM</Badge>}
           </div>
-          <p className="font-mono text-sm text-muted-foreground">{device.number}</p>
+          {showIdentifierSubtitle ? (
+            <p className="font-mono text-sm text-muted-foreground">{identifier}</p>
+          ) : null}
         </div>
       </div>
 
@@ -194,28 +195,13 @@ export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
               value={androidVersion ?? NA}
               icon={androidVersion ? <AndroidIcon className={ANDROID_BRAND_COLOR} /> : undefined}
             />
-            {batteryLevel != null ? (
-              <Card>
-                <CardHeader className="px-4 py-3 pb-1">
-                  <CardTitle className="text-xs font-medium text-muted-foreground">
-                    {t('devices.columns.battery')}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 px-4 pb-3 pt-0">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <BatteryStatusIcon className={ANDROID_BRAND_COLOR} />
-                    <span>{batteryLevel}%</span>
-                  </div>
-                  <Progress value={batteryLevel}>
-                    <ProgressTrack>
-                      <ProgressIndicator className="bg-[#3DDC84]" />
-                    </ProgressTrack>
-                  </Progress>
-                </CardContent>
-              </Card>
-            ) : (
-              <MetricCard label={t('devices.columns.battery')} value={NA} />
-            )}
+            <MetricCard
+              label={t('devices.columns.battery')}
+              value={batteryLevel != null ? `${batteryLevel}%` : NA}
+              icon={
+                batteryLevel != null ? <BatteryLevelIcon level={batteryLevel} /> : undefined
+              }
+            />
             <MetricCard
               label={t('devices.columns.launcherVersion')}
               value={launcherVersion ?? NA}
@@ -226,7 +212,11 @@ export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
             />
             <MetricCard
               label={t('deviceDetail.metrics.enrolled')}
-              value={formatDeviceEnrollTime(device.enrollTime)}
+              value={
+                device.enrollTime && device.enrollTime > 0
+                  ? formatDeviceEnrollTime(device.enrollTime)
+                  : t('devices.date.unknown')
+              }
             />
             <MetricCard label={t('deviceDetail.metrics.phone')} value={device.phone ?? device.info?.phone ?? NA} />
             <MetricCard label={t('deviceDetail.metrics.publicIp')} value={publicIp ?? NA} mono />
