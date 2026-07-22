@@ -22,6 +22,16 @@ read_env() {
 
 BASE_DOMAIN="$(read_env BASE_DOMAIN)"
 PROTOCOL="$(read_env PROTOCOL http)"
+PUBLIC_PROTOCOL="$(read_env PUBLIC_PROTOCOL)"
+
+if [[ -z "${PUBLIC_PROTOCOL}" ]]; then
+  if [[ "${PROTOCOL}" == "http" && -n "${BASE_DOMAIN}" && "${BASE_DOMAIN}" != "localhost" ]]; then
+    PUBLIC_PROTOCOL="https"
+  else
+    PUBLIC_PROTOCOL="${PROTOCOL}"
+  fi
+fi
+
 LOCAL_IP="$(read_env LOCAL_IP)"
 SQL_USER="$(read_env SQL_USER hmdm)"
 SQL_BASE="$(read_env SQL_BASE hmdm)"
@@ -31,7 +41,7 @@ if [[ -z "${BASE_DOMAIN}" ]]; then
   exit 1
 fi
 
-PUBLIC_BASE="${PROTOCOL}://${BASE_DOMAIN}"
+PUBLIC_BASE="${PUBLIC_PROTOCOL}://${BASE_DOMAIN}"
 
 echo "[sync-file-urls] Public base URL: ${PUBLIC_BASE}"
 
