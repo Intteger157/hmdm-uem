@@ -41,6 +41,8 @@ func NewCollector() *Collector {
 
 type win32BaseBoard struct {
 	SerialNumber string
+	Product      string
+	Manufacturer string
 }
 
 // GetHardwareID returns a stable machine identifier that survives reboots.

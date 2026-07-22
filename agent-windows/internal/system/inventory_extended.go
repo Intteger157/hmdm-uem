@@ -34,6 +34,16 @@ type win32BIOS struct {
 	SerialNumber string
 }
 
+type win32ComputerSystemProduct struct {
+	IdentifyingNumber string
+	Name              string
+	Vendor            string
+}
+
+type win32SystemEnclosure struct {
+	SerialNumber string
+}
+
 type win32UserAccount struct {
 	Name     string
 	Disabled bool
@@ -64,23 +74,107 @@ func collectExtendedInventory() (manufacturer, model, serialNumber, currentUser 
 
 func collectSystemProduct() (manufacturer, model string) {
 	var systems []win32ComputerSystem
-	if err := wmi.Query("SELECT Manufacturer, Model FROM Win32_ComputerSystem", &systems); err != nil {
-		return "", ""
+	if err := wmi.Query("SELECT Manufacturer, Model FROM Win32_ComputerSystem", &systems); err == nil && len(systems) > 0 {
+		manufacturer = strings.TrimSpace(systems[0].Manufacturer)
+		model = strings.TrimSpace(systems[0].Model)
 	}
-	if len(systems) == 0 {
-		return "", ""
+
+	if isGenericModel(model) {
+		var products []win32ComputerSystemProduct
+		if err := wmi.Query("SELECT Name, Vendor FROM Win32_ComputerSystemProduct", &products); err == nil && len(products) > 0 {
+			if name := strings.TrimSpace(products[0].Name); name != "" && !isGenericModel(name) {
+				model = name
+			}
+			if manufacturer == "" {
+				manufacturer = strings.TrimSpace(products[0].Vendor)
+			}
+		}
+
+		var boards []win32BaseBoard
+		if err := wmi.Query("SELECT Product, Manufacturer FROM Win32_BaseBoard", &boards); err == nil && len(boards) > 0 {
+			if product := strings.TrimSpace(boards[0].Product); product != "" && !isGenericModel(product) {
+				model = product
+			}
+			if manufacturer == "" {
+				manufacturer = strings.TrimSpace(boards[0].Manufacturer)
+			}
+		}
 	}
-	return strings.TrimSpace(systems[0].Manufacturer), strings.TrimSpace(systems[0].Model)
+
+	return manufacturer, model
+}
+
+func isGenericModel(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "", "system product name", "default string", "to be filled by o.e.m.", "product name":
+		return true
+	default:
+		return false
+	}
 }
 
 func collectSerialNumber() string {
+	candidates := []func() string{
+		collectSerialFromComputerSystemProduct,
+		collectSerialFromBaseBoard,
+		collectSerialFromSystemEnclosure,
+		collectSerialFromBIOS,
+	}
+
+	for _, source := range candidates {
+		if serial := source(); serial != "" {
+			return serial
+		}
+	}
+	return ""
+}
+
+func collectSerialFromComputerSystemProduct() string {
+	var products []win32ComputerSystemProduct
+	if err := wmi.Query("SELECT IdentifyingNumber FROM Win32_ComputerSystemProduct", &products); err != nil {
+		return ""
+	}
+	for _, product := range products {
+		if serial := normalizeSerial(product.IdentifyingNumber); serial != "" {
+			return serial
+		}
+	}
+	return ""
+}
+
+func collectSerialFromBaseBoard() string {
+	var boards []win32BaseBoard
+	if err := wmi.Query("SELECT SerialNumber FROM Win32_BaseBoard", &boards); err != nil {
+		return ""
+	}
+	for _, board := range boards {
+		if serial := normalizeSerial(board.SerialNumber); serial != "" {
+			return serial
+		}
+	}
+	return ""
+}
+
+func collectSerialFromSystemEnclosure() string {
+	var enclosures []win32SystemEnclosure
+	if err := wmi.Query("SELECT SerialNumber FROM Win32_SystemEnclosure", &enclosures); err != nil {
+		return ""
+	}
+	for _, enclosure := range enclosures {
+		if serial := normalizeSerial(enclosure.SerialNumber); serial != "" {
+			return serial
+		}
+	}
+	return ""
+}
+
+func collectSerialFromBIOS() string {
 	var biosEntries []win32BIOS
 	if err := wmi.Query("SELECT SerialNumber FROM Win32_BIOS", &biosEntries); err != nil {
 		return ""
 	}
 	for _, entry := range biosEntries {
-		serial := normalizeSerial(entry.SerialNumber)
-		if serial != "" {
+		if serial := normalizeSerial(entry.SerialNumber); serial != "" {
 			return serial
 		}
 	}
@@ -94,7 +188,7 @@ func normalizeSerial(raw string) string {
 	}
 	lower := strings.ToLower(serial)
 	switch lower {
-	case "to be filled by o.e.m.", "default string", "system serial number", "none", "0":
+	case "to be filled by o.e.m.", "default string", "system serial number", "none", "0", "0123456789", "123456789":
 		return ""
 	}
 	return serial
