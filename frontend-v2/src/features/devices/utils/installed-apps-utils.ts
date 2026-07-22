@@ -1,4 +1,46 @@
 import type { InstalledAppEntry } from '@/features/devices/api/device-plugins-api'
+import type { DeviceApplicationView } from '@/shared/api/types/device'
+
+export const INVENTORY_HELPER_PKG = 'com.hmdm.inventory'
+
+export function appsFromDeviceInfo(
+  applications?: DeviceApplicationView[],
+): InstalledAppEntry[] {
+  if (!applications?.length) {
+    return []
+  }
+
+  const seen = new Set<string>()
+  const result: InstalledAppEntry[] = []
+
+  for (const app of applications) {
+    const pkg = app.pkg?.trim()
+    if (!pkg) {
+      continue
+    }
+
+    const key = pkg.toLowerCase()
+    if (seen.has(key)) {
+      continue
+    }
+
+    seen.add(key)
+    result.push({
+      pkg,
+      name: app.name ?? pkg,
+      version: app.version,
+      system: false,
+    })
+  }
+
+  return sortInstalledApps(result)
+}
+
+export function hasInventoryHelperInstalled(applications?: DeviceApplicationView[]): boolean {
+  return appsFromDeviceInfo(applications).some(
+    (app) => app.pkg?.toLowerCase() === INVENTORY_HELPER_PKG,
+  )
+}
 
 export function sortInstalledApps(apps: InstalledAppEntry[]): InstalledAppEntry[] {
   return [...apps].sort((a, b) =>

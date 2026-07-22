@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
@@ -8,7 +8,9 @@ import {
   requestDeviceInventoryScan,
 } from '@/features/devices/api/device-plugins-api'
 import {
+  appsFromDeviceInfo,
   filterInstalledApps,
+  hasInventoryHelperInstalled,
   installedAppDisplayName,
 } from '@/features/devices/utils/installed-apps-utils'
 import type { DeviceView } from '@/shared/api/types/device'
@@ -29,6 +31,9 @@ interface DeviceInstalledAppsDialogProps {
   device?: DeviceView | null
 }
 
+const SCAN_POLL_INTERVAL_MS = 5000
+const SCAN_POLL_DURATION_MS = 120000
+
 function formatScanTime(value?: number): string {
   if (!value) {
     return '—'
@@ -44,10 +49,14 @@ export function DeviceInstalledAppsDialog({
   const { t } = useTranslation()
   const deviceNumber = device?.number
   const [filterText, setFilterText] = useState('')
+  const [awaitingScan, setAwaitingScan] = useState(false)
+  const pollStartedAtRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (open) {
       setFilterText('')
+      setAwaitingScan(false)
+      pollStartedAtRef.current = null
     }
   }, [open, deviceNumber])
 
@@ -64,18 +73,68 @@ export function DeviceInstalledAppsDialog({
     mutationFn: () => requestDeviceInventoryScan(deviceNumber!),
     onSuccess: () => {
       toast.success(t('devices.installedApps.scanRequested'))
+      setAwaitingScan(true)
+      pollStartedAtRef.current = Date.now()
       void inventoryQuery.refetch()
     },
     onError: () => toast.error(t('devices.installedApps.error')),
   })
 
   const inventoryApps = inventoryQuery.data?.applications ?? []
+  const syncApps = useMemo(
+    () => appsFromDeviceInfo(device?.info?.applications),
+    [device?.info?.applications],
+  )
+  const inventoryHelperInstalled = hasInventoryHelperInstalled(device?.info?.applications)
   const apps = useMemo(
     () => filterInstalledApps(inventoryApps, filterText),
     [inventoryApps, filterText],
   )
+  const partialApps = useMemo(() => {
+    if (inventoryApps.length > 0) {
+      return []
+    }
+
+    return filterInstalledApps(
+      syncApps.filter((app) => app.pkg !== 'com.hmdm.inventory'),
+      filterText,
+    )
+  }, [inventoryApps.length, syncApps, filterText])
+
   const hasInventoryScan =
     inventoryQuery.data?.lastUpdate != null && inventoryQuery.data.lastUpdate > 0
+  const showPartialLauncherApps = !hasInventoryScan && partialApps.length > 0
+
+  useEffect(() => {
+    if (!open || !awaitingScan || hasInventoryScan) {
+      if (hasInventoryScan) {
+        setAwaitingScan(false)
+      }
+      return
+    }
+
+    const startedAt = pollStartedAtRef.current ?? Date.now()
+    pollStartedAtRef.current = startedAt
+
+    const interval = window.setInterval(() => {
+      if (Date.now() - startedAt >= SCAN_POLL_DURATION_MS) {
+        setAwaitingScan(false)
+        return
+      }
+
+      void inventoryQuery.refetch()
+    }, SCAN_POLL_INTERVAL_MS)
+
+    return () => window.clearInterval(interval)
+  }, [awaitingScan, hasInventoryScan, inventoryQuery, open])
+
+  const hintKey = hasInventoryScan
+    ? null
+    : inventoryHelperInstalled
+      ? awaitingScan
+        ? 'devices.installedApps.waitingForScan'
+        : 'devices.installedApps.helperInstalledHint'
+      : 'devices.installedApps.inventoryHint'
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -157,49 +216,40 @@ export function DeviceInstalledAppsDialog({
           </div>
         ) : (
           <>
-            {!hasInventoryScan ? (
-              <p className="shrink-0 px-6 pt-4 text-sm text-muted-foreground">
-                {t('devices.installedApps.inventoryHint')}
+            {hintKey ? (
+              <p
+                className={
+                  awaitingScan
+                    ? 'shrink-0 px-6 pt-4 text-sm text-amber-700 dark:text-amber-300'
+                    : 'shrink-0 px-6 pt-4 text-sm text-muted-foreground'
+                }
+              >
+                {t(hintKey)}
               </p>
             ) : null}
 
             <div className="min-h-0 flex-1 overflow-auto px-6 py-4">
-              <table className="w-full min-w-[760px] text-left text-sm">
-                <thead className="sticky top-0 z-10 border-b bg-background">
-                  <tr className="text-muted-foreground">
-                    <th className="px-3 py-2 font-medium">{t('devices.installedApps.columns.name')}</th>
-                    <th className="px-3 py-2 font-medium">{t('devices.installedApps.columns.pkg')}</th>
-                    <th className="px-3 py-2 font-medium">{t('devices.installedApps.columns.version')}</th>
-                    <th className="w-24 px-3 py-2 font-medium">{t('devices.installedApps.columns.system')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {apps.map((app) => (
-                    <tr key={`${app.pkg}-${app.version ?? ''}`} className="border-b last:border-0">
-                      <td className="px-3 py-2">{installedAppDisplayName(app)}</td>
-                      <td className="px-3 py-2 font-mono text-xs">{app.pkg ?? '—'}</td>
-                      <td className="px-3 py-2">{app.version ?? '—'}</td>
-                      <td className="px-3 py-2 text-center text-muted-foreground">
-                        {app.system ? '✓' : ''}
-                      </td>
-                    </tr>
-                  ))}
-                  {apps.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="px-3 py-12 text-center text-muted-foreground">
-                        {filterText.trim()
-                          ? t('devices.installedApps.noSearchResults')
-                          : t('devices.installedApps.empty')}
-                      </td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
+              {apps.length > 0 ? (
+                <InstalledAppsTable apps={apps} t={t} />
+              ) : showPartialLauncherApps ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    {t('devices.installedApps.partialLauncherSection')}
+                  </p>
+                  <InstalledAppsTable apps={partialApps} t={t} />
+                </div>
+              ) : (
+                <InstalledAppsTable apps={apps} t={t} emptyMessage={t('devices.installedApps.empty')} />
+              )}
             </div>
 
-            <p className="shrink-0 border-t px-6 py-3 text-xs text-muted-foreground">
-              {t('devices.installedApps.inventoryFooterHint')}
-            </p>
+            {!hasInventoryScan ? (
+              <p className="shrink-0 border-t px-6 py-3 text-xs text-muted-foreground">
+                {inventoryHelperInstalled
+                  ? t('devices.installedApps.helperInstalledFooter')
+                  : t('devices.installedApps.inventoryFooterHint')}
+              </p>
+            ) : null}
           </>
         )}
 
@@ -210,5 +260,45 @@ export function DeviceInstalledAppsDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function InstalledAppsTable({
+  apps,
+  t,
+  emptyMessage,
+}: {
+  apps: ReturnType<typeof filterInstalledApps>
+  t: (key: string) => string
+  emptyMessage?: string
+}) {
+  return (
+    <table className="w-full min-w-[760px] text-left text-sm">
+      <thead className="sticky top-0 z-10 border-b bg-background">
+        <tr className="text-muted-foreground">
+          <th className="px-3 py-2 font-medium">{t('devices.installedApps.columns.name')}</th>
+          <th className="px-3 py-2 font-medium">{t('devices.installedApps.columns.pkg')}</th>
+          <th className="px-3 py-2 font-medium">{t('devices.installedApps.columns.version')}</th>
+          <th className="w-24 px-3 py-2 font-medium">{t('devices.installedApps.columns.system')}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {apps.map((app) => (
+          <tr key={`${app.pkg}-${app.version ?? ''}`} className="border-b last:border-0">
+            <td className="px-3 py-2">{installedAppDisplayName(app)}</td>
+            <td className="px-3 py-2 font-mono text-xs">{app.pkg ?? '—'}</td>
+            <td className="px-3 py-2">{app.version ?? '—'}</td>
+            <td className="px-3 py-2 text-center text-muted-foreground">{app.system ? '✓' : ''}</td>
+          </tr>
+        ))}
+        {apps.length === 0 && emptyMessage ? (
+          <tr>
+            <td colSpan={4} className="px-3 py-12 text-center text-muted-foreground">
+              {emptyMessage}
+            </td>
+          </tr>
+        ) : null}
+      </tbody>
+    </table>
   )
 }
