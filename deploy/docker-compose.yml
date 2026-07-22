@@ -39,11 +39,17 @@ services:
       DOWNLOAD_CREDENTIALS: ${DOWNLOAD_CREDENTIALS}
       HMDM_URL: ${HMDM_URL}
       CLIENT_VERSION: ${CLIENT_VERSION}
-      FORCE_RECONFIGURE: ${FORCE_RECONFIGURE}
+      FORCE_RECONFIGURE: ${FORCE_RECONFIGURE:-false}
     volumes:
       - ./volumes/work:/usr/local/tomcat/work
       - ./volumes/hmdm-config:/usr/local/tomcat/conf/Catalina/localhost
       - ./volumes/webapps:/usr/local/tomcat/webapps
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
 
   server-windows:
     build:
@@ -66,8 +72,10 @@ services:
     image: nginx:1.27-alpine
     restart: unless-stopped
     depends_on:
-      - hmdm
-      - server-windows
+      hmdm:
+        condition: service_healthy
+      server-windows:
+        condition: service_started
     ports:
       - "${GATEWAY_PORT:-8080}:80"
     volumes:

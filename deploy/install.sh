@@ -81,6 +81,33 @@ if [[ ! -f "${ENV_FILE}" ]]; then
   cp "${DEPLOY_DIR}/.env.example" "${ENV_FILE}"
 fi
 
+ensure_env_defaults() {
+  if ! grep -q '^HMDM_URL=.' "${ENV_FILE}"; then
+    log "Setting HMDM_URL in ${ENV_FILE} (required by hmdm container entrypoint)"
+    if grep -q '^HMDM_URL=' "${ENV_FILE}"; then
+      sed -i 's|^HMDM_URL=.*|HMDM_URL=https://h-mdm.com/files/hmdm-5.39.2-os.war|' "${ENV_FILE}"
+    else
+      printf '\nHMDM_URL=https://h-mdm.com/files/hmdm-5.39.2-os.war\n' >> "${ENV_FILE}"
+    fi
+  fi
+
+  if ! grep -q '^CLIENT_VERSION=.' "${ENV_FILE}"; then
+    log "Setting CLIENT_VERSION in ${ENV_FILE}"
+    if grep -q '^CLIENT_VERSION=' "${ENV_FILE}"; then
+      sed -i 's|^CLIENT_VERSION=.*|CLIENT_VERSION=6.36|' "${ENV_FILE}"
+    else
+      printf 'CLIENT_VERSION=6.36\n' >> "${ENV_FILE}"
+    fi
+  fi
+
+  if grep -q '^FORCE_RECONFIGURE=true' "${ENV_FILE}"; then
+    log "Setting FORCE_RECONFIGURE=false (custom ROOT.war is deployed by install.sh)"
+    sed -i 's|^FORCE_RECONFIGURE=.*|FORCE_RECONFIGURE=false|' "${ENV_FILE}"
+  fi
+}
+
+ensure_env_defaults
+
 mkdir -p "${WEBAPPS_DIR}" "${DEPLOY_DIR}/volumes/work" "${DEPLOY_DIR}/volumes/hmdm-config" "${DEPLOY_DIR}/volumes/db"
 
 ensure_build_properties() {
