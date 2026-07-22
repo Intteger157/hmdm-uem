@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AlertCircle, Loader2 } from 'lucide-react'
+import { AlertCircle, Copy, Loader2 } from 'lucide-react'
+import {
+  buildDeviceQrCodePublicUrl,
+} from '@/features/devices/api/devices-api'
 import { useDeviceQrCode } from '@/features/devices/hooks/use-device-qr-code'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -10,6 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
+import { toast } from 'sonner'
 
 interface DeviceQrDialogProps {
   open: boolean
@@ -57,6 +62,22 @@ export function DeviceQrDialog({
     }
   }, [blob])
 
+  const showQrImage = hasQrCodeKey && !isLoading && !isError && objectUrl != null
+
+  const handleCopyLink = async () => {
+    if (!qrCodeKey) {
+      return
+    }
+
+    try {
+      const url = buildDeviceQrCodePublicUrl(qrCodeKey, deviceNumber)
+      await navigator.clipboard.writeText(url)
+      toast.success(t('devices.qr.linkCopied'))
+    } catch {
+      toast.error(t('devices.qr.linkCopyError'))
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
@@ -68,7 +89,7 @@ export function DeviceQrDialog({
         </DialogHeader>
 
         {!hasQrCodeKey ? (
-          <QrCallout message={t('devices.qr.unavailable')} />
+          <QrCallout message={t('devices.qr.loadError')} />
         ) : isLoading ? (
           <div className="flex flex-col items-center gap-3 py-2">
             <Skeleton className="size-64 rounded-lg" />
@@ -80,12 +101,18 @@ export function DeviceQrDialog({
         ) : isError || !objectUrl ? (
           <QrCallout message={t('devices.qr.loadError')} />
         ) : (
-          <div className="flex justify-center py-2">
+          <div className="flex flex-col items-center gap-3 py-2">
             <img
               src={objectUrl}
               alt={t('devices.qr.alt', { number: deviceNumber })}
               className="size-64 rounded-lg border bg-white object-contain p-2"
             />
+            {showQrImage && (
+              <Button type="button" variant="outline" size="sm" onClick={() => void handleCopyLink()}>
+                <Copy className="size-4" />
+                {t('devices.qr.copyLink')}
+              </Button>
+            )}
           </div>
         )}
       </DialogContent>

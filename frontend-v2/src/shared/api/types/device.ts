@@ -6,6 +6,11 @@ export interface LookupItem {
   name: string
 }
 
+export interface SelectOption {
+  label: string
+  value: string
+}
+
 export type BitLockerStatus = 'on' | 'off' | 'unknown'
 export type PowerShellExecStatus = 'idle' | 'running' | 'failed'
 

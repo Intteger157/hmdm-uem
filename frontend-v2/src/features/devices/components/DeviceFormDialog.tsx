@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import type { DeviceView, LookupItem } from '@/shared/api/types/device'
+import type { DeviceView, SelectOption } from '@/shared/api/types/device'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -48,7 +48,7 @@ interface DeviceFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   device?: DeviceView | null
-  groupOptions?: LookupItem[]
+  groupOptions?: SelectOption[]
 }
 
 export function DeviceFormDialog({
@@ -98,7 +98,7 @@ export function DeviceFormDialog({
         groupIds: device.groups?.map((g) => g.id) ?? [],
       })
     } else {
-      const defaultConfigId = configurationsQuery.data?.[0]?.id ?? 0
+      const defaultConfigId = Number(configurationsQuery.data?.[0]?.value ?? 0)
       form.reset({
         number: '',
         description: '',
@@ -111,8 +111,9 @@ export function DeviceFormDialog({
   const onSubmit = async (values: DeviceFormValues) => {
     try {
       const groups = values.groupIds
-        .map((id) => groupOptions.find((g) => g.id === id))
-        .filter((g): g is LookupItem => g != null)
+        .map((id) => groupOptions.find((g) => Number(g.value) === id))
+        .filter((g): g is SelectOption => g != null)
+        .map((g) => ({ id: Number(g.value), name: g.label }))
 
       await upsertMutation.mutateAsync({
         id: device?.id,
@@ -130,6 +131,7 @@ export function DeviceFormDialog({
   }
 
   const configurations = configurationsQuery.data ?? []
+  const optionsLoading = configurationsQuery.isLoading || groupsQuery.isLoading
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -189,15 +191,18 @@ export function DeviceFormDialog({
                       className={cn(
                         'flex h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm',
                       )}
-                      value={field.value || ''}
+                      value={field.value ? String(field.value) : ''}
+                      disabled={optionsLoading || configurations.length === 0}
                       onChange={(e) => field.onChange(Number(e.target.value))}
                     >
                       <option value="" disabled>
-                        {t('devices.form.selectConfiguration')}
+                        {optionsLoading
+                          ? t('devices.form.loadingOptions')
+                          : t('devices.form.selectConfiguration')}
                       </option>
                       {configurations.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
+                        <option key={c.value} value={c.value}>
+                          {c.label}
                         </option>
                       ))}
                     </select>
@@ -221,24 +226,26 @@ export function DeviceFormDialog({
                         <p className="text-sm text-muted-foreground">{t('devices.form.noGroups')}</p>
                       )}
                       {groupOptions.map((group) => {
-                        const checked = field.value.includes(group.id)
+                        const groupId = Number(group.value)
+                        const checked = field.value.includes(groupId)
                         return (
                           <label
-                            key={group.id}
+                            key={group.value}
                             className="flex cursor-pointer items-center gap-2 text-sm"
                           >
                             <input
                               type="checkbox"
                               checked={checked}
+                              disabled={optionsLoading}
                               onChange={(e) => {
                                 if (e.target.checked) {
-                                  field.onChange([...field.value, group.id])
+                                  field.onChange([...field.value, groupId])
                                 } else {
-                                  field.onChange(field.value.filter((id) => id !== group.id))
+                                  field.onChange(field.value.filter((id) => id !== groupId))
                                 }
                               }}
                             />
-                            {group.name}
+                            {group.label}
                           </label>
                         )
                       })}

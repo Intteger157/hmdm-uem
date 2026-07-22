@@ -10,6 +10,7 @@ import type {
   DeviceUpsertPayload,
   DeviceView,
   LookupItem,
+  SelectOption,
 } from '@/shared/api/types/device'
 import type { InstalledSoftware } from '@/shared/api/types/device-detail'
 
@@ -121,32 +122,35 @@ export function getConfigurationQrCodeKey(
   return configurations[String(configurationId)]?.qrCodeKey
 }
 
-export async function fetchConfigurationOptions(): Promise<LookupItem[]> {
+function toSelectOption(id: number, name: string): SelectOption {
+  return { label: name, value: String(id) }
+}
+
+export async function fetchConfigurationOptions(): Promise<SelectOption[]> {
   if (isMockApiEnabled()) {
     return Object.values(
       (await mockSearchDevices({ platform: 'android', pageNum: 1, pageSize: 1 })).configurations,
-    ).map((c) => ({ id: c.id, name: c.name }))
+    ).map((c) => toSelectOption(c.id, c.name))
   }
 
   const response = await api.get<ApiResponse<LookupItem[]>>('/private/configurations/list')
-  return unwrapApiResponse(response.data)
+  return unwrapApiResponse(response.data).map((item) => toSelectOption(item.id, item.name))
 }
 
-export async function fetchGroupOptions(): Promise<LookupItem[]> {
+export async function fetchGroupOptions(): Promise<SelectOption[]> {
   if (isMockApiEnabled()) {
-    await mockNetworkDelay()
-    return [
-      { id: 1, name: 'Retail' },
-      { id: 2, name: 'Sales' },
-      { id: 3, name: 'Warehouse' },
-    ]
+    const list = await mockSearchDevices({ platform: 'android', pageNum: 1, pageSize: 100 })
+    const groupMap = new Map<number, string>()
+    for (const device of list.devices.items) {
+      for (const group of device.groups ?? []) {
+        groupMap.set(group.id, group.name)
+      }
+    }
+    return Array.from(groupMap.entries()).map(([id, name]) => toSelectOption(id, name))
   }
 
   const response = await api.get<ApiResponse<LookupItem[]>>('/private/groups/search')
-  return unwrapApiResponse(response.data).map((g) => ({
-    id: g.id,
-    name: g.name,
-  }))
+  return unwrapApiResponse(response.data).map((group) => toSelectOption(group.id, group.name))
 }
 
 export async function upsertDevice(payload: DeviceUpsertPayload): Promise<void> {
@@ -206,4 +210,14 @@ export async function fetchDeviceQrCodeBlob(
   }
 
   return blob
+}
+
+/** Absolute URL for sharing the public QR image endpoint. */
+export function buildDeviceQrCodePublicUrl(
+  qrCodeKey: string,
+  deviceId: string,
+  origin = typeof window !== 'undefined' ? window.location.origin : '',
+): string {
+  const params = new URLSearchParams({ deviceId })
+  return `${origin}/rest/public/qr/${encodeURIComponent(qrCodeKey)}?${params.toString()}`
 }
