@@ -227,8 +227,11 @@ If enrollment stalls on **«Подготовка к настройке рабо�
 4. If you change the public hostname later, update `.env` and run:
    ```bash
    bash deploy/scripts/sync-file-urls.sh
-   docker compose --env-file deploy/.env -f deploy/docker-compose.yml restart hmdm gateway
+   bash deploy/scripts/fix-hmdm-base-url.sh
+   docker compose --env-file deploy/.env -f deploy/docker-compose.yml restart gateway
    ```
+
+If the launcher shows **«ошибка подключения к серверу http://localhost»** after enrollment, the QR was generated with a stale `base.url` in Tomcat (`deploy/volumes/hmdm-config/ROOT.xml`). Run `fix-hmdm-base-url.sh`, then **factory-reset** and scan a **new** QR (old provisioning data on the phone keeps localhost).
 
 ---
 

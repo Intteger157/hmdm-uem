@@ -229,6 +229,12 @@ if [[ -f "${SYNC_SCRIPT}" ]]; then
   bash "${SYNC_SCRIPT}"
 fi
 
+FIX_BASE_URL_SCRIPT="${DEPLOY_DIR}/scripts/fix-hmdm-base-url.sh"
+if [[ -f "${FIX_BASE_URL_SCRIPT}" ]]; then
+  log "Ensuring Tomcat base.url matches deploy/.env (QR com.hmdm.BASE_URL)"
+  bash "${FIX_BASE_URL_SCRIPT}"
+fi
+
 WINDOWS_PORT="$(grep '^SERVER_WINDOWS_PORT=' "${ENV_FILE}" | cut -d= -f2-)"
 WINDOWS_PORT="${WINDOWS_PORT:-8082}"
 
