@@ -77,6 +77,7 @@ export interface DeviceView {
   launcherVersion?: string
   launcherPkg?: string
   statusCode?: string
+  oldNumber?: string
   info?: DeviceInfoView
   platform: Platform
   /** Windows-only list columns */
@@ -116,6 +117,7 @@ export interface DeviceUpsertPayload {
   groups?: LookupItem[]
   imei?: string
   phone?: string
+  oldNumber?: string
 }
 
 export interface PaginatedData<T> {
