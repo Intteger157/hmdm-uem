@@ -1,6 +1,11 @@
 # Production setup: test-dev-mdm.intteger.uk
 
-Guide for enrolling Android devices against the Docker stack on `192.168.31.247`.
+Guide for enrolling Android devices. Supports two layouts:
+
+- **A. Same host** — nginx + certbot on the MDM server (`192.168.31.247`)
+- **B. Edge proxy** — nginx + certbot on a **separate** server; MDM host only runs Docker
+
+Use config **B** if your reverse proxy and certbot live on another machine (your case).
 
 ## Is everything ready?
 
@@ -9,9 +14,9 @@ Guide for enrolling Android devices against the Docker stack on `192.168.31.247`
 | Java MDM backend (custom WAR + plugins) | Ready after `./deploy/install.sh` on Linux |
 | frontend-v2 UI + `/rest` gateway | Ready (Docker `gateway` service) |
 | Public QR page `/qr/...` | Ready |
-| HTTPS for Android enrollment | **You must configure** (host nginx + certbot) |
-| DNS + port forwarding | **You must configure** |
-| MQTT push port `31000` | Exposed by compose; open on firewall/router if devices are outside LAN |
+| HTTPS for Android enrollment | **Edge or host nginx + certbot** |
+| DNS | **A record → proxy server public IP** (layout B) |
+| MQTT push port `31000` | Proxy must forward TCP 31000 → MDM host (layout B) |
 
 The repo is **functionally ready**, but Android enrollment will fail without:
 
@@ -23,21 +28,79 @@ The repo is **functionally ready**, but Android enrollment will fail without:
 
 ---
 
-## 1. DNS and network
+## Layout B — nginx + certbot on a separate proxy server (recommended for you)
 
-1. Create an **A record**:
-   - `test-dev-mdm.intteger.uk` → your **public** IP (the one seen from the internet)
-2. On the router, forward to `192.168.31.247`:
-   - `80/tcp` → `192.168.31.247:80`
-   - `443/tcp` → `192.168.31.247:443`
-   - `31000/tcp` → `192.168.31.247:31000` (push/MQTT; required for reliable device sync)
-3. Verify from outside your LAN:
+```
+Phone / Internet
+      │
+      ▼
+DNS test-dev-mdm.intteger.uk  →  PROXY SERVER (public IP)
+      │                              :443  TLS (certbot here)
+      │                              :31000 MQTT (TCP stream)
+      ▼
+192.168.31.247:8080   ← Docker gateway (frontend-v2 + /rest)
+192.168.31.247:31000  ← hmdm MQTT push
+```
+
+### On the MDM host (`192.168.31.247`) only
+
+1. **No** host nginx, **no** certbot on this machine.
+2. `deploy/.env`:
+   ```env
+   BASE_DOMAIN=test-dev-mdm.intteger.uk
+   LOCAL_IP=192.168.31.247
+   PROTOCOL=https
+   GATEWAY_PORT=8080
+   ```
+3. Docker binds gateway on `0.0.0.0:8080` and MQTT on `0.0.0.0:31000` (default in compose).
+4. **Firewall** on MDM host — allow **only from proxy server IP**:
+   - `8080/tcp`
+   - `31000/tcp`
+5. Check locally:
    ```bash
-   dig +short test-dev-mdm.intteger.uk
-   curl -I http://test-dev-mdm.intteger.uk
+   curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8080/
    ```
 
-Let's Encrypt will **not** issue a certificate if the domain does not resolve to this server on port 80.
+### On the PROXY server (nginx + certbot)
+
+1. DNS **A** record: `test-dev-mdm.intteger.uk` → **proxy public IP** (not 192.168.31.247 unless that is your proxy).
+2. Copy [`deploy/nginx/edge-reverse-proxy.conf.example`](nginx/edge-reverse-proxy.conf.example) → `/etc/nginx/sites-available/`
+3. Enable MQTT TCP proxy: [`deploy/nginx/edge-stream-mqtt.conf.example`](nginx/edge-stream-mqtt.conf.example)  
+   Devices connect to `test-dev-mdm.intteger.uk:31000` — that port must listen on the **proxy** and forward to `192.168.31.247:31000`.
+4. Certbot **only on proxy**:
+   ```bash
+   sudo certbot certonly --webroot -w /var/www/certbot \
+     -d test-dev-mdm.intteger.uk \
+     --email admin@intteger.uk --agree-tos --no-eff-email
+   ```
+5. Test from internet:
+   ```bash
+   curl -I https://test-dev-mdm.intteger.uk/
+   nc -vz test-dev-mdm.intteger.uk 31000
+   ```
+
+Network between proxy and MDM host must allow proxy → `192.168.31.247:8080` and `:31000` (VPN, LAN, or routed subnet).
+
+---
+
+## Layout A — nginx on the same host as Docker
+
+See [`deploy/nginx/host-reverse-proxy.conf.example`](nginx/host-reverse-proxy.conf.example) — upstream `127.0.0.1:8080`.
+
+---
+
+## 1. DNS and network
+
+### Layout B (separate proxy)
+
+1. **A record:** `test-dev-mdm.intteger.uk` → **proxy server public IP**
+2. Proxy listens on **80, 443, 31000** (no need to expose 8080 on MDM to the internet)
+3. MDM host firewall: proxy IP → `8080`, `31000`
+
+### Layout A (same host)
+
+1. **A record** → MDM host public IP  
+2. Router forwards **80, 443, 31000** → `192.168.31.247`
 
 ---
 
@@ -78,9 +141,9 @@ curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8080/rest/public/sync/
 
 ---
 
-## 3. Host nginx + Let's Encrypt (certbot)
+## 3. TLS (certbot)
 
-Install on Ubuntu/Debian:
+Run certbot on the machine that terminates HTTPS (layout **B** = proxy server only).
 
 ```bash
 sudo apt update
@@ -88,19 +151,7 @@ sudo apt install -y nginx certbot python3-certbot-nginx
 sudo mkdir -p /var/www/certbot
 ```
 
-### Option A — certbot with webroot (recommended for first issue)
-
-**Before** enabling the HTTPS server block, use a temporary HTTP-only config or comment out the `return 301` redirect and the entire `listen 443` server in the example file.
-
-```bash
-sudo cp deploy/nginx/host-reverse-proxy.conf.example /etc/nginx/sites-available/test-dev-mdm.intteger.uk
-# Edit: comment out the 443 server block and the HTTP→HTTPS redirect for the first run
-sudo ln -sf /etc/nginx/sites-available/test-dev-mdm.intteger.uk /etc/nginx/sites-enabled/
-sudo rm -f /etc/nginx/sites-enabled/default
-sudo nginx -t && sudo systemctl reload nginx
-```
-
-Issue certificate:
+Issue certificate (on proxy):
 
 ```bash
 sudo certbot certonly --webroot \
@@ -111,36 +162,14 @@ sudo certbot certonly --webroot \
   --no-eff-email
 ```
 
-Generate DH params (once):
+Or with nginx plugin after HTTP site is in place:
 
 ```bash
-sudo certbot install --cert-name test-dev-mdm.intteger.uk 2>/dev/null || true
-sudo openssl dhparam -out /etc/letsencrypt/ssl-dhparams.pem 2048
+sudo certbot --nginx -d test-dev-mdm.intteger.uk \
+  --email admin@intteger.uk --agree-tos --no-eff-email --redirect
 ```
 
-Uncomment the HTTPS server block and HTTP redirect in the site config, then:
-
-```bash
-sudo nginx -t && sudo systemctl reload nginx
-```
-
-### Option B — certbot nginx plugin (simpler if HTTP proxy already works)
-
-```bash
-sudo certbot --nginx \
-  -d test-dev-mdm.intteger.uk \
-  --email admin@intteger.uk \
-  --agree-tos \
-  --no-eff-email \
-  --redirect
-```
-
-Renewal is automatic via `certbot.timer`:
-
-```bash
-sudo systemctl status certbot.timer
-sudo certbot renew --dry-run
-```
+Renewal: `sudo certbot renew --dry-run` (on proxy only).
 
 ---
 

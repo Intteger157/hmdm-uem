@@ -1,0 +1,83 @@
+# Edge nginx + certbot on a SEPARATE server (not on the MDM host).
+#
+# Topology:
+#   Internet → DNS (A) → THIS proxy server :443 / :31000
+#                        → http://192.168.31.247:8080  (Docker gateway on MDM host)
+#                        → tcp://192.168.31.247:31000 (MQTT push)
+#
+# On the MDM host (192.168.31.247):
+#   - NO host nginx / certbot required
+#   - Docker gateway on GATEWAY_PORT=8080 (deploy/docker-compose.yml)
+#   - Firewall: allow THIS proxy IP → :8080 and :31000
+#
+# Install on the PROXY server (Ubuntu/Debian):
+#   sudo apt install -y nginx certbot python3-certbot-nginx
+#   sudo mkdir -p /var/www/certbot
+#   sudo cp deploy/nginx/edge-reverse-proxy.conf.example /etc/nginx/sites-available/test-dev-mdm.intteger.uk
+#   sudo ln -sf /etc/nginx/sites-available/test-dev-mdm.intteger.uk /etc/nginx/sites-enabled/
+#   # Enable MQTT stream (see bottom) in /etc/nginx/nginx.conf → include stream block
+#   sudo nginx -t && sudo systemctl reload nginx
+#
+# Certbot (on THIS proxy server only):
+#   sudo certbot certonly --webroot -w /var/www/certbot \
+#     -d test-dev-mdm.intteger.uk --email admin@intteger.uk --agree-tos --no-eff-email
+
+# --- Change to your MDM backend IP/host ---
+upstream hmdm_gateway {
+    server 192.168.31.247:8080;
+    keepalive 32;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name test-dev-mdm.intteger.uk;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        allow all;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name test-dev-mdm.intteger.uk;
+
+    ssl_certificate     /etc/letsencrypt/live/test-dev-mdm.intteger.uk/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/test-dev-mdm.intteger.uk/privkey.pem;
+    include             /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
+
+    client_max_body_size 64m;
+
+    location / {
+        proxy_pass http://hmdm_gateway;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header Connection        "";
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+    }
+}
+
+# --- MQTT / push (TCP) — add to /etc/nginx/nginx.conf OUTSIDE http { } ---
+#
+# stream {
+#     upstream hmdm_mqtt {
+#         server 192.168.31.247:31000;
+#     }
+#     server {
+#         listen 31000;
+#         proxy_pass hmdm_mqtt;
+#         proxy_connect_timeout 10s;
+#     }
+# }

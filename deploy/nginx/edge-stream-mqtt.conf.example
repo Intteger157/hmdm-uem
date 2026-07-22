@@ -1,0 +1,18 @@
+# TCP proxy for Headwind MDM MQTT (port 31000).
+# Place in /etc/nginx/conf.d/stream-mqtt.conf and add at the top of /etc/nginx/nginx.conf:
+#
+#   include /etc/nginx/conf.d/stream-mqtt.conf;
+#
+# (The stream { } block must be at the root level, not inside http { }.)
+
+stream {
+    upstream hmdm_mqtt {
+        server 192.168.31.247:31000;
+    }
+
+    server {
+        listen 31000;
+        proxy_pass hmdm_mqtt;
+        proxy_connect_timeout 10s;
+    }
+}
