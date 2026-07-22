@@ -206,7 +206,7 @@ export function DeviceResetDialog({
             <Button
               type="button"
               variant="outline"
-              className="border-amber-300 text-amber-800 hover:bg-amber-50"
+              className="border-amber-300 text-amber-800 hover:bg-amber-50 dark:border-amber-500/40 dark:text-amber-200 dark:hover:bg-amber-500/10"
               disabled={runMutation.isPending || deviceId == null}
               onClick={() => void runMutation.mutateAsync('lock')}
             >
