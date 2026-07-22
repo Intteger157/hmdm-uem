@@ -15,8 +15,8 @@ usage() {
   cat <<'EOF'
 Usage: deploy/install.sh [options]
 
-Linux-only backend installer. Builds the Java MDM WAR, builds the Go
-server-windows image, and starts Docker Compose on the host.
+Linux-only installer. Builds the Java MDM WAR (REST backend), frontend-v2,
+server-windows, and starts Docker Compose on the host.
 
 Options:
   --skip-build     Do not rebuild Java WAR or Docker images
@@ -171,13 +171,13 @@ WINDOWS_PORT="${WINDOWS_PORT:-8082}"
 
 cat <<EOF
 
-Backend stack is up.
+Stack is up.
 
-Unified gateway (Java + Go):
-  http://localhost:${GATEWAY_PORT}
-
-Java MDM (via gateway):
+MDM console (new UI):
   http://localhost:${GATEWAY_PORT}/
+
+Java REST API (via gateway, no legacy UI):
+  http://localhost:${GATEWAY_PORT}/rest/
 
 Windows agent API (via gateway):
   http://localhost:${GATEWAY_PORT}/rest/windows/enroll
@@ -188,7 +188,8 @@ Direct Go service (debug):
 
 Useful commands:
   docker compose --env-file deploy/.env -f deploy/docker-compose.yml ps
-  docker compose --env-file deploy/.env -f deploy/docker-compose.yml logs -f gateway hmdm server-windows
+  docker compose --env-file deploy/.env -f deploy/docker-compose.yml logs -f gateway frontend-v2 hmdm server-windows
+  docker compose --env-file deploy/.env -f deploy/docker-compose.yml up -d --build frontend-v2 gateway
   docker compose --env-file deploy/.env -f deploy/docker-compose.yml down
 
 Agent registry ServerURL example:

@@ -68,6 +68,14 @@ services:
       LISTEN_ADDR: ":8082"
       GIN_MODE: ${GIN_MODE:-release}
 
+  frontend-v2:
+    build:
+      context: ../frontend-v2
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    expose:
+      - "80"
+
   gateway:
     image: nginx:1.27-alpine
     restart: unless-stopped
@@ -75,6 +83,8 @@ services:
       hmdm:
         condition: service_healthy
       server-windows:
+        condition: service_started
+      frontend-v2:
         condition: service_started
     ports:
       - "${GATEWAY_PORT:-8080}:80"

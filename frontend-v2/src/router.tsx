@@ -90,7 +90,6 @@ const routeTree = rootRoute.addChildren([
 
 export const router = createRouter({
   routeTree,
-  basepath: '/v2',
 })
 
 declare module '@tanstack/react-router' {

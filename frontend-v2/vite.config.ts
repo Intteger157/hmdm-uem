@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
   const backendUrl = env.VITE_BACKEND_URL ?? 'http://localhost:8080'
 
   return {
-    base: '/v2/',
+    base: '/',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

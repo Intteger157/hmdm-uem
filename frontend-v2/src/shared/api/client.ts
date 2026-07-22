@@ -29,7 +29,7 @@ api.interceptors.response.use(
   (error: unknown) => {
     if (axios.isAxiosError(error) && error.response?.status === 403) {
       useAuthStore.getState().logout()
-      window.location.assign('/v2/login')
+      window.location.assign('/login')
     }
     return Promise.reject(error)
   },
