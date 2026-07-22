@@ -7,7 +7,12 @@ import type {
   DeviceSearchParams,
   DeviceView,
 } from '@/shared/api/types/device'
-import type { InstalledSoftware, LocalUser } from '@/shared/api/types/device-detail'
+import type {
+  DeviceDiskVolume,
+  InstalledSoftware,
+  LocalUser,
+  WindowsEncryptionStatus,
+} from '@/shared/api/types/device-detail'
 
 /** Go server-windows list item (GET /rest/windows/devices). */
 export interface WindowsDeviceDto {
@@ -24,6 +29,8 @@ export interface WindowsDeviceDto {
   serialNumber?: string
   currentUser?: string
   diskEncrypted?: boolean
+  encryptionStatus?: WindowsEncryptionStatus
+  disks?: DeviceDiskVolume[]
   localUsers?: LocalUser[]
   installedSoftware?: InstalledSoftware[]
   lastCheckin: string
@@ -66,7 +73,9 @@ function mapWindowsDeviceToView(raw: WindowsDeviceDto): DeviceView {
     diskTotalGb: raw.diskTotalGb || undefined,
     diskUsedGb: raw.diskUsedGb || undefined,
     diskEncrypted: raw.diskEncrypted,
-    bitlockerStatus: raw.diskEncrypted ? 'on' : raw.diskEncrypted === false ? 'off' : 'unknown',
+    encryptionStatus: raw.encryptionStatus,
+    disks: raw.disks ?? [],
+    bitlockerStatus: mapEncryptionToBitLocker(raw.encryptionStatus, raw.diskEncrypted),
     powershellExecStatus: 'idle',
     localUsers: raw.localUsers ?? [],
     installedSoftware: raw.installedSoftware ?? [],
@@ -160,4 +169,26 @@ export async function sendWindowsDeviceCommand(
     },
   )
   return response.data
+}
+
+function mapEncryptionToBitLocker(
+  status: WindowsEncryptionStatus | undefined,
+  diskEncrypted?: boolean,
+): 'on' | 'off' | 'unknown' {
+  if (status === 'all') {
+    return 'on'
+  }
+  if (status === 'partial') {
+    return 'unknown'
+  }
+  if (status === 'none') {
+    return 'off'
+  }
+  if (diskEncrypted === true) {
+    return 'on'
+  }
+  if (diskEncrypted === false) {
+    return 'off'
+  }
+  return 'unknown'
 }

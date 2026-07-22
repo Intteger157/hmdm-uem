@@ -27,9 +27,11 @@ type InventoryRequest struct {
 	Manufacturer      string               `json:"manufacturer"`
 	Model             string               `json:"model"`
 	SerialNumber      string               `json:"serial_number"`
-	CurrentUser       string               `json:"current_user"`
-	DiskEncrypted     bool                 `json:"disk_encrypted"`
-	LocalUsers        []InventoryLocalUser `json:"local_users"`
+	CurrentUser       string                `json:"current_user"`
+	DiskEncrypted     bool                  `json:"disk_encrypted"`
+	EncryptionStatus  string                `json:"encryption_status"`
+	Disks             []InventoryDiskVolume `json:"disks"`
+	LocalUsers        []InventoryLocalUser  `json:"local_users"`
 	InstalledSoftware []InventorySoftware  `json:"installed_software"`
 }
 
@@ -49,6 +51,8 @@ type WindowsDevice struct {
 	SerialNumber      string
 	CurrentUser       string
 	DiskEncrypted     bool
+	EncryptionStatus  string
+	Disks             json.RawMessage `gorm:"type:jsonb"`
 	LocalUsers        json.RawMessage `gorm:"type:jsonb"`
 	InstalledSoftware json.RawMessage `gorm:"type:jsonb"`
 	LastCheckin       time.Time
@@ -74,6 +78,8 @@ type WindowsDeviceJSON struct {
 	SerialNumber      string                    `json:"serialNumber,omitempty"`
 	CurrentUser       string                    `json:"currentUser,omitempty"`
 	DiskEncrypted     bool                      `json:"diskEncrypted"`
+	EncryptionStatus  string                    `json:"encryptionStatus,omitempty"`
+	Disks             []DiskVolumeRecord        `json:"disks,omitempty"`
 	LocalUsers        []LocalUserRecord         `json:"localUsers,omitempty"`
 	InstalledSoftware []InstalledSoftwareRecord `json:"installedSoftware,omitempty"`
 	LastCheckin       time.Time                 `json:"lastCheckin"`
@@ -100,10 +106,46 @@ func ToWindowsDeviceJSON(device WindowsDevice) WindowsDeviceJSON {
 		SerialNumber:      device.SerialNumber,
 		CurrentUser:       device.CurrentUser,
 		DiskEncrypted:     device.DiskEncrypted,
+		EncryptionStatus:  device.EncryptionStatus,
+		Disks:             decodeDisks(device.Disks),
 		LocalUsers:        decodeLocalUsers(device.LocalUsers),
 		InstalledSoftware: decodeInstalledSoftware(device.InstalledSoftware),
 		LastCheckin:       device.LastCheckin,
 	}
+}
+
+func decodeDisks(raw json.RawMessage) []DiskVolumeRecord {
+	if len(raw) == 0 {
+		return nil
+	}
+	var disks []DiskVolumeRecord
+	if err := json.Unmarshal(raw, &disks); err != nil {
+		return nil
+	}
+	return disks
+}
+
+func EncodeDisks(disks []InventoryDiskVolume) (json.RawMessage, error) {
+	if len(disks) == 0 {
+		return nil, nil
+	}
+
+	records := make([]DiskVolumeRecord, 0, len(disks))
+	for _, disk := range disks {
+		records = append(records, DiskVolumeRecord{
+			MountPoint:    disk.MountPoint,
+			Label:         disk.Label,
+			TotalGb:       disk.Total_GB,
+			UsedGb:        disk.Used_GB,
+			EncryptStatus: disk.EncryptStatus,
+		})
+	}
+
+	encoded, err := json.Marshal(records)
+	if err != nil {
+		return nil, err
+	}
+	return encoded, nil
 }
 
 func decodeLocalUsers(raw json.RawMessage) []LocalUserRecord {

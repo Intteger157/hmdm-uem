@@ -55,21 +55,15 @@ type win32GroupUser struct {
 	PartComponent  string
 }
 
-type win32EncryptableVolume struct {
-	DriveLetter      string
-	ProtectionStatus uint32
-}
-
 const maxInstalledSoftwareEntries = 150
 
-func collectExtendedInventory() (manufacturer, model, serialNumber, currentUser string, diskEncrypted bool, localUsers []LocalUserInfo, installedSoftware []InstalledSoftwareInfo, err error) {
+func collectExtendedInventory() (manufacturer, model, serialNumber, currentUser string, localUsers []LocalUserInfo, installedSoftware []InstalledSoftwareInfo, err error) {
 	manufacturer, model = collectSystemProduct()
 	serialNumber = collectSerialNumber()
 	currentUser = collectCurrentUser()
-	diskEncrypted = collectDiskEncrypted()
 	localUsers = collectLocalUsers()
 	installedSoftware = collectInstalledSoftware()
-	return manufacturer, model, serialNumber, currentUser, diskEncrypted, localUsers, installedSoftware, nil
+	return manufacturer, model, serialNumber, currentUser, localUsers, installedSoftware, nil
 }
 
 func collectSystemProduct() (manufacturer, model string) {
@@ -203,19 +197,6 @@ func collectCurrentUser() string {
 		return current.Username
 	}
 	return strings.TrimSpace(current.Name)
-}
-
-func collectDiskEncrypted() bool {
-	var volumes []win32EncryptableVolume
-	err := wmi.Query(
-		"SELECT ProtectionStatus FROM Win32_EncryptableVolume WHERE DriveLetter='C:'",
-		&volumes,
-		"root\\CIMV2\\Security\\MicrosoftVolumeEncryption",
-	)
-	if err != nil || len(volumes) == 0 {
-		return false
-	}
-	return volumes[0].ProtectionStatus == 1
 }
 
 func collectLocalUsers() []LocalUserInfo {

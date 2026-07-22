@@ -21,6 +21,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { Platform } from '@/shared/api/types/platform'
 import type { DeviceView } from '@/shared/api/types/device'
+import type { DeviceDiskVolume } from '@/shared/api/types/device-detail'
+import type { TFunction } from 'i18next'
 import { cn } from '@/lib/utils'
 import { useState, type ReactNode } from 'react'
 
@@ -82,11 +84,6 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
       </Card>
     )
   }
-
-  const diskPercent =
-    device.diskTotalGb && device.diskUsedGb != null
-      ? Math.round((device.diskUsedGb / device.diskTotalGb) * 100)
-      : undefined
 
   const androidVersion = device.androidVersion ?? device.info?.androidVersion
   const batteryLevel = device.info?.batteryLevel
@@ -155,34 +152,10 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
               label={t('deviceDetail.metrics.ram')}
               value={device.ramGb != null ? `${device.ramGb} GB` : NA}
             />
-            <Card className="sm:col-span-2">
-              <CardHeader className="px-4 py-3 pb-1">
-                <CardTitle className="text-xs font-medium text-muted-foreground">
-                  {t('deviceDetail.metrics.disk')}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-4 pb-3 pt-0">
-                {diskPercent != null ? (
-                  <Progress value={diskPercent}>
-                    <ProgressLabel className="text-xs">
-                      {device.diskUsedGb} / {device.diskTotalGb} GB
-                    </ProgressLabel>
-                    <ProgressValue />
-                  </Progress>
-                ) : (
-                  <span className="text-sm">{NA}</span>
-                )}
-              </CardContent>
-            </Card>
+            <WindowsDiskMetrics device={device} na={NA} t={t} />
             <MetricCard
               label={t('deviceDetail.metrics.encryption')}
-              value={
-                device.diskEncrypted != null
-                  ? device.diskEncrypted
-                    ? t('deviceDetail.encrypted')
-                    : t('deviceDetail.notEncrypted')
-                  : NA
-              }
+              value={resolveEncryptionLabel(device, t)}
             />
             <MetricCard
               label={t('deviceDetail.metrics.currentUser')}
@@ -327,6 +300,120 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
         </TabsContent>
       </Tabs>
     </div>
+  )
+}
+
+function resolveEncryptionLabel(device: DeviceView, t: TFunction): string {
+  switch (device.encryptionStatus) {
+    case 'all':
+      return t('deviceDetail.encrypted')
+    case 'partial':
+      return t('deviceDetail.partiallyEncrypted')
+    case 'none':
+      return t('deviceDetail.notEncrypted')
+    case 'unknown':
+      return t('deviceDetail.encryptionUnknown')
+    default:
+      break
+  }
+  if (device.diskEncrypted === true) {
+    return t('deviceDetail.encrypted')
+  }
+  if (device.diskEncrypted === false) {
+    return t('deviceDetail.notEncrypted')
+  }
+  return t('deviceDetail.encryptionUnknown')
+}
+
+function formatDriveEncryptStatus(status: DeviceDiskVolume['encryptStatus'], t: TFunction): string {
+  switch (status) {
+    case 'on':
+      return t('deviceDetail.encrypted')
+    case 'off':
+      return t('deviceDetail.notEncrypted')
+    default:
+      return t('deviceDetail.encryptionUnknown')
+  }
+}
+
+function WindowsDiskMetrics({
+  device,
+  na,
+  t,
+}: {
+  device: DeviceView
+  na: string
+  t: TFunction
+}) {
+  const disks = device.disks ?? []
+
+  if (disks.length === 0) {
+    const diskPercent =
+      device.diskTotalGb && device.diskUsedGb != null
+        ? Math.round((device.diskUsedGb / device.diskTotalGb) * 100)
+        : undefined
+
+    return (
+      <Card className="sm:col-span-2">
+        <CardHeader className="px-4 py-3 pb-1">
+          <CardTitle className="text-xs font-medium text-muted-foreground">
+            {t('deviceDetail.metrics.disk')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-3 pt-0">
+          {diskPercent != null ? (
+            <Progress value={diskPercent}>
+              <ProgressLabel className="text-xs">
+                {device.diskUsedGb} / {device.diskTotalGb} GB
+              </ProgressLabel>
+              <ProgressValue />
+            </Progress>
+          ) : (
+            <span className="text-sm">{na}</span>
+          )}
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card className="sm:col-span-2 lg:col-span-3">
+      <CardHeader className="px-4 py-3 pb-1">
+        <CardTitle className="text-xs font-medium text-muted-foreground">
+          {t('deviceDetail.metrics.disks')}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 px-4 pb-3 pt-0">
+        {disks.map((disk) => {
+          const percent =
+            disk.totalGb > 0 ? Math.round((disk.usedGb / disk.totalGb) * 100) : undefined
+          const title = disk.label
+            ? `${disk.mountPoint} · ${disk.label}`
+            : disk.mountPoint
+
+          return (
+            <div key={disk.mountPoint} className="space-y-1.5">
+              <div className="flex items-center justify-between gap-3 text-xs">
+                <span className="font-medium">{title}</span>
+                <span className="text-muted-foreground">
+                  {formatDriveEncryptStatus(disk.encryptStatus, t)}
+                </span>
+              </div>
+              {percent != null ? (
+                <Progress value={percent}>
+                  <ProgressLabel className="text-xs">
+                    {disk.usedGb} / {disk.totalGb} GB
+                  </ProgressLabel>
+                  <ProgressValue />
+                </Progress>
+              ) : (
+                <span className="text-sm">{na}</span>
+              )}
+            </div>
+          )
+        })}
+      </CardContent>
+    </Card>
   )
 }
 

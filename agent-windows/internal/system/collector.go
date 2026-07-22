@@ -27,6 +27,8 @@ type DeviceInfo struct {
 	SerialNumber      string                  `json:"serial_number,omitempty"`
 	CurrentUser       string                  `json:"current_user,omitempty"`
 	DiskEncrypted     bool                    `json:"disk_encrypted"`
+	EncryptionStatus  string                  `json:"encryption_status,omitempty"`
+	Disks             []DiskVolumeInfo        `json:"disks,omitempty"`
 	LocalUsers        []LocalUserInfo         `json:"local_users,omitempty"`
 	InstalledSoftware []InstalledSoftwareInfo `json:"installed_software,omitempty"`
 }
@@ -92,12 +94,10 @@ func CollectInfo() (*DeviceInfo, error) {
 		return nil, fmt.Errorf("memory: %w", err)
 	}
 
-	diskUsage, err := collectSystemDiskUsage()
-	if err != nil {
-		return nil, fmt.Errorf("disk: %w", err)
-	}
+	diskVolumes := collectDiskVolumes()
+	primaryDisk, encryptionStatus, diskEncrypted := summarizeDiskEncryption(diskVolumes)
 
-	manufacturer, model, serialNumber, currentUser, diskEncrypted, localUsers, installedSoftware, err := collectExtendedInventory()
+	manufacturer, model, serialNumber, currentUser, localUsers, installedSoftware, err := collectExtendedInventory()
 	if err != nil {
 		return nil, fmt.Errorf("extended inventory: %w", err)
 	}
@@ -107,13 +107,15 @@ func CollectInfo() (*DeviceInfo, error) {
 		OSVersion:         formatOSVersion(hostInfo),
 		CPU:               cpuModel,
 		RAM_GB:            bytesToRoundedGB(memInfo.Total),
-		DiskTotal_GB:      bytesToRoundedGB(diskUsage.Total),
-		DiskUsed_GB:       bytesToRoundedGB(diskUsage.Used),
+		DiskTotal_GB:      primaryDisk.Total_GB,
+		DiskUsed_GB:       primaryDisk.Used_GB,
+		DiskEncrypted:     diskEncrypted,
+		EncryptionStatus:  encryptionStatus,
+		Disks:             diskVolumes,
 		Manufacturer:      manufacturer,
 		Model:             model,
 		SerialNumber:      serialNumber,
 		CurrentUser:       currentUser,
-		DiskEncrypted:     diskEncrypted,
 		LocalUsers:        localUsers,
 		InstalledSoftware: installedSoftware,
 	}, nil

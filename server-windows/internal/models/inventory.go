@@ -1,6 +1,23 @@
 package models
 
-// LocalUserRecord is stored in windows_devices.local_users JSONB.
+// InventoryDiskVolume mirrors one Windows drive in inventory payload.
+type InventoryDiskVolume struct {
+	MountPoint    string `json:"mount_point"`
+	Label         string `json:"label"`
+	Total_GB      int    `json:"total_gb"`
+	Used_GB       int    `json:"used_gb"`
+	EncryptStatus string `json:"encrypt_status"`
+}
+
+// DiskVolumeRecord is stored in windows_devices.disks JSONB.
+type DiskVolumeRecord struct {
+	MountPoint    string `json:"mountPoint"`
+	Label         string `json:"label,omitempty"`
+	TotalGb       int    `json:"totalGb"`
+	UsedGb        int    `json:"usedGb"`
+	EncryptStatus string `json:"encryptStatus"`
+}
+
 type LocalUserRecord struct {
 	Username string `json:"username"`
 	IsAdmin  bool   `json:"isAdmin"`

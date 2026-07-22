@@ -1,5 +1,10 @@
 import type { Platform } from '@/shared/api/types/platform'
-import type { InstalledSoftware, LocalUser } from '@/shared/api/types/device-detail'
+import type {
+  DeviceDiskVolume,
+  InstalledSoftware,
+  LocalUser,
+  WindowsEncryptionStatus,
+} from '@/shared/api/types/device-detail'
 
 export interface LookupItem {
   id: number
@@ -94,6 +99,8 @@ export interface DeviceView {
   diskTotalGb?: number
   diskUsedGb?: number
   diskEncrypted?: boolean
+  encryptionStatus?: WindowsEncryptionStatus
+  disks?: DeviceDiskVolume[]
   currentUser?: string
   installedSoftware?: InstalledSoftware[]
   localUsers?: LocalUser[]

@@ -101,7 +101,14 @@ func (h *WindowsHandler) Inventory(c *gin.Context) {
 	device.SerialNumber = req.SerialNumber
 	device.CurrentUser = req.CurrentUser
 	device.DiskEncrypted = req.DiskEncrypted
+	device.EncryptionStatus = req.EncryptionStatus
 	device.LastCheckin = time.Now()
+
+	if disks, err := models.EncodeDisks(req.Disks); err != nil {
+		log.Printf("[inventory] encode disks failed: hardware_id=%q err=%v", deviceID, err)
+	} else {
+		device.Disks = disks
+	}
 
 	if localUsers, err := models.EncodeLocalUsers(req.LocalUsers); err != nil {
 		log.Printf("[inventory] encode local users failed: hardware_id=%q err=%v", deviceID, err)
