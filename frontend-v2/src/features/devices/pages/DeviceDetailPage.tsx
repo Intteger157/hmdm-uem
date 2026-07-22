@@ -4,6 +4,8 @@ import { ArrowLeft, ChevronRight, Monitor } from 'lucide-react'
 import { DeviceActionsPanel } from '@/features/devices/components/DeviceActionsPanel'
 import { DeviceRemoteDialog } from '@/features/plugins/deviceremote/components/DeviceRemoteDialog'
 import { useDeviceByNumber } from '@/features/devices/hooks/use-device-by-number-query'
+import { resolveDeviceOnlineStatusCode } from '@/features/devices/utils/device-online-status'
+import { usePeriodicNow } from '@/shared/hooks/use-periodic-now'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -50,6 +52,7 @@ interface DeviceDetailPageProps {
 
 export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
   const { t } = useTranslation()
+  const now = usePeriodicNow()
   const { data: device, isLoading, error } = useDeviceByNumber(deviceNumber)
   const [activeTab, setActiveTab] = useState('software')
   const [remoteOpen, setRemoteOpen] = useState(false)
@@ -87,6 +90,7 @@ export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
   const batteryLevel = device.info?.batteryLevel
   const launcherVersion = device.launcherVersion
   const defaultLauncher = device.info?.defaultLauncher
+  const onlineStatus = resolveDeviceOnlineStatusCode(device, now)
 
   return (
     <div className="space-y-4">
@@ -102,8 +106,8 @@ export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-xl font-semibold tracking-tight">{deviceTitle(device)}</h1>
-            <Badge variant={STATUS_BADGE[device.statusCode ?? 'grey'] ?? 'secondary'}>
-              {device.statusCode ?? 'unknown'}
+            <Badge variant={STATUS_BADGE[onlineStatus] ?? 'secondary'}>
+              {t(`devices.status.${onlineStatus}`)}
             </Badge>
             <Badge variant="outline">{device.platform}</Badge>
             {device.kioskMode && <Badge variant="secondary">Kiosk</Badge>}

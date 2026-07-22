@@ -7,10 +7,9 @@ export const MOCK_SUMMARY: SummaryResponse = {
   devicesEnrolledLastMonth: 12,
   topConfigs: ['Warehouse Kiosk', 'Field Sales', 'Corporate Standard', 'Windows Office', 'Demo Lab'],
   statusSummary: [
-    { stringAttr: 'Online', intAttr: 0, number: 98 },
-    { stringAttr: 'Idle', intAttr: 0, number: 24 },
-    { stringAttr: 'Offline', intAttr: 0, number: 16 },
-    { stringAttr: 'Unknown', intAttr: 0, number: 4 },
+    { stringAttr: 'green', intAttr: 0, number: 98 },
+    { stringAttr: 'yellow', intAttr: 0, number: 24 },
+    { stringAttr: 'red', intAttr: 0, number: 16 },
   ],
   installSummary: [
     { stringAttr: 'Success', intAttr: 0, number: 120 },

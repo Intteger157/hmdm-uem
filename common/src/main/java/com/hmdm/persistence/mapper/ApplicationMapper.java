@@ -163,10 +163,10 @@ public interface ApplicationMapper {
             "       applications.id                    AS applicationId, " +
             "       applications.name                  AS applicationName, " +
             "       COALESCE(configurationApplications.showIcon, applications.showIcon) AS showIcon, " +
-            "       COALESCE(configurationApplications.screenOrder, applications.screenOrder) AS screenOrder, " +
-            "       COALESCE(configurationApplications.keyCode, applications.keyCode) AS keyCode, " +
-            "       COALESCE(configurationApplications.bottom, applications.bottom) AS bottom, " +
-            "       COALESCE(configurationApplications.longTap, applications.longTap) AS longTap, " +
+            "       configurationApplications.screenOrder AS screenOrder, " +
+            "       configurationApplications.keyCode AS keyCode, " +
+            "       configurationApplications.bottom AS bottom, " +
+            "       configurationApplications.longTap AS longTap, " +
             "       applications.useKiosk              AS useKiosk, " +
             "       configurationApplications.remove   AS remove, " +
             "       latestAppVersion.version   AS latestVersionText, " +

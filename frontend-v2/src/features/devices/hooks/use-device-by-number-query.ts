@@ -5,10 +5,13 @@ export const deviceByNumberQueryKeys = {
   detail: (number: string) => ['devices', 'by-number', number] as const,
 }
 
+const DEVICE_DETAIL_POLL_INTERVAL_MS = 60_000
+
 export function useDeviceByNumber(number: string) {
   return useQuery({
     queryKey: deviceByNumberQueryKeys.detail(number),
     queryFn: () => getDeviceByNumber(number),
     enabled: number.length > 0,
+    refetchInterval: DEVICE_DETAIL_POLL_INTERVAL_MS,
   })
 }

@@ -16,6 +16,11 @@ import {
   resolveDeviceConfiguration,
   type DeviceStatusIndicator,
 } from '@/features/devices/utils/device-list-status'
+import {
+  resolveDeviceOnlineStatusCode,
+  type DeviceOnlineStatusCode,
+} from '@/features/devices/utils/device-online-status'
+import { usePeriodicNow } from '@/shared/hooks/use-periodic-now'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { Button } from '@/components/ui/button'
 import type { DeviceListView, DeviceView } from '@/shared/api/types/device'
@@ -76,6 +81,7 @@ export function DeviceTable({
   onMenuAction,
 }: DeviceTableProps) {
   const { t } = useTranslation()
+  const now = usePeriodicNow()
   const devices = data.devices.items
   const showActions = platform === 'android' && onEditDevice != null
 
@@ -117,6 +123,7 @@ export function DeviceTable({
                 key={device.id}
                 device={device}
                 configurations={data.configurations}
+                now={now}
               />
             ))}
           </tbody>
@@ -153,6 +160,7 @@ export function DeviceTable({
               device={device}
               configurations={data.configurations}
               showActions={showActions}
+              now={now}
               onEditDevice={onEditDevice}
               onQrDevice={onQrDevice}
               onDeleteDevice={onDeleteDevice}
@@ -165,22 +173,36 @@ export function DeviceTable({
   )
 }
 
-function StatusDot({ statusCode }: { statusCode?: string }) {
+function StatusDot({
+  statusCode,
+  title,
+}: {
+  statusCode?: DeviceOnlineStatusCode
+  title?: string
+}) {
   const statusClass = STATUS_COLORS[statusCode ?? 'grey'] ?? STATUS_COLORS.grey
   return (
-    <span className="inline-flex items-center gap-2">
+    <span className="inline-flex items-center gap-2" title={title}>
       <span className={cn('size-2.5 rounded-full', statusClass)} aria-hidden />
-      <span className="sr-only">{statusCode}</span>
+      <span className="sr-only">{title ?? statusCode}</span>
     </span>
   )
 }
 
-function ComplianceDot({ indicator }: { indicator: DeviceStatusIndicator }) {
+function ComplianceDot({
+  indicator,
+  title,
+}: {
+  indicator: DeviceStatusIndicator
+  title: string
+}) {
   return (
-    <span
-      className={cn('inline-block size-2.5 rounded-full', INDICATOR_COLORS[indicator])}
-      aria-hidden
-    />
+    <span title={title} aria-label={title}>
+      <span
+        className={cn('inline-block size-2.5 rounded-full', INDICATOR_COLORS[indicator])}
+        aria-hidden
+      />
+    </span>
   )
 }
 
@@ -267,6 +289,7 @@ function AndroidDeviceRow({
   device,
   configurations,
   showActions,
+  now,
   onEditDevice,
   onQrDevice,
   onDeleteDevice,
@@ -275,6 +298,7 @@ function AndroidDeviceRow({
   device: DeviceView
   configurations: DeviceListView['configurations']
   showActions: boolean
+  now: number
   onEditDevice?: (device: DeviceView) => void
   onQrDevice?: (device: DeviceView) => void
   onDeleteDevice?: (device: DeviceView) => void
@@ -284,11 +308,18 @@ function AndroidDeviceRow({
   const configuration = resolveDeviceConfiguration(configurations, device.configurationId)
   const battery = device.info?.batteryLevel
   const model = device.model ?? device.info?.model
+  const onlineStatus = resolveDeviceOnlineStatusCode(device, now)
+  const permissionIndicator = getDevicePermissionIndicator(device, configuration)
+  const installIndicator = getDeviceInstallIndicator(device, configuration)
+  const filesIndicator = getDeviceFilesIndicator(device, configuration)
 
   return (
     <tr className="border-b last:border-b-0 hover:bg-muted/20">
       <td className="px-4 py-3">
-        <StatusDot statusCode={device.statusCode} />
+        <StatusDot
+          statusCode={onlineStatus}
+          title={t(`devices.status.${onlineStatus}`)}
+        />
       </td>
       <td className="px-4 py-3 whitespace-nowrap">
         {device.lastUpdate ? formatTimestamp(device.lastUpdate) : t('devices.date.unknown')}
@@ -304,13 +335,22 @@ function AndroidDeviceRow({
       </td>
       <td className="px-4 py-3">{model ?? t('devices.model.unknown')}</td>
       <td className="px-4 py-3">
-        <ComplianceDot indicator={getDevicePermissionIndicator(device, configuration)} />
+        <ComplianceDot
+          indicator={permissionIndicator}
+          title={t(`devices.compliance.${permissionIndicator}`)}
+        />
       </td>
       <td className="px-4 py-3">
-        <ComplianceDot indicator={getDeviceInstallIndicator(device, configuration)} />
+        <ComplianceDot
+          indicator={installIndicator}
+          title={t(`devices.compliance.${installIndicator}`)}
+        />
       </td>
       <td className="px-4 py-3">
-        <ComplianceDot indicator={getDeviceFilesIndicator(device, configuration)} />
+        <ComplianceDot
+          indicator={filesIndicator}
+          title={t(`devices.compliance.${filesIndicator}`)}
+        />
       </td>
       <td className="px-4 py-3">
         <ConfigurationCell device={device} configurations={configurations} />
@@ -351,14 +391,22 @@ function AndroidDeviceRow({
 function WindowsDeviceRow({
   device,
   configurations,
+  now,
 }: {
   device: DeviceView
   configurations: DeviceListView['configurations']
+  now: number
 }) {
+  const { t } = useTranslation()
+  const onlineStatus = resolveDeviceOnlineStatusCode(device, now)
+
   return (
     <tr className="border-b last:border-b-0 hover:bg-muted/20">
       <td className="px-4 py-3">
-        <StatusDot statusCode={device.statusCode} />
+        <StatusDot
+          statusCode={onlineStatus}
+          title={t(`devices.status.${onlineStatus}`)}
+        />
       </td>
       <td className="px-4 py-3 font-mono text-xs font-medium">
         <Link

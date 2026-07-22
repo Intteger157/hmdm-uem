@@ -74,7 +74,7 @@ export function ConfigurationCopyDialog({
           />
         </div>
 
-        <DialogFooter className="border-t-0 bg-transparent p-0 pt-2">
+        <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
           </Button>

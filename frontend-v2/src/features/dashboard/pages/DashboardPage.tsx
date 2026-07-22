@@ -31,8 +31,16 @@ export function DashboardPage() {
     )
   }
 
-  const online = data.statusSummary.find((s) => s.stringAttr === 'Online')?.number ?? 0
-  const offline = data.statusSummary.find((s) => s.stringAttr === 'Offline')?.number ?? 0
+  const online = data.statusSummary.find((s) => s.stringAttr === 'green')?.number ?? 0
+  const offline = data.statusSummary
+    .filter((s) => s.stringAttr === 'yellow' || s.stringAttr === 'red')
+    .reduce((sum, item) => sum + item.number, 0)
+
+  const statusLabel = (code: string) => {
+    const key = `devices.status.${code}`
+    const translated = t(key)
+    return translated === key ? code : translated
+  }
 
   return (
     <div className="space-y-6">
@@ -73,7 +81,7 @@ export function DashboardPage() {
           <CardContent className="space-y-3">
             {data.statusSummary.map((item) => (
               <div key={item.stringAttr} className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">{item.stringAttr}</span>
+                <span className="text-muted-foreground">{statusLabel(item.stringAttr)}</span>
                 <span className="font-medium">{item.number}</span>
               </div>
             ))}

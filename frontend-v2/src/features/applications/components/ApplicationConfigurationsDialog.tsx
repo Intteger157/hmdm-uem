@@ -80,7 +80,9 @@ export function ApplicationConfigurationsDialog({
   application,
 }: ApplicationConfigurationsDialogProps) {
   const { t } = useTranslation()
-  const { data, isLoading } = useApplicationConfigurationsQuery(application?.id)
+  const { data, isLoading, error, refetch } = useApplicationConfigurationsQuery(
+    open ? application?.id : undefined
+  )
   const updateMutation = useUpdateApplicationConfigurationsMutation()
   const [links, setLinks] = useState<ConfigurationRow[]>([])
   const [bulkAction, setBulkAction] = useState(BULK_ACTION_NONE)
@@ -197,7 +199,7 @@ export function ApplicationConfigurationsDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-5xl">
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>{t('applications.configurations.title')}</DialogTitle>
             <DialogDescription>{t('applications.configurations.description')}</DialogDescription>
@@ -219,6 +221,13 @@ export function ApplicationConfigurationsDialog({
 
             {isLoading ? (
               <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+            ) : error ? (
+              <div className="space-y-2 rounded-lg border border-destructive/40 p-4">
+                <p className="text-sm text-destructive">{t('applications.configurations.loadError')}</p>
+                <Button type="button" variant="outline" size="sm" onClick={() => void refetch()}>
+                  {t('common.retry')}
+                </Button>
+              </div>
             ) : sortedLinks.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t('applications.configurations.empty')}</p>
             ) : (
@@ -248,8 +257,8 @@ export function ApplicationConfigurationsDialog({
                   </select>
                 </div>
 
-                <div className="max-h-[min(28rem,60vh)] overflow-auto rounded-lg border">
-                  <table className="w-full min-w-[880px] text-left text-sm">
+                <div className="max-h-[min(24rem,55vh)] overflow-auto rounded-lg border">
+                  <table className="w-full min-w-[640px] text-left text-sm">
                     <thead className="sticky top-0 border-b bg-muted/40 text-muted-foreground">
                       <tr>
                         <th className="w-10 px-3 py-3" />
