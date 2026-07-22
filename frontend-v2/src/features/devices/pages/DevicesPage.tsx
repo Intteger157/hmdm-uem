@@ -16,6 +16,7 @@ import { DeviceLogsDialog } from '@/features/devices/components/DeviceLogsDialog
 import { DeviceInfoDialog } from '@/features/devices/components/DeviceInfoDialog'
 import { DeviceInstalledAppsDialog } from '@/features/devices/components/DeviceInstalledAppsDialog'
 import { DeviceLocationDialog } from '@/features/devices/components/DeviceLocationDialog'
+import { WindowsEnrollmentDialog } from '@/features/windows/components/WindowsEnrollmentDialog'
 import { getConfigurationQrCodeKey } from '@/features/devices/api/devices-api'
 import { useDevicesQuery } from '@/features/devices/hooks/use-devices-query'
 import { Button } from '@/components/ui/button'
@@ -46,6 +47,7 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
   const [deleteDevice, setDeleteDevice] = useState<DeviceView | null>(null)
   const [menuAction, setMenuAction] = useState<DeviceActionsMenuAction | null>(null)
   const [menuDevice, setMenuDevice] = useState<DeviceView | null>(null)
+  const [windowsEnrollmentOpen, setWindowsEnrollmentOpen] = useState(false)
 
   useEffect(() => {
     setPageNum(1)
@@ -141,6 +143,12 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
         </form>
         {platform === 'android' && (
           <Button type="button" onClick={openAdd}>
+            <Plus className="size-4" />
+            {t('devices.add')}
+          </Button>
+        )}
+        {platform === 'windows' && (
+          <Button type="button" onClick={() => setWindowsEnrollmentOpen(true)}>
             <Plus className="size-4" />
             {t('devices.add')}
           </Button>
@@ -327,6 +335,11 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
           }
         }}
         device={deleteDevice}
+      />
+
+      <WindowsEnrollmentDialog
+        open={windowsEnrollmentOpen}
+        onOpenChange={setWindowsEnrollmentOpen}
       />
     </div>
   )

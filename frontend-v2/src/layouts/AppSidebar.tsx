@@ -7,6 +7,7 @@ import {
   Monitor,
   Package,
   Radio,
+  Settings2,
   Shield,
   SlidersHorizontal,
   Settings,
@@ -62,6 +63,9 @@ function useNavState() {
     isUsers: pathname.startsWith('/users'),
     isRoles: pathname.startsWith('/roles'),
     isSettings: pathname.startsWith('/settings'),
+    isWindowsConfigurations: pathname.startsWith('/windows/configurations'),
+    isWindowsScripts: pathname.startsWith('/windows/scripts'),
+    isWindowsApplications: pathname.startsWith('/windows/applications'),
   }
 }
 
@@ -223,6 +227,43 @@ export function AppSidebar() {
                 </CollapsibleContent>
               </SidebarMenuItem>
             </Collapsible>
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+
+      <SidebarSeparator />
+
+      <SidebarGroup>
+        <SidebarGroupLabel>{t('nav.windowsManagement')}</SidebarGroupLabel>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={nav.isWindowsConfigurations}
+                render={<Link to="/windows/configurations" />}
+              >
+                <Settings2 />
+                <span>{t('nav.windowsConfigurations')}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={nav.isWindowsScripts}
+                render={<Link to="/windows/scripts" />}
+              >
+                <Terminal />
+                <span>{t('nav.windowsScripts')}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={nav.isWindowsApplications}
+                render={<Link to="/windows/applications" />}
+              >
+                <Package />
+                <span>{t('nav.windowsApplications')}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroupContent>
       </SidebarGroup>

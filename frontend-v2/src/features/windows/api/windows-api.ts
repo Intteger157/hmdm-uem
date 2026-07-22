@@ -171,6 +171,20 @@ export async function sendWindowsDeviceCommand(
   return response.data
 }
 
+export interface WindowsEnrollmentTokenResponse {
+  token: string
+}
+
+/** Creates a one-time enrollment token for a new Windows agent. */
+export async function createWindowsEnrollmentToken(): Promise<WindowsEnrollmentTokenResponse> {
+  if (isMockApiEnabled()) {
+    return { token: `win-enroll-mock-${Date.now()}` }
+  }
+
+  const response = await windowsApi.post<WindowsEnrollmentTokenResponse>('/enrollment-token')
+  return response.data
+}
+
 function mapEncryptionToBitLocker(
   status: WindowsEncryptionStatus | undefined,
   diskEncrypted?: boolean,

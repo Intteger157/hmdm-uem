@@ -32,6 +32,12 @@ func (h *WindowsHandler) Enroll(c *gin.Context) {
 		return
 	}
 
+	if err := validateEnrollmentToken(req.EnrollmentToken, req.HardwareID); err != nil {
+		log.Printf("[enroll] invalid token: hardware_id=%q err=%v", req.HardwareID, err)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired enrollment token"})
+		return
+	}
+
 	var device models.WindowsDevice
 	err := db.DB.Where("hardware_id = ?", req.HardwareID).First(&device).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -50,7 +56,17 @@ func (h *WindowsHandler) Enroll(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup device"})
 		return
 	} else {
+		device.EnrollmentToken = req.EnrollmentToken
+		if err := db.DB.Save(&device).Error; err != nil {
+			log.Printf("[enroll] update device failed: hardware_id=%q err=%v", req.HardwareID, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update device"})
+			return
+		}
 		log.Printf("[enroll] existing device hardware_id=%q", req.HardwareID)
+	}
+
+	if err := markEnrollmentTokenUsed(req.EnrollmentToken, req.HardwareID); err != nil {
+		log.Printf("[enroll] mark token used failed: hardware_id=%q err=%v", req.HardwareID, err)
 	}
 
 	c.JSON(http.StatusOK, models.EnrollResponse{

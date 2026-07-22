@@ -39,6 +39,7 @@ func main() {
 			windows.GET("/devices", windowsHandler.ListDevices)
 			windows.GET("/devices/:hardwareId", windowsHandler.GetDevice)
 			windows.POST("/devices/:hardwareId/commands", windowsHandler.EnqueueCommand)
+			windows.POST("/enrollment-token", windowsHandler.CreateEnrollmentToken)
 			windows.POST("/enroll", windowsHandler.Enroll)
 			windows.POST("/inventory", windowsHandler.Inventory)
 			windows.GET("/commands/poll", windowsHandler.PollCommand)

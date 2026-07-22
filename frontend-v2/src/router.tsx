@@ -24,6 +24,7 @@ import { AppLayout } from '@/layouts/AppLayout'
 import { AuthLayout } from '@/layouts/AuthLayout'
 import { FilesListPage } from '@/features/files/pages/FilesListPage'
 import { PublicQrEnrollmentPage } from '@/features/devices/pages/PublicQrEnrollmentPage'
+import { WindowsWorkInProgressPage } from '@/features/windows/pages/WindowsWorkInProgressPage'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { isPlatform } from '@/shared/api/types/platform'
 
@@ -180,6 +181,24 @@ const messagingRoute = createRoute({
   component: MessagingListPage,
 })
 
+const windowsConfigurationsRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/windows/configurations',
+  component: WindowsWorkInProgressPage,
+})
+
+const windowsScriptsRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/windows/scripts',
+  component: WindowsWorkInProgressPage,
+})
+
+const windowsApplicationsRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/windows/applications',
+  component: WindowsWorkInProgressPage,
+})
+
 const publicQrRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/qr/$qrCodeKey',
@@ -234,6 +253,9 @@ const routeTree = rootRoute.addChildren([
     remoteControlRoute,
     pushRoute,
     messagingRoute,
+    windowsConfigurationsRoute,
+    windowsScriptsRoute,
+    windowsApplicationsRoute,
   ]),
 ])
 

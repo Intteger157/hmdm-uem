@@ -18,7 +18,11 @@ func InitDB(dsn string) (*gorm.DB, error) {
 		return nil, fmt.Errorf("connect database: %w", err)
 	}
 
-	if err := database.AutoMigrate(&models.WindowsDevice{}, &models.WindowsDeviceCommand{}); err != nil {
+	if err := database.AutoMigrate(
+		&models.WindowsDevice{},
+		&models.WindowsDeviceCommand{},
+		&models.WindowsEnrollmentToken{},
+	); err != nil {
 		return nil, fmt.Errorf("migrate database: %w", err)
 	}
 
