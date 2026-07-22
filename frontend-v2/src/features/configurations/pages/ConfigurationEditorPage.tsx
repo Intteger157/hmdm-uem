@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft } from 'lucide-react'
 import { ConfigurationAppSettingsTab } from '@/features/configurations/components/editor/ConfigurationAppSettingsTab'
@@ -19,6 +19,7 @@ import {
   findConfigAppByUsedVersionId,
 } from '@/features/configurations/utils/configuration-app-utils'
 import {
+  createEmptyConfigurationDraft,
   normalizeConfigurationFromApi,
   prepareConfigurationForSave,
   validateConfigurationDraft,
@@ -29,30 +30,42 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 
 interface ConfigurationEditorPageProps {
-  configId: number
+  configId?: number
+  isNew?: boolean
 }
 
-export function ConfigurationEditorPage({ configId }: ConfigurationEditorPageProps) {
+export function ConfigurationEditorPage({ configId, isNew = false }: ConfigurationEditorPageProps) {
   const { t } = useTranslation()
-  const { data: configuration, isLoading, error } = useConfigurationQuery(configId)
+  const navigate = useNavigate()
+  const { data: configuration, isLoading, error } = useConfigurationQuery(isNew ? undefined : configId)
   const { data: configurationApplications, isLoading: appsLoading, refetch: refetchApps } =
-    useConfigurationApplicationsQuery(configId)
+    useConfigurationApplicationsQuery(isNew ? undefined : configId)
   const upsertMutation = useUpsertConfigurationMutation()
 
-  const [draft, setDraft] = useState<ConfigurationEditorDraft | null>(null)
+  const [draft, setDraft] = useState<ConfigurationEditorDraft | null>(isNew ? createEmptyConfigurationDraft() : null)
   const [applications, setApplications] = useState<ConfigurationApplication[]>([])
 
   useEffect(() => {
+    if (isNew) {
+      setDraft(createEmptyConfigurationDraft())
+      setApplications([])
+      return
+    }
+
     if (configuration) {
       setDraft(normalizeConfigurationFromApi(configuration))
     }
-  }, [configuration])
+  }, [configuration, isNew])
 
   useEffect(() => {
+    if (isNew) {
+      return
+    }
+
     if (configurationApplications) {
       setApplications(configurationApplications)
     }
-  }, [configurationApplications])
+  }, [configurationApplications, isNew])
 
   const handleChange = (patch: Partial<ConfigurationEditorDraft>) => {
     setDraft((prev) => (prev ? { ...prev, ...patch } : prev))
@@ -114,12 +127,20 @@ export function ConfigurationEditorPage({ configId }: ConfigurationEditorPagePro
       const saved = await upsertMutation.mutateAsync(payload)
       setDraft(normalizeConfigurationFromApi(saved))
       toast.success(t('configurations.editor.saved'))
+
+      if (isNew && saved.id) {
+        void navigate({
+          to: '/configurations/$configId',
+          params: { configId: String(saved.id) },
+          replace: true,
+        })
+      }
     } catch {
       toast.error(t('configurations.editor.saveError'))
     }
   }
 
-  if (isLoading || appsLoading) {
+  if (!isNew && (isLoading || appsLoading)) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-8 w-64" />
@@ -128,7 +149,7 @@ export function ConfigurationEditorPage({ configId }: ConfigurationEditorPagePro
     )
   }
 
-  if (error != null || !configuration || !draft) {
+  if (!isNew && (error != null || !configuration || !draft)) {
     return (
       <div className="rounded-lg border border-destructive/40 bg-card p-8 text-center">
         <p className="text-sm text-destructive">{t('common.loadError')}</p>
@@ -139,7 +160,14 @@ export function ConfigurationEditorPage({ configId }: ConfigurationEditorPagePro
     )
   }
 
+  if (!draft) {
+    return null
+  }
+
   const mainApp = findConfigAppByUsedVersionId(applications, draft.mainAppId ?? undefined)
+  const pageTitle = isNew
+    ? t('configurations.editor.newTitle')
+    : draft.name.trim() || t('configurations.editor.newTitle')
 
   return (
     <div className="space-y-6">
@@ -149,8 +177,10 @@ export function ConfigurationEditorPage({ configId }: ConfigurationEditorPagePro
             <ArrowLeft className="size-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">{draft.name}</h1>
-            <p className="text-sm text-muted-foreground">{t('configurations.editor.subtitle')}</p>
+            <h1 className="text-2xl font-semibold tracking-tight">{pageTitle}</h1>
+            <p className="text-sm text-muted-foreground">
+              {isNew ? t('configurations.editor.newSubtitle') : t('configurations.editor.subtitle')}
+            </p>
             {!mainApp && (
               <p className="text-xs text-amber-700 dark:text-amber-300">
                 {t('configurations.editor.noMainAppWarning')}
@@ -187,7 +217,7 @@ export function ConfigurationEditorPage({ configId }: ConfigurationEditorPagePro
         </TabsContent>
         <TabsContent value="applications">
           <ConfigurationApplicationsTab
-            configId={configId}
+            configId={draft.id}
             draft={draft}
             applications={applications}
             onChange={handleChange}

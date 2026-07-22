@@ -75,7 +75,7 @@ export function ConfigurationsListPage() {
             {t('common.search')}
           </Button>
         </form>
-        <Button type="button" disabled title={t('common.comingSoon')}>
+        <Button type="button" render={<Link to="/configurations/new" />}>
           <Plus className="size-4" />
           {t('configurations.add')}
         </Button>

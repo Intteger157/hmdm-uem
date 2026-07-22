@@ -66,6 +66,8 @@
   "configurations.delete.success": "Конфигурация удалена",
   "configurations.delete.error": "Не удалось удалить конфигурацию (возможно, она используется устройствами)",
   "configurations.editor.subtitle": "Редактор конфигурации",
+  "configurations.editor.newTitle": "Новая конфигурация",
+  "configurations.editor.newSubtitle": "Заполните поля и сохраните, чтобы создать конфигурацию.",
   "configurations.editor.backToList": "К списку конфигураций",
   "configurations.editor.saved": "Конфигурация сохранена",
   "configurations.editor.saveError": "Не удалось сохранить конфигурацию",

@@ -66,6 +66,8 @@
   "configurations.delete.success": "Configuration deleted",
   "configurations.delete.error": "Failed to delete configuration (it may be in use by devices)",
   "configurations.editor.subtitle": "Configuration editor",
+  "configurations.editor.newTitle": "New configuration",
+  "configurations.editor.newSubtitle": "Fill in the details and save to create a configuration.",
   "configurations.editor.backToList": "Back to configurations",
   "configurations.editor.saved": "Configuration saved",
   "configurations.editor.saveError": "Failed to save configuration",

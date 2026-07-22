@@ -94,6 +94,14 @@ const configurationsRoute = createRoute({
   component: ConfigurationsListPage,
 })
 
+const configurationCreateRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/configurations/new',
+  component: function ConfigurationCreateRoute() {
+    return <ConfigurationEditorPage isNew />
+  },
+})
+
 const configurationEditorRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/configurations/$configId',
@@ -208,6 +216,7 @@ const routeTree = rootRoute.addChildren([
     devicesRoute,
     deviceDetailRoute,
     configurationsRoute,
+    configurationCreateRoute,
     configurationEditorRoute,
     applicationsRoute,
     applicationVersionsRoute,

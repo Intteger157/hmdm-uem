@@ -40,7 +40,7 @@ import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
 import { toast } from 'sonner'
 
 interface ConfigurationApplicationsTabProps {
-  configId: number
+  configId?: number
   draft: Configuration
   applications: ConfigurationApplication[]
   onChange: (patch: Partial<Configuration>) => void
@@ -182,7 +182,7 @@ export function ConfigurationApplicationsTab({
   }
 
   const handleUpgrade = async () => {
-    if (!upgradeTarget?.id) {
+    if (!configId || !upgradeTarget?.id) {
       return
     }
 

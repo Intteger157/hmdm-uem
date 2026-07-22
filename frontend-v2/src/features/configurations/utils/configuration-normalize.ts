@@ -71,6 +71,21 @@ export function normalizeConfigurationFromApi(configuration: Configuration): Con
   return draft
 }
 
+/** Default skeleton for creating a new configuration (matches legacy config editor id=0). */
+export function createEmptyConfigurationDraft(): ConfigurationEditorDraft {
+  return normalizeConfigurationFromApi({
+    name: '',
+    description: '',
+    defaultFilePath: '/Download/',
+    eventReceivingComponent: 'com.hmdm.launcher.AdminReceiver',
+    systemUpdateType: 0,
+    useDefaultDesignSettings: true,
+    applications: [],
+    files: [],
+    applicationSettings: [],
+  })
+}
+
 export interface PrepareConfigurationOptions {
   mainAppSelected: boolean
   contentAppSelected: boolean
@@ -150,6 +165,10 @@ export function prepareConfigurationForSave(
   }
 
   delete (payload as Configuration & { timeZoneMode?: unknown }).timeZoneMode
+
+  if (payload.id == null || payload.id <= 0) {
+    delete payload.id
+  }
 
   return payload
 }
