@@ -1,5 +1,4 @@
-import { API_BASE } from '@/shared/api/config'
-import { api } from '@/shared/api/client'
+import { api, publicApi } from '@/shared/api/client'
 import { isMockApiEnabled, mockNetworkDelay } from '@/shared/api/mock-utils'
 import { mockGetDeviceById, mockSearchDevices } from '@/shared/api/mocks/devices'
 import type { ApiResponse } from '@/shared/api/types/api-response'
@@ -176,14 +175,35 @@ export async function deleteDevice(id: number): Promise<void> {
 }
 
 /** Public QR PNG for device enrollment (same as legacy UI). */
-export function buildDeviceQrCodeImageUrl(
+export async function fetchDeviceQrCodeBlob(
   qrCodeKey: string,
-  deviceNumber: string,
+  deviceId: string,
   size = 280,
-): string {
-  const params = new URLSearchParams({
-    size: String(size),
-    deviceId: deviceNumber,
+): Promise<Blob> {
+  if (isMockApiEnabled()) {
+    await mockNetworkDelay()
+    const base64 =
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+    const binary = atob(base64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i)
+    }
+    return new Blob([bytes], { type: 'image/png' })
+  }
+
+  const response = await publicApi.get<Blob>(`/public/qr/${encodeURIComponent(qrCodeKey)}`, {
+    params: {
+      deviceId,
+      size,
+    },
+    responseType: 'blob',
   })
-  return `${API_BASE}/public/qr/${encodeURIComponent(qrCodeKey)}?${params.toString()}`
+
+  const blob = response.data
+  if (!(blob instanceof Blob) || blob.size === 0) {
+    throw new Error('QR code image is empty')
+  }
+
+  return blob
 }
