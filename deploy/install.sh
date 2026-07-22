@@ -85,9 +85,14 @@ mkdir -p "${WEBAPPS_DIR}" "${DEPLOY_DIR}/volumes/work" "${DEPLOY_DIR}/volumes/hm
 
 ensure_build_properties() {
   local docker_template="${ROOT_DIR}/server/build.properties.docker"
+  local pom_file="${ROOT_DIR}/server/pom.xml"
 
   if [[ ! -f "${docker_template}" ]]; then
-    die "Missing ${docker_template}. Run git pull to update the repository."
+    die "Missing ${docker_template}. Your checkout is outdated. Run: git stash && git pull"
+  fi
+
+  if ! grep -q 'build.properties.docker' "${pom_file}"; then
+    die "server/pom.xml is outdated (expected build.properties.docker). Run: git stash && git pull"
   fi
 }
 
