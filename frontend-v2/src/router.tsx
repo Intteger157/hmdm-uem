@@ -9,6 +9,11 @@ import { LoginPage } from '@/features/auth/pages/LoginPage'
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage'
 import { DevicesPage } from '@/features/devices/pages/DevicesPage'
 import { DeviceDetailPage } from '@/features/devices/pages/DeviceDetailPage'
+import { ConfigurationsListPage } from '@/features/configurations/pages/ConfigurationsListPage'
+import { ConfigurationEditorPage } from '@/features/configurations/pages/ConfigurationEditorPage'
+import { ApplicationsListPage } from '@/features/applications/pages/ApplicationsListPage'
+import { GroupsListPage } from '@/features/groups/pages/GroupsListPage'
+import { UsersListPage } from '@/features/users/pages/UsersListPage'
 import { AppLayout } from '@/layouts/AppLayout'
 import { AuthLayout } from '@/layouts/AuthLayout'
 import { ComingSoonPage } from '@/shared/pages/ComingSoonPage'
@@ -79,13 +84,22 @@ const deviceDetailRoute = createRoute({
 const configurationsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/configurations',
-  component: () => <ComingSoonPage titleKey="nav.configurations" />,
+  component: ConfigurationsListPage,
+})
+
+const configurationEditorRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/configurations/$configId',
+  component: function ConfigurationEditorRoute() {
+    const { configId } = configurationEditorRoute.useParams()
+    return <ConfigurationEditorPage configId={Number(configId)} />
+  },
 })
 
 const applicationsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/applications',
-  component: () => <ComingSoonPage titleKey="nav.applications" />,
+  component: ApplicationsListPage,
 })
 
 const filesRoute = createRoute({
@@ -97,13 +111,13 @@ const filesRoute = createRoute({
 const groupsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/groups',
-  component: () => <ComingSoonPage titleKey="nav.groups" />,
+  component: GroupsListPage,
 })
 
 const usersRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/users',
-  component: () => <ComingSoonPage titleKey="nav.users" />,
+  component: UsersListPage,
 })
 
 const settingsRoute = createRoute({
@@ -134,6 +148,7 @@ const routeTree = rootRoute.addChildren([
     devicesRoute,
     deviceDetailRoute,
     configurationsRoute,
+    configurationEditorRoute,
     applicationsRoute,
     filesRoute,
     groupsRoute,

@@ -1,7 +1,7 @@
 FROM node:22-alpine AS build
 
 # Change this value to invalidate Docker layer cache when UI sources change.
-ARG UI_BUILD_ID=phase0-device-qr-fix2-20260722
+ARG UI_BUILD_ID=phase1-global-api-20260722
 RUN echo "UI build: ${UI_BUILD_ID}"
 
 WORKDIR /app
