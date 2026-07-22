@@ -120,3 +120,44 @@ export async function getWindowsDeviceByHardwareId(hardwareId: string): Promise<
   const response = await windowsApi.get<WindowsDeviceDto>(`/devices/${encoded}`)
   return mapWindowsDeviceToView(response.data)
 }
+
+export type WindowsCommandAction =
+  | 'sync'
+  | 'restart'
+  | 'lock'
+  | 'bitlocker_enable'
+  | 'powershell'
+  | 'install'
+  | 'wipe'
+
+export interface WindowsCommandPayload {
+  script?: string
+  url?: string
+}
+
+interface EnqueueCommandResponse {
+  id: number
+  action: string
+  status: string
+}
+
+/** Queues a remote command for a Windows agent (picked up on next poll). */
+export async function sendWindowsDeviceCommand(
+  hardwareId: string,
+  action: WindowsCommandAction,
+  payload?: WindowsCommandPayload,
+): Promise<EnqueueCommandResponse> {
+  if (isMockApiEnabled()) {
+    return { id: Date.now(), action, status: 'pending' }
+  }
+
+  const encoded = encodeURIComponent(hardwareId)
+  const response = await windowsApi.post<EnqueueCommandResponse>(
+    `/devices/${encoded}/commands`,
+    {
+      action,
+      payload: payload ?? {},
+    },
+  )
+  return response.data
+}

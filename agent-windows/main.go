@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -10,6 +9,7 @@ import (
 	"time"
 
 	"github.com/hmdm/agent-windows/internal/api"
+	"github.com/hmdm/agent-windows/internal/commands"
 	"github.com/hmdm/agent-windows/internal/config"
 	"github.com/hmdm/agent-windows/internal/system"
 	"golang.org/x/sys/windows/svc"
@@ -182,35 +182,86 @@ func runAgentLoop(stop <-chan struct{}, cfg *config.Config, apiClient *api.APICl
 				}
 			}
 
-			info, err := system.CollectInfo()
-			if err != nil {
-				log.Printf("inventory collection failed: %v", err)
-				continue
-			}
-
-			payload, err := json.Marshal(info)
-			if err != nil {
-				log.Printf("inventory marshal failed: %v", err)
-				continue
-			}
-
-			log.Printf("inventory payload: %s", string(payload))
-
-			if err := apiClient.SendInventory(cfg.AuthToken, cfg.HardwareID, info); err != nil {
-				if errors.Is(err, api.ErrUnauthorized) {
-					log.Printf("inventory upload unauthorized, clearing auth token for re-enrollment")
-					if clearErr := config.ClearAuthToken(); clearErr != nil {
-						log.Printf("failed to clear auth token: %v", clearErr)
-					}
-					cfg.AuthToken = ""
+			if err := uploadInventory(cfg, apiClient); err != nil {
+				if handleAuthFailure(cfg, err) {
 					continue
 				}
-
 				log.Printf("inventory upload failed: %v", err)
-				continue
+			} else {
+				log.Printf("inventory upload succeeded")
 			}
 
-			log.Printf("inventory upload succeeded")
+			if err := processPendingCommands(stop, cfg, apiClient); err != nil {
+				if handleAuthFailure(cfg, err) {
+					continue
+				}
+				log.Printf("command processing failed: %v", err)
+			}
 		}
 	}
+}
+
+func uploadInventory(cfg *config.Config, apiClient *api.APIClient) error {
+	info, err := system.CollectInfo()
+	if err != nil {
+		return fmt.Errorf("inventory collection failed: %w", err)
+	}
+
+	if err := apiClient.SendInventory(cfg.AuthToken, cfg.HardwareID, info); err != nil {
+		return err
+	}
+	return nil
+}
+
+func processPendingCommands(stop <-chan struct{}, cfg *config.Config, apiClient *api.APIClient) error {
+	for {
+		select {
+		case <-stop:
+			return nil
+		default:
+		}
+
+		command, err := apiClient.PollCommand(cfg.AuthToken, cfg.HardwareID)
+		if err != nil {
+			return err
+		}
+		if command == nil {
+			return nil
+		}
+
+		log.Printf("executing command id=%d action=%s", command.ID, command.Action)
+
+		if command.Action == "sync" {
+			if err := uploadInventory(cfg, apiClient); err != nil {
+				reportErr := apiClient.CompleteCommand(cfg.AuthToken, cfg.HardwareID, command.ID, false, err.Error())
+				if reportErr != nil {
+					return reportErr
+				}
+				continue
+			}
+			if err := apiClient.CompleteCommand(cfg.AuthToken, cfg.HardwareID, command.ID, true, "inventory uploaded"); err != nil {
+				return err
+			}
+			continue
+		}
+
+		result := commands.Execute(command.Action, command.Payload)
+		if err := apiClient.CompleteCommand(cfg.AuthToken, cfg.HardwareID, command.ID, result.Success, result.Message); err != nil {
+			return err
+		}
+		log.Printf("command id=%d finished success=%v message=%q", command.ID, result.Success, result.Message)
+	}
+}
+
+func handleAuthFailure(cfg *config.Config, err error) bool {
+	if !errors.Is(err, api.ErrUnauthorized) {
+		return false
+	}
+
+	log.Printf("request unauthorized, clearing auth token for re-enrollment")
+	if clearErr := config.ClearAuthToken(); clearErr != nil {
+		log.Printf("failed to clear auth token: %v", clearErr)
+	}
+	cfg.AuthToken = ""
+	return true
 }

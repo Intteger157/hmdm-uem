@@ -38,6 +38,12 @@ import type { Platform } from '@/shared/api/types/platform'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
+import { useWindowsDeviceCommandMutation } from '@/features/windows/hooks/use-windows-device-command'
+import {
+  WindowsInstallDialog,
+  WindowsPowerShellDialog,
+} from '@/features/windows/components/WindowsCommandDialogs'
+import type { WindowsCommandAction } from '@/features/windows/api/windows-api'
 
 type AndroidDialogAction =
   | 'appSettings'
@@ -62,10 +68,12 @@ interface AndroidActionDef {
 }
 
 interface WindowsActionDef {
-  id: string
+  id: WindowsCommandAction
   icon: typeof RefreshCw
   labelKey: string
   variant?: 'outline' | 'destructive'
+  requiresConfirm?: boolean
+  opensDialog?: 'powershell' | 'install'
 }
 
 const ANDROID_ACTIONS: AndroidActionDef[] = [
@@ -92,12 +100,12 @@ const ANDROID_ACTIONS: AndroidActionDef[] = [
 
 const WINDOWS_ACTIONS: WindowsActionDef[] = [
   { id: 'sync', icon: RefreshCw, labelKey: 'deviceDetail.actions.sync' },
-  { id: 'restart', icon: RotateCcw, labelKey: 'deviceDetail.actions.restart' },
+  { id: 'restart', icon: RotateCcw, labelKey: 'deviceDetail.actions.restart', requiresConfirm: true },
   { id: 'lock', icon: Lock, labelKey: 'deviceDetail.actions.lock' },
-  { id: 'bitlocker', icon: Shield, labelKey: 'deviceDetail.actions.bitlocker' },
-  { id: 'install', icon: Download, labelKey: 'deviceDetail.actions.install' },
-  { id: 'powershell', icon: Terminal, labelKey: 'deviceDetail.actions.powershell' },
-  { id: 'wipe', icon: Trash2, labelKey: 'deviceDetail.actions.wipe', variant: 'destructive' },
+  { id: 'bitlocker_enable', icon: Shield, labelKey: 'deviceDetail.actions.bitlocker', requiresConfirm: true },
+  { id: 'install', icon: Download, labelKey: 'deviceDetail.actions.install', opensDialog: 'install' },
+  { id: 'powershell', icon: Terminal, labelKey: 'deviceDetail.actions.powershell', opensDialog: 'powershell' },
+  { id: 'wipe', icon: Trash2, labelKey: 'deviceDetail.actions.wipe', variant: 'destructive', requiresConfirm: true },
 ]
 
 interface DeviceActionsPanelProps {
@@ -114,6 +122,11 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
 
   const [activeDialog, setActiveDialog] = useState<AndroidDialogAction | null>(null)
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
+  const [windowsConfirmAction, setWindowsConfirmAction] = useState<WindowsCommandAction | null>(null)
+  const [powershellOpen, setPowershellOpen] = useState(false)
+  const [installOpen, setInstallOpen] = useState(false)
+
+  const windowsCommandMutation = useWindowsDeviceCommandMutation(device.number)
 
   const runAndroidCommand = async (actionId: AndroidCommandAction) => {
     try {
@@ -157,6 +170,60 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
 
   const isPending =
     syncMutation.isPending || rebootMutation.isPending || resetMutation.isPending
+
+  const queueWindowsCommand = async (
+    action: WindowsCommandAction,
+    payload?: { script?: string; url?: string },
+  ) => {
+    try {
+      await windowsCommandMutation.mutateAsync({ action, payload })
+      toast.success(t('deviceDetail.actions.commandQueued'))
+    } catch {
+      toast.error(t('deviceDetail.actions.error'))
+    }
+  }
+
+  const handleWindowsAction = (action: WindowsActionDef) => {
+    if (action.opensDialog === 'powershell') {
+      setPowershellOpen(true)
+      return
+    }
+    if (action.opensDialog === 'install') {
+      setInstallOpen(true)
+      return
+    }
+    if (action.requiresConfirm) {
+      setWindowsConfirmAction(action.id)
+      return
+    }
+    void queueWindowsCommand(action.id)
+  }
+
+  const windowsConfirmLabel = (action: WindowsCommandAction | null) => {
+    switch (action) {
+      case 'restart':
+        return t('deviceDetail.actions.restartConfirm', { device: device.hostname ?? device.number })
+      case 'bitlocker_enable':
+        return t('deviceDetail.actions.bitlockerConfirm', { device: device.hostname ?? device.number })
+      case 'wipe':
+        return t('deviceDetail.actions.wipeConfirm', { device: device.hostname ?? device.number })
+      default:
+        return t('deviceDetail.actions.runConfirm')
+    }
+  }
+
+  const windowsConfirmTitle = (action: WindowsCommandAction | null) => {
+    switch (action) {
+      case 'restart':
+        return t('deviceDetail.actions.restart')
+      case 'bitlocker_enable':
+        return t('deviceDetail.actions.bitlocker')
+      case 'wipe':
+        return t('deviceDetail.actions.wipeConfirmTitle')
+      default:
+        return t('deviceDetail.actions.run')
+    }
+  }
 
   if (platform === 'android') {
     return (
@@ -267,19 +334,13 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
   }
 
   return (
-    <div className="space-y-4">
-      <Card className="border-amber-500/40 bg-amber-500/5">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">{t('deviceDetail.actions.windowsNotImplementedTitle')}</CardTitle>
-          <CardDescription>{t('deviceDetail.actions.windowsNotImplemented')}</CardDescription>
-        </CardHeader>
-      </Card>
-
+    <>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {WINDOWS_ACTIONS.map(({ id, icon: Icon, labelKey, variant = 'outline' }) => {
-          const label = t(labelKey)
+        {WINDOWS_ACTIONS.map((action) => {
+          const Icon = action.icon
+          const label = t(action.labelKey)
           return (
-            <Card key={id} className="transition-colors hover:bg-muted/30">
+            <Card key={action.id} className="transition-colors hover:bg-muted/30">
               <CardHeader className="pb-2">
                 <div className="flex items-center gap-2">
                   <div className="flex size-8 items-center justify-center rounded-md bg-muted">
@@ -289,15 +350,62 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
-                <CardDescription className="text-xs">{t('deviceDetail.actions.mockHint')}</CardDescription>
-                <Button type="button" size="sm" variant={variant} className="mt-3 w-full" disabled>
-                  {t('deviceDetail.actions.comingSoon')}
+                <CardDescription className="text-xs">{t('deviceDetail.actions.windowsHint')}</CardDescription>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={action.variant ?? 'outline'}
+                  className="mt-3 w-full"
+                  disabled={windowsCommandMutation.isPending}
+                  onClick={() => handleWindowsAction(action)}
+                >
+                  {t('deviceDetail.actions.run')}
                 </Button>
               </CardContent>
             </Card>
           )
         })}
       </div>
-    </div>
+
+      <WindowsPowerShellDialog
+        open={powershellOpen}
+        onOpenChange={setPowershellOpen}
+        isPending={windowsCommandMutation.isPending}
+        onSubmit={(script) => {
+          void queueWindowsCommand('powershell', { script }).finally(() => setPowershellOpen(false))
+        }}
+      />
+
+      <WindowsInstallDialog
+        open={installOpen}
+        onOpenChange={setInstallOpen}
+        isPending={windowsCommandMutation.isPending}
+        onSubmit={(url) => {
+          void queueWindowsCommand('install', { url }).finally(() => setInstallOpen(false))
+        }}
+      />
+
+      <ConfirmDeleteDialog
+        open={windowsConfirmAction != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setWindowsConfirmAction(null)
+          }
+        }}
+        title={windowsConfirmTitle(windowsConfirmAction)}
+        description={windowsConfirmLabel(windowsConfirmAction)}
+        confirmLabel={t('deviceDetail.actions.run')}
+        confirmVariant={windowsConfirmAction === 'wipe' ? 'destructive' : 'default'}
+        isPending={windowsCommandMutation.isPending}
+        onConfirm={() => {
+          if (!windowsConfirmAction) {
+            return
+          }
+          const action = windowsConfirmAction
+          setWindowsConfirmAction(null)
+          void queueWindowsCommand(action)
+        }}
+      />
+    </>
   )
 }

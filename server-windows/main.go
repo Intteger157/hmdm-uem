@@ -38,8 +38,11 @@ func main() {
 		{
 			windows.GET("/devices", windowsHandler.ListDevices)
 			windows.GET("/devices/:hardwareId", windowsHandler.GetDevice)
+			windows.POST("/devices/:hardwareId/commands", windowsHandler.EnqueueCommand)
 			windows.POST("/enroll", windowsHandler.Enroll)
 			windows.POST("/inventory", windowsHandler.Inventory)
+			windows.GET("/commands/poll", windowsHandler.PollCommand)
+			windows.POST("/commands/:commandId/complete", windowsHandler.CompleteCommand)
 		}
 	}
 
