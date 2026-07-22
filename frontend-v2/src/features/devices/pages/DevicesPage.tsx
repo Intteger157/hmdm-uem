@@ -9,6 +9,13 @@ import { DeviceRemoteDialog } from '@/features/plugins/deviceremote/components/D
 import { MessagingSendDialog } from '@/features/plugins/messaging/components/MessagingSendDialog'
 import { PushSendDialog } from '@/features/plugins/push/components/PushSendDialog'
 import { DeviceTable } from '@/features/devices/components/DeviceTable'
+import type { DeviceActionsMenuAction } from '@/features/devices/components/DeviceActionsMenu'
+import { DeviceApplicationSettingsDialog } from '@/features/devices/components/DeviceApplicationSettingsDialog'
+import { DeviceResetDialog } from '@/features/devices/components/DeviceResetDialog'
+import { DeviceLogsDialog } from '@/features/devices/components/DeviceLogsDialog'
+import { DeviceInfoDialog } from '@/features/devices/components/DeviceInfoDialog'
+import { DeviceInstalledAppsDialog } from '@/features/devices/components/DeviceInstalledAppsDialog'
+import { DeviceLocationDialog } from '@/features/devices/components/DeviceLocationDialog'
 import { getConfigurationQrCodeKey } from '@/features/devices/api/devices-api'
 import { useDevicesQuery } from '@/features/devices/hooks/use-devices-query'
 import { Button } from '@/components/ui/button'
@@ -36,10 +43,9 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
   const [formOpen, setFormOpen] = useState(false)
   const [editingDevice, setEditingDevice] = useState<DeviceView | null>(null)
   const [qrDevice, setQrDevice] = useState<DeviceView | null>(null)
-  const [remoteDevice, setRemoteDevice] = useState<DeviceView | null>(null)
-  const [messageDevice, setMessageDevice] = useState<DeviceView | null>(null)
-  const [pushDevice, setPushDevice] = useState<DeviceView | null>(null)
   const [deleteDevice, setDeleteDevice] = useState<DeviceView | null>(null)
+  const [menuAction, setMenuAction] = useState<DeviceActionsMenuAction | null>(null)
+  const [menuDevice, setMenuDevice] = useState<DeviceView | null>(null)
 
   useEffect(() => {
     setPageNum(1)
@@ -76,6 +82,16 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
   const openEdit = (device: DeviceView) => {
     setEditingDevice(device)
     setFormOpen(true)
+  }
+
+  const closeMenuDialog = () => {
+    setMenuAction(null)
+    setMenuDevice(null)
+  }
+
+  const handleMenuAction = (action: DeviceActionsMenuAction, device: DeviceView) => {
+    setMenuAction(action)
+    setMenuDevice(device)
   }
 
   const qrCodeKey =
@@ -154,9 +170,7 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
             onEditDevice={platform === 'android' ? openEdit : undefined}
             onQrDevice={platform === 'android' ? setQrDevice : undefined}
             onDeleteDevice={platform === 'android' ? setDeleteDevice : undefined}
-            onRemoteDevice={platform === 'android' ? setRemoteDevice : undefined}
-            onMessageDevice={platform === 'android' ? setMessageDevice : undefined}
-            onPushDevice={platform === 'android' ? setPushDevice : undefined}
+            onMenuAction={platform === 'android' ? handleMenuAction : undefined}
           />
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -212,35 +226,97 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
         qrCodeKey={qrCodeKey}
       />
 
-      <DeviceRemoteDialog
-        open={remoteDevice != null}
+      <DeviceApplicationSettingsDialog
+        open={menuAction === 'appSettings'}
         onOpenChange={(open) => {
           if (!open) {
-            setRemoteDevice(null)
+            closeMenuDialog()
           }
         }}
-        deviceId={remoteDevice?.id}
-        deviceLabel={remoteDevice?.number}
+        deviceId={menuDevice?.id}
+        deviceNumber={menuDevice?.number}
+      />
+
+      <DeviceInfoDialog
+        open={menuAction === 'details'}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeMenuDialog()
+          }
+        }}
+        deviceNumber={menuDevice?.number}
+      />
+
+      <DeviceLogsDialog
+        open={menuAction === 'logs'}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeMenuDialog()
+          }
+        }}
+        deviceNumber={menuDevice?.number}
       />
 
       <MessagingSendDialog
-        open={messageDevice != null}
+        open={menuAction === 'messaging'}
         onOpenChange={(open) => {
           if (!open) {
-            setMessageDevice(null)
+            closeMenuDialog()
           }
         }}
-        defaultDeviceNumber={messageDevice?.number}
+        defaultDeviceNumber={menuDevice?.number}
       />
 
       <PushSendDialog
-        open={pushDevice != null}
+        open={menuAction === 'push'}
         onOpenChange={(open) => {
           if (!open) {
-            setPushDevice(null)
+            closeMenuDialog()
           }
         }}
-        defaultDeviceNumber={pushDevice?.number}
+        defaultDeviceNumber={menuDevice?.number}
+      />
+
+      <DeviceResetDialog
+        open={menuAction === 'reset'}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeMenuDialog()
+          }
+        }}
+        deviceId={menuDevice?.id}
+        deviceNumber={menuDevice?.number}
+      />
+
+      <DeviceInstalledAppsDialog
+        open={menuAction === 'installedApps'}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeMenuDialog()
+          }
+        }}
+        deviceNumber={menuDevice?.number}
+      />
+
+      <DeviceLocationDialog
+        open={menuAction === 'location'}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeMenuDialog()
+          }
+        }}
+        deviceNumber={menuDevice?.number}
+      />
+
+      <DeviceRemoteDialog
+        open={menuAction === 'remoteControl'}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeMenuDialog()
+          }
+        }}
+        deviceId={menuDevice?.id}
+        deviceLabel={menuDevice?.number}
       />
 
       <DeviceDeleteDialog

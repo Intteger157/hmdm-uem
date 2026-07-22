@@ -5,7 +5,10 @@ import {
   getConfigurationName,
   getConfigurationQrCodeKey,
 } from '@/features/devices/api/devices-api'
-import { DevicePluginMenu, DEVICE_PLUGIN_ICONS } from '@/features/devices/components/DevicePluginMenu'
+import {
+  DeviceActionsMenu,
+  type DeviceActionsMenuAction,
+} from '@/features/devices/components/DeviceActionsMenu'
 import {
   getDeviceFilesIndicator,
   getDeviceInstallIndicator,
@@ -60,9 +63,7 @@ interface DeviceTableProps {
   onEditDevice?: (device: DeviceView) => void
   onQrDevice?: (device: DeviceView) => void
   onDeleteDevice?: (device: DeviceView) => void
-  onRemoteDevice?: (device: DeviceView) => void
-  onMessageDevice?: (device: DeviceView) => void
-  onPushDevice?: (device: DeviceView) => void
+  onMenuAction?: (action: DeviceActionsMenuAction, device: DeviceView) => void
 }
 
 export function DeviceTable({
@@ -72,9 +73,7 @@ export function DeviceTable({
   onEditDevice,
   onQrDevice,
   onDeleteDevice,
-  onRemoteDevice,
-  onMessageDevice,
-  onPushDevice,
+  onMenuAction,
 }: DeviceTableProps) {
   const { t } = useTranslation()
   const devices = data.devices.items
@@ -157,9 +156,7 @@ export function DeviceTable({
               onEditDevice={onEditDevice}
               onQrDevice={onQrDevice}
               onDeleteDevice={onDeleteDevice}
-              onRemoteDevice={onRemoteDevice}
-              onMessageDevice={onMessageDevice}
-              onPushDevice={onPushDevice}
+              onMenuAction={onMenuAction}
             />
           ))}
         </tbody>
@@ -218,48 +215,17 @@ function DeviceRowActions({
   onEditDevice,
   onQrDevice,
   onDeleteDevice,
-  onRemoteDevice,
-  onMessageDevice,
-  onPushDevice,
+  onMenuAction,
 }: {
   device: DeviceView
   configurations: DeviceListView['configurations']
   onEditDevice?: (device: DeviceView) => void
   onQrDevice?: (device: DeviceView) => void
   onDeleteDevice?: (device: DeviceView) => void
-  onRemoteDevice?: (device: DeviceView) => void
-  onMessageDevice?: (device: DeviceView) => void
-  onPushDevice?: (device: DeviceView) => void
+  onMenuAction?: (action: DeviceActionsMenuAction, device: DeviceView) => void
 }) {
   const { t } = useTranslation()
   const qrCodeKey = getConfigurationQrCodeKey(configurations, device.configurationId)
-
-  const pluginItems = [
-    onRemoteDevice
-      ? {
-          id: 'remote',
-          label: t('devices.plugins.remoteControl'),
-          icon: DEVICE_PLUGIN_ICONS.remote,
-          onSelect: () => onRemoteDevice(device),
-        }
-      : null,
-    onMessageDevice
-      ? {
-          id: 'messaging',
-          label: t('devices.plugins.messaging'),
-          icon: DEVICE_PLUGIN_ICONS.messaging,
-          onSelect: () => onMessageDevice(device),
-        }
-      : null,
-    onPushDevice
-      ? {
-          id: 'push',
-          label: t('devices.plugins.push'),
-          icon: DEVICE_PLUGIN_ICONS.push,
-          onSelect: () => onPushDevice(device),
-        }
-      : null,
-  ].filter((item): item is NonNullable<typeof item> => item != null)
 
   return (
     <div className="flex items-center justify-end gap-0.5">
@@ -292,7 +258,7 @@ function DeviceRowActions({
       >
         <Trash2 className="size-3.5" />
       </Button>
-      <DevicePluginMenu items={pluginItems} />
+      {onMenuAction && <DeviceActionsMenu device={device} onAction={onMenuAction} />}
     </div>
   )
 }
@@ -304,9 +270,7 @@ function AndroidDeviceRow({
   onEditDevice,
   onQrDevice,
   onDeleteDevice,
-  onRemoteDevice,
-  onMessageDevice,
-  onPushDevice,
+  onMenuAction,
 }: {
   device: DeviceView
   configurations: DeviceListView['configurations']
@@ -314,9 +278,7 @@ function AndroidDeviceRow({
   onEditDevice?: (device: DeviceView) => void
   onQrDevice?: (device: DeviceView) => void
   onDeleteDevice?: (device: DeviceView) => void
-  onRemoteDevice?: (device: DeviceView) => void
-  onMessageDevice?: (device: DeviceView) => void
-  onPushDevice?: (device: DeviceView) => void
+  onMenuAction?: (action: DeviceActionsMenuAction, device: DeviceView) => void
 }) {
   const { t } = useTranslation()
   const configuration = resolveDeviceConfiguration(configurations, device.configurationId)
@@ -378,9 +340,7 @@ function AndroidDeviceRow({
             onEditDevice={onEditDevice}
             onQrDevice={onQrDevice}
             onDeleteDevice={onDeleteDevice}
-            onRemoteDevice={onRemoteDevice}
-            onMessageDevice={onMessageDevice}
-            onPushDevice={onPushDevice}
+            onMenuAction={onMenuAction}
           />
         </td>
       )}
