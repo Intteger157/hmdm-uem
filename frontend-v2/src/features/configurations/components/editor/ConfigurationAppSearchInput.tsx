@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ConfigurationApplication } from '@/features/configurations/types/configuration'
 import {
+  filterAvailableAppsForAdd,
   filterInstallableConfigApps,
   formatConfigurationAppLabel,
 } from '@/features/configurations/utils/configuration-app-utils'
@@ -15,6 +16,9 @@ interface ConfigurationAppSearchInputProps {
   disabled?: boolean
   placeholder?: string
   id?: string
+  /** installable = action Install (MDM tab); available = unassigned apps (Add dialog). */
+  mode?: 'installable' | 'available'
+  emptyMessageKey?: string
 }
 
 export function ConfigurationAppSearchInput({
@@ -24,6 +28,8 @@ export function ConfigurationAppSearchInput({
   disabled = false,
   placeholder,
   id,
+  mode = 'installable',
+  emptyMessageKey,
 }: ConfigurationAppSearchInputProps) {
   const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
@@ -36,7 +42,18 @@ export function ConfigurationAppSearchInput({
     }
   }, [selected])
 
-  const filteredApps = useMemo(() => filterInstallableConfigApps(apps, query), [apps, query])
+  const filteredApps = useMemo(() => {
+    if (mode === 'available') {
+      return filterAvailableAppsForAdd(apps, query)
+    }
+    return filterInstallableConfigApps(apps, query)
+  }, [apps, mode, query])
+
+  const emptyMessage =
+    emptyMessageKey ??
+    (mode === 'available'
+      ? 'configurations.editor.noAvailableApps'
+      : 'configurations.editor.noInstallableApps')
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -70,13 +87,11 @@ export function ConfigurationAppSearchInput({
       {open && !disabled && (
         <div className="absolute z-50 mt-1 max-h-56 w-full overflow-auto rounded-md border bg-popover shadow-md">
           {filteredApps.length === 0 ? (
-            <p className="px-3 py-2 text-sm text-muted-foreground">
-              {t('configurations.editor.noInstallableApps')}
-            </p>
+            <p className="px-3 py-2 text-sm text-muted-foreground">{t(emptyMessage)}</p>
           ) : (
             filteredApps.map((app) => (
               <button
-                key={app.usedVersionId ?? `${app.pkg}-${app.version}`}
+                key={app.usedVersionId ?? app.latestVersion ?? `${app.id}-${app.pkg}`}
                 type="button"
                 className={cn(
                   'flex w-full flex-col items-start px-3 py-2 text-left text-sm hover:bg-muted',
