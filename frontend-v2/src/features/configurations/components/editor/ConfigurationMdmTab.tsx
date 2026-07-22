@@ -1,3 +1,4 @@
+import { ExternalLink } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { Configuration } from '@/features/configurations/types/configuration'
 import type { ConfigurationApplication } from '@/features/configurations/types/configuration'
@@ -15,6 +16,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+
+const ANDROID_USER_MANAGER_DOCS_URL =
+  'https://developer.android.com/reference/android/os/UserManager'
 
 interface ConfigurationMdmTabProps {
   draft: Configuration
@@ -320,11 +324,23 @@ export function ConfigurationMdmTab({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="restrictions">{t('configurations.editor.fields.restrictions')}</Label>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Label htmlFor="restrictions">{t('configurations.editor.fields.restrictions')}</Label>
+              <a
+                href={ANDROID_USER_MANAGER_DOCS_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-primary underline-offset-4 hover:underline"
+              >
+                {t('configurations.editor.fields.restrictionsDocs')}
+                <ExternalLink className="size-3 shrink-0" />
+              </a>
+            </div>
             <Textarea
               id="restrictions"
               value={draft.restrictions ?? ''}
               disabled={permissive}
+              placeholder={t('configurations.editor.fields.restrictionsPlaceholder')}
               onChange={(e) => onChange({ restrictions: e.target.value || undefined })}
               rows={3}
               className="resize-none font-mono text-xs"
