@@ -14,6 +14,7 @@ import {
   useUserRoleSettingsQuery,
 } from '@/features/settings/hooks/use-settings'
 import { useUserRolesQuery } from '@/features/users/hooks/use-users'
+import { BackgroundImageUrlField } from '@/shared/components/BackgroundImageUrlField'
 import { BoolField } from '@/shared/components/BoolField'
 import { FormSelect } from '@/shared/components/FormSelect'
 import { Button } from '@/components/ui/button'
@@ -128,10 +129,11 @@ export function SettingsPage() {
                   <Input value={draft.textColor ?? ''} onChange={(e) => setDraft({ ...draft, textColor: e.target.value })} />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>{t('settings.design.backgroundImage')}</Label>
-                <Input value={draft.backgroundImageUrl ?? ''} onChange={(e) => setDraft({ ...draft, backgroundImageUrl: e.target.value })} />
-              </div>
+              <BackgroundImageUrlField
+                label={t('settings.design.backgroundImage')}
+                value={draft.backgroundImageUrl ?? ''}
+                onChange={(url) => setDraft({ ...draft, backgroundImageUrl: url })}
+              />
               <FormSelect id="settings-icon-size" label={t('settings.design.iconSize')} value={draft.iconSize ?? 'MEDIUM'} onChange={(v) => setDraft({ ...draft, iconSize: v })} options={[
                 { value: 'SMALL', label: t('configurations.editor.iconSize.small') },
                 { value: 'MEDIUM', label: t('configurations.editor.iconSize.medium') },

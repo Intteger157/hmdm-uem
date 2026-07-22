@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import type { Configuration } from '@/features/configurations/types/configuration'
+import { BackgroundImageUrlField } from '@/shared/components/BackgroundImageUrlField'
 import { BoolField } from '@/shared/components/BoolField'
 import { FormSelect } from '@/shared/components/FormSelect'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -52,15 +53,12 @@ export function ConfigurationDesignTab({ draft, onChange }: ConfigurationDesignT
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="bg-image">{t('configurations.editor.fields.backgroundImageUrl')}</Label>
-          <Input
-            id="bg-image"
-            value={draft.backgroundImageUrl ?? ''}
-            disabled={disabled}
-            onChange={(e) => onChange({ backgroundImageUrl: e.target.value || undefined })}
-          />
-        </div>
+        <BackgroundImageUrlField
+          label={t('configurations.editor.fields.backgroundImageUrl')}
+          value={draft.backgroundImageUrl ?? ''}
+          disabled={disabled}
+          onChange={(url) => onChange({ backgroundImageUrl: url })}
+        />
 
         <FormSelect
           id="icon-size"
