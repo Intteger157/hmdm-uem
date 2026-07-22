@@ -81,11 +81,14 @@ export function useDeleteApplicationVersionMutation(applicationId: number) {
   })
 }
 
-export function useApplicationConfigurationsQuery(applicationId: number | undefined) {
+export function useApplicationConfigurationsQuery(application: Application | null | undefined) {
+  const applicationId = application?.id
+
   return useQuery({
     queryKey: applicationQueryKeys.configurations(applicationId ?? 0),
-    queryFn: () => fetchApplicationConfigurations(applicationId!),
+    queryFn: () => fetchApplicationConfigurations(application!),
     enabled: applicationId != null && applicationId > 0,
+    retry: 1,
   })
 }
 

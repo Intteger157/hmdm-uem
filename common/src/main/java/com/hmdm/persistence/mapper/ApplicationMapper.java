@@ -165,22 +165,24 @@ public interface ApplicationMapper {
             "       COALESCE(configurationApplications.showIcon, applications.showIcon) AS showIcon, " +
             "       configurationApplications.screenOrder AS screenOrder, " +
             "       configurationApplications.keyCode AS keyCode, " +
-            "       configurationApplications.bottom AS bottom, " +
-            "       configurationApplications.longTap AS longTap, " +
+            "       COALESCE(configurationApplications.bottom, FALSE) AS bottom, " +
+            "       COALESCE(configurationApplications.longTap, FALSE) AS longTap, " +
             "       applications.useKiosk              AS useKiosk, " +
-            "       configurationApplications.remove   AS remove, " +
+            "       COALESCE(configurationApplications.remove, FALSE) AS remove, " +
             "       latestAppVersion.version   AS latestVersionText, " +
             "       currentAppVersion.version   AS currentVersionText, " +
-            "       (configurationApplications.configurationId IS NOT NULL AND applications.latestVersion <> configurationApplications.applicationVersionId) AS outdated, " +
-            "       configurationApplications.action AS action " +
+            "       COALESCE(configurationApplications.configurationId IS NOT NULL " +
+            "                AND applications.latestVersion IS DISTINCT FROM configurationApplications.applicationVersionId, " +
+            "                FALSE) AS outdated, " +
+            "       COALESCE(configurationApplications.action, 0) AS action " +
             "FROM configurations " +
             "         INNER JOIN users ON users.id = #{userId} " +
             "         LEFT JOIN userConfigurationAccess access ON configurations.id = access.configurationId AND access.userId = users.id " +
-            "         LEFT JOIN applications ON applications.id = #{id} " +
-            "         INNER JOIN applicationVersions AS latestAppVersion ON latestAppVersion.applicationId = applications.id AND latestAppVersion.id=applications.latestversion " +
+            "         INNER JOIN applications ON applications.id = #{id} " +
+            "         LEFT JOIN applicationVersions AS latestAppVersion ON latestAppVersion.applicationId = applications.id AND latestAppVersion.id = applications.latestVersion " +
             "         LEFT JOIN configurationApplications ON configurations.id = configurationApplications.configurationId AND " +
             "                                                applications.id = configurationApplications.applicationId " +
-            "         LEFT JOIN applicationVersions AS currentAppVersion ON currentAppVersion.applicationId = applications.id AND currentAppVersion.id=configurationApplications.applicationVersionId " +
+            "         LEFT JOIN applicationVersions AS currentAppVersion ON currentAppVersion.applicationId = applications.id AND currentAppVersion.id = configurationApplications.applicationVersionId " +
             "WHERE configurations.customerId = #{customerId} " +
             "AND (users.allConfigAvailable = TRUE OR NOT access.id IS NULL) " +
             "ORDER BY LOWER(configurations.name)"})
@@ -198,12 +200,12 @@ public interface ApplicationMapper {
             "       applications.useKiosk              AS useKiosk, " +
             "       COALESCE(configurationApplications.screenOrder, caPrev.screenOrder) AS screenOrder, " +
             "       COALESCE(configurationApplications.keyCode, caPrev.keyCode) AS keyCode, " +
-            "       COALESCE(configurationApplications.bottom, caPrev.bottom) AS bottom, " +
-            "       COALESCE(configurationApplications.longTap, caPrev.longTap) AS longTap, " +
+            "       COALESCE(configurationApplications.bottom, caPrev.bottom, FALSE) AS bottom, " +
+            "       COALESCE(configurationApplications.longTap, caPrev.longTap, FALSE) AS longTap, " +
             "       applicationVersions.id             AS applicationVersionId, " +
             "       applicationVersions.id             AS versionText, " +
-            "       configurationApplications.remove   AS remove, " +
-            "       configurationApplications.action   AS action " +
+            "       COALESCE(configurationApplications.remove, FALSE) AS remove, " +
+            "       COALESCE(configurationApplications.action, caPrev.action, 0) AS action " +
             "FROM configurations " +
             "         INNER JOIN users ON users.id = #{userId} " +
             "         LEFT JOIN userConfigurationAccess access ON configurations.id = access.configurationId AND access.userId = users.id " +

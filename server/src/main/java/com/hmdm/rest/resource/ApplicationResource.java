@@ -451,7 +451,15 @@ public class ApplicationResource {
                     SecurityContext.get().getCurrentUserName());
             return Response.PERMISSION_DENIED();
         }
-        return Response.OK(this.applicationDAO.getApplicationConfigurations(id));
+        try {
+            return Response.OK(this.applicationDAO.getApplicationConfigurations(id));
+        } catch (SecurityException e) {
+            logger.error("Access denied when getting application configurations for application #{}", id, e);
+            return Response.PERMISSION_DENIED();
+        } catch (Exception e) {
+            logger.error("Failed to get list of application configurations for application #{}", id, e);
+            return Response.INTERNAL_ERROR();
+        }
     }
 
     // =================================================================================================================

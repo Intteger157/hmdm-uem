@@ -82,7 +82,7 @@ export function ApplicationConfigurationsDialog({
 }: ApplicationConfigurationsDialogProps) {
   const { t } = useTranslation()
   const { data, isLoading, error, refetch } = useApplicationConfigurationsQuery(
-    open ? application?.id : undefined
+    open ? application : null
   )
   const updateMutation = useUpdateApplicationConfigurationsMutation()
   const [links, setLinks] = useState<ConfigurationRow[]>([])

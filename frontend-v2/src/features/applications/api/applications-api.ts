@@ -174,13 +174,60 @@ export async function deleteApplicationVersion(versionId: number): Promise<void>
   unwrapApiResponse(response.data)
 }
 
-export async function fetchApplicationConfigurations(
+export function resolveApplicationVersionId(application: Application): number | undefined {
+  const versionId = application.usedVersionId ?? application.latestVersion
+  return typeof versionId === 'number' && versionId > 0 ? versionId : undefined
+}
+
+function normalizeConfigurationLinks(
+  links: ApplicationConfigurationLink[] | null | undefined
+): ApplicationConfigurationLink[] {
+  if (!Array.isArray(links)) {
+    return []
+  }
+
+  return links.map((link) => ({
+    ...link,
+    action: link.action ?? 0,
+    remove: link.remove ?? link.action === 2,
+  }))
+}
+
+async function fetchApplicationConfigurationsByApplicationId(
   applicationId: number
 ): Promise<ApplicationConfigurationLink[]> {
   const response = await api.get<ApiResponse<ApplicationConfigurationLink[]>>(
     `/private/applications/configurations/${applicationId}`
   )
-  return unwrapApiResponse(response.data)
+  return normalizeConfigurationLinks(unwrapApiResponse(response.data))
+}
+
+export async function fetchApplicationVersionConfigurations(
+  versionId: number
+): Promise<ApplicationConfigurationLink[]> {
+  const response = await api.get<ApiResponse<ApplicationConfigurationLink[]>>(
+    `/private/applications/version/${versionId}/configurations`
+  )
+  return normalizeConfigurationLinks(unwrapApiResponse(response.data))
+}
+
+export async function fetchApplicationConfigurations(
+  application: Application
+): Promise<ApplicationConfigurationLink[]> {
+  if (!application.id) {
+    throw new Error('Application id is required')
+  }
+
+  try {
+    return await fetchApplicationConfigurationsByApplicationId(application.id)
+  } catch (primaryError) {
+    const versionId = resolveApplicationVersionId(application)
+    if (!versionId) {
+      throw primaryError
+    }
+
+    return fetchApplicationVersionConfigurations(versionId)
+  }
 }
 
 export async function updateApplicationConfigurations(request: {
