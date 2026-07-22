@@ -72,6 +72,8 @@ services:
     build:
       context: ../frontend-v2
       dockerfile: Dockerfile
+      args:
+        UI_BUILD_ID: ${UI_BUILD_ID:-latest}
     restart: unless-stopped
     expose:
       - "80"
