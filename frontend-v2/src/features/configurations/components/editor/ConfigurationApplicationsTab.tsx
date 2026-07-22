@@ -35,6 +35,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { NativeSelect } from '@/components/ui/native-select'
 import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
 import { toast } from 'sonner'
 
@@ -341,8 +342,8 @@ export function ConfigurationApplicationsTab({
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          <select
-                            className="flex h-9 min-w-[120px] rounded-md border border-input bg-transparent px-2 text-sm"
+                          <NativeSelect
+                            className="h-9 min-w-[120px]"
                             value={app.action ?? 0}
                             onChange={(e) => handleActionChange(app, Number(e.target.value))}
                           >
@@ -359,18 +360,18 @@ export function ConfigurationApplicationsTab({
                             {removeAvailable && (
                               <option value={2}>{t('configurations.editor.actionRemove')}</option>
                             )}
-                          </select>
+                          </NativeSelect>
                         </td>
                         <td className="px-4 py-3">
                           {app.action === 1 ? (
-                            <select
-                              className="flex h-9 min-w-[100px] rounded-md border border-input bg-transparent px-2 text-sm"
+                            <NativeSelect
+                              className="h-9 min-w-[100px]"
                               value={app.showIcon ? '1' : '0'}
                               onChange={(e) => handleShowIconChange(app, e.target.value === '1')}
                             >
                               <option value="1">{t('configurations.editor.showIconOption')}</option>
                               <option value="0">{t('configurations.editor.hideIconOption')}</option>
-                            </select>
+                            </NativeSelect>
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}

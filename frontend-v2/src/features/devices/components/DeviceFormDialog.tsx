@@ -28,9 +28,9 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { NativeSelect } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
 import type { DeviceUpsertPayload, DeviceView, SelectOption } from '@/shared/api/types/device'
-import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
 const deviceFormSchema = z.object({
@@ -242,10 +242,7 @@ export function DeviceFormDialog({
                   <FormItem>
                     <FormLabel>{t('devices.form.configuration')}</FormLabel>
                     <FormControl>
-                      <select
-                        className={cn(
-                          'flex h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm',
-                        )}
+                      <NativeSelect
                         value={field.value ? String(field.value) : ''}
                         disabled={optionsLoading || configurations.length === 0}
                         onChange={(e) => field.onChange(Number(e.target.value))}
@@ -260,7 +257,7 @@ export function DeviceFormDialog({
                             {c.label}
                           </option>
                         ))}
-                      </select>
+                      </NativeSelect>
                     </FormControl>
                     <FormMessage>
                       {form.formState.errors.configurationId ? t('devices.form.required') : null}

@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { NativeSelect } from '@/components/ui/native-select'
 import { toast } from 'sonner'
 
 interface UserFormDialogProps {
@@ -115,9 +116,8 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
           </div>
           <div className="space-y-2">
             <Label htmlFor="user-role">{t('users.form.roleLabel')}</Label>
-            <select
+            <NativeSelect
               id="user-role"
-              className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm"
               value={roleId ? String(roleId) : ''}
               disabled={rolesQuery.isLoading || roles.length === 0}
               onChange={(e) => setRoleId(Number(e.target.value))}
@@ -130,7 +130,7 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
                   {role.name}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </div>
           <div className="space-y-2">
             <Label htmlFor="user-password">

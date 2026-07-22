@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { NativeSelect } from '@/components/ui/native-select'
 import { Label } from '@/components/ui/label'
 import { Progress, ProgressIndicator, ProgressTrack, ProgressValue } from '@/components/ui/progress'
 import { toast } from 'sonner'
@@ -405,16 +406,16 @@ export function ApplicationFormDialog({
 
           <div className="space-y-2">
             <Label htmlFor="app-arch">{t('configurations.editor.fields.nativeCode')}</Label>
-            <select
+            <NativeSelect
               id="app-arch"
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+              className="h-9 px-3"
               value={application.arch ?? ''}
               onChange={(e) => setApplication((prev) => ({ ...prev, arch: e.target.value }))}
             >
               <option value="">{t('configurations.editor.archUniversal')}</option>
               <option value="armeabi">{t('configurations.editor.archArmeabi')}</option>
               <option value="arm64">{t('configurations.editor.archArm64')}</option>
-            </select>
+            </NativeSelect>
             {warning && <p className="text-sm text-amber-700 dark:text-amber-300">{warning}</p>}
             {successHint && <p className="text-sm text-green-700 dark:text-green-300">{successHint}</p>}
           </div>

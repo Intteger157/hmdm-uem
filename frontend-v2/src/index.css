@@ -142,4 +142,14 @@ body {
   html {
     @apply font-sans;
   }
+
+  select[data-slot='native-select'] {
+    color-scheme: light dark;
+  }
+
+  select option,
+  select optgroup {
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+  }
 }

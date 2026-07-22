@@ -19,6 +19,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import { NativeSelect } from '@/components/ui/native-select'
 
 interface AddConfigurationApplicationDialogProps {
   open: boolean
@@ -117,9 +118,9 @@ export function AddConfigurationApplicationDialog({
               <>
                 <div className="space-y-2">
                   <Label htmlFor="add-app-action">{t('configurations.editor.actionColumn')}</Label>
-                  <select
+                  <NativeSelect
                     id="add-app-action"
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                    className="h-9 px-3"
                     value={action}
                     onChange={(e) => setAction(Number(e.target.value))}
                   >
@@ -136,21 +137,21 @@ export function AddConfigurationApplicationDialog({
                     {removeAvailable && (
                       <option value={2}>{t('configurations.editor.actionRemove')}</option>
                     )}
-                  </select>
+                  </NativeSelect>
                 </div>
 
                 {action === 1 && (
                   <div className="space-y-2">
                     <Label htmlFor="add-app-show-icon">{t('configurations.editor.iconColumn')}</Label>
-                    <select
+                    <NativeSelect
                       id="add-app-show-icon"
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                      className="h-9 px-3"
                       value={showIcon ? '1' : '0'}
                       onChange={(e) => setShowIcon(e.target.value === '1')}
                     >
                       <option value="1">{t('configurations.editor.showIconOption')}</option>
                       <option value="0">{t('configurations.editor.hideIconOption')}</option>
-                    </select>
+                    </NativeSelect>
                   </div>
                 )}
 

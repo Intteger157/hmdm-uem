@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { NativeSelect } from '@/components/ui/native-select'
 import { toast } from 'sonner'
 
 interface ApplicationConfigurationsDialogProps {
@@ -241,8 +242,8 @@ export function ApplicationConfigurationsDialog({
                     />
                     {t('applications.configurations.selectAll')}
                   </label>
-                  <select
-                    className="flex h-9 min-w-[180px] rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                  <NativeSelect
+                    className="h-9 min-w-[180px] px-3"
                     value={bulkAction}
                     onChange={(e) => handleBulkActionChange(Number(e.target.value))}
                   >
@@ -254,7 +255,7 @@ export function ApplicationConfigurationsDialog({
                         {option.label}
                       </option>
                     ))}
-                  </select>
+                  </NativeSelect>
                 </div>
 
                 <div className="max-h-[min(24rem,55vh)] overflow-auto rounded-lg border">
@@ -297,8 +298,8 @@ export function ApplicationConfigurationsDialog({
                               />
                             </td>
                             <td className="px-4 py-3 align-top">
-                              <select
-                                className="flex h-9 w-full min-w-[140px] rounded-md border border-input bg-transparent px-2 text-sm"
+                              <NativeSelect
+                                className="h-9 min-w-[140px]"
                                 value={link.action ?? 0}
                                 onChange={(e) =>
                                   handleActionChange(
@@ -312,7 +313,7 @@ export function ApplicationConfigurationsDialog({
                                     {option.label}
                                   </option>
                                 ))}
-                              </select>
+                              </NativeSelect>
                               {link.outdated && installActive && (
                                 <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
                                   {t('applications.configurations.outdatedVersion', {
@@ -324,8 +325,8 @@ export function ApplicationConfigurationsDialog({
                             </td>
                             <td className="px-4 py-3 align-top">
                               {installActive ? (
-                                <select
-                                  className="flex h-9 w-full min-w-[100px] rounded-md border border-input bg-transparent px-2 text-sm"
+                                <NativeSelect
+                                  className="h-9 min-w-[100px]"
                                   value={link.showIcon ? '1' : '0'}
                                   onChange={(e) =>
                                     updateLink(link.configurationId, {
@@ -335,7 +336,7 @@ export function ApplicationConfigurationsDialog({
                                 >
                                   <option value="1">{t('configurations.editor.showIconOption')}</option>
                                   <option value="0">{t('configurations.editor.hideIconOption')}</option>
-                                </select>
+                                </NativeSelect>
                               ) : (
                                 <span className="text-muted-foreground">—</span>
                               )}

@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { NativeSelect } from '@/components/ui/native-select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 
@@ -187,15 +188,15 @@ export function SettingsPage() {
               <div className="space-y-2">
                 <Label htmlFor="settings-console-language">{t('settings.language.consoleLabel')}</Label>
                 <p className="text-xs text-muted-foreground">{t('settings.language.consoleHint')}</p>
-                <select
+                <NativeSelect
                   id="settings-console-language"
-                  className="w-full max-w-xs rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+                  className="max-w-xs"
                   value={i18n.language.startsWith('ru') ? 'ru' : 'en'}
                   onChange={(e) => setAppLanguage(e.target.value as 'en' | 'ru')}
                 >
                   <option value="en">{t('language.en')}</option>
                   <option value="ru">{t('language.ru')}</option>
-                </select>
+                </NativeSelect>
               </div>
 
               <div className="space-y-4 border-t border-border pt-6">

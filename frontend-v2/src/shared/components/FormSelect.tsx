@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils'
 import { Label } from '@/components/ui/label'
+import { NativeSelect } from '@/components/ui/native-select'
 
 interface FormSelectOption {
   value: string | number
@@ -17,9 +18,6 @@ interface FormSelectProps {
   className?: string
 }
 
-const selectClassName =
-  'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50'
-
 export function FormSelect({
   id,
   label,
@@ -33,9 +31,9 @@ export function FormSelect({
   return (
     <div className={cn('space-y-2', className)}>
       <Label htmlFor={id}>{label}</Label>
-      <select
+      <NativeSelect
         id={id}
-        className={selectClassName}
+        className="h-9 px-3 shadow-xs"
         value={String(value)}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
@@ -45,7 +43,7 @@ export function FormSelect({
             {option.label}
           </option>
         ))}
-      </select>
+      </NativeSelect>
       {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
     </div>
   )
