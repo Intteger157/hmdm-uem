@@ -65,6 +65,11 @@ function normalizeDeviceListView(raw: DeviceListView): DeviceListView {
   }
 }
 
+function parseEnrollTime(value: unknown): number | undefined {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
+}
+
 function normalizeDeviceView(raw: DeviceView): DeviceView {
   const platform = raw.platform ?? 'android'
   const info = raw.info
@@ -81,6 +86,10 @@ function normalizeDeviceView(raw: DeviceView): DeviceView {
   return {
     ...raw,
     platform,
+    enrollTime:
+      typeof raw.enrollTime === 'number' && raw.enrollTime > 0
+        ? raw.enrollTime
+        : undefined,
     androidVersion: raw.androidVersion ?? info?.androidVersion,
     imei: raw.imei ?? info?.imei,
     phone: raw.phone ?? info?.phone,

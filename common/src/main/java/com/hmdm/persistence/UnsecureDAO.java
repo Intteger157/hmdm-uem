@@ -184,6 +184,10 @@ public class UnsecureDAO {
         this.deviceMapper.updateDeviceInfo(id, info, imeiUpdateTs, publicIp);
     }
 
+    public void ensureEnrollTime(Integer deviceId) {
+        this.deviceMapper.ensureEnrollTime(deviceId);
+    }
+
     public void updateDeviceCustomProperties(Integer id, Device device) {
         this.deviceMapper.updateDeviceCustomProperties(id, device.getCustom1(), device.getCustom2(), device.getCustom3());
     }

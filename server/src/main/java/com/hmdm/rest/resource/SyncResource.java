@@ -303,6 +303,8 @@ public class SyncResource {
             dbDevice.setOldNumber(null);
         }
 
+        this.unsecureDAO.ensureEnrollTime(dbDevice.getId());
+
         final Customer customer = this.customerDAO.findById(dbDevice.getCustomerId());
 
         String cpuArch = request.getHeader(HEADER_CPU_ARCH);

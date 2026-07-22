@@ -2609,4 +2609,16 @@
         </rollback>
     </changeSet>
 
+    <changeSet id="22.07.26-19:30" author="cursor" context="common">
+        <comment>Backfill enrollTime from lastUpdate for devices enrolled before the column was populated</comment>
+        <sql>
+            UPDATE devices
+            SET enrollTime = lastUpdate
+            WHERE enrollTime IS NULL
+              AND lastUpdate IS NOT NULL
+              AND lastUpdate &gt; 0;
+        </sql>
+        <rollback/>
+    </changeSet>
+
 </databaseChangeLog>

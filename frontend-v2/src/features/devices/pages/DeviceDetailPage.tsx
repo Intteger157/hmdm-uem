@@ -6,6 +6,7 @@ import { useDeviceByNumber } from '@/features/devices/hooks/use-device-by-number
 import {
   formatDeviceEnrollTime,
   formatDeviceTimestamp,
+  resolveEnrollTime,
   resolveLauncherVersion,
   resolvePublicIp,
 } from '@/features/devices/utils/device-detail-formatters'
@@ -41,11 +42,6 @@ function deviceIdentifier(device: DeviceView): string {
   return device.platform === 'windows'
     ? (device.hostname ?? device.number)
     : device.number
-}
-
-function formatDefaultLauncher(value?: boolean): string {
-  if (value == null) return NA
-  return value ? 'Yes' : 'No'
 }
 
 interface DeviceDetailPageProps {
@@ -90,7 +86,7 @@ export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
   const androidVersion = device.androidVersion ?? device.info?.androidVersion
   const batteryLevel = device.info?.batteryLevel
   const launcherVersion = resolveLauncherVersion(device)
-  const defaultLauncher = device.info?.defaultLauncher
+  const enrollTime = resolveEnrollTime(device)
   const publicIp = resolvePublicIp(device)
   const onlineStatus = resolveDeviceOnlineStatusCode(device, now)
   const showLocalUsers = device.platform === 'windows'
@@ -214,18 +210,13 @@ export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
               value={launcherVersion ?? NA}
             />
             <MetricCard
-              label={t('deviceDetail.metrics.defaultLauncher')}
-              value={formatDefaultLauncher(defaultLauncher)}
-            />
-            <MetricCard
               label={t('deviceDetail.metrics.enrolled')}
               value={
-                device.enrollTime && device.enrollTime > 0
-                  ? formatDeviceEnrollTime(device.enrollTime)
+                enrollTime != null
+                  ? formatDeviceEnrollTime(enrollTime)
                   : t('devices.date.unknown')
               }
             />
-            <MetricCard label={t('deviceDetail.metrics.phone')} value={device.phone ?? device.info?.phone ?? NA} />
             <MetricCard label={t('deviceDetail.metrics.publicIp')} value={publicIp ?? NA} mono />
           </>
         )}

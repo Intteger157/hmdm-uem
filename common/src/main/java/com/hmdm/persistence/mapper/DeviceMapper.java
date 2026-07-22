@@ -115,6 +115,11 @@ public interface DeviceMapper {
                           @Param("publicIp") String publicIp);
 
     @Update({"UPDATE devices SET " +
+            "enrollTime = COALESCE(enrollTime, CAST(EXTRACT(EPOCH FROM NOW()) * 1000 AS BIGINT)) " +
+            "WHERE id = #{deviceId} AND enrollTime IS NULL"})
+    void ensureEnrollTime(@Param("deviceId") Integer deviceId);
+
+    @Update({"UPDATE devices SET " +
             "  custom1 = #{custom1}, " +
             "  custom2 = #{custom2}, " +
             "  custom3 = #{custom3} " +

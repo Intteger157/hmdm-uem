@@ -12,6 +12,17 @@ export function formatDeviceEnrollTime(ms?: number): string {
   return new Date(ms).toLocaleString()
 }
 
+export function resolveEnrollTime(device: DeviceView): number | undefined {
+  const raw = device.enrollTime
+  const parsed = typeof raw === 'number' ? raw : Number(raw)
+
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return parsed
+  }
+
+  return undefined
+}
+
 export function resolveLauncherVersion(device: DeviceView): string | undefined {
   const version = device.launcherVersion
   if (version && version !== '0') {
