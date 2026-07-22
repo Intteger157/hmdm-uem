@@ -11,7 +11,6 @@ function BrandSvg({ className, children, ...props }: IconProps) {
       viewBox="0 0 24 24"
       aria-hidden="true"
       fill="currentColor"
-      shapeRendering="geometricPrecision"
       className={cn('size-4 shrink-0', className)}
       {...props}
     >
@@ -20,20 +19,23 @@ function BrandSvg({ className, children, ...props }: IconProps) {
   )
 }
 
-/** Classic Bugdroid silhouette (single-color). */
+/** Symmetric Bugdroid (Material baseline) — upright at sidebar size. */
 export function AndroidIcon({ className, ...props }: IconProps) {
   return (
     <BrandSvg className={className} {...props}>
-      <path d="M17.6 9.48 19.44 6.3c.16-.28.06-.64-.22-.8-.28-.16-.64-.06-.8.22l-1.87 3.24a8.77 8.77 0 0 0-3.55 0L10.13 5.72c-.16-.28-.52-.38-.8-.22-.28.16-.38.52-.22.8l1.84 3.18a7.01 7.01 0 0 0-2.75 2.27H6.5c-.28 0-.5.22-.5.5v7c0 .28.22.5.5.5h1v2.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V20h5v2.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V20h1c.28 0 .5-.22.5-.5v-7c0-.28-.22-.5-.5-.5h-1.7a7.01 7.01 0 0 0-2.75-2.27zM8.5 14.25c-.41 0-.75-.34-.75-.75s.34-.75.75-.75.75.34.75.75-.34.75-.75.75zm7 0c-.41 0-.75-.34-.75-.75s.34-.75.75-.75.75.34.75.75-.34.75-.75.75z" />
+      <path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zM3.5 8C2.67 8 2 8.67 2 9.5v7c0 .83.67 1.5 1.5 1.5S5 17.33 5 16.5v-7C5 8.67 4.33 8 3.5 8zm17 0c-.83 0-1.5.67-1.5 1.5v7c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5zm-4.97-5.84 1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48C13.85 1.23 12.95 1 12 1c-.96 0-1.86.23-2.66.63L7.85.15c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31C6.97 3.26 6 5.01 6 7h12c0-1.99-.97-3.75-2.47-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z" />
     </BrandSvg>
   )
 }
 
-/** Windows logo with perspective panes (single-color). */
+/** Windows logo — perspective via pane offsets, axis-aligned for crisp 16px render. */
 export function WindowsIcon({ className, ...props }: IconProps) {
   return (
     <BrandSvg className={className} {...props}>
-      <path d="M2.5 5.2 10.8 4.1v7.4L2.5 12.6V5.2zm0 9.2 8.3-.9v7.2l-8.3 1.1v-7.4zm10.1-10.3 8.4-1.3v7.2l-8.4 1.2V4.1zm0 9.1 8.4-1.2v7.2l-8.4 1.3v-7.3z" />
+      <rect x="2" y="4" width="9" height="8" />
+      <rect x="13" y="3" width="9" height="9" />
+      <rect x="2" y="13" width="9" height="8" />
+      <rect x="13" y="12" width="9" height="9" />
     </BrandSvg>
   )
 }
