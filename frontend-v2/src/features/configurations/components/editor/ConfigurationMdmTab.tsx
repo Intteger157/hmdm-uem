@@ -1,12 +1,23 @@
 import { useTranslation } from 'react-i18next'
 import type { Configuration } from '@/features/configurations/types/configuration'
+import type { ConfigurationApplication } from '@/features/configurations/types/configuration'
+import { ConfigurationAppSearchInput } from '@/features/configurations/components/editor/ConfigurationAppSearchInput'
+import {
+  applyContentAppSelection,
+  applyMainAppSelection,
+  buildConfigurationQrUrl,
+  findConfigAppByUsedVersionId,
+  isQrEnrollmentReady,
+} from '@/features/configurations/utils/configuration-app-utils'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 interface ConfigurationMdmTabProps {
   draft: Configuration
+  applications: ConfigurationApplication[]
   onChange: (patch: Partial<Configuration>) => void
+  onApplicationsChange: (applications: ConfigurationApplication[]) => void
 }
 
 function BoolField({
@@ -33,14 +44,107 @@ function BoolField({
   )
 }
 
-export function ConfigurationMdmTab({ draft, onChange }: ConfigurationMdmTabProps) {
+export function ConfigurationMdmTab({
+  draft,
+  applications,
+  onChange,
+  onApplicationsChange,
+}: ConfigurationMdmTabProps) {
   const { t } = useTranslation()
 
   const bool = (key: keyof Configuration, fallback = false) =>
     typeof draft[key] === 'boolean' ? (draft[key] as boolean) : fallback
 
+  const mainApp = findConfigAppByUsedVersionId(applications, draft.mainAppId)
+  const contentApp = findConfigAppByUsedVersionId(applications, draft.contentAppId)
+  const qrUrl = buildConfigurationQrUrl(draft)
+
+  const handleMainAppSelect = (app: ConfigurationApplication) => {
+    onApplicationsChange(applyMainAppSelection(applications, app))
+    onChange({
+      mainAppId: app.usedVersionId,
+      eventReceivingComponent:
+        draft.eventReceivingComponent?.trim() ||
+        (app.pkg === 'com.hmdm.launcher' ? 'com.hmdm.launcher.AdminReceiver' : draft.eventReceivingComponent),
+    })
+  }
+
+  const handleContentAppSelect = (app: ConfigurationApplication) => {
+    onApplicationsChange(applyContentAppSelection(applications, app))
+    onChange({ contentAppId: app.usedVersionId })
+  }
+
   return (
     <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('configurations.editor.enrollmentTitle')}</CardTitle>
+          <CardDescription>{t('configurations.editor.enrollmentDescription')}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="mdm-application">{t('configurations.editor.fields.mdmApplication')}</Label>
+            <ConfigurationAppSearchInput
+              id="mdm-application"
+              apps={applications}
+              selected={mainApp}
+              onSelect={handleMainAppSelect}
+              placeholder={t('configurations.editor.searchApplication')}
+            />
+            <p className="text-xs text-muted-foreground">
+              {t('configurations.editor.mdmApplicationHint')}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="admin-receiver">{t('configurations.editor.fields.adminReceiver')}</Label>
+            <Input
+              id="admin-receiver"
+              value={draft.eventReceivingComponent ?? ''}
+              placeholder="com.hmdm.launcher.AdminReceiver"
+              onChange={(e) => onChange({ eventReceivingComponent: e.target.value || undefined })}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="content-application">{t('configurations.editor.fields.contentApplication')}</Label>
+            <ConfigurationAppSearchInput
+              id="content-application"
+              apps={applications}
+              selected={contentApp}
+              disabled={!bool('kioskMode')}
+              onSelect={handleContentAppSelect}
+              placeholder={t('configurations.editor.searchApplication')}
+            />
+          </div>
+
+          <BoolField
+            id="kiosk-mode-enrollment"
+            label={t('configurations.editor.fields.kioskMode')}
+            checked={bool('kioskMode')}
+            onCheckedChange={(v) => onChange({ kioskMode: v })}
+          />
+
+          <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
+            <Label>{t('configurations.editor.fields.qrCodeUrl')}</Label>
+            {isQrEnrollmentReady(draft) && qrUrl ? (
+              <a
+                href={qrUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="break-all text-sm text-primary underline-offset-4 hover:underline"
+              >
+                {qrUrl}
+              </a>
+            ) : (
+              <p className="text-sm text-amber-700 dark:text-amber-300">
+                {t('configurations.editor.qrNotReadyHint')}
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>{t('configurations.editor.mdmConnectivityTitle')}</CardTitle>
@@ -91,12 +195,6 @@ export function ConfigurationMdmTab({ draft, onChange }: ConfigurationMdmTabProp
           <CardTitle>{t('configurations.editor.mdmModeTitle')}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2">
-          <BoolField
-            id="kiosk-mode"
-            label={t('configurations.editor.fields.kioskMode')}
-            checked={bool('kioskMode')}
-            onCheckedChange={(v) => onChange({ kioskMode: v })}
-          />
           <BoolField
             id="permissive"
             label={t('configurations.editor.fields.permissive')}

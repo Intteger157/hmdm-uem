@@ -1,6 +1,7 @@
 import { api } from '@/shared/api/client'
 import type { ApiResponse } from '@/shared/api/types/api-response'
 import { unwrapApiResponse } from '@/shared/api/types/api-response'
+import type { ConfigurationApplication } from '@/features/configurations/types/configuration'
 import type { Configuration, ConfigurationCopyRequest } from '@/features/configurations/types/configuration'
 
 export type { Configuration, ConfigurationCopyRequest }
@@ -12,6 +13,16 @@ export async function fetchConfigurations(): Promise<Configuration[]> {
 
 export async function fetchConfigurationById(id: number): Promise<Configuration> {
   const response = await api.get<ApiResponse<Configuration>>(`/private/configurations/${id}`)
+  return unwrapApiResponse(response.data)
+}
+
+/** All applications in context of a configuration (includes action, usedVersionId). */
+export async function fetchConfigurationApplications(
+  configId: number
+): Promise<ConfigurationApplication[]> {
+  const response = await api.get<ApiResponse<ConfigurationApplication[]>>(
+    `/private/configurations/applications/${configId}`
+  )
   return unwrapApiResponse(response.data)
 }
 

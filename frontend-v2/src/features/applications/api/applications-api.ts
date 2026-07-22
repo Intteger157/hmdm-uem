@@ -18,6 +18,10 @@ export interface Application {
   customerId?: number
   commonApplication?: boolean
   deletionProhibited?: boolean
+  /** Application version ID used in configuration (mainAppId / contentAppId). */
+  usedVersionId?: number
+  /** 0 = none, 1 = install, 2 = remove, etc. */
+  action?: number
   [key: string]: unknown
 }
 
