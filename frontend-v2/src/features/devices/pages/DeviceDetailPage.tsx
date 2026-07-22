@@ -2,11 +2,12 @@ import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, ChevronRight } from 'lucide-react'
 import { DeviceActionsPanel } from '@/features/devices/components/DeviceActionsPanel'
-import { useDeviceQuery } from '@/features/devices/hooks/use-device-query'
+import { useDeviceByNumber } from '@/features/devices/hooks/use-device-by-number-query'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress, ProgressLabel, ProgressValue } from '@/components/ui/progress'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { DeviceView } from '@/shared/api/types/device'
 import { cn } from '@/lib/utils'
@@ -19,6 +20,8 @@ const STATUS_BADGE: Record<string, 'default' | 'secondary' | 'destructive' | 'ou
   brown: 'secondary',
   grey: 'secondary',
 }
+
+const NA = 'N/A'
 
 function formatTimestamp(ms?: number): string {
   if (!ms) return '—'
@@ -35,22 +38,22 @@ function deviceIdentifier(device: DeviceView): string {
     : device.number
 }
 
-interface DeviceDetailPageProps {
-  deviceId: string
+function formatDefaultLauncher(value?: boolean): string {
+  if (value == null) return NA
+  return value ? 'Yes' : 'No'
 }
 
-export function DeviceDetailPage({ deviceId }: DeviceDetailPageProps) {
+interface DeviceDetailPageProps {
+  deviceNumber: string
+}
+
+export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
   const { t } = useTranslation()
-  const id = Number(deviceId)
-  const { data: device, isLoading, error } = useDeviceQuery(id)
+  const { data: device, isLoading, error } = useDeviceByNumber(deviceNumber)
   const [activeTab, setActiveTab] = useState('software')
 
   if (isLoading) {
-    return (
-      <div className="rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
-        {t('deviceDetail.loading')}
-      </div>
-    )
+    return <DeviceDetailSkeleton />
   }
 
   if (error || !device) {
@@ -78,6 +81,11 @@ export function DeviceDetailPage({ deviceId }: DeviceDetailPageProps) {
       ? Math.round((device.diskUsedGb / device.diskTotalGb) * 100)
       : undefined
 
+  const androidVersion = device.androidVersion ?? device.info?.androidVersion
+  const batteryLevel = device.info?.batteryLevel
+  const launcherVersion = device.launcherVersion
+  const defaultLauncher = device.info?.defaultLauncher
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-1 text-sm text-muted-foreground">
@@ -97,8 +105,9 @@ export function DeviceDetailPage({ deviceId }: DeviceDetailPageProps) {
             </Badge>
             <Badge variant="outline">{device.platform}</Badge>
             {device.kioskMode && <Badge variant="secondary">Kiosk</Badge>}
+            {device.mdmMode && <Badge variant="secondary">MDM</Badge>}
           </div>
-          <p className="font-mono text-sm text-muted-foreground">{deviceIdentifier(device)}</p>
+          <p className="font-mono text-sm text-muted-foreground">{device.number}</p>
         </div>
         <Button type="button" onClick={() => setActiveTab('actions')}>
           {t('deviceDetail.deviceActions')}
@@ -106,17 +115,30 @@ export function DeviceDetailPage({ deviceId }: DeviceDetailPageProps) {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
-        <MetricCard label={t('deviceDetail.metrics.serial')} value={device.serialNumber ?? '—'} mono />
-        <MetricCard label={t('deviceDetail.metrics.manufacturer')} value={device.manufacturer ?? '—'} />
-        <MetricCard label={t('deviceDetail.metrics.model')} value={device.model ?? device.info?.model ?? '—'} />
+        <MetricCard label={t('devices.columns.number')} value={device.number} mono />
+        <MetricCard
+          label={t('deviceDetail.metrics.model')}
+          value={device.model ?? device.info?.model ?? NA}
+        />
         <MetricCard label={t('deviceDetail.metrics.lastOnline')} value={formatTimestamp(device.lastUpdate)} />
-        <MetricCard label={t('deviceDetail.metrics.currentUser')} value={device.currentUser ?? '—'} mono />
+        <MetricCard
+          label={t('deviceDetail.metrics.serial')}
+          value={device.serial ?? device.info?.serial ?? NA}
+          mono
+        />
+        <MetricCard label={t('devices.columns.imei')} value={device.imei ?? device.info?.imei ?? NA} mono />
+
         {device.platform === 'windows' && (
           <>
-            <MetricCard label={t('deviceDetail.metrics.cpu')} value={device.cpu ?? '—'} />
+            <MetricCard label={t('devices.columns.hostname')} value={device.hostname ?? NA} mono />
+            <MetricCard
+              label={t('devices.columns.windowsBuild')}
+              value={device.windowsBuild ?? NA}
+            />
+            <MetricCard label={t('deviceDetail.metrics.cpu')} value={device.cpu ?? NA} />
             <MetricCard
               label={t('deviceDetail.metrics.ram')}
-              value={device.ramGb != null ? `${device.ramGb} GB` : '—'}
+              value={device.ramGb != null ? `${device.ramGb} GB` : NA}
             />
             <Card className="sm:col-span-2">
               <CardHeader className="px-4 py-3 pb-1">
@@ -133,33 +155,52 @@ export function DeviceDetailPage({ deviceId }: DeviceDetailPageProps) {
                     <ProgressValue />
                   </Progress>
                 ) : (
-                  <span className="text-sm">—</span>
+                  <span className="text-sm">{NA}</span>
                 )}
               </CardContent>
             </Card>
             <MetricCard
               label={t('deviceDetail.metrics.encryption')}
               value={
-                device.diskEncrypted
-                  ? t('deviceDetail.encrypted')
-                  : t('deviceDetail.notEncrypted')
+                device.diskEncrypted != null
+                  ? device.diskEncrypted
+                    ? t('deviceDetail.encrypted')
+                    : t('deviceDetail.notEncrypted')
+                  : NA
               }
+            />
+            <MetricCard
+              label={t('deviceDetail.metrics.currentUser')}
+              value={device.currentUser ?? NA}
+              mono
             />
           </>
         )}
+
         {device.platform === 'android' && (
           <>
             <MetricCard
               label={t('devices.columns.androidVersion')}
-              value={device.androidVersion ?? '—'}
+              value={androidVersion ?? NA}
             />
             <MetricCard
               label={t('devices.columns.battery')}
-              value={
-                device.info?.batteryLevel != null ? `${device.info.batteryLevel}%` : '—'
-              }
+              value={batteryLevel != null ? `${batteryLevel}%` : NA}
             />
-            <MetricCard label={t('devices.columns.imei')} value={device.imei ?? '—'} mono />
+            <MetricCard
+              label={t('devices.columns.launcherVersion')}
+              value={launcherVersion ?? NA}
+            />
+            <MetricCard
+              label={t('deviceDetail.metrics.defaultLauncher')}
+              value={formatDefaultLauncher(defaultLauncher)}
+            />
+            <MetricCard
+              label={t('deviceDetail.metrics.enrolled')}
+              value={formatTimestamp(device.enrollTime)}
+            />
+            <MetricCard label={t('deviceDetail.metrics.phone')} value={device.phone ?? device.info?.phone ?? NA} />
+            <MetricCard label={t('deviceDetail.metrics.publicIp')} value={device.publicIp ?? NA} mono />
           </>
         )}
       </div>
@@ -257,6 +298,32 @@ export function DeviceDetailPage({ deviceId }: DeviceDetailPageProps) {
           <DeviceActionsPanel />
         </TabsContent>
       </Tabs>
+    </div>
+  )
+}
+
+function DeviceDetailSkeleton() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-4 w-48" />
+      <div className="space-y-2 border-b pb-4">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-4 w-40" />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Card key={i}>
+            <CardHeader className="px-4 py-3 pb-1">
+              <Skeleton className="h-3 w-20" />
+            </CardHeader>
+            <CardContent className="px-4 pb-3 pt-0">
+              <Skeleton className="h-5 w-28" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <Skeleton className="h-10 w-full max-w-md" />
+      <Skeleton className="h-64 w-full" />
     </div>
   )
 }

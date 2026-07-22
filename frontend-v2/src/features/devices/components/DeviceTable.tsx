@@ -144,8 +144,8 @@ function AndroidDeviceRow({
       </td>
       <td className="px-4 py-3 font-medium">
         <Link
-          to="/devices/$deviceId"
-          params={{ deviceId: String(device.id) }}
+          to="/devices/$deviceNumber"
+          params={{ deviceNumber: device.number }}
           className="text-primary hover:underline"
         >
           {device.number}
@@ -192,8 +192,8 @@ function WindowsDeviceRow({
       </td>
       <td className="px-4 py-3 font-mono text-xs font-medium">
         <Link
-          to="/devices/$deviceId"
-          params={{ deviceId: String(device.id) }}
+          to="/devices/$deviceNumber"
+          params={{ deviceNumber: device.number }}
           className="text-primary hover:underline"
         >
           {device.hostname ?? device.number}

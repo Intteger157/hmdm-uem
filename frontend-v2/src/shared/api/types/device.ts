@@ -9,6 +9,12 @@ export interface LookupItem {
 export type BitLockerStatus = 'on' | 'off' | 'unknown'
 export type PowerShellExecStatus = 'idle' | 'running' | 'failed'
 
+export interface DeviceApplicationView {
+  pkg: string
+  version?: string
+  name?: string
+}
+
 export interface DeviceInfoView {
   model?: string
   imei?: string
@@ -19,6 +25,7 @@ export interface DeviceInfoView {
   androidVersion?: string
   serial?: string
   defaultLauncher?: boolean
+  applications?: DeviceApplicationView[]
 }
 
 export interface DeviceView {
@@ -30,6 +37,9 @@ export interface DeviceView {
   imei?: string
   phone?: string
   publicIp?: string
+  custom1?: string
+  custom2?: string
+  custom3?: string
   groups?: LookupItem[]
   mdmMode?: boolean
   kioskMode?: boolean
@@ -37,6 +47,7 @@ export interface DeviceView {
   enrollTime?: number
   serial?: string
   launcherVersion?: string
+  launcherPkg?: string
   statusCode?: string
   info?: DeviceInfoView
   platform: Platform

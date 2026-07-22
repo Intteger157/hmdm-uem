@@ -1,5 +1,6 @@
-import { Link, Outlet, useNavigate } from '@tanstack/react-router'
+import { Outlet, useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
+import { AppSidebar } from '@/layouts/AppSidebar'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { setAppLanguage } from '@/shared/lib/i18n'
 
@@ -21,23 +22,9 @@ export function AppLayout() {
           <p className="text-lg font-semibold">{t('app.title')}</p>
           <p className="text-xs text-slate-500">v2 preview</p>
         </div>
-        <nav className="flex flex-1 flex-col gap-1 p-4">
-          <Link
-            to="/dashboard"
-            className="rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-900 [&.active]:text-white"
-          >
-            {t('nav.dashboard')}
-          </Link>
-          <Link
-            to="/devices"
-            search={{ platform: 'android' }}
-            className="rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-900 [&.active]:text-white"
-          >
-            {t('nav.devices')}
-          </Link>
-        </nav>
+        <AppSidebar />
         <div className="border-t border-slate-200 p-4">
-          <label className="mb-2 block text-xs font-medium text-slate-500">Language</label>
+          <label className="mb-2 block text-xs font-medium text-slate-500">{t('nav.language')}</label>
           <select
             className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
             value={i18n.language.startsWith('ru') ? 'ru' : 'en'}
