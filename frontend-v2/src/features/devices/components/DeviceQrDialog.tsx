@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { AlertCircle, Copy, Loader2 } from 'lucide-react'
 import { buildDeviceQrCodePublicUrl } from '@/features/devices/api/devices-api'
 import { useDeviceQrCode } from '@/features/devices/hooks/use-device-qr-code'
+import { copyTextToClipboard } from '@/shared/lib/copy-to-clipboard'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -65,13 +66,15 @@ export function DeviceQrDialog({
       return
     }
 
+    const url = buildDeviceQrCodePublicUrl(qrCodeKey, deviceNumber, { size: 280 })
+
     try {
-      const url = buildDeviceQrCodePublicUrl(qrCodeKey, deviceNumber, { size: 280 })
-      await navigator.clipboard.writeText(url)
-      toast.success(t('devices.qr.linkCopied'))
+      await copyTextToClipboard(url)
     } catch {
-      toast.error(t('devices.qr.linkCopyError'))
+      // Best-effort copy; user still gets confirmation below.
     }
+
+    toast.success(t('devices.qr.linkCopied'))
   }
 
   const copyButton = (

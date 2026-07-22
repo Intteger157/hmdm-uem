@@ -466,8 +466,7 @@ export function ConfigurationApplicationsTab({
         }}
         title={t('configurations.editor.upgrade.title')}
         description={t('configurations.editor.upgrade.confirm', {
-          app: upgradeTarget?.name ?? '',
-          config: draft.name,
+          name: upgradeTarget?.name ?? '',
         })}
         confirmLabel={t('configurations.editor.upgrade.action')}
         confirmVariant="default"
@@ -487,19 +486,28 @@ export function ConfigurationApplicationsTab({
         description={
           pendingVersion?.comparison != null && pendingVersion.comparison > 0
             ? t('configurations.editor.versionDialog.upgradeWarning', {
-                app: pendingVersion.app.name,
-                config: draft.name,
                 version:
                   pendingVersion.data.availableVersions.find(
                     (v) => v.id === pendingVersion.data.selectedVersionId
                   )?.version ?? '',
+                current:
+                  pendingVersion.data.availableVersions.find(
+                    (v) => v.id === pendingVersion.app.usedVersionId
+                  )?.version ??
+                  pendingVersion.app.version ??
+                  '',
               })
             : t('configurations.editor.versionDialog.downgradeWarning', {
-                app: pendingVersion?.app.name ?? '',
                 version:
                   pendingVersion?.data.availableVersions.find(
-                    (v) => v.id === pendingVersion?.data.selectedVersionId
+                    (v) => v.id === pendingVersion.data.selectedVersionId
                   )?.version ?? '',
+                current:
+                  pendingVersion?.data.availableVersions.find(
+                    (v) => v.id === pendingVersion.app.usedVersionId
+                  )?.version ??
+                  pendingVersion?.app.version ??
+                  '',
               })
         }
         confirmLabel={t('configurations.editor.versionDialog.apply')}
