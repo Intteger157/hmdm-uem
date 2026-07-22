@@ -3,17 +3,23 @@ import {
   deleteApplication,
   deleteApplicationVersion,
   fetchApplicationById,
+  fetchApplicationConfigurations,
   fetchApplicationVersions,
   fetchApplications,
+  updateApplicationConfigurations,
   upsertAndroidApplication,
 } from '@/features/applications/api/applications-api'
-import type { Application } from '@/features/applications/api/applications-api'
+import type {
+  Application,
+  ApplicationConfigurationLink,
+} from '@/features/applications/api/applications-api'
 
 export const applicationQueryKeys = {
   all: ['applications'] as const,
   list: () => [...applicationQueryKeys.all, 'list'] as const,
   detail: (id: number) => [...applicationQueryKeys.all, 'detail', id] as const,
   versions: (id: number) => [...applicationQueryKeys.all, 'versions', id] as const,
+  configurations: (id: number) => [...applicationQueryKeys.all, 'configurations', id] as const,
 }
 
 export function useApplicationsQuery() {
@@ -71,6 +77,31 @@ export function useDeleteApplicationVersionMutation(applicationId: number) {
       await queryClient.invalidateQueries({
         queryKey: applicationQueryKeys.versions(applicationId),
       })
+    },
+  })
+}
+
+export function useApplicationConfigurationsQuery(applicationId: number | undefined) {
+  return useQuery({
+    queryKey: applicationQueryKeys.configurations(applicationId ?? 0),
+    queryFn: () => fetchApplicationConfigurations(applicationId!),
+    enabled: applicationId != null && applicationId > 0,
+  })
+}
+
+export function useUpdateApplicationConfigurationsMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (request: {
+      applicationId: number
+      configurations: ApplicationConfigurationLink[]
+    }) => updateApplicationConfigurations(request),
+    onSuccess: async (_data, variables) => {
+      await queryClient.invalidateQueries({
+        queryKey: applicationQueryKeys.configurations(variables.applicationId),
+      })
+      await queryClient.invalidateQueries({ queryKey: applicationQueryKeys.all })
     },
   })
 }

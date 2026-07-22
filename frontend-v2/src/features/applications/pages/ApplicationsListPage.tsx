@@ -1,7 +1,8 @@
 import { Link } from '@tanstack/react-router'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Layers, Plus, Trash2 } from 'lucide-react'
+import { Layers, List, Plus, Trash2 } from 'lucide-react'
+import { ApplicationConfigurationsDialog } from '@/features/applications/components/ApplicationConfigurationsDialog'
 import { ApplicationFormDialog } from '@/features/applications/components/ApplicationFormDialog'
 import {
   useApplicationsQuery,
@@ -51,6 +52,7 @@ export function ApplicationsListPage() {
   const [searchInput, setSearchInput] = useState('')
   const [searchValue, setSearchValue] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Application | null>(null)
+  const [assignTarget, setAssignTarget] = useState<Application | null>(null)
   const [addOpen, setAddOpen] = useState(false)
   const [showSystemApps, setShowSystemApps] = useState(getApplicationsShowSystemAppsPreference)
 
@@ -215,6 +217,17 @@ export function ApplicationsListPage() {
                                 type="button"
                                 variant="ghost"
                                 size="icon-xs"
+                                title={t('applications.configurations.action')}
+                                onClick={() => setAssignTarget(application)}
+                              >
+                                <List className="size-3.5" />
+                              </Button>
+                            )}
+                            {application.id != null && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-xs"
                                 title={t('applications.versions.open')}
                                 render={
                                   <Link
@@ -277,6 +290,16 @@ export function ApplicationsListPage() {
         onSavedApplication={() => {
           void refetch()
         }}
+      />
+
+      <ApplicationConfigurationsDialog
+        open={assignTarget != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setAssignTarget(null)
+          }
+        }}
+        application={assignTarget}
       />
 
       <ConfirmDeleteDialog

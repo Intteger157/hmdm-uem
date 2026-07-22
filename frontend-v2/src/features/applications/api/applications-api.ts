@@ -73,6 +73,22 @@ export interface FileUploadResult {
   complete?: boolean
 }
 
+export interface ApplicationConfigurationLink {
+  id?: number
+  customerId?: number
+  configurationId?: number
+  configurationName?: string
+  applicationId?: number
+  applicationName?: string
+  action?: number
+  showIcon?: boolean
+  remove?: boolean
+  outdated?: boolean
+  latestVersionText?: string
+  currentVersionText?: string
+  notify?: boolean
+}
+
 export async function fetchApplications(): Promise<Application[]> {
   const response = await api.get<ApiResponse<Application[]>>('/private/applications/search')
   return unwrapApiResponse(response.data)
@@ -152,6 +168,38 @@ export async function deleteApplicationVersion(versionId: number): Promise<void>
     `/private/applications/versions/${versionId}`
   )
   unwrapApiResponse(response.data)
+}
+
+export async function fetchApplicationConfigurations(
+  applicationId: number
+): Promise<ApplicationConfigurationLink[]> {
+  const response = await api.get<ApiResponse<ApplicationConfigurationLink[]>>(
+    `/private/applications/configurations/${applicationId}`
+  )
+  return unwrapApiResponse(response.data)
+}
+
+export async function updateApplicationConfigurations(request: {
+  applicationId: number
+  configurations: ApplicationConfigurationLink[]
+}): Promise<void> {
+  const response = await api.post<ApiResponse<unknown>>(
+    '/private/applications/configurations',
+    request
+  )
+  unwrapApiResponse(response.data)
+}
+
+export function isInstallOptionAvailable(application: Application): boolean {
+  return (
+    !application.system &&
+    application.type === 'app' &&
+    Boolean(application.url || application.urlArm64 || application.urlArmeabi)
+  )
+}
+
+export function isRemoveOptionAvailable(application: Application): boolean {
+  return !application.system && application.type === 'app'
 }
 
 export class SaveAndroidApplicationError extends Error {
