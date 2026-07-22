@@ -1,5 +1,6 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import {
@@ -7,8 +8,8 @@ import {
   requestDeviceInventoryScan,
 } from '@/features/devices/api/device-plugins-api'
 import {
-  appsFromDeviceInfo,
-  mergeInstalledApps,
+  filterInstalledApps,
+  installedAppDisplayName,
 } from '@/features/devices/utils/installed-apps-utils'
 import type { DeviceView } from '@/shared/api/types/device'
 import { Button } from '@/components/ui/button'
@@ -20,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 
 interface DeviceInstalledAppsDialogProps {
   open: boolean
@@ -27,7 +29,7 @@ interface DeviceInstalledAppsDialogProps {
   device?: DeviceView | null
 }
 
-function formatTimestamp(value?: number): string {
+function formatScanTime(value?: number): string {
   if (!value) {
     return '—'
   }
@@ -41,12 +43,21 @@ export function DeviceInstalledAppsDialog({
 }: DeviceInstalledAppsDialogProps) {
   const { t } = useTranslation()
   const deviceNumber = device?.number
+  const [filterText, setFilterText] = useState('')
+
+  useEffect(() => {
+    if (open) {
+      setFilterText('')
+    }
+  }, [open, deviceNumber])
 
   const inventoryQuery = useQuery({
     queryKey: ['device-inventory', deviceNumber],
     queryFn: () => fetchDeviceInventory(deviceNumber!),
     enabled: open && Boolean(deviceNumber),
     retry: false,
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 
   const scanMutation = useMutation({
@@ -58,108 +69,141 @@ export function DeviceInstalledAppsDialog({
     onError: () => toast.error(t('devices.installedApps.error')),
   })
 
-  const syncApps = useMemo(
-    () => appsFromDeviceInfo(device?.info?.applications),
-    [device?.info?.applications]
-  )
-
   const inventoryApps = inventoryQuery.data?.applications ?? []
   const apps = useMemo(
-    () => mergeInstalledApps(inventoryApps, syncApps),
-    [inventoryApps, syncApps]
+    () => filterInstalledApps(inventoryApps, filterText),
+    [inventoryApps, filterText],
   )
-
-  const usingInventory = inventoryApps.length > 0
-  const usingSyncFallback = !usingInventory && syncApps.length > 0
-  const lastUpdate = usingInventory
-    ? inventoryQuery.data?.lastUpdate
-    : device?.lastUpdate
+  const hasInventoryScan =
+    inventoryQuery.data?.lastUpdate != null && inventoryQuery.data.lastUpdate > 0
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[85vh] max-w-3xl flex-col overflow-hidden sm:max-w-3xl">
-        <DialogHeader className="shrink-0">
+      <DialogContent className="flex h-[min(90vh,900px)] w-full max-w-5xl flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl">
+        <DialogHeader className="shrink-0 space-y-1 border-b px-6 py-4">
           <DialogTitle>{t('devices.actionsMenu.installedApps')}</DialogTitle>
           <DialogDescription>
             {t('devices.installedApps.subtitle', {
               device: deviceNumber ?? '—',
-              updated: formatTimestamp(lastUpdate),
+              updated: formatScanTime(inventoryQuery.data?.lastUpdate),
             })}
           </DialogDescription>
         </DialogHeader>
 
-        {inventoryQuery.isLoading ? (
-          <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
-        ) : inventoryQuery.error ? (
-          <div className="space-y-2 rounded-lg border border-destructive/40 p-4">
-            <p className="text-sm text-destructive">{t('devices.installedApps.loadError')}</p>
-            {syncApps.length > 0 ? (
-              <p className="text-sm text-muted-foreground">
-                {t('devices.installedApps.partialHint')}
+        <div className="flex shrink-0 flex-col gap-3 border-b px-6 py-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="space-y-1 text-sm">
+            <p className="font-medium">{t('devices.installedApps.lastScan')}</p>
+            <p className="text-muted-foreground">
+              {hasInventoryScan
+                ? formatScanTime(inventoryQuery.data?.lastUpdate)
+                : t('devices.installedApps.noScanYet')}
+            </p>
+            {!inventoryQuery.isLoading && !inventoryQuery.error ? (
+              <p className="text-xs text-muted-foreground">
+                {t('devices.installedApps.appCount', {
+                  shown: apps.length,
+                  total: inventoryApps.length,
+                })}
               </p>
             ) : null}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => void inventoryQuery.refetch()}
-            >
-              {t('common.retry')}
-            </Button>
           </div>
-        ) : null}
 
-        {usingSyncFallback ? (
-          <p className="text-sm text-amber-700 dark:text-amber-300">
-            {t('devices.installedApps.partialHint')}
-          </p>
-        ) : null}
-
-        {!inventoryQuery.isLoading &&
-        !inventoryQuery.error &&
-        apps.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t('devices.installedApps.inventoryHint')}</p>
-        ) : null}
-
-        <div className="min-h-0 flex-1 overflow-auto rounded-md border">
-          <table className="w-full text-left text-sm">
-            <thead className="sticky top-0 border-b bg-muted/80 backdrop-blur">
-              <tr className="text-muted-foreground">
-                <th className="px-3 py-2 font-medium">{t('devices.installedApps.columns.name')}</th>
-                <th className="px-3 py-2 font-medium">{t('devices.installedApps.columns.pkg')}</th>
-                <th className="px-3 py-2 font-medium">{t('devices.installedApps.columns.version')}</th>
-                <th className="px-3 py-2 font-medium">{t('devices.installedApps.columns.system')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {apps.map((app) => (
-                <tr key={`${app.pkg}-${app.version}`} className="border-b last:border-0">
-                  <td className="px-3 py-2">{app.name ?? '—'}</td>
-                  <td className="px-3 py-2 font-mono text-xs">{app.pkg ?? '—'}</td>
-                  <td className="px-3 py-2">{app.version ?? '—'}</td>
-                  <td className="px-3 py-2">{app.system ? t('common.yes') : t('common.no')}</td>
-                </tr>
-              ))}
-              {!inventoryQuery.isLoading && apps.length === 0 && !inventoryQuery.error ? (
-                <tr>
-                  <td colSpan={4} className="px-3 py-8 text-center text-muted-foreground">
-                    {t('devices.installedApps.empty')}
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[320px]">
+            <Input
+              value={filterText}
+              onChange={(e) => setFilterText(e.target.value)}
+              placeholder={t('devices.installedApps.searchPlaceholder')}
+            />
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                disabled={inventoryQuery.isFetching || !deviceNumber}
+                onClick={() => void inventoryQuery.refetch()}
+              >
+                <RefreshCw className="mr-1 size-4" />
+                {t('devices.installedApps.refresh')}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                className="flex-1"
+                disabled={scanMutation.isPending || !deviceNumber}
+                onClick={() => void scanMutation.mutate()}
+              >
+                {t('devices.installedApps.requestScan')}
+              </Button>
+            </div>
+          </div>
         </div>
 
-        <DialogFooter className="shrink-0 gap-2 sm:justify-between">
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={scanMutation.isPending || !deviceNumber}
-            onClick={() => void scanMutation.mutate()}
-          >
-            {t('devices.installedApps.requestScan')}
-          </Button>
+        {inventoryQuery.isLoading ? (
+          <p className="px-6 py-8 text-sm text-muted-foreground">{t('common.loading')}</p>
+        ) : inventoryQuery.error ? (
+          <div className="space-y-2 px-6 py-6">
+            <div className="rounded-lg border border-destructive/40 p-4">
+              <p className="text-sm text-destructive">{t('devices.installedApps.loadError')}</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                onClick={() => void inventoryQuery.refetch()}
+              >
+                {t('common.retry')}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {!hasInventoryScan ? (
+              <p className="shrink-0 px-6 pt-4 text-sm text-muted-foreground">
+                {t('devices.installedApps.inventoryHint')}
+              </p>
+            ) : null}
+
+            <div className="min-h-0 flex-1 overflow-auto px-6 py-4">
+              <table className="w-full min-w-[760px] text-left text-sm">
+                <thead className="sticky top-0 z-10 border-b bg-background">
+                  <tr className="text-muted-foreground">
+                    <th className="px-3 py-2 font-medium">{t('devices.installedApps.columns.name')}</th>
+                    <th className="px-3 py-2 font-medium">{t('devices.installedApps.columns.pkg')}</th>
+                    <th className="px-3 py-2 font-medium">{t('devices.installedApps.columns.version')}</th>
+                    <th className="w-24 px-3 py-2 font-medium">{t('devices.installedApps.columns.system')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {apps.map((app) => (
+                    <tr key={`${app.pkg}-${app.version ?? ''}`} className="border-b last:border-0">
+                      <td className="px-3 py-2">{installedAppDisplayName(app)}</td>
+                      <td className="px-3 py-2 font-mono text-xs">{app.pkg ?? '—'}</td>
+                      <td className="px-3 py-2">{app.version ?? '—'}</td>
+                      <td className="px-3 py-2 text-center text-muted-foreground">
+                        {app.system ? '✓' : ''}
+                      </td>
+                    </tr>
+                  ))}
+                  {apps.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-3 py-12 text-center text-muted-foreground">
+                        {filterText.trim()
+                          ? t('devices.installedApps.noSearchResults')
+                          : t('devices.installedApps.empty')}
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+
+            <p className="shrink-0 border-t px-6 py-3 text-xs text-muted-foreground">
+              {t('devices.installedApps.inventoryFooterHint')}
+            </p>
+          </>
+        )}
+
+        <DialogFooter className="shrink-0 border-t px-6 py-4">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             {t('common.close')}
           </Button>

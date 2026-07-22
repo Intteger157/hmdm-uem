@@ -106,7 +106,18 @@ export async function fetchDeviceInventory(deviceNumber: string): Promise<Device
   const response = await api.get<ApiResponse<DeviceInventoryView>>(
     `/plugins/deviceinventory/private/${encodeURIComponent(deviceNumber)}`,
   )
-  return unwrapApiResponse(response.data) ?? { applications: [] }
+  const data = unwrapApiResponse(response.data)
+  return normalizeDeviceInventoryView(data)
+}
+
+function normalizeDeviceInventoryView(raw: DeviceInventoryView | null | undefined): DeviceInventoryView {
+  const applications = Array.isArray(raw?.applications) ? raw.applications : []
+
+  return {
+    deviceNumber: raw?.deviceNumber,
+    lastUpdate: raw?.lastUpdate,
+    applications: applications.filter((app) => Boolean(app?.pkg?.trim())),
+  }
 }
 
 export async function requestDeviceInventoryScan(deviceNumber: string): Promise<void> {
