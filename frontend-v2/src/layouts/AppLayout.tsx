@@ -19,8 +19,8 @@ export function AppLayout() {
 
   return (
     <TooltipProvider>
-      <SidebarProvider defaultOpen>
-        <div className="flex min-h-screen bg-slate-50 text-slate-900">
+      <SidebarProvider defaultOpen className="min-h-svh w-full">
+        <div className="flex min-h-svh min-w-0 flex-1 bg-slate-50 text-slate-900">
           <aside className="flex w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
             <SidebarHeader className="border-b border-sidebar-border px-4 py-5">
               <p className="text-lg font-semibold">{t('app.title')}</p>
@@ -42,8 +42,8 @@ export function AppLayout() {
             </SidebarFooter>
           </aside>
 
-          <div className="flex min-h-screen flex-1 flex-col">
-            <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
+          <div className="flex min-w-0 flex-1 flex-col">
+            <header className="flex w-full items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
               <div />
               <div className="flex items-center gap-4">
                 <span className="text-sm text-slate-600">{user?.name ?? user?.login}</span>
@@ -56,7 +56,7 @@ export function AppLayout() {
                 </button>
               </div>
             </header>
-            <main className="flex-1 p-6">
+            <main className="w-full flex-1 p-6">
               <Outlet />
             </main>
           </div>
