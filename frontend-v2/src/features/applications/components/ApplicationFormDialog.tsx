@@ -174,7 +174,7 @@ export function ApplicationFormDialog({
       return
     }
 
-    if (!file.name.endsWith('.apk') && !file.name.endsWith('.xapk')) {
+    if (!file.name.toLowerCase().endsWith('.apk') && !file.name.toLowerCase().endsWith('.xapk')) {
       setErrorMessage(t('configurations.editor.apkRequired'))
       return
     }
@@ -197,11 +197,16 @@ export function ApplicationFormDialog({
       setUploadProgress(null)
       setUploadMessage(t('configurations.editor.fileUploaded'))
 
-      if (result.fileDetails) {
+      if (result.fileDetails?.pkg) {
         applyUploadResult(result.fileDetails, result.application, {
           exists: result.exists,
           complete: result.complete,
         })
+      } else if (
+        file.name.toLowerCase().endsWith('.apk') ||
+        file.name.toLowerCase().endsWith('.xapk')
+      ) {
+        setWarning(t('configurations.editor.apkMetadataMissing'))
       }
     } catch (error) {
       setUploadProgress(null)
@@ -340,11 +345,12 @@ export function ApplicationFormDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {(uploadMessage || errorMessage) && (
+        {(uploadMessage || errorMessage || warning) && (
           <div className="space-y-2">
             {uploadMessage && (
               <p className="text-sm text-green-700 dark:text-green-300">{uploadMessage}</p>
             )}
+            {warning && <p className="text-sm text-amber-700 dark:text-amber-300">{warning}</p>}
             {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
           </div>
         )}

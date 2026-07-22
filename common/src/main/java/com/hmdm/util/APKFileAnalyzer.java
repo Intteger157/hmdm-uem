@@ -28,12 +28,14 @@ import com.hmdm.persistence.domain.Application;
 import com.hmdm.rest.json.APKFileDetails;
 import net.dongliu.apk.parser.ApkFile;
 import net.dongliu.apk.parser.bean.ApkMeta;
+import org.apache.commons.io.IOUtils;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Named;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -82,11 +84,12 @@ public class APKFileAnalyzer {
      */
     public APKFileDetails analyzeFile(String filePath) {
         String realFileName = filePath.endsWith(".temp") ? FileUtil.getNameFromTmpPath(filePath) : filePath;
-        if (realFileName.endsWith(".xapk")) {
+        if (FileUtil.isXapk(realFileName)) {
             return analyzeXapkFile(filePath);
-        } else {
+        } else if (FileUtil.isApkOrXapk(realFileName)) {
             return analyzeApkFile(filePath);
         }
+        throw new APKFileAnalyzerException("Unsupported application file type: " + realFileName);
     }
 
     /**
@@ -358,42 +361,113 @@ public class APKFileAnalyzer {
      * @throws APKFileAnalyzerException if an unexpected error occurs
      */
     private APKFileDetails analyzeXapkFile(String filePath) {
-        try {
-            ZipFile zipFile = new ZipFile(filePath);
-            Enumeration<? extends ZipEntry> entries = zipFile.entries();
-
-            while(entries.hasMoreElements()) {
-                ZipEntry entry = entries.nextElement();
-                if (entry.getName().equalsIgnoreCase("manifest.json")) {
-                    InputStream stream = zipFile.getInputStream(entry);
-                    BufferedReader streamReader = new BufferedReader(new InputStreamReader(stream, "UTF-8"));
-                    StringBuilder responseStrBuilder = new StringBuilder();
-                    String inputStr;
-                    while ((inputStr = streamReader.readLine()) != null) {
-                        responseStrBuilder.append(inputStr);
-                    }
-                    stream.close();
-                    zipFile.close();
-                    return analyzeXapkManifest(responseStrBuilder.toString());
-                }
-
+        try (ZipFile zipFile = new ZipFile(filePath)) {
+            String manifestContent = readManifestFromZip(zipFile, "manifest.json");
+            if (manifestContent == null) {
+                manifestContent = readManifestFromZip(zipFile, "info.json");
             }
-            zipFile.close();
-            throw new APKFileAnalyzerException("Missing manifest in XAPK-file", new Exception());
-
+            if (manifestContent != null) {
+                try {
+                    return analyzeXapkManifest(manifestContent);
+                } catch (Exception e) {
+                    log.warn("Failed to parse XAPK metadata from manifest, trying embedded APK: {}", filePath, e);
+                }
+            } else {
+                log.warn("No manifest.json or info.json in XAPK, trying embedded APK: {}", filePath);
+            }
+            return analyzeEmbeddedApkInZip(zipFile);
+        } catch (APKFileAnalyzerException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Unexpected error while analyzing XAPK-file: {}", filePath, e);
             throw new APKFileAnalyzerException("Unexpected error while analyzing XAPK-file", e);
         }
     }
 
+    private String readManifestFromZip(ZipFile zipFile, String manifestName) throws IOException {
+        ZipEntry entry = findZipEntry(zipFile, manifestName);
+        if (entry == null) {
+            return null;
+        }
+        try (InputStream stream = zipFile.getInputStream(entry)) {
+            return IOUtils.toString(stream, StandardCharsets.UTF_8);
+        }
+    }
+
+    private ZipEntry findZipEntry(ZipFile zipFile, String entryName) {
+        String suffix = "/" + entryName;
+        ZipEntry found = null;
+        for (ZipEntry entry : Collections.list(zipFile.entries())) {
+            String name = entry.getName();
+            if (name.equalsIgnoreCase(entryName) || name.endsWith(suffix)) {
+                if (found == null || name.length() < found.getName().length()) {
+                    found = entry;
+                }
+            }
+        }
+        return found;
+    }
+
+    private APKFileDetails analyzeEmbeddedApkInZip(ZipFile zipFile) throws IOException {
+        ZipEntry apkEntry = findEmbeddedApkEntry(zipFile);
+        if (apkEntry == null) {
+            throw new APKFileAnalyzerException("Missing manifest and APK in XAPK-file", new Exception());
+        }
+        File tempApk = File.createTempFile("xapk-apk-", ".apk");
+        try {
+            try (InputStream in = zipFile.getInputStream(apkEntry);
+                 FileOutputStream out = new FileOutputStream(tempApk)) {
+                IOUtils.copy(in, out);
+            }
+            return analyzeApkFile(tempApk.getAbsolutePath());
+        } finally {
+            tempApk.delete();
+        }
+    }
+
+    private ZipEntry findEmbeddedApkEntry(ZipFile zipFile) {
+        ZipEntry largestApk = null;
+        long largestSize = -1;
+        for (ZipEntry entry : Collections.list(zipFile.entries())) {
+            if (entry.isDirectory()) {
+                continue;
+            }
+            String name = entry.getName();
+            if (!name.toLowerCase().endsWith(".apk")) {
+                continue;
+            }
+            String fileName = name.substring(name.lastIndexOf('/') + 1);
+            if (fileName.equalsIgnoreCase("base.apk")) {
+                return entry;
+            }
+            long size = entry.getSize() >= 0 ? entry.getSize() : entry.getCompressedSize();
+            if (size > largestSize) {
+                largestSize = size;
+                largestApk = entry;
+            }
+        }
+        return largestApk;
+    }
+
     private APKFileDetails analyzeXapkManifest(String manifest) {
-        JSONObject jsonObject = new JSONObject(manifest);
+        JSONObject jsonObject = new JSONObject(manifest.trim());
         APKFileDetails fileDetails = new APKFileDetails();
-        fileDetails.setPkg(jsonObject.getString("package_name"));
-        fileDetails.setVersion(jsonObject.getString("version_name"));
-        fileDetails.setVersionCode(jsonObject.optInt("version_code"));
-        fileDetails.setName(jsonObject.optString("name"));
+
+        String pkg = optManifestString(jsonObject, "package_name", "pname", "packageName");
+        if (pkg == null) {
+            throw new APKFileAnalyzerException("Missing package name in XAPK manifest");
+        }
+        fileDetails.setPkg(pkg);
+
+        String version = optManifestString(jsonObject, "version_name", "versionName", "release_version");
+        fileDetails.setVersion(version != null ? version : "");
+
+        fileDetails.setVersionCode(parseManifestVersionCode(jsonObject));
+
+        String name = optManifestString(jsonObject, "name", "label");
+        if (name != null) {
+            fileDetails.setName(name);
+        }
 
         // XAPK manifest doesn't contain data about the native code
         // So we try to guess it by searching the keywords
@@ -406,5 +480,38 @@ public class APKFileAnalyzer {
         }
 
         return fileDetails;
+    }
+
+    private String optManifestString(JSONObject jsonObject, String... keys) {
+        for (String key : keys) {
+            if (!jsonObject.has(key)) {
+                continue;
+            }
+            String value = jsonObject.optString(key, "").trim();
+            if (!value.isEmpty()) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private int parseManifestVersionCode(JSONObject jsonObject) {
+        for (String key : new String[]{"version_code", "versioncode", "versionCode"}) {
+            if (!jsonObject.has(key)) {
+                continue;
+            }
+            Object value = jsonObject.get(key);
+            if (value instanceof Number) {
+                return ((Number) value).intValue();
+            }
+            if (value instanceof String) {
+                try {
+                    return Integer.parseInt(((String) value).trim());
+                } catch (NumberFormatException e) {
+                    // try next key
+                }
+            }
+        }
+        return 0;
     }
 }

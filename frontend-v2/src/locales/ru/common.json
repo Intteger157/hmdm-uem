@@ -297,6 +297,7 @@
   "configurations.editor.fileUploaded": "Файл успешно загружен.",
   "configurations.editor.apkRequired": "Требуется файл APK или XAPK.",
   "configurations.editor.apkParseError": "Не удалось разобрать APK.",
+  "configurations.editor.apkMetadataMissing": "Файл загружен, но данные пакета не распознаны. Обновите сервер до последней сборки или заполните поля вручную.",
   "configurations.editor.apkUploadTooLarge": "APK слишком большой для лимита загрузки на сервере. Попросите админа увеличить client_max_body_size (gateway и edge proxy).",
   "configurations.editor.errorEmptyAppName": "Укажите название приложения.",
   "configurations.editor.errorEmptyAppPkg": "Укажите Package ID.",

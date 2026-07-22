@@ -544,7 +544,7 @@ public class FilesResource {
 
             result.setServerPath(uploadFile.getAbsolutePath());
 
-            if (parseFile && fileName.toLowerCase().endsWith(".apk")) {
+            if (parseFile && (FileUtil.isApkOrXapk(fileName) || FileUtil.isApkOrXapk(adjustedFileName))) {
                 final APKFileDetails apkFileDetails;
                 apkFileDetails = this.apkFileAnalyzer.analyzeFile(uploadFile.getAbsolutePath());
                 result.setFileDetails(apkFileDetails);

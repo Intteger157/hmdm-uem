@@ -51,6 +51,31 @@ public final class FileUtil {
                 .replace(")", "");
     }
 
+    public static String getFileExtension(String fileName) {
+        if (fileName == null || fileName.isEmpty()) {
+            return "";
+        }
+        String baseName = fileName;
+        int slash = Math.max(baseName.lastIndexOf('/'), baseName.lastIndexOf('\\'));
+        if (slash >= 0) {
+            baseName = baseName.substring(slash + 1);
+        }
+        int dot = baseName.lastIndexOf('.');
+        if (dot < 0) {
+            return "";
+        }
+        return baseName.substring(dot).toLowerCase();
+    }
+
+    public static boolean isApkOrXapk(String fileName) {
+        String extension = getFileExtension(fileName);
+        return ".apk".equals(extension) || ".xapk".equals(extension);
+    }
+
+    public static boolean isXapk(String fileName) {
+        return ".xapk".equals(getFileExtension(fileName));
+    }
+
     public static File createTempFile(String fileName) throws IOException {
         return File.createTempFile(fileName + TEMP_FILE_DELIMITER, ".temp");
     }
