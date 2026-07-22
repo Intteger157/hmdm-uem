@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Trash2 } from 'lucide-react'
+import { Link2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { FileConfigurationsDialog } from '@/features/files/components/FileConfigurationsDialog'
+import { FileFormDialog } from '@/features/files/components/FileFormDialog'
 import { formatFileSize } from '@/features/files/api/files-api'
 import { useDeleteFileMutation, useFilesQuery } from '@/features/files/hooks/use-files'
 import type { FileEntry } from '@/features/files/api/files-api'
@@ -32,6 +34,9 @@ export function FilesListPage() {
   const [searchInput, setSearchInput] = useState('')
   const [searchValue, setSearchValue] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<FileEntry | null>(null)
+  const [formOpen, setFormOpen] = useState(false)
+  const [editTarget, setEditTarget] = useState<FileEntry | null>(null)
+  const [assignTarget, setAssignTarget] = useState<FileEntry | null>(null)
 
   const matcher = useCallback(matchFile, [])
   const { pageItems, pageNum, setPageNum, totalItems, totalPages, from, to } = usePaginatedList(
@@ -59,11 +64,35 @@ export function FilesListPage() {
     }
   }
 
+  const handleCopyLink = async (file: FileEntry) => {
+    if (!file.url) {
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(file.url)
+      toast.success(t('files.copyLink.success'))
+    } catch {
+      toast.error(t('files.copyLink.error'))
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t('files.title')}</h1>
-        <p className="text-sm text-muted-foreground">{t('files.subtitle')}</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('files.title')}</h1>
+          <p className="text-sm text-muted-foreground">{t('files.subtitle')}</p>
+        </div>
+        <Button
+          type="button"
+          onClick={() => {
+            setEditTarget(null)
+            setFormOpen(true)
+          }}
+        >
+          <Plus className="mr-1 size-4" />
+          {t('files.add')}
+        </Button>
       </div>
 
       <form onSubmit={handleSearch} className="flex max-w-xl gap-2">
@@ -100,7 +129,7 @@ export function FilesListPage() {
             </div>
           ) : (
             <div className="overflow-x-auto rounded-lg border bg-card">
-              <table className="w-full min-w-[800px] text-left text-sm">
+              <table className="w-full min-w-[900px] text-left text-sm">
                 <thead className="border-b bg-muted/40 text-muted-foreground">
                   <tr>
                     <th className="px-4 py-3 font-medium">{t('files.columns.path')}</th>
@@ -138,7 +167,40 @@ export function FilesListPage() {
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex items-center justify-end">
+                          <div className="flex items-center justify-end gap-1">
+                            {file.url && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-xs"
+                                title={t('files.copyLink.action')}
+                                onClick={() => void handleCopyLink(file)}
+                              >
+                                <Link2 className="size-3.5" />
+                              </Button>
+                            )}
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-xs"
+                              title={t('common.edit')}
+                              onClick={() => {
+                                setEditTarget(file)
+                                setFormOpen(true)
+                              }}
+                            >
+                              <Pencil className="size-3.5" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-xs"
+                              title={t('files.configurations.action')}
+                              disabled={!file.id}
+                              onClick={() => setAssignTarget(file)}
+                            >
+                              <Plus className="size-3.5" />
+                            </Button>
                             <Button
                               type="button"
                               variant="ghost"
@@ -170,6 +232,23 @@ export function FilesListPage() {
           />
         </>
       )}
+
+      <FileFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        file={editTarget}
+        onSaved={() => void refetch()}
+      />
+
+      <FileConfigurationsDialog
+        open={assignTarget != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setAssignTarget(null)
+          }
+        }}
+        file={assignTarget}
+      />
 
       <ConfirmDeleteDialog
         open={deleteTarget != null}

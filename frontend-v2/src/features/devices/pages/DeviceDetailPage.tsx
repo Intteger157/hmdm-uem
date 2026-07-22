@@ -1,7 +1,8 @@
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, ChevronRight } from 'lucide-react'
+import { ArrowLeft, ChevronRight, Monitor } from 'lucide-react'
 import { DeviceActionsPanel } from '@/features/devices/components/DeviceActionsPanel'
+import { DeviceRemoteDialog } from '@/features/plugins/deviceremote/components/DeviceRemoteDialog'
 import { useDeviceByNumber } from '@/features/devices/hooks/use-device-by-number-query'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -51,6 +52,7 @@ export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
   const { t } = useTranslation()
   const { data: device, isLoading, error } = useDeviceByNumber(deviceNumber)
   const [activeTab, setActiveTab] = useState('software')
+  const [remoteOpen, setRemoteOpen] = useState(false)
 
   if (isLoading) {
     return <DeviceDetailSkeleton />
@@ -109,9 +111,17 @@ export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
           </div>
           <p className="font-mono text-sm text-muted-foreground">{device.number}</p>
         </div>
-        <Button type="button" onClick={() => setActiveTab('actions')}>
-          {t('deviceDetail.deviceActions')}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {device.platform === 'android' && (
+            <Button type="button" variant="outline" onClick={() => setRemoteOpen(true)}>
+              <Monitor className="mr-2 size-4" />
+              {t('deviceDetail.remoteControl')}
+            </Button>
+          )}
+          <Button type="button" onClick={() => setActiveTab('actions')}>
+            {t('deviceDetail.deviceActions')}
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
@@ -298,6 +308,13 @@ export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
           <DeviceActionsPanel />
         </TabsContent>
       </Tabs>
+
+      <DeviceRemoteDialog
+        open={remoteOpen}
+        onOpenChange={setRemoteOpen}
+        deviceId={device.id}
+        deviceLabel={deviceIdentifier(device)}
+      />
     </div>
   )
 }

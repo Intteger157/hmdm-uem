@@ -15,10 +15,14 @@ import { ApplicationsListPage } from '@/features/applications/pages/Applications
 import { ApplicationVersionsPage } from '@/features/applications/pages/ApplicationVersionsPage'
 import { GroupsListPage } from '@/features/groups/pages/GroupsListPage'
 import { UsersListPage } from '@/features/users/pages/UsersListPage'
+import { SettingsPage } from '@/features/settings/pages/SettingsPage'
+import { RolesListPage } from '@/features/roles/pages/RolesListPage'
+import { RemoteControlSettingsPage } from '@/features/plugins/deviceremote/pages/RemoteControlSettingsPage'
+import { PushListPage } from '@/features/plugins/push/pages/PushListPage'
+import { MessagingListPage } from '@/features/plugins/messaging/pages/MessagingListPage'
 import { AppLayout } from '@/layouts/AppLayout'
 import { AuthLayout } from '@/layouts/AuthLayout'
 import { FilesListPage } from '@/features/files/pages/FilesListPage'
-import { ComingSoonPage } from '@/shared/pages/ComingSoonPage'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { isPlatform } from '@/shared/api/types/platform'
 
@@ -134,13 +138,31 @@ const usersRoute = createRoute({
 const settingsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/settings',
-  component: () => <ComingSoonPage titleKey="nav.settings" />,
+  component: SettingsPage,
+})
+
+const rolesRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/roles',
+  component: RolesListPage,
 })
 
 const remoteControlRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/plugins/remote-control',
-  component: () => <ComingSoonPage titleKey="nav.remoteControl" />,
+  component: RemoteControlSettingsPage,
+})
+
+const pushRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/plugins/push',
+  component: PushListPage,
+})
+
+const messagingRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/plugins/messaging',
+  component: MessagingListPage,
 })
 
 const indexRoute = createRoute({
@@ -166,7 +188,10 @@ const routeTree = rootRoute.addChildren([
     groupsRoute,
     usersRoute,
     settingsRoute,
+    rolesRoute,
     remoteControlRoute,
+    pushRoute,
+    messagingRoute,
   ]),
 ])
 

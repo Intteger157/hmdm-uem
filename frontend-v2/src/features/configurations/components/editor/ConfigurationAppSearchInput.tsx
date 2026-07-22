@@ -16,8 +16,8 @@ interface ConfigurationAppSearchInputProps {
   disabled?: boolean
   placeholder?: string
   id?: string
-  /** installable = action Install (MDM tab); available = unassigned apps (Add dialog). */
-  mode?: 'installable' | 'available'
+  /** installable = action Install (MDM tab); available = unassigned apps (Add dialog); repository = all app-type entries. */
+  mode?: 'installable' | 'available' | 'repository'
   emptyMessageKey?: string
 }
 
@@ -46,6 +46,21 @@ export function ConfigurationAppSearchInput({
     if (mode === 'available') {
       return filterAvailableAppsForAdd(apps, query)
     }
+    if (mode === 'repository') {
+      const lower = query.trim().toLowerCase()
+      const repoApps = apps.filter((app) => app.type === 'app')
+      if (!lower) {
+        return [...repoApps].sort((a, b) => a.name.localeCompare(b.name))
+      }
+      return repoApps
+        .filter(
+          (app) =>
+            app.name.toLowerCase().includes(lower) ||
+            (app.pkg?.toLowerCase().includes(lower) ?? false) ||
+            (app.version?.toLowerCase().includes(lower) ?? false)
+        )
+        .sort((a, b) => a.name.localeCompare(b.name))
+    }
     return filterInstallableConfigApps(apps, query)
   }, [apps, mode, query])
 
@@ -53,7 +68,9 @@ export function ConfigurationAppSearchInput({
     emptyMessageKey ??
     (mode === 'available'
       ? 'configurations.editor.noAvailableApps'
-      : 'configurations.editor.noInstallableApps')
+      : mode === 'repository'
+        ? 'configurations.editor.noAvailableApps'
+        : 'configurations.editor.noInstallableApps')
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {

@@ -5,11 +5,13 @@ import {
   fetchConfigurationApplications,
   fetchConfigurationById,
   fetchConfigurations,
+  upgradeConfigurationApplication,
   upsertConfiguration,
 } from '@/features/configurations/api/configurations-api'
 import type {
   Configuration,
   ConfigurationCopyRequest,
+  UpgradeConfigurationApplicationRequest,
 } from '@/features/configurations/api/configurations-api'
 
 export const configurationQueryKeys = {
@@ -71,6 +73,21 @@ export function useDeleteConfigurationMutation() {
     mutationFn: (id: number) => deleteConfiguration(id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: configurationQueryKeys.all })
+    },
+  })
+}
+
+export function useUpgradeConfigurationApplicationMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (request: UpgradeConfigurationApplicationRequest) =>
+      upgradeConfigurationApplication(request),
+    onSuccess: async (_data, variables) => {
+      await queryClient.invalidateQueries({ queryKey: configurationQueryKeys.all })
+      await queryClient.invalidateQueries({
+        queryKey: configurationQueryKeys.applications(variables.configurationId),
+      })
     },
   })
 }

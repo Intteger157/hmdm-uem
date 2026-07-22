@@ -9,39 +9,18 @@ import {
   findConfigAppByUsedVersionId,
   isQrEnrollmentReady,
 } from '@/features/configurations/utils/configuration-app-utils'
+import { BoolField } from '@/shared/components/BoolField'
+import { FormSelect } from '@/shared/components/FormSelect'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 
 interface ConfigurationMdmTabProps {
   draft: Configuration
   applications: ConfigurationApplication[]
   onChange: (patch: Partial<Configuration>) => void
   onApplicationsChange: (applications: ConfigurationApplication[]) => void
-}
-
-function BoolField({
-  id,
-  label,
-  checked,
-  onCheckedChange,
-}: {
-  id: string
-  label: string
-  checked: boolean
-  onCheckedChange: (checked: boolean) => void
-}) {
-  return (
-    <label htmlFor={id} className="flex cursor-pointer items-center gap-2 text-sm">
-      <input
-        id={id}
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onCheckedChange(e.target.checked)}
-      />
-      {label}
-    </label>
-  )
 }
 
 export function ConfigurationMdmTab({
@@ -55,9 +34,11 @@ export function ConfigurationMdmTab({
   const bool = (key: keyof Configuration, fallback = false) =>
     typeof draft[key] === 'boolean' ? (draft[key] as boolean) : fallback
 
-  const mainApp = findConfigAppByUsedVersionId(applications, draft.mainAppId)
-  const contentApp = findConfigAppByUsedVersionId(applications, draft.contentAppId)
+  const mainApp = findConfigAppByUsedVersionId(applications, draft.mainAppId ?? undefined)
+  const contentApp = findConfigAppByUsedVersionId(applications, draft.contentAppId ?? undefined)
   const qrUrl = buildConfigurationQrUrl(draft)
+  const kioskMode = bool('kioskMode')
+  const permissive = bool('permissive')
 
   const handleMainAppSelect = (app: ConfigurationApplication) => {
     onApplicationsChange(applyMainAppSelection(applications, app))
@@ -74,6 +55,13 @@ export function ConfigurationMdmTab({
     onChange({ contentAppId: app.usedVersionId })
   }
 
+  const handleKioskModeChange = (checked: boolean) => {
+    onChange({
+      kioskMode: checked,
+      permissive: checked ? false : draft.permissive,
+    })
+  }
+
   return (
     <div className="space-y-4">
       <Card>
@@ -82,6 +70,13 @@ export function ConfigurationMdmTab({
           <CardDescription>{t('configurations.editor.enrollmentDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <BoolField
+            id="kiosk-mode-enrollment"
+            label={t('configurations.editor.fields.kioskMode')}
+            checked={kioskMode}
+            onCheckedChange={handleKioskModeChange}
+          />
+
           <div className="space-y-2">
             <Label htmlFor="mdm-application">{t('configurations.editor.fields.mdmApplication')}</Label>
             <ConfigurationAppSearchInput
@@ -112,18 +107,11 @@ export function ConfigurationMdmTab({
               id="content-application"
               apps={applications}
               selected={contentApp}
-              disabled={!bool('kioskMode')}
+              disabled={!kioskMode}
               onSelect={handleContentAppSelect}
               placeholder={t('configurations.editor.searchApplication')}
             />
           </div>
-
-          <BoolField
-            id="kiosk-mode-enrollment"
-            label={t('configurations.editor.fields.kioskMode')}
-            checked={bool('kioskMode')}
-            onCheckedChange={(v) => onChange({ kioskMode: v })}
-          />
 
           <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
             <Label>{t('configurations.editor.fields.qrCodeUrl')}</Label>
@@ -145,88 +133,63 @@ export function ConfigurationMdmTab({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('configurations.editor.mdmConnectivityTitle')}</CardTitle>
-          <CardDescription>{t('configurations.editor.mdmConnectivityDescription')}</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2">
-          <BoolField
-            id="gps"
-            label={t('configurations.editor.fields.gps')}
-            checked={bool('gps')}
-            onCheckedChange={(v) => onChange({ gps: v })}
-          />
-          <BoolField
-            id="bluetooth"
-            label={t('configurations.editor.fields.bluetooth')}
-            checked={bool('bluetooth')}
-            onCheckedChange={(v) => onChange({ bluetooth: v })}
-          />
-          <BoolField
-            id="wifi"
-            label={t('configurations.editor.fields.wifi')}
-            checked={bool('wifi')}
-            onCheckedChange={(v) => onChange({ wifi: v })}
-          />
-          <BoolField
-            id="mobile-data"
-            label={t('configurations.editor.fields.mobileData')}
-            checked={bool('mobileData')}
-            onCheckedChange={(v) => onChange({ mobileData: v })}
-          />
-          <BoolField
-            id="usb-storage"
-            label={t('configurations.editor.fields.usbStorage')}
-            checked={bool('usbStorage')}
-            onCheckedChange={(v) => onChange({ usbStorage: v })}
-          />
-          <BoolField
-            id="mobile-enrollment"
-            label={t('configurations.editor.fields.mobileEnrollment')}
-            checked={bool('mobileEnrollment')}
-            onCheckedChange={(v) => onChange({ mobileEnrollment: v })}
-          />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('configurations.editor.mdmModeTitle')}</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2">
-          <BoolField
-            id="permissive"
-            label={t('configurations.editor.fields.permissive')}
-            checked={bool('permissive')}
-            onCheckedChange={(v) => onChange({ permissive: v })}
-          />
-          <BoolField
-            id="block-status-bar"
-            label={t('configurations.editor.fields.blockStatusBar')}
-            checked={bool('blockStatusBar')}
-            onCheckedChange={(v) => onChange({ blockStatusBar: v })}
-          />
-          <BoolField
-            id="encrypt-device"
-            label={t('configurations.editor.fields.encryptDevice')}
-            checked={bool('encryptDevice', true)}
-            onCheckedChange={(v) => onChange({ encryptDevice: v })}
-          />
-          <BoolField
-            id="disable-screenshots"
-            label={t('configurations.editor.fields.disableScreenshots')}
-            checked={bool('disableScreenshots')}
-            onCheckedChange={(v) => onChange({ disableScreenshots: v })}
-          />
-          <BoolField
-            id="kiosk-exit"
-            label={t('configurations.editor.fields.kioskExit')}
-            checked={bool('kioskExit')}
-            onCheckedChange={(v) => onChange({ kioskExit: v })}
-          />
-        </CardContent>
-      </Card>
+      {kioskMode && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('configurations.editor.kioskOptionsTitle')}</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2">
+            <BoolField
+              id="kiosk-home"
+              label={t('configurations.editor.fields.kioskHome')}
+              checked={bool('kioskHome')}
+              onCheckedChange={(v) => onChange({ kioskHome: v })}
+            />
+            <BoolField
+              id="kiosk-recents"
+              label={t('configurations.editor.fields.kioskRecents')}
+              checked={bool('kioskRecents')}
+              onCheckedChange={(v) => onChange({ kioskRecents: v })}
+            />
+            <BoolField
+              id="kiosk-notifications"
+              label={t('configurations.editor.fields.kioskNotifications')}
+              checked={bool('kioskNotifications')}
+              onCheckedChange={(v) => onChange({ kioskNotifications: v })}
+            />
+            <BoolField
+              id="kiosk-system-info"
+              label={t('configurations.editor.fields.kioskSystemInfo')}
+              checked={bool('kioskSystemInfo')}
+              onCheckedChange={(v) => onChange({ kioskSystemInfo: v })}
+            />
+            <BoolField
+              id="kiosk-keyguard"
+              label={t('configurations.editor.fields.kioskKeyguard')}
+              checked={bool('kioskKeyguard')}
+              onCheckedChange={(v) => onChange({ kioskKeyguard: v })}
+            />
+            <BoolField
+              id="kiosk-lock-buttons"
+              label={t('configurations.editor.fields.kioskLockButtons')}
+              checked={bool('kioskLockButtons')}
+              onCheckedChange={(v) => onChange({ kioskLockButtons: v })}
+            />
+            <BoolField
+              id="kiosk-exit"
+              label={t('configurations.editor.fields.kioskExit')}
+              checked={bool('kioskExit')}
+              onCheckedChange={(v) => onChange({ kioskExit: v })}
+            />
+            <BoolField
+              id="kiosk-screen-on"
+              label={t('configurations.editor.fields.kioskScreenOn')}
+              checked={bool('kioskScreenOn')}
+              onCheckedChange={(v) => onChange({ kioskScreenOn: v })}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -250,18 +213,130 @@ export function ConfigurationMdmTab({
               autoComplete="off"
             />
           </div>
+          <FormSelect
+            id="wifi-security"
+            label={t('configurations.editor.fields.wifiSecurityType')}
+            value={draft.wifiSecurityType ?? 'WPA'}
+            onChange={(value) => onChange({ wifiSecurityType: value })}
+            options={[
+              { value: 'WPA', label: 'WPA' },
+              { value: 'WEP', label: 'WEP' },
+              { value: 'EAP', label: 'EAP' },
+              { value: 'NONE', label: 'NONE' },
+            ]}
+            hint={t('configurations.editor.fields.wifiSecurityHint')}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('configurations.editor.mdmAdvancedTitle')}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="keepalive">{t('configurations.editor.fields.keepaliveTime')}</Label>
+            <Label htmlFor="launcher-url">{t('configurations.editor.fields.launcherUrl')}</Label>
             <Input
-              id="keepalive"
-              type="number"
-              min={0}
-              value={draft.keepaliveTime ?? ''}
-              onChange={(e) =>
-                onChange({
-                  keepaliveTime: e.target.value ? Number(e.target.value) : undefined,
-                })
-              }
+              id="launcher-url"
+              value={typeof draft.launcherUrl === 'string' ? draft.launcherUrl : ''}
+              onChange={(e) => onChange({ launcherUrl: e.target.value || undefined })}
+              autoComplete="off"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="qr-parameters">{t('configurations.editor.fields.qrParameters')}</Label>
+            <Textarea
+              id="qr-parameters"
+              value={draft.qrParameters ?? ''}
+              onChange={(e) => onChange({ qrParameters: e.target.value || undefined })}
+              rows={3}
+              className="resize-none font-mono text-xs"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="admin-extras">{t('configurations.editor.fields.adminExtras')}</Label>
+            <Textarea
+              id="admin-extras"
+              value={draft.adminExtras ?? ''}
+              onChange={(e) => onChange({ adminExtras: e.target.value || undefined })}
+              rows={3}
+              className="resize-none font-mono text-xs"
+            />
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <BoolField
+              id="mobile-enrollment"
+              label={t('configurations.editor.fields.mobileEnrollment')}
+              checked={bool('mobileEnrollment')}
+              onCheckedChange={(v) => onChange({ mobileEnrollment: v })}
+            />
+            <BoolField
+              id="encrypt-device"
+              label={t('configurations.editor.fields.encryptDevice')}
+              checked={bool('encryptDevice', true)}
+              onCheckedChange={(v) => onChange({ encryptDevice: v })}
+            />
+            <BoolField
+              id="permissive"
+              label={t('configurations.editor.fields.permissive')}
+              checked={permissive}
+              disabled={kioskMode}
+              onCheckedChange={(v) => onChange({ permissive: v })}
+            />
+            <BoolField
+              id="lock-safe-settings"
+              label={t('configurations.editor.fields.lockSafeSettings')}
+              checked={bool('lockSafeSettings')}
+              disabled={permissive}
+              onCheckedChange={(v) => onChange({ lockSafeSettings: v })}
+            />
+            <BoolField
+              id="block-status-bar"
+              label={t('configurations.editor.fields.blockStatusBar')}
+              checked={bool('blockStatusBar')}
+              onCheckedChange={(v) => onChange({ blockStatusBar: v })}
+            />
+            <BoolField
+              id="disable-screenshots-mdm"
+              label={t('configurations.editor.fields.disableScreenshots')}
+              checked={bool('disableScreenshots')}
+              onCheckedChange={(v) => onChange({ disableScreenshots: v })}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="allowed-classes">{t('configurations.editor.fields.allowedClasses')}</Label>
+            <Textarea
+              id="allowed-classes"
+              value={draft.allowedClasses ?? ''}
+              disabled={permissive}
+              onChange={(e) => onChange({ allowedClasses: e.target.value })}
+              rows={3}
+              className="resize-none font-mono text-xs"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="restrictions">{t('configurations.editor.fields.restrictions')}</Label>
+            <Textarea
+              id="restrictions"
+              value={draft.restrictions ?? ''}
+              disabled={permissive}
+              onChange={(e) => onChange({ restrictions: e.target.value || undefined })}
+              rows={3}
+              className="resize-none font-mono text-xs"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="new-server-url">{t('configurations.editor.fields.newServerUrl')}</Label>
+            <Input
+              id="new-server-url"
+              value={draft.newServerUrl ?? ''}
+              onChange={(e) => onChange({ newServerUrl: e.target.value })}
             />
           </div>
         </CardContent>

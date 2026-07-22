@@ -40,3 +40,18 @@ export async function deleteConfiguration(id: number): Promise<void> {
   const response = await api.delete<ApiResponse<unknown>>(`/private/configurations/${id}`)
   unwrapApiResponse(response.data)
 }
+
+export interface UpgradeConfigurationApplicationRequest {
+  configurationId: number
+  applicationId: number
+}
+
+export async function upgradeConfigurationApplication(
+  request: UpgradeConfigurationApplicationRequest
+): Promise<Configuration> {
+  const response = await api.put<ApiResponse<Configuration>>(
+    '/private/configurations/application/upgrade',
+    request
+  )
+  return unwrapApiResponse(response.data)
+}

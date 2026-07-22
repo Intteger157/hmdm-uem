@@ -15,6 +15,9 @@ interface ConfirmDeleteDialogProps {
   title: string
   description: string
   isPending?: boolean
+  confirmLabel?: string
+  pendingLabel?: string
+  confirmVariant?: 'default' | 'destructive'
   onConfirm: () => void
 }
 
@@ -24,6 +27,9 @@ export function ConfirmDeleteDialog({
   title,
   description,
   isPending,
+  confirmLabel,
+  pendingLabel,
+  confirmVariant = 'destructive',
   onConfirm,
 }: ConfirmDeleteDialogProps) {
   const { t } = useTranslation()
@@ -41,11 +47,13 @@ export function ConfirmDeleteDialog({
           </Button>
           <Button
             type="button"
-            variant="destructive"
+            variant={confirmVariant}
             disabled={isPending}
             onClick={onConfirm}
           >
-            {isPending ? t('common.deleting') : t('common.delete')}
+            {isPending
+              ? (pendingLabel ?? t('common.deleting'))
+              : (confirmLabel ?? t('common.delete'))}
           </Button>
         </DialogFooter>
       </DialogContent>

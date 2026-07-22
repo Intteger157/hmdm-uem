@@ -1,5 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import type { Configuration } from '@/features/configurations/types/configuration'
+import { BoolField } from '@/shared/components/BoolField'
+import { FormSelect } from '@/shared/components/FormSelect'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -9,32 +11,9 @@ interface ConfigurationDesignTabProps {
   onChange: (patch: Partial<Configuration>) => void
 }
 
-function BoolField({
-  id,
-  label,
-  checked,
-  onCheckedChange,
-}: {
-  id: string
-  label: string
-  checked: boolean
-  onCheckedChange: (checked: boolean) => void
-}) {
-  return (
-    <label htmlFor={id} className="flex cursor-pointer items-center gap-2 text-sm">
-      <input
-        id={id}
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onCheckedChange(e.target.checked)}
-      />
-      {label}
-    </label>
-  )
-}
-
 export function ConfigurationDesignTab({ draft, onChange }: ConfigurationDesignTabProps) {
   const { t } = useTranslation()
+  const disabled = draft.useDefaultDesignSettings === true
 
   return (
     <Card>
@@ -56,6 +35,7 @@ export function ConfigurationDesignTab({ draft, onChange }: ConfigurationDesignT
             <Input
               id="bg-color"
               value={draft.backgroundColor ?? ''}
+              disabled={disabled}
               onChange={(e) => onChange({ backgroundColor: e.target.value })}
               placeholder="#FFFFFF"
             />
@@ -65,6 +45,7 @@ export function ConfigurationDesignTab({ draft, onChange }: ConfigurationDesignT
             <Input
               id="text-color"
               value={draft.textColor ?? ''}
+              disabled={disabled}
               onChange={(e) => onChange({ textColor: e.target.value })}
               placeholder="#000000"
             />
@@ -76,18 +57,61 @@ export function ConfigurationDesignTab({ draft, onChange }: ConfigurationDesignT
           <Input
             id="bg-image"
             value={draft.backgroundImageUrl ?? ''}
+            disabled={disabled}
             onChange={(e) => onChange({ backgroundImageUrl: e.target.value || undefined })}
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="header-template">{t('configurations.editor.fields.desktopHeader')}</Label>
-          <Input
-            id="header-template"
-            value={draft.desktopHeaderTemplate ?? ''}
-            onChange={(e) => onChange({ desktopHeaderTemplate: e.target.value || undefined })}
-          />
-        </div>
+        <FormSelect
+          id="icon-size"
+          label={t('configurations.editor.fields.iconSize')}
+          value={draft.iconSize ?? 'MEDIUM'}
+          disabled={disabled}
+          onChange={(value) => onChange({ iconSize: value })}
+          options={[
+            { value: 'SMALL', label: t('configurations.editor.iconSize.small') },
+            { value: 'MEDIUM', label: t('configurations.editor.iconSize.medium') },
+            { value: 'LARGE', label: t('configurations.editor.iconSize.large') },
+          ]}
+        />
+
+        <FormSelect
+          id="desktop-header"
+          label={t('configurations.editor.fields.desktopHeaderType')}
+          value={draft.desktopHeader ?? 'NO_HEADER'}
+          disabled={disabled}
+          onChange={(value) => onChange({ desktopHeader: value })}
+          options={[
+            { value: 'NO_HEADER', label: t('configurations.editor.desktopHeader.no') },
+            { value: 'DEVICE_ID', label: t('configurations.editor.desktopHeader.deviceId') },
+            { value: 'DESCRIPTION', label: t('configurations.editor.desktopHeader.description') },
+            { value: 'TEMPLATE', label: t('configurations.editor.desktopHeader.custom') },
+          ]}
+        />
+
+        {draft.desktopHeader === 'TEMPLATE' && (
+          <div className="space-y-2">
+            <Label htmlFor="header-template">{t('configurations.editor.fields.desktopHeader')}</Label>
+            <Input
+              id="header-template"
+              value={draft.desktopHeaderTemplate ?? ''}
+              disabled={disabled}
+              onChange={(e) => onChange({ desktopHeaderTemplate: e.target.value || undefined })}
+            />
+          </div>
+        )}
+
+        <FormSelect
+          id="orientation"
+          label={t('configurations.editor.fields.orientation')}
+          value={draft.orientation ?? 0}
+          onChange={(value) => onChange({ orientation: Number(value) })}
+          options={[
+            { value: 0, label: t('configurations.editor.orientation.none') },
+            { value: 1, label: t('configurations.editor.orientation.portrait') },
+            { value: 2, label: t('configurations.editor.orientation.landscape') },
+          ]}
+        />
 
         <BoolField
           id="display-status"

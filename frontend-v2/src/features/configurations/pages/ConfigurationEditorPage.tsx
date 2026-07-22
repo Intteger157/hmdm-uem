@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft } from 'lucide-react'
+import { ConfigurationAppSettingsTab } from '@/features/configurations/components/editor/ConfigurationAppSettingsTab'
 import { ConfigurationApplicationsTab } from '@/features/configurations/components/editor/ConfigurationApplicationsTab'
 import { ConfigurationCommonTab } from '@/features/configurations/components/editor/ConfigurationCommonTab'
 import { ConfigurationDesignTab } from '@/features/configurations/components/editor/ConfigurationDesignTab'
@@ -12,9 +13,16 @@ import {
   useConfigurationQuery,
   useUpsertConfigurationMutation,
 } from '@/features/configurations/hooks/use-configurations'
-import type { Configuration } from '@/features/configurations/types/configuration'
+import type { ConfigurationEditorDraft } from '@/features/configurations/types/configuration'
 import type { ConfigurationApplication } from '@/features/configurations/types/configuration'
-import { prepareConfigurationForSave } from '@/features/configurations/utils/configuration-app-utils'
+import {
+  findConfigAppByUsedVersionId,
+} from '@/features/configurations/utils/configuration-app-utils'
+import {
+  normalizeConfigurationFromApi,
+  prepareConfigurationForSave,
+  validateConfigurationDraft,
+} from '@/features/configurations/utils/configuration-normalize'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -27,16 +35,16 @@ interface ConfigurationEditorPageProps {
 export function ConfigurationEditorPage({ configId }: ConfigurationEditorPageProps) {
   const { t } = useTranslation()
   const { data: configuration, isLoading, error } = useConfigurationQuery(configId)
-  const { data: configurationApplications, isLoading: appsLoading } =
+  const { data: configurationApplications, isLoading: appsLoading, refetch: refetchApps } =
     useConfigurationApplicationsQuery(configId)
   const upsertMutation = useUpsertConfigurationMutation()
 
-  const [draft, setDraft] = useState<Configuration | null>(null)
+  const [draft, setDraft] = useState<ConfigurationEditorDraft | null>(null)
   const [applications, setApplications] = useState<ConfigurationApplication[]>([])
 
   useEffect(() => {
     if (configuration) {
-      setDraft(structuredClone(configuration))
+      setDraft(normalizeConfigurationFromApi(configuration))
     }
   }, [configuration])
 
@@ -46,7 +54,7 @@ export function ConfigurationEditorPage({ configId }: ConfigurationEditorPagePro
     }
   }, [configurationApplications])
 
-  const handleChange = (patch: Partial<Configuration>) => {
+  const handleChange = (patch: Partial<ConfigurationEditorDraft>) => {
     setDraft((prev) => (prev ? { ...prev, ...patch } : prev))
   }
 
@@ -56,18 +64,34 @@ export function ConfigurationEditorPage({ configId }: ConfigurationEditorPagePro
   }
 
   const handleSave = async () => {
-    if (!draft?.name.trim()) {
+    if (!draft) {
       return
     }
 
-    const payload = prepareConfigurationForSave({
-      ...draft,
-      applications,
+    const mainAppSelected =
+      draft.mainAppId != null && draft.mainAppId > 0
+    const contentAppSelected =
+      draft.contentAppId != null && draft.contentAppId > 0
+
+    const validationError = validateConfigurationDraft(draft, {
+      mainAppSelected,
+      contentAppSelected,
     })
+    if (validationError) {
+      toast.error(t(validationError))
+      return
+    }
+
+    const payload = prepareConfigurationForSave(
+      {
+        ...draft,
+        applications,
+      },
+      { mainAppSelected, contentAppSelected }
+    )
 
     if (
-      payload.mainAppId != null &&
-      payload.mainAppId > 0 &&
+      mainAppSelected &&
       !payload.applications?.some(
         (app) => app.action === 1 && app.usedVersionId === payload.mainAppId
       )
@@ -76,8 +100,19 @@ export function ConfigurationEditorPage({ configId }: ConfigurationEditorPagePro
       return
     }
 
+    if (
+      contentAppSelected &&
+      !payload.applications?.some(
+        (app) => app.action === 1 && app.usedVersionId === payload.contentAppId
+      )
+    ) {
+      toast.error(t('configurations.editor.invalidContentApp'))
+      return
+    }
+
     try {
-      await upsertMutation.mutateAsync(payload)
+      const saved = await upsertMutation.mutateAsync(payload)
+      setDraft(normalizeConfigurationFromApi(saved))
       toast.success(t('configurations.editor.saved'))
     } catch {
       toast.error(t('configurations.editor.saveError'))
@@ -104,6 +139,8 @@ export function ConfigurationEditorPage({ configId }: ConfigurationEditorPagePro
     )
   }
 
+  const mainApp = findConfigAppByUsedVersionId(applications, draft.mainAppId ?? undefined)
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -114,6 +151,11 @@ export function ConfigurationEditorPage({ configId }: ConfigurationEditorPagePro
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">{draft.name}</h1>
             <p className="text-sm text-muted-foreground">{t('configurations.editor.subtitle')}</p>
+            {!mainApp && (
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                {t('configurations.editor.noMainAppWarning')}
+              </p>
+            )}
           </div>
         </div>
         <Button
@@ -125,7 +167,7 @@ export function ConfigurationEditorPage({ configId }: ConfigurationEditorPagePro
         </Button>
       </div>
 
-      <Tabs defaultValue="mdm">
+      <Tabs defaultValue="common">
         <TabsList className="flex-wrap">
           <TabsTrigger value="common">{t('configurations.editor.tabs.common')}</TabsTrigger>
           <TabsTrigger value="design">{t('configurations.editor.tabs.design')}</TabsTrigger>
@@ -133,6 +175,7 @@ export function ConfigurationEditorPage({ configId }: ConfigurationEditorPagePro
             {t('configurations.editor.tabs.applications')}
           </TabsTrigger>
           <TabsTrigger value="mdm">{t('configurations.editor.tabs.mdm')}</TabsTrigger>
+          <TabsTrigger value="appSettings">{t('configurations.editor.tabs.appSettings')}</TabsTrigger>
           <TabsTrigger value="files">{t('configurations.editor.tabs.files')}</TabsTrigger>
         </TabsList>
 
@@ -144,10 +187,12 @@ export function ConfigurationEditorPage({ configId }: ConfigurationEditorPagePro
         </TabsContent>
         <TabsContent value="applications">
           <ConfigurationApplicationsTab
+            configId={configId}
             draft={draft}
             applications={applications}
             onChange={handleChange}
             onApplicationsChange={handleApplicationsChange}
+            onApplicationsReload={() => void refetchApps()}
           />
         </TabsContent>
         <TabsContent value="mdm">
@@ -158,8 +203,15 @@ export function ConfigurationEditorPage({ configId }: ConfigurationEditorPagePro
             onApplicationsChange={handleApplicationsChange}
           />
         </TabsContent>
+        <TabsContent value="appSettings">
+          <ConfigurationAppSettingsTab
+            draft={draft}
+            applications={applications}
+            onChange={handleChange}
+          />
+        </TabsContent>
         <TabsContent value="files">
-          <ConfigurationFilesTab draft={draft} />
+          <ConfigurationFilesTab draft={draft} onChange={handleChange} />
         </TabsContent>
       </Tabs>
     </div>

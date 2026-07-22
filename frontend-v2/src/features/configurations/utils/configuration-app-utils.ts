@@ -290,11 +290,4 @@ export function buildConfigurationQrUrl(configuration: Configuration): string | 
   return `${base}/#/qr/${configuration.qrCodeKey}/`
 }
 
-export function prepareConfigurationForSave(configuration: Configuration): Configuration {
-  return {
-    ...configuration,
-    name: configuration.name.trim(),
-    description: configuration.description?.trim() || undefined,
-    applications: getAssignedConfigurationApps(configuration.applications ?? []),
-  }
-}
+export { prepareConfigurationForSave, validateConfigurationDraft } from '@/features/configurations/utils/configuration-normalize'

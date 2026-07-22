@@ -3,8 +3,11 @@ import {
   ChevronDown,
   FolderOpen,
   LayoutDashboard,
+  MessageSquare,
   Monitor,
   Package,
+  Radio,
+  Shield,
   SlidersHorizontal,
   Settings,
   Smartphone,
@@ -94,6 +97,10 @@ export function AppSidebar() {
         <Users className="size-4 shrink-0" />
         {t('nav.users')}
       </Link>
+      <Link to="/roles" className={navLinkClass}>
+        <Shield className="size-4 shrink-0" />
+        {t('nav.roles')}
+      </Link>
       <Link to="/settings" className={navLinkClass}>
         <Settings className="size-4 shrink-0" />
         {t('nav.settings')}
@@ -115,10 +122,18 @@ export function AppSidebar() {
           />
         </button>
         {pluginsOpen && (
-          <div className="mt-0.5">
+          <div className="mt-0.5 space-y-0.5">
             <Link to="/plugins/remote-control" className={cn(subLinkClass, 'flex items-center gap-2')}>
               <Terminal className="size-3.5 shrink-0" />
               {t('nav.remoteControl')}
+            </Link>
+            <Link to="/plugins/push" className={cn(subLinkClass, 'flex items-center gap-2')}>
+              <Radio className="size-3.5 shrink-0" />
+              {t('nav.push')}
+            </Link>
+            <Link to="/plugins/messaging" className={cn(subLinkClass, 'flex items-center gap-2')}>
+              <MessageSquare className="size-3.5 shrink-0" />
+              {t('nav.messaging')}
             </Link>
           </div>
         )}
