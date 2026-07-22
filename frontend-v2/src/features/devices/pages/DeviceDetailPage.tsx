@@ -31,6 +31,7 @@ const STATUS_BADGE: Record<string, 'default' | 'secondary' | 'destructive' | 'ou
 }
 
 const NA = 'N/A'
+const METRIC_ICON_CLASS = 'size-8'
 
 function deviceTitle(device: DeviceView): string {
   return device.description ?? device.hostname ?? device.number
@@ -193,13 +194,19 @@ export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
             <MetricCard
               label={t('devices.columns.androidVersion')}
               value={androidVersion ?? NA}
-              icon={androidVersion ? <AndroidIcon className={ANDROID_BRAND_COLOR} /> : undefined}
+              icon={
+                androidVersion ? (
+                  <AndroidIcon className={cn(METRIC_ICON_CLASS, ANDROID_BRAND_COLOR)} />
+                ) : undefined
+              }
             />
             <MetricCard
               label={t('devices.columns.battery')}
               value={batteryLevel != null ? `${batteryLevel}%` : NA}
               icon={
-                batteryLevel != null ? <BatteryLevelIcon level={batteryLevel} /> : undefined
+                batteryLevel != null ? (
+                  <BatteryLevelIcon level={batteryLevel} className={METRIC_ICON_CLASS} />
+                ) : undefined
               }
             />
             <MetricCard
@@ -367,9 +374,15 @@ function MetricCard({
       <CardHeader className="px-4 py-3 pb-1">
         <CardTitle className="text-xs font-medium text-muted-foreground">{label}</CardTitle>
       </CardHeader>
-      <CardContent className={cn('px-4 pb-3 pt-0 text-sm font-medium', mono && 'font-mono text-xs')}>
-        <div className="flex items-center gap-2 leading-none">
-          {icon}
+      <CardContent
+        className={cn(
+          'px-4 pb-3 pt-0 font-medium',
+          icon ? 'text-base' : 'text-sm',
+          mono && 'font-mono text-xs',
+        )}
+      >
+        <div className="flex items-center gap-3 leading-none">
+          {icon ? <span className="inline-flex shrink-0 items-center">{icon}</span> : null}
           <span className="leading-snug">{value}</span>
         </div>
       </CardContent>
