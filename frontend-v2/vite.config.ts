@@ -6,6 +6,7 @@ import { defineConfig, loadEnv } from 'vite'
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const backendUrl = env.VITE_BACKEND_URL ?? 'http://localhost:8080'
+  const windowsBackendUrl = env.VITE_WINDOWS_BACKEND_URL ?? 'http://localhost:8082'
 
   return {
     base: '/',
@@ -17,6 +18,10 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       proxy: {
+        '/rest/windows': {
+          target: windowsBackendUrl,
+          changeOrigin: true,
+        },
         '/rest': {
           target: backendUrl,
           changeOrigin: true,

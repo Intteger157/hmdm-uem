@@ -36,3 +36,41 @@ type WindowsDevice struct {
 	DiskUsed_GB     int
 	LastCheckin     time.Time
 }
+
+// TableName pins Windows inventory to a dedicated table, isolated from Java MDM `devices`.
+func (WindowsDevice) TableName() string {
+	return "windows_devices"
+}
+
+// WindowsDeviceJSON is the admin UI list payload for a single Windows agent.
+type WindowsDeviceJSON struct {
+	ID           uint      `json:"id"`
+	HardwareID   string    `json:"hardwareId"`
+	Hostname     string    `json:"hostname"`
+	OSVersion    string    `json:"osVersion"`
+	CPU          string    `json:"cpu"`
+	RAM_GB       int       `json:"ramGb"`
+	DiskTotal_GB int       `json:"diskTotalGb"`
+	DiskUsed_GB  int       `json:"diskUsedGb"`
+	LastCheckin  time.Time `json:"lastCheckin"`
+}
+
+// WindowsDeviceListResponse is returned by GET /rest/windows/devices.
+type WindowsDeviceListResponse struct {
+	Items           []WindowsDeviceJSON `json:"items"`
+	TotalItemsCount int64               `json:"totalItemsCount"`
+}
+
+func ToWindowsDeviceJSON(device WindowsDevice) WindowsDeviceJSON {
+	return WindowsDeviceJSON{
+		ID:           device.ID,
+		HardwareID:   device.HardwareID,
+		Hostname:     device.Hostname,
+		OSVersion:    device.OSVersion,
+		CPU:          device.CPU,
+		RAM_GB:       device.RAM_GB,
+		DiskTotal_GB: device.DiskTotal_GB,
+		DiskUsed_GB:  device.DiskUsed_GB,
+		LastCheckin:  device.LastCheckin,
+	}
+}

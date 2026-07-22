@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { searchDevices } from '@/features/devices/api/devices-api'
+import { searchWindowsDevices } from '@/features/windows/api/windows-api'
 import type { DeviceSearchParams } from '@/shared/api/types/device'
 
 export const deviceQueryKeys = {
@@ -10,9 +11,14 @@ export const deviceQueryKeys = {
 const DEVICES_POLL_INTERVAL_MS = 60_000
 
 export function useDevicesQuery(params: DeviceSearchParams) {
+  const queryFn =
+    params.platform === 'windows'
+      ? () => searchWindowsDevices(params)
+      : () => searchDevices(params)
+
   return useQuery({
     queryKey: deviceQueryKeys.list(params),
-    queryFn: () => searchDevices(params),
+    queryFn,
     placeholderData: (previous) => previous,
     refetchInterval: DEVICES_POLL_INTERVAL_MS,
   })

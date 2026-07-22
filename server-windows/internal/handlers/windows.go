@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -115,4 +116,60 @@ func (h *WindowsHandler) Inventory(c *gin.Context) {
 	)
 
 	c.Status(http.StatusOK)
+}
+
+// ListDevices returns paginated Windows agents from the windows_devices table.
+func (h *WindowsHandler) ListDevices(c *gin.Context) {
+	pageNum := parsePositiveInt(c.DefaultQuery("pageNum", "1"), 1)
+	pageSize := parsePositiveInt(c.DefaultQuery("pageSize", "50"), 50)
+	if pageSize > 200 {
+		pageSize = 200
+	}
+
+	searchValue := strings.TrimSpace(c.Query("value"))
+	query := db.DB.Model(&models.WindowsDevice{})
+
+	if searchValue != "" {
+		like := "%" + searchValue + "%"
+		query = query.Where(
+			"hardware_id ILIKE ? OR hostname ILIKE ? OR os_version ILIKE ? OR cpu ILIKE ?",
+			like, like, like, like,
+		)
+	}
+
+	var totalItemsCount int64
+	if err := query.Count(&totalItemsCount).Error; err != nil {
+		log.Printf("[list-devices] count failed: err=%v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to count devices"})
+		return
+	}
+
+	offset := (pageNum - 1) * pageSize
+	var devices []models.WindowsDevice
+	if err := query.Order("last_checkin DESC NULLS LAST, id DESC").
+		Offset(offset).
+		Limit(pageSize).
+		Find(&devices).Error; err != nil {
+		log.Printf("[list-devices] query failed: err=%v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list devices"})
+		return
+	}
+
+	items := make([]models.WindowsDeviceJSON, 0, len(devices))
+	for _, device := range devices {
+		items = append(items, models.ToWindowsDeviceJSON(device))
+	}
+
+	c.JSON(http.StatusOK, models.WindowsDeviceListResponse{
+		Items:           items,
+		TotalItemsCount: totalItemsCount,
+	})
+}
+
+func parsePositiveInt(raw string, fallback int) int {
+	value, err := strconv.Atoi(raw)
+	if err != nil || value < 1 {
+		return fallback
+	}
+	return value
 }
