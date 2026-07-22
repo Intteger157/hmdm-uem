@@ -23,6 +23,7 @@ import { MessagingListPage } from '@/features/plugins/messaging/pages/MessagingL
 import { AppLayout } from '@/layouts/AppLayout'
 import { AuthLayout } from '@/layouts/AuthLayout'
 import { FilesListPage } from '@/features/files/pages/FilesListPage'
+import { PublicQrEnrollmentPage } from '@/features/devices/pages/PublicQrEnrollmentPage'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { isPlatform } from '@/shared/api/types/platform'
 
@@ -165,6 +166,31 @@ const messagingRoute = createRoute({
   component: MessagingListPage,
 })
 
+const publicQrRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/qr/$qrCodeKey',
+  validateSearch: (search: Record<string, unknown>) => ({
+    deviceId: typeof search.deviceId === 'string' ? search.deviceId : '',
+    name: typeof search.name === 'string' ? search.name : '',
+    size:
+      typeof search.size === 'string' && !Number.isNaN(Number(search.size))
+        ? Number(search.size)
+        : 280,
+  }),
+  component: function PublicQrRoute() {
+    const { qrCodeKey } = publicQrRoute.useParams()
+    const { deviceId, name, size } = publicQrRoute.useSearch()
+    return (
+      <PublicQrEnrollmentPage
+        qrCodeKey={qrCodeKey}
+        deviceId={deviceId}
+        deviceName={name}
+        qrSize={size}
+      />
+    )
+  },
+})
+
 const indexRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/',
@@ -174,6 +200,7 @@ const indexRoute = createRoute({
 })
 
 const routeTree = rootRoute.addChildren([
+  publicQrRoute,
   authLayoutRoute.addChildren([loginRoute]),
   appLayoutRoute.addChildren([
     indexRoute,

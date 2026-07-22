@@ -5,6 +5,15 @@ import {
   getConfigurationName,
   getConfigurationQrCodeKey,
 } from '@/features/devices/api/devices-api'
+import { DevicePluginMenu, DEVICE_PLUGIN_ICONS } from '@/features/devices/components/DevicePluginMenu'
+import {
+  getDeviceFilesIndicator,
+  getDeviceInstallIndicator,
+  getDevicePermissionIndicator,
+  resolveDeviceConfiguration,
+  type DeviceStatusIndicator,
+} from '@/features/devices/utils/device-list-status'
+import { useAuthStore } from '@/features/auth/store/auth-store'
 import { Button } from '@/components/ui/button'
 import type { DeviceListView, DeviceView } from '@/shared/api/types/device'
 import type { Platform } from '@/shared/api/types/platform'
@@ -15,6 +24,13 @@ const STATUS_COLORS: Record<string, string> = {
   red: 'bg-red-500',
   yellow: 'bg-amber-400',
   brown: 'bg-orange-700',
+  grey: 'bg-slate-400',
+}
+
+const INDICATOR_COLORS: Record<DeviceStatusIndicator, string> = {
+  green: 'bg-emerald-500',
+  yellow: 'bg-amber-400',
+  red: 'bg-red-500',
   grey: 'bg-slate-400',
 }
 
@@ -44,6 +60,9 @@ interface DeviceTableProps {
   onEditDevice?: (device: DeviceView) => void
   onQrDevice?: (device: DeviceView) => void
   onDeleteDevice?: (device: DeviceView) => void
+  onRemoteDevice?: (device: DeviceView) => void
+  onMessageDevice?: (device: DeviceView) => void
+  onPushDevice?: (device: DeviceView) => void
 }
 
 export function DeviceTable({
@@ -53,6 +72,9 @@ export function DeviceTable({
   onEditDevice,
   onQrDevice,
   onDeleteDevice,
+  onRemoteDevice,
+  onMessageDevice,
+  onPushDevice,
 }: DeviceTableProps) {
   const { t } = useTranslation()
   const devices = data.devices.items
@@ -106,18 +128,20 @@ export function DeviceTable({
 
   return (
     <div className="overflow-x-auto rounded-lg border bg-card">
-      <table className="w-full min-w-[960px] text-left text-sm">
+      <table className="w-full min-w-[1200px] text-left text-sm">
         <thead className="border-b bg-muted/40 text-muted-foreground">
           <tr>
             <th className="px-4 py-3 font-medium">{t('devices.columns.status')}</th>
+            <th className="px-4 py-3 font-medium">{t('devices.columns.date')}</th>
             <th className="px-4 py-3 font-medium">{t('devices.columns.number')}</th>
-            <th className="px-4 py-3 font-medium">{t('devices.columns.description')}</th>
+            <th className="px-4 py-3 font-medium">{t('devices.columns.model')}</th>
+            <th className="px-4 py-3 font-medium">{t('devices.columns.permissions')}</th>
+            <th className="px-4 py-3 font-medium">{t('devices.columns.installations')}</th>
+            <th className="px-4 py-3 font-medium">{t('devices.columns.files')}</th>
             <th className="px-4 py-3 font-medium">{t('devices.columns.configuration')}</th>
-            <th className="px-4 py-3 font-medium">{t('devices.columns.androidVersion')}</th>
             <th className="px-4 py-3 font-medium">{t('devices.columns.battery')}</th>
-            <th className="px-4 py-3 font-medium">{t('devices.columns.launcherVersion')}</th>
-            <th className="px-4 py-3 font-medium">{t('devices.columns.lastUpdate')}</th>
-            <th className="px-4 py-3 font-medium">{t('devices.columns.imei')}</th>
+            <th className="px-4 py-3 font-medium">{t('devices.columns.androidVersion')}</th>
+            <th className="px-4 py-3 font-medium">{t('devices.columns.publicIp')}</th>
             {showActions && (
               <th className="px-4 py-3 font-medium text-right">{t('devices.columns.actions')}</th>
             )}
@@ -133,6 +157,9 @@ export function DeviceTable({
               onEditDevice={onEditDevice}
               onQrDevice={onQrDevice}
               onDeleteDevice={onDeleteDevice}
+              onRemoteDevice={onRemoteDevice}
+              onMessageDevice={onMessageDevice}
+              onPushDevice={onPushDevice}
             />
           ))}
         </tbody>
@@ -151,21 +178,88 @@ function StatusDot({ statusCode }: { statusCode?: string }) {
   )
 }
 
+function ComplianceDot({ indicator }: { indicator: DeviceStatusIndicator }) {
+  return (
+    <span
+      className={cn('inline-block size-2.5 rounded-full', INDICATOR_COLORS[indicator])}
+      aria-hidden
+    />
+  )
+}
+
+function ConfigurationCell({
+  device,
+  configurations,
+}: {
+  device: DeviceView
+  configurations: DeviceListView['configurations']
+}) {
+  const canOpenConfiguration = useAuthStore((state) => state.hasPermission('configurations'))
+  const name = getConfigurationName(configurations, device.configurationId)
+
+  if (canOpenConfiguration) {
+    return (
+      <Link
+        to="/configurations/$configId"
+        params={{ configId: String(device.configurationId) }}
+        className="text-primary hover:underline"
+      >
+        {name}
+      </Link>
+    )
+  }
+
+  return <span>{name}</span>
+}
+
 function DeviceRowActions({
   device,
   configurations,
   onEditDevice,
   onQrDevice,
   onDeleteDevice,
+  onRemoteDevice,
+  onMessageDevice,
+  onPushDevice,
 }: {
   device: DeviceView
   configurations: DeviceListView['configurations']
   onEditDevice?: (device: DeviceView) => void
   onQrDevice?: (device: DeviceView) => void
   onDeleteDevice?: (device: DeviceView) => void
+  onRemoteDevice?: (device: DeviceView) => void
+  onMessageDevice?: (device: DeviceView) => void
+  onPushDevice?: (device: DeviceView) => void
 }) {
   const { t } = useTranslation()
   const qrCodeKey = getConfigurationQrCodeKey(configurations, device.configurationId)
+
+  const pluginItems = [
+    onRemoteDevice
+      ? {
+          id: 'remote',
+          label: t('devices.plugins.remoteControl'),
+          icon: DEVICE_PLUGIN_ICONS.remote,
+          onSelect: () => onRemoteDevice(device),
+        }
+      : null,
+    onMessageDevice
+      ? {
+          id: 'messaging',
+          label: t('devices.plugins.messaging'),
+          icon: DEVICE_PLUGIN_ICONS.messaging,
+          onSelect: () => onMessageDevice(device),
+        }
+      : null,
+    onPushDevice
+      ? {
+          id: 'push',
+          label: t('devices.plugins.push'),
+          icon: DEVICE_PLUGIN_ICONS.push,
+          onSelect: () => onPushDevice(device),
+        }
+      : null,
+  ].filter((item): item is NonNullable<typeof item> => item != null)
 
   return (
     <div className="flex items-center justify-end gap-0.5">
@@ -198,6 +292,7 @@ function DeviceRowActions({
       >
         <Trash2 className="size-3.5" />
       </Button>
+      <DevicePluginMenu items={pluginItems} />
     </div>
   )
 }
@@ -209,6 +304,9 @@ function AndroidDeviceRow({
   onEditDevice,
   onQrDevice,
   onDeleteDevice,
+  onRemoteDevice,
+  onMessageDevice,
+  onPushDevice,
 }: {
   device: DeviceView
   configurations: DeviceListView['configurations']
@@ -216,13 +314,22 @@ function AndroidDeviceRow({
   onEditDevice?: (device: DeviceView) => void
   onQrDevice?: (device: DeviceView) => void
   onDeleteDevice?: (device: DeviceView) => void
+  onRemoteDevice?: (device: DeviceView) => void
+  onMessageDevice?: (device: DeviceView) => void
+  onPushDevice?: (device: DeviceView) => void
 }) {
+  const { t } = useTranslation()
+  const configuration = resolveDeviceConfiguration(configurations, device.configurationId)
   const battery = device.info?.batteryLevel
+  const model = device.model ?? device.info?.model
 
   return (
     <tr className="border-b last:border-b-0 hover:bg-muted/20">
       <td className="px-4 py-3">
         <StatusDot statusCode={device.statusCode} />
+      </td>
+      <td className="px-4 py-3 whitespace-nowrap">
+        {device.lastUpdate ? formatTimestamp(device.lastUpdate) : t('devices.date.unknown')}
       </td>
       <td className="px-4 py-3 font-medium">
         <Link
@@ -233,11 +340,19 @@ function AndroidDeviceRow({
           {device.number}
         </Link>
       </td>
-      <td className="px-4 py-3 text-muted-foreground">{device.description || '—'}</td>
+      <td className="px-4 py-3">{model ?? t('devices.model.unknown')}</td>
       <td className="px-4 py-3">
-        {getConfigurationName(configurations, device.configurationId)}
+        <ComplianceDot indicator={getDevicePermissionIndicator(device, configuration)} />
       </td>
-      <td className="px-4 py-3">{device.androidVersion ?? device.info?.androidVersion ?? '—'}</td>
+      <td className="px-4 py-3">
+        <ComplianceDot indicator={getDeviceInstallIndicator(device, configuration)} />
+      </td>
+      <td className="px-4 py-3">
+        <ComplianceDot indicator={getDeviceFilesIndicator(device, configuration)} />
+      </td>
+      <td className="px-4 py-3">
+        <ConfigurationCell device={device} configurations={configurations} />
+      </td>
       <td className="px-4 py-3">
         {battery != null ? (
           <span
@@ -253,9 +368,8 @@ function AndroidDeviceRow({
           '—'
         )}
       </td>
-      <td className="px-4 py-3">{device.launcherVersion ?? '—'}</td>
-      <td className="px-4 py-3 whitespace-nowrap">{formatTimestamp(device.lastUpdate)}</td>
-      <td className="px-4 py-3 font-mono text-xs">{device.imei ?? device.info?.imei ?? '—'}</td>
+      <td className="px-4 py-3">{device.androidVersion ?? device.info?.androidVersion ?? '—'}</td>
+      <td className="px-4 py-3 font-mono text-xs">{device.publicIp ?? '—'}</td>
       {showActions && (
         <td className="px-4 py-3">
           <DeviceRowActions
@@ -264,6 +378,9 @@ function AndroidDeviceRow({
             onEditDevice={onEditDevice}
             onQrDevice={onQrDevice}
             onDeleteDevice={onDeleteDevice}
+            onRemoteDevice={onRemoteDevice}
+            onMessageDevice={onMessageDevice}
+            onPushDevice={onPushDevice}
           />
         </td>
       )}
@@ -294,7 +411,7 @@ function WindowsDeviceRow({
       </td>
       <td className="px-4 py-3 text-muted-foreground">{device.description || '—'}</td>
       <td className="px-4 py-3">
-        {getConfigurationName(configurations, device.configurationId)}
+        <ConfigurationCell device={device} configurations={configurations} />
       </td>
       <td className="px-4 py-3 font-mono text-xs">{device.windowsBuild ?? '—'}</td>
       <td className="px-4 py-3">

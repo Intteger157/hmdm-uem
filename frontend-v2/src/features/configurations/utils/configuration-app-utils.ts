@@ -287,7 +287,7 @@ export function buildConfigurationQrUrl(configuration: Configuration): string | 
     configuration.baseUrl?.replace(/\/$/, '') ??
     (typeof window !== 'undefined' ? window.location.origin : '')
 
-  return `${base}/#/qr/${configuration.qrCodeKey}/`
+  return `${base}/qr/${encodeURIComponent(configuration.qrCodeKey!)}`
 }
 
 export { prepareConfigurationForSave, validateConfigurationDraft } from '@/features/configurations/utils/configuration-normalize'

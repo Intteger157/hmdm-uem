@@ -19,6 +19,7 @@ interface DeviceQrDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   deviceNumber: string
+  deviceName?: string
   qrCodeKey?: string
 }
 
@@ -38,6 +39,7 @@ export function DeviceQrDialog({
   open,
   onOpenChange,
   deviceNumber,
+  deviceName,
   qrCodeKey,
 }: DeviceQrDialogProps) {
   const { t } = useTranslation()
@@ -66,7 +68,10 @@ export function DeviceQrDialog({
       return
     }
 
-    const url = buildDeviceQrCodePublicUrl(qrCodeKey, deviceNumber, { size: 280 })
+    const url = buildDeviceQrCodePublicUrl(qrCodeKey, deviceNumber, {
+      size: 280,
+      name: deviceName,
+    })
 
     try {
       await copyTextToClipboard(url)

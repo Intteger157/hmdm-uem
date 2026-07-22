@@ -20,6 +20,11 @@ export interface DeviceApplicationView {
   name?: string
 }
 
+export interface DeviceConfigurationFileView {
+  path?: string
+  lastUpdate?: number
+}
+
 export interface DeviceInfoView {
   model?: string
   imei?: string
@@ -30,7 +35,25 @@ export interface DeviceInfoView {
   androidVersion?: string
   serial?: string
   defaultLauncher?: boolean
+  permissions?: number[]
   applications?: DeviceApplicationView[]
+  files?: DeviceConfigurationFileView[]
+}
+
+export interface ConfigurationApplicationView {
+  pkg: string
+  version?: string
+  url?: string
+  action?: number
+  selected?: boolean
+  skipVersion?: boolean
+  name?: string
+}
+
+export interface ConfigurationFileView {
+  path?: string
+  lastUpdate?: number
+  remove?: boolean
 }
 
 export interface DeviceView {
@@ -80,6 +103,9 @@ export interface ConfigurationView {
   name: string
   qrCodeKey?: string
   baseUrl?: string
+  permissiveMode?: boolean
+  applications?: ConfigurationApplicationView[]
+  files?: ConfigurationFileView[]
 }
 
 export interface DeviceUpsertPayload {

@@ -226,11 +226,7 @@ export async function fetchDeviceQrCodeBlob(
     return new Blob([bytes], { type: 'image/png' })
   }
 
-  const params = new URLSearchParams({
-    deviceId,
-    size: String(size),
-  })
-  const url = `${API_BASE}/public/qr/${encodeURIComponent(qrCodeKey)}?${params.toString()}`
+  const url = buildQrCodeImageUrl(qrCodeKey, { deviceId, size })
 
   const response = await fetch(url, {
     method: 'GET',
@@ -257,17 +253,52 @@ export async function fetchDeviceQrCodeBlob(
   return blob
 }
 
-/** Absolute URL for sharing the public QR image endpoint. */
-export function buildDeviceQrCodePublicUrl(
+/** Public QR PNG URL (used as img src). */
+export function buildQrCodeImageUrl(
   qrCodeKey: string,
-  deviceId: string,
-  options?: { size?: number; origin?: string },
+  options?: {
+    deviceId?: string
+    size?: number
+    useId?: string
+    create?: boolean
+  },
 ): string {
-  const origin =
-    options?.origin ?? (typeof window !== 'undefined' ? window.location.origin : '')
-  const params = new URLSearchParams({ deviceId })
+  const params = new URLSearchParams()
+  if (options?.deviceId?.trim()) {
+    params.set('deviceId', options.deviceId.trim())
+  }
   if (options?.size != null) {
     params.set('size', String(options.size))
   }
-  return `${origin}/rest/public/qr/${encodeURIComponent(qrCodeKey)}?${params.toString()}`
+  if (options?.useId?.trim()) {
+    params.set('useId', options.useId.trim())
+  }
+  if (options?.create) {
+    params.set('create', '1')
+  }
+  const qs = params.toString()
+  return `${API_BASE}/public/qr/${encodeURIComponent(qrCodeKey)}${qs ? `?${qs}` : ''}`
+}
+
+/** Public enrollment page URL for sharing (styled page, not raw PNG). */
+export function buildDeviceQrCodePublicUrl(
+  qrCodeKey: string,
+  deviceId: string,
+  options?: { size?: number; origin?: string; name?: string },
+): string {
+  const origin =
+    options?.origin ?? (typeof window !== 'undefined' ? window.location.origin : '')
+  const base = import.meta.env.BASE_URL.replace(/\/$/, '')
+  const params = new URLSearchParams()
+  if (deviceId.trim()) {
+    params.set('deviceId', deviceId.trim())
+  }
+  if (options?.name?.trim()) {
+    params.set('name', options.name.trim())
+  }
+  if (options?.size != null) {
+    params.set('size', String(options.size))
+  }
+  const qs = params.toString()
+  return `${origin}${base}/qr/${encodeURIComponent(qrCodeKey)}${qs ? `?${qs}` : ''}`
 }

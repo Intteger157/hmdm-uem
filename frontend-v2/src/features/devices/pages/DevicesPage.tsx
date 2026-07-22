@@ -5,6 +5,9 @@ import { Plus } from 'lucide-react'
 import { DeviceDeleteDialog } from '@/features/devices/components/DeviceDeleteDialog'
 import { DeviceFormDialog } from '@/features/devices/components/DeviceFormDialog'
 import { DeviceQrDialog } from '@/features/devices/components/DeviceQrDialog'
+import { DeviceRemoteDialog } from '@/features/plugins/deviceremote/components/DeviceRemoteDialog'
+import { MessagingSendDialog } from '@/features/plugins/messaging/components/MessagingSendDialog'
+import { PushSendDialog } from '@/features/plugins/push/components/PushSendDialog'
 import { DeviceTable } from '@/features/devices/components/DeviceTable'
 import { getConfigurationQrCodeKey } from '@/features/devices/api/devices-api'
 import { useDevicesQuery } from '@/features/devices/hooks/use-devices-query'
@@ -33,6 +36,9 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
   const [formOpen, setFormOpen] = useState(false)
   const [editingDevice, setEditingDevice] = useState<DeviceView | null>(null)
   const [qrDevice, setQrDevice] = useState<DeviceView | null>(null)
+  const [remoteDevice, setRemoteDevice] = useState<DeviceView | null>(null)
+  const [messageDevice, setMessageDevice] = useState<DeviceView | null>(null)
+  const [pushDevice, setPushDevice] = useState<DeviceView | null>(null)
   const [deleteDevice, setDeleteDevice] = useState<DeviceView | null>(null)
 
   useEffect(() => {
@@ -148,6 +154,9 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
             onEditDevice={platform === 'android' ? openEdit : undefined}
             onQrDevice={platform === 'android' ? setQrDevice : undefined}
             onDeleteDevice={platform === 'android' ? setDeleteDevice : undefined}
+            onRemoteDevice={platform === 'android' ? setRemoteDevice : undefined}
+            onMessageDevice={platform === 'android' ? setMessageDevice : undefined}
+            onPushDevice={platform === 'android' ? setPushDevice : undefined}
           />
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -199,7 +208,39 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
           }
         }}
         deviceNumber={qrDevice?.number ?? ''}
+        deviceName={qrDevice?.description}
         qrCodeKey={qrCodeKey}
+      />
+
+      <DeviceRemoteDialog
+        open={remoteDevice != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRemoteDevice(null)
+          }
+        }}
+        deviceId={remoteDevice?.id}
+        deviceLabel={remoteDevice?.number}
+      />
+
+      <MessagingSendDialog
+        open={messageDevice != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setMessageDevice(null)
+          }
+        }}
+        defaultDeviceNumber={messageDevice?.number}
+      />
+
+      <PushSendDialog
+        open={pushDevice != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPushDevice(null)
+          }
+        }}
+        defaultDeviceNumber={pushDevice?.number}
       />
 
       <DeviceDeleteDialog

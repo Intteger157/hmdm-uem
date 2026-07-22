@@ -305,7 +305,7 @@ export function DeviceDetailPage({ deviceNumber }: DeviceDetailPageProps) {
         </TabsContent>
 
         <TabsContent value="actions" className="mt-4">
-          <DeviceActionsPanel />
+          <DeviceActionsPanel device={device} platform={device.platform} />
         </TabsContent>
       </Tabs>
 
