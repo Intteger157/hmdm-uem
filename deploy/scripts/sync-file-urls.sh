@@ -40,13 +40,14 @@ run_psql() {
     psql -v ON_ERROR_STOP=1 -U "${SQL_USER}" -d "${SQL_BASE}" "$@"
 }
 
+# PostgreSQL folds unquoted identifiers to lowercase (applicationversions, urlarm64, …).
 replace_prefix() {
   local column="$1"
   local old_prefix="$2"
   run_psql -c "
-UPDATE \"applicationVersions\"
-SET \"${column}\" = REPLACE(\"${column}\", '${old_prefix}', '${PUBLIC_BASE}')
-WHERE \"${column}\" LIKE '${old_prefix}%';
+UPDATE applicationversions
+SET ${column} = REPLACE(${column}, '${old_prefix}', '${PUBLIC_BASE}')
+WHERE ${column} LIKE '${old_prefix}%';
 "
 }
 
@@ -55,15 +56,15 @@ for prefix in \
   "http://localhost:8080" \
   "https://localhost" \
   "https://localhost:8080"; do
-  for column in url "urlArmeabi" "urlArm64"; do
-    replace_prefix "${column}" "${prefix}" || true
+  for column in url urlarmeabi urlarm64; do
+    replace_prefix "${column}" "${prefix}"
   done
 done
 
 if [[ -n "${LOCAL_IP}" ]]; then
   for prefix in "http://${LOCAL_IP}" "http://${LOCAL_IP}:8080"; do
-    for column in url "urlArmeabi" "urlArm64"; do
-      replace_prefix "${column}" "${prefix}" || true
+    for column in url urlarmeabi urlarm64; do
+      replace_prefix "${column}" "${prefix}"
     done
   done
 fi
@@ -71,8 +72,8 @@ fi
 echo "[sync-file-urls] Done. Sample launcher URLs:"
 run_psql -c "
 SELECT id, version, url
-FROM \"applicationVersions\"
-WHERE \"applicationId\" = 46
+FROM applicationversions
+WHERE applicationid = 46
 ORDER BY id DESC
 LIMIT 5;
 "
