@@ -49,9 +49,10 @@ DNS test-dev-mdm.intteger.uk  →  PROXY SERVER (public IP)
    ```env
    BASE_DOMAIN=test-dev-mdm.intteger.uk
    LOCAL_IP=192.168.31.247
-   PROTOCOL=https
+   PROTOCOL=http
    GATEWAY_PORT=8080
    ```
+   Use **`PROTOCOL=http`** on the MDM host when TLS terminates on the edge proxy. The Headwind Docker entrypoint with `PROTOCOL=https` waits for `/etc/letsencrypt/...` **on this machine** and will hang. Public QR URLs are set to `https://<BASE_DOMAIN>` by `deploy/scripts/fix-hmdm-base-url.sh` (run after install).
 3. Docker binds gateway on `0.0.0.0:8080` and MQTT on `0.0.0.0:31000` (default in compose).
 4. **Firewall** on MDM host — allow **only from proxy server IP**:
    - `8080/tcp`

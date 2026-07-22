@@ -23,8 +23,21 @@ if [[ ! -f "${ENV_FILE}" ]]; then
 fi
 
 BASE_DOMAIN="$(read_env BASE_DOMAIN)"
-PROTOCOL="$(read_env PROTOCOL https)"
-PUBLIC_BASE="${PROTOCOL}://${BASE_DOMAIN}"
+PROTOCOL="$(read_env PROTOCOL http)"
+PUBLIC_PROTOCOL="$(read_env PUBLIC_PROTOCOL)"
+
+if [[ -z "${PUBLIC_PROTOCOL}" ]]; then
+  # Edge proxy (layout B): TLS terminates on another host; Docker entrypoint must use
+  # PROTOCOL=http or it waits forever for /etc/letsencrypt on this machine.
+  # QR codes and phones still need the public https URL.
+  if [[ "${PROTOCOL}" == "http" && -n "${BASE_DOMAIN}" && "${BASE_DOMAIN}" != "localhost" ]]; then
+    PUBLIC_PROTOCOL="https"
+  else
+    PUBLIC_PROTOCOL="${PROTOCOL}"
+  fi
+fi
+
+PUBLIC_BASE="${PUBLIC_PROTOCOL}://${BASE_DOMAIN}"
 
 if [[ -z "${BASE_DOMAIN}" ]]; then
   echo "[fix-hmdm-base-url] ERROR: BASE_DOMAIN is empty in ${ENV_FILE}" >&2
