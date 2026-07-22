@@ -54,8 +54,8 @@ export function DeviceInstalledAppsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] max-w-3xl overflow-hidden sm:max-w-3xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[85vh] max-w-3xl flex-col overflow-hidden sm:max-w-3xl">
+        <DialogHeader className="shrink-0">
           <DialogTitle>{t('devices.actionsMenu.installedApps')}</DialogTitle>
           <DialogDescription>
             {t('devices.installedApps.subtitle', {
@@ -65,7 +65,7 @@ export function DeviceInstalledAppsDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-[55vh] overflow-auto rounded-md border">
+        <div className="min-h-0 flex-1 overflow-auto rounded-md border">
           <table className="w-full text-left text-sm">
             <thead className="sticky top-0 border-b bg-muted/80 backdrop-blur">
               <tr className="text-muted-foreground">
@@ -95,7 +95,7 @@ export function DeviceInstalledAppsDialog({
           </table>
         </div>
 
-        <DialogFooter className="gap-2 sm:justify-between">
+        <DialogFooter className="shrink-0 gap-2 sm:justify-between">
           <Button
             type="button"
             variant="secondary"
