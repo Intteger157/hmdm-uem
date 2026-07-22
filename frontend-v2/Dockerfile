@@ -3,7 +3,8 @@ FROM node:22-alpine AS build
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci
+# npm ci fails when lock file was generated on another OS (optional native bindings).
+RUN npm install --no-audit --no-fund
 
 COPY . .
 RUN npm run build
