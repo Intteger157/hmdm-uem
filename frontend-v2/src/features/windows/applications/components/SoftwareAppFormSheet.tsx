@@ -84,7 +84,7 @@ function toFormValues(app: SoftwareApp | null): SoftwareAppFormValues {
       version: '',
       downloadUrl: '',
       wingetId: '',
-      installArgs: '/quiet /norestart',
+      installArgs: '',
       autoUpdate: false,
       updateFrequency: 'daily',
     }
@@ -127,6 +127,9 @@ export function SoftwareAppFormSheet({ open, onOpenChange, app }: SoftwareAppFor
 
   const appType = form.watch('appType')
   const autoUpdate = form.watch('autoUpdate')
+  const downloadUrl = form.watch('downloadUrl') ?? ''
+  const installerIsMsi = downloadUrl.toLowerCase().includes('.msi')
+  const installArgsPlaceholder = installerIsMsi ? '/quiet /norestart' : '/S'
 
   useEffect(() => {
     if (open) {
@@ -426,9 +429,13 @@ export function SoftwareAppFormSheet({ open, onOpenChange, app }: SoftwareAppFor
                   <FormItem>
                     <FormLabel>{t('windowsAppCatalog.form.installArgs')}</FormLabel>
                     <FormControl>
-                      <Textarea {...field} rows={2} />
+                      <Textarea {...field} rows={3} placeholder={installArgsPlaceholder} />
                     </FormControl>
-                    <p className="text-xs text-muted-foreground">{t('windowsAppCatalog.form.installArgsHint')}</p>
+                    <div className="space-y-1 text-xs text-muted-foreground">
+                      <p>{t('windowsAppCatalog.form.installArgsHintMsi')}</p>
+                      <p>{t('windowsAppCatalog.form.installArgsHintExeNsis')}</p>
+                      <p>{t('windowsAppCatalog.form.installArgsHintExeInno')}</p>
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
