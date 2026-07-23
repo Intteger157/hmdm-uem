@@ -240,6 +240,7 @@ func (h *WindowsHandler) ReportDeviceAppStatus(c *gin.Context) {
 		}
 	}
 
+	log.Printf("[report-app-status] device_id=%d app_id=%d status=%q", device.ID, req.AppID, status)
 	c.Status(http.StatusOK)
 }
 

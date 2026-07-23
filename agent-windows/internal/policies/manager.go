@@ -25,17 +25,18 @@ func SyncFromServer(fetch func() (EffectiveConfig, error), report Reporter, depl
 		return handleNoPolicyConfig(report)
 	}
 
+	if err := SaveDesiredConfig(config); err != nil {
+		log.Printf("policy sync: failed to save config.json: %v", err)
+	}
+
 	if len(config.RequiredApps) > 0 {
+		log.Printf("app deploy: processing %d required app(s)", len(config.RequiredApps))
 		apps.DeployRequired(config.RequiredApps, deploy)
 	}
 
 	configHash := ConfigHash(config)
 	if configHash == LoadLastSyncedConfigHash() {
 		return nil
-	}
-
-	if err := SaveDesiredConfig(config); err != nil {
-		log.Printf("policy sync: failed to save config.json: %v", err)
 	}
 
 	results, applied, err := ApplyIfNeeded(config.Payload)

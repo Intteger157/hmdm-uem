@@ -229,8 +229,10 @@ func runAgentLoop(stop <-chan struct{}, cfg *config.Config, apiClient *api.APICl
 					}
 					log.Printf("inventory command processing failed: %v", err)
 				}
-				syncPolicyFromServer(cfg, apiClient)
 			}
+
+			// App deployment must not depend on inventory succeeding.
+			syncPolicyFromServer(cfg, apiClient)
 
 			if err := processPendingCommands(stop, cfg, apiClient); err != nil {
 				if handleReenrollNeeded(cfg, err) {

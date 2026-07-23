@@ -63,6 +63,9 @@ func DeployRequired(required []RequiredApp, opts DeployOptions) {
 	if len(required) == 0 {
 		return
 	}
+	if opts.StatusReporter == nil {
+		log.Printf("app deploy: status reporter not configured; server will keep Pending")
+	}
 
 	state, err := LoadAppsState()
 	if err != nil {
@@ -137,6 +140,7 @@ func deployWingetApp(app RequiredApp, opts DeployOptions, state *AppsState) (boo
 
 	if !shouldCheckUpdate(app, state) {
 		reportStep(opts.StepLogger, app.ID, app.Name, InstallStepAppCheck, fmt.Sprintf("Package %q already installed; update check skipped", wingetID))
+		reportStatus(opts.StatusReporter, app.ID, app.Name, "Success", "Already installed")
 		return false, nil
 	}
 
@@ -307,9 +311,18 @@ func reportStatus(reporter StatusReporter, appID uint, appName, status, errMsg s
 	if reporter == nil {
 		return
 	}
-	if err := reporter(appID, appName, status, errMsg); err != nil {
-		log.Printf("app status report failed id=%d status=%s: %v", appID, status, err)
+	var lastErr error
+	for attempt := 0; attempt < 3; attempt++ {
+		if err := reporter(appID, appName, status, errMsg); err == nil {
+			return
+		} else {
+			lastErr = err
+			if attempt < 2 {
+				time.Sleep(time.Duration(attempt+1) * time.Second)
+			}
+		}
 	}
+	log.Printf("app status report failed id=%d status=%s: %v", appID, status, lastErr)
 }
 
 func reportStep(logger StepLogger, appID uint, appName, step, output string) {
