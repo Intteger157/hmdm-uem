@@ -219,7 +219,7 @@ func parseManageBDEStatusOutput(text string) map[string]string {
 		case strings.Contains(lower, "encryption in progress"),
 			strings.Contains(lower, "decryption in progress"):
 			statuses[currentDrive] = "on"
-		case strings.Contains(lower, "lock status:") && strings.Contains(lower, "locked"):
+		case isManageBDELockedLine(lower):
 			statuses[currentDrive] = "on"
 		case strings.Contains(lower, "bitlocker on"):
 			statuses[currentDrive] = "on"
@@ -289,28 +289,47 @@ func queryManageBDEStatus(drive string) string {
 	output, err := cmd.CombinedOutput()
 	text := strings.ToLower(string(output))
 
-	switch {
-	case strings.Contains(text, "protection status:") && strings.Contains(text, "protection on"),
-		strings.Contains(text, "conversion status:") && strings.Contains(text, "fully encrypted"),
-		strings.Contains(text, "encryption in progress"),
-		strings.Contains(text, "decryption in progress"),
-		strings.Contains(text, "lock status:") && strings.Contains(text, "locked"),
-		strings.Contains(text, "bitlocker on"):
-		return "on"
-	case strings.Contains(text, "protection status:") && strings.Contains(text, "protection off"),
-		strings.Contains(text, "conversion status:") && strings.Contains(text, "fully decrypted"),
-		strings.Contains(text, "not protected"),
-		strings.Contains(text, "bitlocker off"),
-		strings.Contains(text, "bitlocker version:    none"),
-		strings.Contains(text, "encryption method:    none"),
-		strings.Contains(text, "percentage encrypted: 0.0%"):
+	if manageBDEIndicatesOff(text) {
 		return "off"
-	default:
-		if err != nil {
-			return "unknown"
-		}
+	}
+	if manageBDEIndicatesOn(text) {
+		return "on"
+	}
+	if err != nil {
 		return "unknown"
 	}
+	return "unknown"
+}
+
+func manageBDEIndicatesOn(text string) bool {
+	return strings.Contains(text, "protection status:") && strings.Contains(text, "protection on") ||
+		strings.Contains(text, "conversion status:") && strings.Contains(text, "fully encrypted") ||
+		strings.Contains(text, "encryption in progress") ||
+		strings.Contains(text, "decryption in progress") ||
+		manageBDETextLocked(text) ||
+		strings.Contains(text, "bitlocker on")
+}
+
+func manageBDEIndicatesOff(text string) bool {
+	return strings.Contains(text, "protection status:") && strings.Contains(text, "protection off") ||
+		strings.Contains(text, "conversion status:") && strings.Contains(text, "fully decrypted") ||
+		strings.Contains(text, "not protected") ||
+		strings.Contains(text, "bitlocker off") ||
+		strings.Contains(text, "bitlocker version:    none") ||
+		strings.Contains(text, "encryption method:    none") ||
+		strings.Contains(text, "percentage encrypted: 0.0%")
+}
+
+func isManageBDELockedLine(line string) bool {
+	return manageBDETextLocked(line)
+}
+
+// manageBDETextLocked matches "Lock Status: Locked" but not "Lock Status: Unlocked".
+func manageBDETextLocked(text string) bool {
+	if !strings.Contains(text, "lock status:") {
+		return false
+	}
+	return strings.Contains(text, "locked") && !strings.Contains(text, "unlocked")
 }
 
 func queryEncryptionViaPowerShell(drive string) string {

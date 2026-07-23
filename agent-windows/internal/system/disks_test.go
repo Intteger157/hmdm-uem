@@ -17,6 +17,7 @@ Volume D: [Files Volume]
     Size:                 256.06 GB
     Conversion Status:    Fully Decrypted
     Protection Status:    Protection Off
+    Lock Status:          Unlocked
 
 Volume E:
     Size:                 238.47 GB
@@ -40,6 +41,30 @@ Volume E:
 func TestMapProtectionStatusUnprotectedIgnoresConversion(t *testing.T) {
 	if got := mapProtectionStatus(0, 1); got != "off" {
 		t.Fatalf("unprotected volume with stale conversion=1 should be off, got %q", got)
+	}
+}
+
+func TestManageBDETextLockedIgnoresUnlocked(t *testing.T) {
+	if manageBDETextLocked("lock status:          unlocked") {
+		t.Fatal("unlocked volume must not match locked")
+	}
+	if !manageBDETextLocked("lock status:          locked") {
+		t.Fatal("locked volume must match locked")
+	}
+}
+
+func TestQueryManageBDEStatusUnlockedVolumeIsOff(t *testing.T) {
+	text := `
+volume d: [files volume]
+    conversion status:    fully decrypted
+    protection status:    protection off
+    lock status:          unlocked
+`
+	if manageBDEIndicatesOn(text) {
+		t.Fatal("unlocked decrypted volume must not indicate on")
+	}
+	if !manageBDEIndicatesOff(text) {
+		t.Fatal("unlocked decrypted volume must indicate off")
 	}
 }
 
