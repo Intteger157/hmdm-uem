@@ -81,8 +81,11 @@ const STATUS_BADGE: Record<string, 'default' | 'secondary' | 'destructive' | 'ou
 }
 
 const NA = 'N/A'
-const METRIC_ICON_CLASS = 'size-8'
-const TILE_HEADER_ICON_CLASS = 'size-5 text-muted-foreground/70'
+const METRIC_ICON_CLASS = 'size-6'
+const TILE_HEADER_ICON_CLASS = 'size-4 text-muted-foreground/70'
+const METRIC_CARD_HEADER_CLASS = 'flex flex-row items-center justify-between space-y-0 px-3 pb-1 pt-2.5'
+const METRIC_CARD_CONTENT_CLASS = 'px-3 pb-2.5'
+const METRIC_VALUE_CLASS = 'text-base font-bold leading-tight'
 const INTERACTIVE_TILE_CLASS = 'cursor-pointer hover:bg-accent/50 transition-colors'
 
 function deviceTitle(device: DeviceView): string {
@@ -146,7 +149,7 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
   const showIdentifierSubtitle = identifier !== title
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-center gap-1 text-sm text-muted-foreground">
         <Link to="/devices" search={{ platform: device.platform }} className="hover:text-foreground">
           {t('nav.devices')}
@@ -155,8 +158,8 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
         <span className="text-foreground">{deviceIdentifier(device)}</span>
       </div>
 
-      <div className="flex flex-col gap-4 border-b pb-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-2">
+      <div className="flex flex-col gap-3 border-b pb-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1.5">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
             <Badge variant={STATUS_BADGE[onlineStatus] ?? 'secondary'}>
@@ -172,71 +175,7 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
         </div>
       </div>
 
-      {device.platform === 'windows' ? (
-        <>
-          <WindowsOverviewGrid device={device} na={NA} t={t} />
-          <WindowsAppliedConfigurationCard hardwareId={device.number} />
-          <WindowsAppDeploymentsCard hardwareId={device.number} />
-        </>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
-          <MetricCard
-            label={t('devices.columns.number')}
-            value={device.number}
-            mono
-            headerIcon={Hash}
-          />
-          <MetricCard
-            label={t('deviceDetail.metrics.model')}
-            value={device.model ?? device.manufacturer ?? device.info?.model ?? NA}
-            headerIcon={Layers}
-          />
-          <MetricCard
-            label={t('deviceDetail.metrics.lastOnline')}
-            value={formatDeviceTimestamp(device.lastUpdate)}
-            headerIcon={Clock}
-          />
-          <MetricCard
-            label={t('deviceDetail.metrics.serial')}
-            value={device.serialNumber ?? device.serial ?? device.info?.serial ?? NA}
-            mono
-            headerIcon={Barcode}
-          />
-          <MetricCard label={t('devices.columns.imei')} value={device.imei ?? device.info?.imei ?? NA} mono />
-          <MetricCard
-            label={t('devices.columns.androidVersion')}
-            value={androidVersion ?? NA}
-            headerIcon={Monitor}
-            leadingIcon={
-              androidVersion ? (
-                <AndroidIcon className={cn(METRIC_ICON_CLASS, ANDROID_BRAND_COLOR)} />
-              ) : undefined
-            }
-          />
-          <MetricCard
-            label={t('devices.columns.battery')}
-            value={batteryLevel != null ? `${batteryLevel}%` : NA}
-            leadingIcon={
-              batteryLevel != null ? (
-                <BatteryLevelIcon level={batteryLevel} className={METRIC_ICON_CLASS} />
-              ) : undefined
-            }
-          />
-          <MetricCard
-            label={t('devices.columns.launcherVersion')}
-            value={launcherVersion ?? NA}
-          />
-          <MetricCard
-            label={t('deviceDetail.metrics.enrolled')}
-            value={
-              enrollTime != null ? formatDeviceEnrollTime(enrollTime) : t('devices.date.unknown')
-            }
-          />
-          <MetricCard label={t('deviceDetail.metrics.publicIp')} value={publicIp ?? NA} mono />
-        </div>
-      )}
-
-      <Tabs value={tabValue} onValueChange={setActiveTab}>
+      <Tabs value={tabValue} onValueChange={setActiveTab} className="space-y-3">
         <TabsList variant="line">
           <TabsTrigger value="software">{t('deviceDetail.tabs.software')}</TabsTrigger>
           {showLocalUsers ? (
@@ -251,7 +190,71 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
           <TabsTrigger value="actions">{t('deviceDetail.tabs.actions')}</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="software" className="mt-4">
+        {device.platform === 'windows' ? (
+          <>
+            <WindowsOverviewGrid device={device} na={NA} t={t} />
+            <WindowsAppliedConfigurationCard hardwareId={device.number} />
+            <WindowsAppDeploymentsCard hardwareId={device.number} />
+          </>
+        ) : (
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
+            <MetricCard
+              label={t('devices.columns.number')}
+              value={device.number}
+              mono
+              headerIcon={Hash}
+            />
+            <MetricCard
+              label={t('deviceDetail.metrics.model')}
+              value={device.model ?? device.manufacturer ?? device.info?.model ?? NA}
+              headerIcon={Layers}
+            />
+            <MetricCard
+              label={t('deviceDetail.metrics.lastOnline')}
+              value={formatDeviceTimestamp(device.lastUpdate)}
+              headerIcon={Clock}
+            />
+            <MetricCard
+              label={t('deviceDetail.metrics.serial')}
+              value={device.serialNumber ?? device.serial ?? device.info?.serial ?? NA}
+              mono
+              headerIcon={Barcode}
+            />
+            <MetricCard label={t('devices.columns.imei')} value={device.imei ?? device.info?.imei ?? NA} mono />
+            <MetricCard
+              label={t('devices.columns.androidVersion')}
+              value={androidVersion ?? NA}
+              headerIcon={Monitor}
+              leadingIcon={
+                androidVersion ? (
+                  <AndroidIcon className={cn(METRIC_ICON_CLASS, ANDROID_BRAND_COLOR)} />
+                ) : undefined
+              }
+            />
+            <MetricCard
+              label={t('devices.columns.battery')}
+              value={batteryLevel != null ? `${batteryLevel}%` : NA}
+              leadingIcon={
+                batteryLevel != null ? (
+                  <BatteryLevelIcon level={batteryLevel} className={METRIC_ICON_CLASS} />
+                ) : undefined
+              }
+            />
+            <MetricCard
+              label={t('devices.columns.launcherVersion')}
+              value={launcherVersion ?? NA}
+            />
+            <MetricCard
+              label={t('deviceDetail.metrics.enrolled')}
+              value={
+                enrollTime != null ? formatDeviceEnrollTime(enrollTime) : t('devices.date.unknown')
+              }
+            />
+            <MetricCard label={t('deviceDetail.metrics.publicIp')} value={publicIp ?? NA} mono />
+          </div>
+        )}
+
+        <TabsContent value="software" className="mt-0">
           <Card>
             <CardContent className="p-0">
               <div className="max-h-80 overflow-auto">
@@ -288,7 +291,7 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
         </TabsContent>
 
         {showLocalUsers ? (
-          <TabsContent value="users" className="mt-4">
+          <TabsContent value="users" className="mt-0">
             <Card>
               <CardContent className="p-0">
                 <table className="w-full text-left text-sm">
@@ -336,18 +339,18 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
         ) : null}
 
         {device.platform === 'windows' ? (
-          <TabsContent value="services" className="mt-4">
+          <TabsContent value="services" className="mt-0">
             <WindowsDeviceServicesTab hardwareId={device.number} />
           </TabsContent>
         ) : null}
 
         {device.platform === 'windows' ? (
-          <TabsContent value="logs" className="mt-4">
+          <TabsContent value="logs" className="mt-0">
             <WindowsDeviceActionLogsTab hardwareId={device.number} />
           </TabsContent>
         ) : null}
 
-        <TabsContent value="actions" className="mt-4">
+        <TabsContent value="actions" className="mt-0">
           <DeviceActionsPanel device={device} platform={device.platform} />
         </TabsContent>
       </Tabs>
@@ -365,7 +368,7 @@ function WindowsOverviewGrid({
   t: TFunction
 }) {
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
       <MetricCard
         className="h-full"
         label={t('devices.columns.hostname')}
@@ -378,7 +381,6 @@ function WindowsOverviewGrid({
         label={t('deviceDetail.metrics.model')}
         value={device.model ?? device.manufacturer ?? NA}
         headerIcon={Layers}
-        valueClassName="text-lg"
       />
       <MetricCard
         className="h-full"
@@ -399,14 +401,12 @@ function WindowsOverviewGrid({
         label={t('devices.columns.windowsBuild')}
         value={device.windowsBuild ?? NA}
         headerIcon={AppWindow}
-        valueClassName="text-lg"
       />
       <MetricCard
         className="h-full"
         label={t('deviceDetail.metrics.uptime')}
         value={formatUptime(device.uptimeSeconds)}
         headerIcon={Activity}
-        valueClassName="text-lg"
       />
       <NetworkMetricCard className="h-full" device={device} na={na} t={t} />
       <MetricCard
@@ -415,7 +415,6 @@ function WindowsOverviewGrid({
         value={formatWindowsCurrentUser(device.currentUser, na, device.localUsers)}
         mono
         headerIcon={User}
-        valueClassName="text-lg"
       />
       <CpuMetricCard className="h-full" device={device} na={na} t={t} />
       <MetricCard
@@ -427,7 +426,7 @@ function WindowsOverviewGrid({
       <AntivirusMetricCard className="h-full" device={device} na={na} t={t} />
       <BatteryMetricCard className="h-full" device={device} hardwareId={device.number} t={t} />
       <WindowsUpdateMetricCard className="h-full" device={device} hardwareId={device.number} na={na} t={t} />
-      <WindowsDiskMetrics className="h-full lg:col-span-4" device={device} na={na} t={t} />
+      <WindowsDiskMetrics className="h-full xl:col-span-5" device={device} na={na} t={t} />
     </div>
   )
 }
@@ -483,14 +482,14 @@ function CpuMetricCard({
           }
         }}
       >
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 pb-2 pt-4">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
+        <CardHeader className={METRIC_CARD_HEADER_CLASS}>
+          <CardTitle className="text-xs font-medium text-muted-foreground">
             {t('deviceDetail.metrics.cpu')}
           </CardTitle>
           <Cpu className={TILE_HEADER_ICON_CLASS} />
         </CardHeader>
-        <CardContent className="px-4 pb-4">
-          <p className="line-clamp-2 text-lg font-bold leading-tight">{cpuName}</p>
+        <CardContent className={METRIC_CARD_CONTENT_CLASS}>
+          <p className={cn('line-clamp-2', METRIC_VALUE_CLASS)}>{cpuName}</p>
         </CardContent>
       </Card>
 
@@ -572,8 +571,8 @@ function BatteryMetricCard({
 
   return (
     <Card className={cn('h-full', className)}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 pb-2 pt-4">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
+      <CardHeader className={METRIC_CARD_HEADER_CLASS}>
+        <CardTitle className="text-xs font-medium text-muted-foreground">
           {t('deviceDetail.metrics.battery')}
         </CardTitle>
         <div className="flex items-center gap-1">
@@ -581,24 +580,24 @@ function BatteryMetricCard({
             type="button"
             variant="ghost"
             size="icon"
-            className="size-7"
+            className="size-6"
             disabled={queueMutation.isPending}
             title={t('deviceDetail.battery.downloadReport')}
             onClick={handleBatteryReport}
           >
-            <FileText className="size-3.5" />
+            <FileText className="size-3" />
           </Button>
           <HeaderIcon className={TILE_HEADER_ICON_CLASS} />
         </div>
       </CardHeader>
-      <CardContent className="px-4 pb-4">
+      <CardContent className={METRIC_CARD_CONTENT_CLASS}>
         {hasBattery ? (
-          <div className="space-y-1">
-            <p className="text-3xl font-bold leading-tight">{level}%</p>
-            {status ? <p className="text-sm text-muted-foreground">{status}</p> : null}
+          <div className="space-y-0.5">
+            <p className="text-2xl font-bold leading-tight">{level}%</p>
+            {status ? <p className="text-xs text-muted-foreground">{status}</p> : null}
           </div>
         ) : (
-          <p className="text-lg text-muted-foreground">{t('deviceDetail.battery.desktopNoBattery')}</p>
+          <p className="text-sm text-muted-foreground">{t('deviceDetail.battery.desktopNoBattery')}</p>
         )}
       </CardContent>
     </Card>
@@ -636,24 +635,24 @@ function AntivirusMetricCard({
           }
         }}
       >
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 pb-2 pt-4">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
+        <CardHeader className={METRIC_CARD_HEADER_CLASS}>
+          <CardTitle className="text-xs font-medium text-muted-foreground">
             {t('deviceDetail.metrics.antivirus')}
           </CardTitle>
           <Shield className={TILE_HEADER_ICON_CLASS} />
         </CardHeader>
-        <CardContent className="px-4 pb-4">
-          <div className="flex items-start gap-3">
+        <CardContent className={METRIC_CARD_CONTENT_CLASS}>
+          <div className="flex items-start gap-2">
             <StatusIcon
               className={cn(
-                'mt-0.5 size-5 shrink-0',
+                'mt-0.5 size-4 shrink-0',
                 active ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive',
               )}
               strokeWidth={2.25}
             />
             <div className="min-w-0">
-              <p className="truncate text-xl font-bold leading-tight">{name}</p>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className={cn('truncate', METRIC_VALUE_CLASS)}>{name}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
                 {active ? t('deviceDetail.antivirus.active') : t('deviceDetail.antivirus.inactive')}
               </p>
             </div>
@@ -727,20 +726,20 @@ function NetworkMetricCard({
 
   return (
     <Card className={cn('h-full', className)}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 pb-2 pt-4">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
+      <CardHeader className={METRIC_CARD_HEADER_CLASS}>
+        <CardTitle className="text-xs font-medium text-muted-foreground">
           {t('deviceDetail.metrics.network')}
         </CardTitle>
         <Globe className={TILE_HEADER_ICON_CLASS} />
       </CardHeader>
-      <CardContent className="space-y-2 px-4 pb-4">
-        <p className="text-sm text-muted-foreground">
+      <CardContent className={cn('space-y-1', METRIC_CARD_CONTENT_CLASS)}>
+        <p className="text-xs text-muted-foreground">
           {t('deviceDetail.network.localIp')}{' '}
-          <span className="font-mono text-base font-bold text-foreground">{localIp}</span>
+          <span className="font-mono text-sm font-bold text-foreground">{localIp}</span>
         </p>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {t('deviceDetail.network.publicIp')}{' '}
-          <span className="font-mono text-base font-bold text-foreground">{publicIp}</span>
+          <span className="font-mono text-sm font-bold text-foreground">{publicIp}</span>
         </p>
       </CardContent>
     </Card>
@@ -819,20 +818,20 @@ function WindowsUpdateMetricCard({
           }
         }}
       >
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 pb-2 pt-4">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
+        <CardHeader className={METRIC_CARD_HEADER_CLASS}>
+          <CardTitle className="text-xs font-medium text-muted-foreground">
             {t('deviceDetail.metrics.windowsUpdate')}
           </CardTitle>
           <RefreshCcw className={TILE_HEADER_ICON_CLASS} />
         </CardHeader>
-        <CardContent className="space-y-2 px-4 pb-4">
-          <p className="text-sm text-muted-foreground">
+        <CardContent className={cn('space-y-1', METRIC_CARD_CONTENT_CLASS)}>
+          <p className="text-xs text-muted-foreground">
             {t('deviceDetail.windowsUpdate.pending')}{' '}
-            <span className="text-base font-bold text-foreground">{pending}</span>
+            <span className="text-sm font-bold text-foreground">{pending}</span>
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {t('deviceDetail.windowsUpdate.lastChecked')}{' '}
-            <span className="text-base font-bold text-foreground">{lastChecked}</span>
+            <span className="text-sm font-bold text-foreground">{lastChecked}</span>
           </p>
         </CardContent>
       </Card>
@@ -1042,13 +1041,13 @@ function WindowsDiskMetrics({
 
     return (
       <Card className={cn('h-full md:col-span-2', className)}>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 pb-2 pt-4">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
+        <CardHeader className={METRIC_CARD_HEADER_CLASS}>
+          <CardTitle className="text-xs font-medium text-muted-foreground">
             {t('deviceDetail.metrics.disk')}
           </CardTitle>
           <HardDrive className={TILE_HEADER_ICON_CLASS} />
         </CardHeader>
-        <CardContent className="px-4 pb-4">
+        <CardContent className={METRIC_CARD_CONTENT_CLASS}>
           {diskPercent != null ? (
             <Progress value={diskPercent}>
               <ProgressLabel className="text-xs">
@@ -1057,7 +1056,7 @@ function WindowsDiskMetrics({
               <ProgressValue />
             </Progress>
           ) : (
-            <span className="text-xl font-bold">{na}</span>
+            <span className={METRIC_VALUE_CLASS}>{na}</span>
           )}
         </CardContent>
       </Card>
@@ -1066,13 +1065,13 @@ function WindowsDiskMetrics({
 
   return (
     <Card className={cn('h-full', className)}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 pb-2 pt-4">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
+      <CardHeader className={METRIC_CARD_HEADER_CLASS}>
+        <CardTitle className="text-xs font-medium text-muted-foreground">
           {t('deviceDetail.metrics.disks')}
         </CardTitle>
         <HardDrive className={TILE_HEADER_ICON_CLASS} />
       </CardHeader>
-      <CardContent className="space-y-3 px-4 pb-4">
+      <CardContent className={cn('space-y-2', METRIC_CARD_CONTENT_CLASS)}>
         {disks.map((disk) => {
           const percent =
             disk.totalGb > 0 ? Math.round((disk.usedGb / disk.totalGb) * 100) : undefined
@@ -1118,26 +1117,26 @@ function WindowsDiskMetrics({
 
 function DeviceDetailSkeleton() {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <Skeleton className="h-4 w-48" />
-      <div className="space-y-2 border-b pb-4">
+      <div className="space-y-1.5 border-b pb-3">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-4 w-40" />
       </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <Skeleton className="h-9 w-full max-w-xl" />
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
         {Array.from({ length: 8 }).map((_, i) => (
           <Card key={i} className="h-full">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 pb-2 pt-4">
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-4 w-4 rounded-full" />
+            <CardHeader className={METRIC_CARD_HEADER_CLASS}>
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-3.5 w-3.5 rounded-full" />
             </CardHeader>
-            <CardContent className="px-4 pb-4">
-              <Skeleton className="h-7 w-28" />
+            <CardContent className={METRIC_CARD_CONTENT_CLASS}>
+              <Skeleton className="h-5 w-24" />
             </CardContent>
           </Card>
         ))}
       </div>
-      <Skeleton className="h-10 w-full max-w-md" />
       <Skeleton className="h-64 w-full" />
     </div>
   )
@@ -1162,17 +1161,17 @@ function MetricCard({
 }) {
   return (
     <Card className={cn('h-full', className)}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 pb-2 pt-4">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
+      <CardHeader className={METRIC_CARD_HEADER_CLASS}>
+        <CardTitle className="text-xs font-medium text-muted-foreground">{label}</CardTitle>
         {HeaderIcon ? <HeaderIcon className={TILE_HEADER_ICON_CLASS} /> : null}
       </CardHeader>
-      <CardContent className="px-4 pb-4">
-        <div className="flex items-center gap-3">
+      <CardContent className={METRIC_CARD_CONTENT_CLASS}>
+        <div className="flex items-center gap-2">
           {leadingIcon ? <span className="inline-flex shrink-0 items-center">{leadingIcon}</span> : null}
           <p
             className={cn(
-              'text-xl font-bold leading-tight',
-              mono && 'font-mono text-lg',
+              METRIC_VALUE_CLASS,
+              mono && 'font-mono text-sm',
               valueClassName,
             )}
           >
