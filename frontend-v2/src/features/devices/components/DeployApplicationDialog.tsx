@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus } from 'lucide-react'
 import {
   useAssignDeviceAppMutation,
   useSoftwareAppsQuery,
@@ -99,22 +98,5 @@ export function DeployApplicationDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
-}
-
-export function DeployApplicationButton({
-  onClick,
-  disabled = false,
-}: {
-  onClick: () => void
-  disabled?: boolean
-}) {
-  const { t } = useTranslation()
-
-  return (
-    <Button type="button" size="sm" onClick={onClick} disabled={disabled}>
-      <Plus className="mr-1.5 size-3.5" />
-      {t('deviceDetail.appDeployments.deployAction')}
-    </Button>
   )
 }

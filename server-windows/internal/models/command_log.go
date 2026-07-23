@@ -11,6 +11,14 @@ const (
 const (
 	CommandNameUninstallUpdate = "UninstallUpdate"
 	CommandNamePowerShell      = "powershell"
+	CommandNameBatteryReport   = "battery_report"
+)
+
+const (
+	AppInstallStatusDownloading = "Downloading"
+	AppInstallStatusInstalling  = "Installing"
+	AppInstallStatusSuccess     = "Success"
+	AppInstallStatusFailed      = "Failed"
 )
 
 // DeviceCommandLog stores queued and completed remote commands with raw agent output.

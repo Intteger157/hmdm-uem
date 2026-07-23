@@ -826,6 +826,8 @@
   "deviceDetail.actionLogs.noOutput": "Вывод пока не получен.",
   "deviceDetail.actionLogs.empty": "История команд пуста.",
   "deviceDetail.actionLogs.loadFailed": "Не удалось загрузить логи команд",
+  "deviceDetail.actionLogs.downloadBatteryReport": "Скачать HTML-отчёт",
+  "deviceDetail.actionLogs.batteryReportReady": "Отчёт по батарее сформирован. Используйте кнопку ниже, чтобы скачать HTML-файл.",
   "deviceDetail.location.openMap": "Открыть в Google Maps",
   "deviceDetail.location.wifiBssid": "Wi-Fi MAC: {{bssid}}",
   "deviceDetail.tabs.software": "Установленное ПО",
@@ -910,6 +912,7 @@
   "deviceDetail.actions.error": "Не удалось отправить команду",
   "deviceDetail.actions.wipeConfirmTitle": "Сброс устройства",
   "deviceDetail.actions.wipeConfirm": "Отправить команду factory reset на «{{device}}»?",
+  "deviceDetail.actions.deployAppHint": "Назначить приложение из каталога напрямую на это устройство.",
   "settings.title": "Настройки",
   "settings.subtitle": "Дизайн, язык, безопасность и колонки таблицы устройств",
   "settings.saveError": "Не удалось сохранить настройки",
@@ -1176,5 +1179,8 @@
   "deviceDetail.appDeployments.deploySuccess": "Приложение назначено на устройство",
   "deviceDetail.appDeployments.deployError": "Не удалось назначить приложение",
   "deviceDetail.metrics.battery": "Батарея",
-  "deviceDetail.battery.desktopNoBattery": "Desktop / No Battery"
+  "deviceDetail.battery.desktopNoBattery": "Desktop / No Battery",
+  "deviceDetail.battery.downloadReport": "Сформировать отчёт по батарее",
+  "deviceDetail.battery.reportQueued": "Отчёт по батарее поставлен в очередь",
+  "deviceDetail.battery.reportFailed": "Не удалось поставить отчёт в очередь"
 }

@@ -26,6 +26,7 @@ const (
 	effectiveConfigPath       = "/rest/windows/devices/%s/effective-config"
 	policyEnforcementLogPath  = "/rest/windows/devices/%s/policy-enforcement"
 	appStatusPath             = "/rest/windows/devices/%s/apps/status"
+	appInstallLogPath         = "/rest/windows/devices/%s/logs/app-install"
 )
 
 // ErrUnauthorized indicates the server rejected the current auth token.
@@ -486,6 +487,48 @@ func (c *APIClient) ReportPolicyEnforcement(authToken, hwid string, success bool
 		return nil
 	default:
 		return fmt.Errorf("policy enforcement log failed with HTTP %d", resp.StatusCode)
+	}
+}
+
+// ReportAppInstallLog uploads app deployment progress to Action Logs.
+func (c *APIClient) ReportAppInstallLog(authToken, hwid string, appID uint, appName, status, output string) error {
+	payload, err := json.Marshal(map[string]any{
+		"appId":   appID,
+		"appName": appName,
+		"status":  status,
+		"output":  output,
+	})
+	if err != nil {
+		return fmt.Errorf("marshal app install log request: %w", err)
+	}
+
+	url := c.baseURL + fmt.Sprintf(appInstallLogPath, url.PathEscape(hwid))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(payload))
+	if err != nil {
+		return fmt.Errorf("create app install log request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+authToken)
+	req.Header.Set("X-Device-Id", hwid)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("send app install log request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if _, err := io.Copy(io.Discard, resp.Body); err != nil {
+		return fmt.Errorf("read app install log response: %w", err)
+	}
+
+	switch resp.StatusCode {
+	case http.StatusUnauthorized:
+		return ErrUnauthorized
+	case http.StatusOK, http.StatusNoContent:
+		return nil
+	default:
+		return fmt.Errorf("app install log failed with HTTP %d", resp.StatusCode)
 	}
 }
 

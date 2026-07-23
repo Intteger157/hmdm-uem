@@ -51,6 +51,7 @@ func main() {
 			windows.PATCH("/devices/:hardwareId/group", windowsHandler.UpdateDeviceGroupMembership)
 			windows.GET("/devices/:hardwareId/effective-config", windowsHandler.GetDeviceEffectiveConfig)
 			windows.POST("/devices/:hardwareId/policy-enforcement", windowsHandler.ReportPolicyEnforcement)
+			windows.POST("/devices/:hardwareId/logs/app-install", windowsHandler.ReportAppInstallLog)
 			windows.DELETE("/devices/:hardwareId", windowsHandler.DeleteDevice)
 			windows.POST("/devices/:hardwareId/commands", windowsHandler.EnqueueCommand)
 			windows.GET("/devices/:hardwareId/commands/latest", windowsHandler.GetLatestCommand)

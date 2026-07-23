@@ -41,7 +41,7 @@ type RequiredApp struct {
 	UpdateFrequency string `json:"updateFrequency"`
 }
 
-type StatusReporter func(appID uint, status, errMsg string) error
+type StatusReporter func(appID uint, appName, status, errMsg string) error
 
 // DeployRequired installs or updates required apps and reports progress to the server.
 func DeployRequired(required []RequiredApp, reporter StatusReporter) {
@@ -65,10 +65,10 @@ func DeployRequired(required []RequiredApp, reporter StatusReporter) {
 		}
 		if deployErr != nil {
 			log.Printf("app deployment failed id=%d name=%q: %v", app.ID, app.Name, deployErr)
-			reportStatus(reporter, app.ID, "Failed", deployErr.Error())
+			reportStatus(reporter, app.ID, app.Name, "Failed", deployErr.Error())
 			continue
 		}
-		reportStatus(reporter, app.ID, "Success", "")
+		reportStatus(reporter, app.ID, app.Name, "Success", "")
 	}
 
 	if stateChanged {
@@ -100,7 +100,7 @@ func deployWingetApp(app RequiredApp, state *AppsState, reporter StatusReporter)
 	}
 
 	if !installed {
-		reportStatus(reporter, app.ID, "Installing", "")
+		reportStatus(reporter, app.ID, app.Name, "Installing", "")
 		if err := runWinget("install", "--id", wingetID); err != nil {
 			return false, err
 		}
@@ -112,7 +112,7 @@ func deployWingetApp(app RequiredApp, state *AppsState, reporter StatusReporter)
 		return false, nil
 	}
 
-	reportStatus(reporter, app.ID, "Installing", "")
+	reportStatus(reporter, app.ID, app.Name, "Installing", "")
 	if err := runWinget("upgrade", "--id", wingetID); err != nil {
 		return false, err
 	}
@@ -132,7 +132,7 @@ func deployURLApp(app RequiredApp, state *AppsState, installed []system.Installe
 		}
 	}
 
-	reportStatus(reporter, app.ID, "Downloading", "")
+	reportStatus(reporter, app.ID, app.Name, "Downloading", "")
 	localPath, err := downloadInstaller(downloadURL)
 	if err != nil {
 		return false, fmt.Errorf("download: %w", err)
@@ -143,7 +143,7 @@ func deployURLApp(app RequiredApp, state *AppsState, installed []system.Installe
 		return false, fmt.Errorf("unblock file: %w", err)
 	}
 
-	reportStatus(reporter, app.ID, "Installing", "")
+	reportStatus(reporter, app.ID, app.Name, "Installing", "")
 	if err := runInstaller(localPath, app.InstallArgs); err != nil {
 		return false, fmt.Errorf("install: %w", err)
 	}
@@ -214,11 +214,11 @@ func runWingetOutput(args ...string) (string, error) {
 	return message, nil
 }
 
-func reportStatus(reporter StatusReporter, appID uint, status, errMsg string) {
+func reportStatus(reporter StatusReporter, appID uint, appName, status, errMsg string) {
 	if reporter == nil {
 		return
 	}
-	if err := reporter(appID, status, errMsg); err != nil {
+	if err := reporter(appID, appName, status, errMsg); err != nil {
 		log.Printf("app status report failed id=%d status=%s: %v", appID, status, err)
 	}
 }

@@ -6,6 +6,7 @@ import {
   MapPin,
   MessageSquare,
   Monitor,
+  Package,
   RefreshCw,
   RotateCcw,
   ScrollText,
@@ -40,6 +41,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
 import { useWindowsDeviceCommandMutation } from '@/features/windows/hooks/use-windows-device-command'
 import { useQueueWindowsDeviceCommandMutation } from '@/features/windows/hooks/use-queue-windows-device-command'
+import { DeployApplicationDialog } from '@/features/devices/components/DeployApplicationDialog'
+import { useDeviceAppStatusesQuery } from '@/features/windows/applications/hooks/use-windows-software-apps'
 import {
   WindowsInstallDialog,
   WindowsPowerShellDialog,
@@ -127,9 +130,12 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
   const [windowsConfirmAction, setWindowsConfirmAction] = useState<WindowsCommandAction | null>(null)
   const [powershellOpen, setPowershellOpen] = useState(false)
   const [installOpen, setInstallOpen] = useState(false)
+  const [deployAppOpen, setDeployAppOpen] = useState(false)
 
   const windowsCommandMutation = useWindowsDeviceCommandMutation(device.number)
   const queueLogMutation = useQueueWindowsDeviceCommandMutation(device.number)
+  const deviceAppStatusesQuery = useDeviceAppStatusesQuery(device.number, platform === 'windows')
+  const assignedAppIds = (deviceAppStatusesQuery.data?.items ?? []).map((item) => item.appId)
 
   const runAndroidCommand = async (actionId: AndroidCommandAction) => {
     try {
@@ -384,6 +390,28 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
             </Card>
           )
         })}
+        <Card className="transition-colors hover:bg-muted/30">
+          <CardHeader className="pb-2">
+            <div className="flex items-center gap-2">
+              <div className="flex size-8 items-center justify-center rounded-md bg-muted">
+                <Package className="size-4" />
+              </div>
+              <CardTitle className="text-sm font-medium">{t('deviceDetail.appDeployments.deployAction')}</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <CardDescription className="text-xs">{t('deviceDetail.actions.deployAppHint')}</CardDescription>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="mt-3 w-full"
+              onClick={() => setDeployAppOpen(true)}
+            >
+              {t('deviceDetail.actions.run')}
+            </Button>
+          </CardContent>
+        </Card>
       </div>
 
       <WindowsPowerShellDialog
@@ -436,6 +464,13 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
           setWindowsConfirmAction(null)
           void queueWindowsCommand(action)
         }}
+      />
+
+      <DeployApplicationDialog
+        hardwareId={device.number}
+        open={deployAppOpen}
+        onOpenChange={setDeployAppOpen}
+        assignedAppIds={assignedAppIds}
       />
     </>
   )

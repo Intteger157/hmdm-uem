@@ -9,22 +9,20 @@ import {
   BatteryCharging,
   BatteryLow,
   BatteryMedium,
-  CheckCircle2,
   ChevronRight,
   Clock,
   Cpu,
+  FileText,
   Globe,
   HardDrive,
   Hash,
   Key,
   Layers,
-  Loader2,
   Lock,
   LockKeyhole,
   LockOpen,
   MemoryStick,
   Monitor,
-  Package,
   RefreshCcw,
   Shield,
   ShieldOff,
@@ -32,15 +30,10 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { DeviceActionsPanel } from '@/features/devices/components/DeviceActionsPanel'
-import {
-  DeployApplicationButton,
-  DeployApplicationDialog,
-} from '@/features/devices/components/DeployApplicationDialog'
 import { WindowsDeviceServicesTab } from '@/features/devices/components/WindowsDeviceServicesTab'
 import { WindowsDeviceActionLogsTab } from '@/features/devices/components/WindowsDeviceActionLogsTab'
 import { WindowsAppliedConfigurationCard } from '@/features/windows/configurations/components/WindowsAppliedConfigurationCard'
-import { useDeviceAppStatusesQuery } from '@/features/windows/applications/hooks/use-windows-software-apps'
-import type { AppDeploymentStatus, DeviceAppStatusItem } from '@/features/windows/applications/types/software-app'
+import { useQueueWindowsDeviceCommandMutation } from '@/features/windows/hooks/use-queue-windows-device-command'
 import { useDeviceByNumber } from '@/features/devices/hooks/use-device-by-number-query'
 import {
   formatDeviceEnrollTime,
@@ -429,8 +422,7 @@ function WindowsOverviewGrid({
         headerIcon={MemoryStick}
       />
       <AntivirusMetricCard className="h-full" device={device} na={na} t={t} />
-      <BatteryMetricCard className="h-full" device={device} t={t} />
-      <AppDeploymentsMetricCard className="h-full" hardwareId={device.number} t={t} />
+      <BatteryMetricCard className="h-full" device={device} hardwareId={device.number} t={t} />
       <WindowsUpdateMetricCard className="h-full" device={device} hardwareId={device.number} na={na} t={t} />
       <WindowsDiskMetrics className="h-full lg:col-span-4" device={device} na={na} t={t} />
     </div>
@@ -552,10 +544,12 @@ function resolveBatteryHeaderIcon(
 
 function BatteryMetricCard({
   device,
+  hardwareId,
   t,
   className,
 }: {
   device: DeviceView
+  hardwareId: string
   t: TFunction
   className?: string
 }) {
@@ -563,6 +557,15 @@ function BatteryMetricCard({
   const status = device.batteryStatus?.trim()
   const hasBattery = level != null
   const HeaderIcon = resolveBatteryHeaderIcon(level, status)
+  const queueMutation = useQueueWindowsDeviceCommandMutation(hardwareId)
+
+  const handleBatteryReport = (event: React.MouseEvent) => {
+    event.stopPropagation()
+    void queueMutation
+      .mutateAsync({ commandName: 'battery_report', payload: '{}' })
+      .then(() => toast.success(t('deviceDetail.battery.reportQueued')))
+      .catch(() => toast.error(t('deviceDetail.battery.reportFailed')))
+  }
 
   return (
     <Card className={cn('h-full', className)}>
@@ -570,7 +573,20 @@ function BatteryMetricCard({
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {t('deviceDetail.metrics.battery')}
         </CardTitle>
-        <HeaderIcon className={TILE_HEADER_ICON_CLASS} />
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            disabled={queueMutation.isPending}
+            title={t('deviceDetail.battery.downloadReport')}
+            onClick={handleBatteryReport}
+          >
+            <FileText className="size-3.5" />
+          </Button>
+          <HeaderIcon className={TILE_HEADER_ICON_CLASS} />
+        </div>
       </CardHeader>
       <CardContent className="px-4 pb-4">
         {hasBattery ? (
@@ -584,154 +600,6 @@ function BatteryMetricCard({
       </CardContent>
     </Card>
   )
-}
-
-function summarizeAppDeployments(items: DeviceAppStatusItem[], requiredTotal: number) {
-  const total = requiredTotal || items.length
-  const successCount = items.filter((item) => item.status === 'Success').length
-  const inProgress = items.some(
-    (item) => item.status === 'Downloading' || item.status === 'Installing',
-  )
-  const allSuccess = total > 0 && successCount === total
-  return { total, successCount, inProgress, allSuccess }
-}
-
-function AppDeploymentsMetricCard({
-  hardwareId,
-  t,
-  className,
-}: {
-  hardwareId: string
-  t: TFunction
-  className?: string
-}) {
-  const [open, setOpen] = useState(false)
-  const [deployOpen, setDeployOpen] = useState(false)
-  const { data, isLoading } = useDeviceAppStatusesQuery(hardwareId)
-
-  const items = data?.items ?? []
-  const assignedAppIds = items.map((item) => item.appId)
-  const summary = summarizeAppDeployments(items, data?.requiredTotal ?? 0)
-  const HeaderIcon = summary.inProgress ? Loader2 : Package
-
-  let value = t('deviceDetail.appDeployments.none')
-  let valueClassName = 'text-muted-foreground text-lg'
-  if (summary.total > 0) {
-    if (summary.allSuccess) {
-      value = t('deviceDetail.appDeployments.allInstalled', {
-        count: summary.successCount,
-        total: summary.total,
-      })
-      valueClassName = 'text-lg'
-    } else if (summary.inProgress) {
-      value = t('deviceDetail.appDeployments.installing', {
-        current: summary.successCount + 1,
-        total: summary.total,
-      })
-      valueClassName = 'text-lg'
-    } else {
-      value = t('deviceDetail.appDeployments.progress', {
-        count: summary.successCount,
-        total: summary.total,
-      })
-      valueClassName = 'text-lg'
-    }
-  }
-
-  return (
-    <>
-      <Card
-        className={cn('h-full', INTERACTIVE_TILE_CLASS, className)}
-        onClick={() => setOpen(true)}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault()
-            setOpen(true)
-          }
-        }}
-      >
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 pb-2 pt-4">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            {t('deviceDetail.appDeployments.title')}
-          </CardTitle>
-          <HeaderIcon className={cn(TILE_HEADER_ICON_CLASS, summary.inProgress && 'animate-spin')} />
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          <div className="flex items-center gap-2">
-            {summary.allSuccess ? <CheckCircle2 className="size-5 text-green-600" /> : null}
-            <p className={cn('font-bold leading-tight', valueClassName)}>
-              {isLoading ? t('common.loading') : value}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{t('deviceDetail.appDeployments.dialogTitle')}</DialogTitle>
-          </DialogHeader>
-          <div className="flex justify-end">
-            <DeployApplicationButton onClick={() => setDeployOpen(true)} />
-          </div>
-          {items.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t('deviceDetail.appDeployments.none')}</p>
-          ) : (
-            <div className="max-h-80 overflow-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="border-b text-muted-foreground">
-                  <tr>
-                    <th className="px-2 py-2 font-medium">{t('deviceDetail.appDeployments.columns.app')}</th>
-                    <th className="px-2 py-2 font-medium">{t('deviceDetail.appDeployments.columns.status')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((item) => (
-                    <tr key={item.appId} className="border-b last:border-0">
-                      <td className="px-2 py-2">
-                        <div className="font-medium">{item.appName}</div>
-                        {item.appVersion ? (
-                          <div className="text-xs text-muted-foreground">{item.appVersion}</div>
-                        ) : null}
-                      </td>
-                      <td className="px-2 py-2">
-                        <AppDeploymentStatusBadge status={item.status} t={t} />
-                        {item.errorMessage ? (
-                          <p className="mt-1 text-xs text-destructive">{item.errorMessage}</p>
-                        ) : null}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <DeployApplicationDialog
-        hardwareId={hardwareId}
-        open={deployOpen}
-        onOpenChange={setDeployOpen}
-        assignedAppIds={assignedAppIds}
-      />
-    </>
-  )
-}
-
-function AppDeploymentStatusBadge({ status, t }: { status: AppDeploymentStatus; t: TFunction }) {
-  const variant =
-    status === 'Success'
-      ? 'default'
-      : status === 'Failed'
-        ? 'destructive'
-        : status === 'Pending'
-          ? 'outline'
-          : 'secondary'
-
-  return <Badge variant={variant}>{t(`deviceDetail.appDeployments.status.${status}`)}</Badge>
 }
 
 function AntivirusMetricCard({

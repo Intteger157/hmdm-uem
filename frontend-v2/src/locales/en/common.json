@@ -826,6 +826,8 @@
   "deviceDetail.actionLogs.noOutput": "No output captured yet.",
   "deviceDetail.actionLogs.empty": "No command logs yet.",
   "deviceDetail.actionLogs.loadFailed": "Failed to load command logs",
+  "deviceDetail.actionLogs.downloadBatteryReport": "Download HTML Report",
+  "deviceDetail.actionLogs.batteryReportReady": "Battery report generated. Use the button below to download the HTML file.",
   "deviceDetail.location.openMap": "Open in Google Maps",
   "deviceDetail.location.wifiBssid": "Wi-Fi MAC: {{bssid}}",
   "deviceDetail.tabs.software": "Installed Software",
@@ -910,6 +912,7 @@
   "deviceDetail.actions.error": "Failed to send command",
   "deviceDetail.actions.wipeConfirmTitle": "Factory reset device",
   "deviceDetail.actions.wipeConfirm": "Send a factory reset command to \"{{device}}\"?",
+  "deviceDetail.actions.deployAppHint": "Assign an application from the catalog directly to this device.",
   "settings.title": "Settings",
   "settings.subtitle": "Design, language, security, and device table preferences",
   "settings.saveError": "Failed to save settings",
@@ -1176,5 +1179,8 @@
   "deviceDetail.appDeployments.deploySuccess": "Application assigned to device",
   "deviceDetail.appDeployments.deployError": "Failed to assign application",
   "deviceDetail.metrics.battery": "Battery",
-  "deviceDetail.battery.desktopNoBattery": "Desktop / No Battery"
+  "deviceDetail.battery.desktopNoBattery": "Desktop / No Battery",
+  "deviceDetail.battery.downloadReport": "Generate battery report",
+  "deviceDetail.battery.reportQueued": "Battery report queued",
+  "deviceDetail.battery.reportFailed": "Failed to queue battery report"
 }

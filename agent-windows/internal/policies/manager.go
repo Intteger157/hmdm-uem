@@ -117,7 +117,10 @@ func NewAppStatusReporter(client *api.APIClient, authToken, hardwareID string) a
 	if client == nil || authToken == "" || hardwareID == "" {
 		return nil
 	}
-	return func(appID uint, status, errMsg string) error {
+	return func(appID uint, appName, status, errMsg string) error {
+		if logErr := client.ReportAppInstallLog(authToken, hardwareID, appID, appName, status, errMsg); logErr != nil {
+			log.Printf("app install log upload failed id=%d status=%s: %v", appID, status, logErr)
+		}
 		return client.ReportAppStatus(authToken, hardwareID, appID, status, errMsg)
 	}
 }

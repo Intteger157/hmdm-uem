@@ -49,6 +49,10 @@ func (h *WindowsHandler) enqueueDeviceCommandLog(c *gin.Context, hardwareID, com
 		}
 	case models.CommandNamePowerShell:
 		// payload is raw script text (non-empty check above)
+	case models.CommandNameBatteryReport:
+		if payload == "" {
+			payload = "{}"
+		}
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported commandName"})
 		return

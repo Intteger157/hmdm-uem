@@ -6,7 +6,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"syscall"
@@ -22,6 +24,8 @@ func ExecuteDeviceCommand(commandName, payload string) Result {
 		return uninstallWindowsUpdate(payload)
 	case "powershell":
 		return ExecutePowerShellScript(payload)
+	case "battery_report":
+		return batteryReport()
 	default:
 		return Result{Success: false, Message: fmt.Sprintf("unsupported command: %s", commandName)}
 	}
@@ -87,4 +91,37 @@ func captureCommandOutput(cmd *exec.Cmd) (string, error) {
 		combined = combined[:16000] + "..."
 	}
 	return combined, runErr
+}
+
+func batteryReport() Result {
+	tempDir := os.TempDir()
+	outputPath := filepath.Join(tempDir, "battery_report.html")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "cmd.exe", "/c", fmt.Sprintf("powercfg /batteryreport /output %s", outputPath))
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	if output, err := captureCommandOutput(cmd); err != nil {
+		message := strings.TrimSpace(output)
+		if message == "" {
+			message = err.Error()
+		}
+		return Result{Success: false, Message: message}
+	}
+
+	html, err := os.ReadFile(outputPath)
+	_ = os.Remove(outputPath)
+	if err != nil {
+		return Result{Success: false, Message: fmt.Sprintf("read battery report: %v", err)}
+	}
+
+	content := string(html)
+	if strings.TrimSpace(content) == "" {
+		return Result{Success: false, Message: "battery report file is empty"}
+	}
+	if len(content) > 512*1024 {
+		content = content[:512*1024] + "\n<!-- truncated -->"
+	}
+	return Result{Success: true, Message: content}
 }

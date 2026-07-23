@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Eye } from 'lucide-react'
+import { Download, Eye } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -26,6 +27,9 @@ function statusBadgeVariant(status: DeviceCommandLogEntry['status']) {
       return 'default'
     case 'Failed':
       return 'destructive'
+    case 'Downloading':
+    case 'Installing':
+      return 'secondary'
     default:
       return 'outline'
   }
@@ -37,6 +41,9 @@ function statusBadgeClassName(status: DeviceCommandLogEntry['status']) {
       return 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300'
     case 'Success':
       return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+    case 'Downloading':
+    case 'Installing':
+      return 'border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300'
     case 'Failed':
       return ''
     default:
@@ -50,6 +57,16 @@ function truncatePayload(payload: string, maxLen = 120): string {
     return trimmed
   }
   return `${trimmed.slice(0, maxLen)}…`
+}
+
+function downloadBatteryReportHtml(output: string) {
+  const blob = new Blob([output], { type: 'text/html' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'battery_report.html'
+  link.click()
+  URL.revokeObjectURL(url)
 }
 
 export function WindowsDeviceActionLogsTab({ hardwareId }: WindowsDeviceActionLogsTabProps) {
@@ -148,8 +165,21 @@ export function WindowsDeviceActionLogsTab({ hardwareId }: WindowsDeviceActionLo
             <DialogTitle>{t('deviceDetail.actionLogs.outputTitle')}</DialogTitle>
           </DialogHeader>
           <pre className="max-h-96 overflow-auto rounded-md bg-muted p-4 text-xs font-mono whitespace-pre-wrap">
-            {selectedOutput?.output?.trim() || t('deviceDetail.actionLogs.noOutput')}
+            {selectedOutput?.commandName === 'battery_report' && selectedOutput.output?.trim()
+              ? t('deviceDetail.actionLogs.batteryReportReady')
+              : selectedOutput?.output?.trim() || t('deviceDetail.actionLogs.noOutput')}
           </pre>
+          {selectedOutput?.commandName === 'battery_report' && selectedOutput.output?.trim() ? (
+            <DialogFooter>
+              <Button
+                type="button"
+                onClick={() => downloadBatteryReportHtml(selectedOutput.output ?? '')}
+              >
+                <Download className="mr-1.5 size-3.5" />
+                {t('deviceDetail.actionLogs.downloadBatteryReport')}
+              </Button>
+            </DialogFooter>
+          ) : null}
         </DialogContent>
       </Dialog>
     </>
