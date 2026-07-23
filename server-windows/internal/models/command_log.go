@@ -11,7 +11,8 @@ const (
 const (
 	CommandNameUninstallUpdate = "UninstallUpdate"
 	CommandNamePowerShell      = "powershell"
-	CommandNameBatteryReport   = "battery_report"
+	CommandNameBatteryReport       = "battery_report"
+	CommandNameInstallWindowsUpdate = "install_windows_update"
 )
 
 const (

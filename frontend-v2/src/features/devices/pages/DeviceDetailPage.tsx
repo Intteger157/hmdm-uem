@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Clock,
   Cpu,
+  Download,
   FileText,
   Globe,
   HardDrive,
@@ -759,10 +760,30 @@ function WindowsUpdateMetricCard({
 }) {
   const [open, setOpen] = useState(false)
   const [rollingBackKb, setRollingBackKb] = useState<string | null>(null)
+  const [installingKb, setInstallingKb] = useState<string | null>(null)
   const pending = device.pendingUpdates != null ? String(device.pendingUpdates) : na
   const lastChecked = formatWindowsUpdateCheck(device.lastUpdateCheck, na)
   const pendingList = device.pendingUpdatesList ?? []
   const installedList = device.installedUpdatesList ?? []
+
+  const handleInstall = async (update: WindowsUpdateItem) => {
+    const kb = update.kb?.trim()
+    if (!kb) {
+      toast.error(t('deviceDetail.windowsUpdateDialog.installMissingKb'))
+      return
+    }
+
+    setInstallingKb(kb)
+    try {
+      await queueWindowsDeviceCommand(hardwareId, 'install_windows_update', kb)
+      toast.success(t('deviceDetail.windowsUpdateDialog.installQueued'))
+      setOpen(false)
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t('deviceDetail.windowsUpdateDialog.installFailed'))
+    } finally {
+      setInstallingKb(null)
+    }
+  }
 
   const handleRollback = async (update: WindowsUpdateItem) => {
     const kb = update.kb?.trim()
@@ -831,8 +852,11 @@ function WindowsUpdateMetricCard({
             <TabsContent value="pending" className="mt-4">
               <WindowsUpdateTable
                 emptyLabel={t('deviceDetail.windowsUpdateDialog.noPending')}
+                installingKb={installingKb}
                 na={na}
+                onInstall={(update) => void handleInstall(update)}
                 rows={pendingList}
+                showInstallActions
                 showInstalledOn={false}
                 t={t}
               />
@@ -863,8 +887,11 @@ function WindowsUpdateTable({
   t,
   showInstalledOn = false,
   showActions = false,
+  showInstallActions = false,
   rollingBackKb = null,
+  installingKb = null,
   onRollback,
+  onInstall,
 }: {
   rows: WindowsUpdateItem[]
   emptyLabel: string
@@ -872,8 +899,11 @@ function WindowsUpdateTable({
   t: TFunction
   showInstalledOn?: boolean
   showActions?: boolean
+  showInstallActions?: boolean
   rollingBackKb?: string | null
+  installingKb?: string | null
   onRollback?: (update: WindowsUpdateItem) => void
+  onInstall?: (update: WindowsUpdateItem) => void
 }) {
   if (rows.length === 0) {
     return <p className="text-sm text-muted-foreground">{emptyLabel}</p>
@@ -891,7 +921,7 @@ function WindowsUpdateTable({
                 {t('deviceDetail.windowsUpdateDialog.columnInstalledOn')}
               </th>
             ) : null}
-            {showActions ? (
+            {showActions || showInstallActions ? (
               <th className="px-3 py-2 font-medium">{t('deviceDetail.windowsUpdateDialog.columnActions')}</th>
             ) : null}
           </tr>
@@ -918,6 +948,22 @@ function WindowsUpdateTable({
                     }}
                   >
                     {t('deviceDetail.windowsUpdateDialog.rollback')}
+                  </Button>
+                </td>
+              ) : null}
+              {showInstallActions ? (
+                <td className="px-3 py-2 align-top">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!row.kb?.trim() || installingKb === row.kb}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      onInstall?.(row)
+                    }}
+                  >
+                    <Download className="mr-1.5 size-3.5" />
+                    {t('deviceDetail.windowsUpdateDialog.install')}
                   </Button>
                 </td>
               ) : null}

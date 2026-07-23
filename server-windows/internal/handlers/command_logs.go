@@ -41,7 +41,7 @@ func (h *WindowsHandler) enqueueDeviceCommandLog(c *gin.Context, hardwareID, com
 	}
 
 	switch commandName {
-	case models.CommandNameUninstallUpdate:
+	case models.CommandNameUninstallUpdate, models.CommandNameInstallWindowsUpdate:
 		payload = strings.ToUpper(payload)
 		if !kbPayloadPattern.MatchString(payload) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "payload must be a KB number like KB5012345"})

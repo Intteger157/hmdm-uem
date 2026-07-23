@@ -26,6 +26,8 @@ func ExecuteDeviceCommand(commandName, payload string) Result {
 		return ExecutePowerShellScript(payload)
 	case "battery_report":
 		return batteryReport()
+	case "install_windows_update":
+		return installWindowsUpdate(payload)
 	default:
 		return Result{Success: false, Message: fmt.Sprintf("unsupported command: %s", commandName)}
 	}
@@ -57,6 +59,62 @@ func uninstallWindowsUpdate(kb string) Result {
 	}
 	if strings.TrimSpace(output) == "" {
 		output = "update uninstall command completed"
+	}
+	return Result{Success: true, Message: output}
+}
+
+func installWindowsUpdate(kb string) Result {
+	kb = strings.TrimSpace(kb)
+	if kb == "" || !kbDigitsPattern.MatchString(kb) {
+		return Result{Success: false, Message: "invalid KB payload"}
+	}
+
+	script := fmt.Sprintf(`
+$ErrorActionPreference = 'Stop'
+$KB = '%s'
+$Session = New-Object -ComObject Microsoft.Update.Session
+$Searcher = $Session.CreateUpdateSearcher()
+$Result = $Searcher.Search("IsInstalled=0 and Type='Software'")
+$Update = $Result.Updates | Where-Object { $_.Title -match $KB }
+if ($Update) {
+    $Downloader = $Session.CreateUpdateDownloader()
+    $Downloader.Updates = New-Object -ComObject Microsoft.Update.UpdateColl
+    $Downloader.Updates.Add($Update)
+    $Downloader.Download()
+    $Installer = $Session.CreateUpdateInstaller()
+    $Installer.Updates = $Downloader.Updates
+    $InstallResult = $Installer.Install()
+    Write-Output "Install ResultCode: $($InstallResult.ResultCode)"
+} else {
+    Write-Output "Update $KB not found in pending list."
+}
+`, escapePowerShellSingleQuoted(kb))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+
+	output, err := captureCommandOutput(cmd)
+	output = strings.TrimSpace(output)
+	if err != nil {
+		if output == "" {
+			output = err.Error()
+		}
+		return Result{Success: false, Message: output}
+	}
+	if output == "" {
+		output = "install windows update command completed"
+	}
+	if strings.Contains(output, "not found in pending list") {
+		return Result{Success: false, Message: output}
+	}
+	if strings.Contains(output, "ResultCode: 2") || strings.Contains(output, "ResultCode: 3") {
+		return Result{Success: true, Message: output}
+	}
+	if strings.Contains(output, "ResultCode:") {
+		return Result{Success: false, Message: output}
 	}
 	return Result{Success: true, Message: output}
 }

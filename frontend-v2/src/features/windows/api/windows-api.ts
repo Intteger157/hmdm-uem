@@ -314,7 +314,7 @@ export async function restartWindowsDeviceService(
   return response.data
 }
 
-export type WindowsDeviceCommandName = 'UninstallUpdate' | 'powershell' | 'battery_report'
+export type WindowsDeviceCommandName = 'UninstallUpdate' | 'powershell' | 'battery_report' | 'install_windows_update'
 
 export interface DeviceCommandLogEntry {
   id: number
