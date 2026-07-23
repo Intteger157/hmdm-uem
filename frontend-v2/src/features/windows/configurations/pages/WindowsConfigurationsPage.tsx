@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
+import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
-import { WindowsConfigProfileFormSheet } from '@/features/windows/configurations/components/WindowsConfigProfileFormSheet'
 import {
   useDeleteWindowsConfigProfileMutation,
   useWindowsConfigProfilesQuery,
@@ -41,8 +41,6 @@ export function WindowsConfigurationsPage() {
 
   const [searchInput, setSearchInput] = useState('')
   const [searchValue, setSearchValue] = useState('')
-  const [sheetOpen, setSheetOpen] = useState(false)
-  const [editTarget, setEditTarget] = useState<WindowsConfigProfile | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<WindowsConfigProfile | null>(null)
 
   const matcher = useCallback(matchProfile, [])
@@ -55,16 +53,6 @@ export function WindowsConfigurationsPage() {
   const handleSearch = (event: React.FormEvent) => {
     event.preventDefault()
     setSearchValue(searchInput)
-  }
-
-  const openCreate = () => {
-    setEditTarget(null)
-    setSheetOpen(true)
-  }
-
-  const openEdit = (profile: WindowsConfigProfile) => {
-    setEditTarget(profile)
-    setSheetOpen(true)
   }
 
   const handleDelete = async () => {
@@ -88,7 +76,7 @@ export function WindowsConfigurationsPage() {
           <h1 className="text-2xl font-semibold tracking-tight">{t('windowsConfigurations.title')}</h1>
           <p className="text-sm text-muted-foreground">{t('windowsConfigurations.subtitle')}</p>
         </div>
-        <Button type="button" onClick={openCreate}>
+        <Button type="button" render={<Link to="/windows/configurations/new" />}>
           <Plus className="size-4" />
           {t('windowsConfigurations.createProfile')}
         </Button>
@@ -154,7 +142,17 @@ export function WindowsConfigurationsPage() {
                       <td className="px-4 py-3 whitespace-nowrap">{formatTimestamp(profile.updatedAt)}</td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-2">
-                          <Button type="button" size="sm" variant="outline" onClick={() => openEdit(profile)}>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            render={
+                              <Link
+                                to="/windows/configurations/$profileId"
+                                params={{ profileId: String(profile.id) }}
+                              />
+                            }
+                          >
                             <Pencil className="mr-1.5 size-3.5" />
                             {t('common.edit')}
                           </Button>
@@ -195,12 +193,6 @@ export function WindowsConfigurationsPage() {
           onPageChange={setPageNum}
         />
       ) : null}
-
-      <WindowsConfigProfileFormSheet
-        open={sheetOpen}
-        onOpenChange={setSheetOpen}
-        profile={editTarget}
-      />
 
       <ConfirmDeleteDialog
         open={deleteTarget != null}

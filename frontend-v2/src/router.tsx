@@ -25,6 +25,7 @@ import { AuthLayout } from '@/layouts/AuthLayout'
 import { FilesListPage } from '@/features/files/pages/FilesListPage'
 import { PublicQrEnrollmentPage } from '@/features/devices/pages/PublicQrEnrollmentPage'
 import { WindowsConfigurationsPage } from '@/features/windows/configurations/pages/WindowsConfigurationsPage'
+import { WindowsConfigEditorPage } from '@/features/windows/configurations/pages/WindowsConfigEditorPage'
 import { WindowsAppCatalogPage } from '@/features/windows/applications/pages/WindowsAppCatalogPage'
 import { WindowsWorkInProgressPage } from '@/features/windows/pages/WindowsWorkInProgressPage'
 import { useAuthStore } from '@/features/auth/store/auth-store'
@@ -189,6 +190,23 @@ const windowsConfigurationsRoute = createRoute({
   component: WindowsConfigurationsPage,
 })
 
+const windowsConfigurationCreateRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/windows/configurations/new',
+  component: function WindowsConfigurationCreateRoute() {
+    return <WindowsConfigEditorPage isNew />
+  },
+})
+
+const windowsConfigurationEditorRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/windows/configurations/$profileId',
+  component: function WindowsConfigurationEditorRoute() {
+    const { profileId } = windowsConfigurationEditorRoute.useParams()
+    return <WindowsConfigEditorPage profileId={Number(profileId)} />
+  },
+})
+
 const windowsScriptsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/windows/scripts',
@@ -256,6 +274,8 @@ const routeTree = rootRoute.addChildren([
     pushRoute,
     messagingRoute,
     windowsConfigurationsRoute,
+    windowsConfigurationCreateRoute,
+    windowsConfigurationEditorRoute,
     windowsScriptsRoute,
     windowsApplicationsRoute,
   ]),
