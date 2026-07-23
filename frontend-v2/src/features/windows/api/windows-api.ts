@@ -41,7 +41,11 @@ export interface WindowsDeviceDto {
   latitude?: number
   longitude?: number
   publicIp?: string
+  localIp?: string
   wifiBssid?: string
+  pendingUpdates?: number
+  lastUpdateCheck?: string
+  bitLockerKey?: string
   lastCheckin: string
   agentStatus?: string
   uninstalledAt?: string
@@ -103,7 +107,11 @@ function mapWindowsDeviceToView(raw: WindowsDeviceDto): DeviceView {
     latitude: raw.latitude || undefined,
     longitude: raw.longitude || undefined,
     publicIp: raw.publicIp || undefined,
+    localIp: raw.localIp || undefined,
     wifiBssid: raw.wifiBssid || undefined,
+    pendingUpdates: raw.pendingUpdates ?? undefined,
+    lastUpdateCheck: raw.lastUpdateCheck || undefined,
+    bitLockerKey: raw.bitLockerKey || undefined,
     lastUpdate: Number.isFinite(lastUpdate) ? lastUpdate : undefined,
   }
 }

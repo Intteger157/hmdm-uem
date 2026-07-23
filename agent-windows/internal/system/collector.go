@@ -31,8 +31,12 @@ type DeviceInfo struct {
 	AntivirusActive   bool                    `json:"antivirus_active"`
 	Latitude          float64                 `json:"latitude,omitempty"`
 	Longitude         float64                 `json:"longitude,omitempty"`
+	LocalIP           string                  `json:"local_ip,omitempty"`
 	PublicIP          string                  `json:"public_ip,omitempty"`
 	WifiBSSID         string                  `json:"wifi_bssid,omitempty"`
+	PendingUpdates    int                     `json:"pending_updates,omitempty"`
+	LastUpdateCheck   string                  `json:"last_update_check,omitempty"`
+	BitLockerKey      string                  `json:"bitlocker_key,omitempty"`
 	DiskEncrypted     bool                    `json:"disk_encrypted"`
 	EncryptionStatus  string                  `json:"encryption_status,omitempty"`
 	Disks             []DiskVolumeInfo        `json:"disks,omitempty"`
@@ -111,7 +115,10 @@ func CollectInfo() (*DeviceInfo, error) {
 
 	uptimeSeconds := collectUptimeSeconds()
 	antivirusName, antivirusActive := collectAntivirusStatus()
-	latitude, longitude, publicIP, wifiBSSID := collectLocationInfo()
+	latitude, longitude, wifiBSSID := collectLocationInfo()
+	localIP := collectLocalIPv4()
+	pendingUpdates, lastUpdateCheck := collectWindowsUpdateInfo()
+	bitLockerKey := collectBitLockerRecoveryKey()
 
 	return &DeviceInfo{
 		Hostname:          hostname,
@@ -125,8 +132,11 @@ func CollectInfo() (*DeviceInfo, error) {
 		AntivirusActive:   antivirusActive,
 		Latitude:          latitude,
 		Longitude:         longitude,
-		PublicIP:          publicIP,
+		LocalIP:           localIP,
 		WifiBSSID:         wifiBSSID,
+		PendingUpdates:    pendingUpdates,
+		LastUpdateCheck:   lastUpdateCheck,
+		BitLockerKey:      bitLockerKey,
 		DiskEncrypted:     diskEncrypted,
 		EncryptionStatus:  encryptionStatus,
 		Disks:             diskVolumes,

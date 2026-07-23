@@ -73,6 +73,18 @@ export function formatUptime(seconds?: number): string {
   return parts.join(', ')
 }
 
+export function formatWindowsUpdateCheck(raw?: string, fallback = 'N/A'): string {
+  const value = raw?.trim()
+  if (!value) {
+    return fallback
+  }
+  const parsed = Date.parse(value)
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return new Date(parsed).toLocaleString()
+  }
+  return value
+}
+
 /** Hides machine/service accounts that the agent may report instead of a logged-in user. */
 export function formatWindowsCurrentUser(
   raw?: string,

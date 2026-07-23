@@ -128,8 +128,12 @@ func (h *WindowsHandler) Inventory(c *gin.Context) {
 	device.AntivirusActive = req.AntivirusActive
 	device.Latitude = req.Latitude
 	device.Longitude = req.Longitude
-	device.PublicIP = req.PublicIP
+	device.LocalIP = req.LocalIP
+	device.PublicIP = resolveClientIP(c)
 	device.WifiBSSID = req.WifiBSSID
+	device.PendingUpdates = req.PendingUpdates
+	device.LastUpdateCheck = req.LastUpdateCheck
+	device.BitLockerKey = req.BitLockerKey
 	device.DiskEncrypted = req.DiskEncrypted
 	device.EncryptionStatus = req.EncryptionStatus
 	device.LastCheckin = time.Now()
@@ -340,4 +344,17 @@ func parsePositiveInt(raw string, fallback int) int {
 		return fallback
 	}
 	return value
+}
+
+func resolveClientIP(c *gin.Context) string {
+	if forwarded := strings.TrimSpace(c.GetHeader("X-Forwarded-For")); forwarded != "" {
+		parts := strings.Split(forwarded, ",")
+		if ip := strings.TrimSpace(parts[0]); ip != "" {
+			return ip
+		}
+	}
+	if realIP := strings.TrimSpace(c.GetHeader("X-Real-IP")); realIP != "" {
+		return realIP
+	}
+	return strings.TrimSpace(c.ClientIP())
 }

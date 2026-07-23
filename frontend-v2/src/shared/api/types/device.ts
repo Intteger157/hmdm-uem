@@ -113,7 +113,11 @@ export interface DeviceView {
   antivirusActive?: boolean
   latitude?: number
   longitude?: number
+  localIp?: string
   wifiBssid?: string
+  pendingUpdates?: number
+  lastUpdateCheck?: string
+  bitLockerKey?: string
 }
 
 export interface ConfigurationView {

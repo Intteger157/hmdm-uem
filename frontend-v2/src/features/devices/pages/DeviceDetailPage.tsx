@@ -8,15 +8,17 @@ import {
   ChevronRight,
   Clock,
   Cpu,
+  Globe,
   HardDrive,
   Hash,
+  Key,
   Layers,
   Lock,
   LockKeyhole,
   LockOpen,
-  MapPin,
   MemoryStick,
   Monitor,
+  RefreshCcw,
   Shield,
   ShieldOff,
   User,
@@ -30,6 +32,7 @@ import {
   formatDeviceTimestamp,
   formatUptime,
   formatWindowsCurrentUser,
+  formatWindowsUpdateCheck,
   resolveEnrollTime,
   resolveLauncherVersion,
   resolvePublicIp,
@@ -394,7 +397,8 @@ function WindowsOverviewGrid({
         valueClassName="text-lg"
       />
       <AntivirusMetricCard className="h-full" device={device} na={na} t={t} />
-      <LocationMetricCard className="h-full" device={device} na={na} t={t} />
+      <NetworkMetricCard className="h-full" device={device} na={na} t={t} />
+      <WindowsUpdateMetricCard className="h-full" device={device} na={na} t={t} />
       <MetricCard
         className="h-full"
         label={t('deviceDetail.metrics.model')}
@@ -463,7 +467,7 @@ function AntivirusMetricCard({
   )
 }
 
-function LocationMetricCard({
+function NetworkMetricCard({
   device,
   na,
   t,
@@ -474,49 +478,62 @@ function LocationMetricCard({
   t: TFunction
   className?: string
 }) {
-  const hasCoordinates =
-    device.latitude != null &&
-    device.longitude != null &&
-    (device.latitude !== 0 || device.longitude !== 0)
-  const mapsUrl = hasCoordinates
-    ? `https://www.google.com/maps?q=${device.latitude},${device.longitude}`
-    : undefined
+  const localIp = device.localIp?.trim() || na
+  const publicIp = device.publicIp?.trim() || na
 
   return (
     <Card className={cn('h-full', className)}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 pb-2 pt-4">
         <CardTitle className="text-sm font-medium text-muted-foreground">
-          {t('deviceDetail.metrics.location')}
+          {t('deviceDetail.metrics.network')}
         </CardTitle>
-        <MapPin className={TILE_HEADER_ICON_CLASS} />
+        <Globe className={TILE_HEADER_ICON_CLASS} />
       </CardHeader>
-      <CardContent className="px-4 pb-4">
-        {hasCoordinates ? (
-          <div className="space-y-1">
-            <p className="font-mono text-lg font-bold leading-tight">
-              {device.latitude!.toFixed(6)}, {device.longitude!.toFixed(6)}
-            </p>
-            {mapsUrl ? (
-              <a
-                href={mapsUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-block text-sm text-primary hover:underline"
-              >
-                {t('deviceDetail.location.openMap')}
-              </a>
-            ) : null}
-          </div>
-        ) : device.publicIp ? (
-          <p className="font-mono text-lg font-bold leading-tight">{device.publicIp}</p>
-        ) : (
-          <p className="text-xl font-bold">{na}</p>
-        )}
-        {device.wifiBssid ? (
-          <p className="mt-2 text-sm text-muted-foreground">
-            {t('deviceDetail.location.wifiBssid', { bssid: device.wifiBssid })}
-          </p>
-        ) : null}
+      <CardContent className="space-y-2 px-4 pb-4">
+        <p className="text-sm text-muted-foreground">
+          {t('deviceDetail.network.localIp')}{' '}
+          <span className="font-mono text-base font-bold text-foreground">{localIp}</span>
+        </p>
+        <p className="text-sm text-muted-foreground">
+          {t('deviceDetail.network.publicIp')}{' '}
+          <span className="font-mono text-base font-bold text-foreground">{publicIp}</span>
+        </p>
+      </CardContent>
+    </Card>
+  )
+}
+
+function WindowsUpdateMetricCard({
+  device,
+  na,
+  t,
+  className,
+}: {
+  device: DeviceView
+  na: string
+  t: TFunction
+  className?: string
+}) {
+  const pending = device.pendingUpdates != null ? String(device.pendingUpdates) : na
+  const lastChecked = formatWindowsUpdateCheck(device.lastUpdateCheck, na)
+
+  return (
+    <Card className={cn('h-full', className)}>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 pb-2 pt-4">
+        <CardTitle className="text-sm font-medium text-muted-foreground">
+          {t('deviceDetail.metrics.windowsUpdate')}
+        </CardTitle>
+        <RefreshCcw className={TILE_HEADER_ICON_CLASS} />
+      </CardHeader>
+      <CardContent className="space-y-2 px-4 pb-4">
+        <p className="text-sm text-muted-foreground">
+          {t('deviceDetail.windowsUpdate.pending')}{' '}
+          <span className="text-base font-bold text-foreground">{pending}</span>
+        </p>
+        <p className="text-sm text-muted-foreground">
+          {t('deviceDetail.windowsUpdate.lastChecked')}{' '}
+          <span className="text-base font-bold text-foreground">{lastChecked}</span>
+        </p>
       </CardContent>
     </Card>
   )
@@ -621,6 +638,8 @@ function WindowsDiskMetrics({
         {disks.map((disk) => {
           const percent =
             disk.totalGb > 0 ? Math.round((disk.usedGb / disk.totalGb) * 100) : undefined
+          const showBitLockerKey =
+            disk.mountPoint === 'C:' && device.bitLockerKey?.trim()
 
           return (
             <div key={disk.mountPoint} className="space-y-1.5">
@@ -643,6 +662,14 @@ function WindowsDiskMetrics({
               ) : (
                 <span className="text-sm">{na}</span>
               )}
+              {showBitLockerKey ? (
+                <div className="flex items-start gap-1.5 pt-0.5">
+                  <Key className="mt-0.5 size-3.5 shrink-0 text-muted-foreground opacity-50" />
+                  <p className="font-mono text-xs leading-relaxed text-muted-foreground">
+                    {device.bitLockerKey}
+                  </p>
+                </div>
+              ) : null}
             </div>
           )
         })}

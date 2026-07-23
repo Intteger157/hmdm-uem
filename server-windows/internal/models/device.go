@@ -38,8 +38,12 @@ type InventoryRequest struct {
 	AntivirusActive   bool                 `json:"antivirus_active"`
 	Latitude          float64              `json:"latitude"`
 	Longitude         float64              `json:"longitude"`
+	LocalIP           string               `json:"local_ip"`
 	PublicIP          string               `json:"public_ip"`
 	WifiBSSID         string               `json:"wifi_bssid"`
+	PendingUpdates    int                  `json:"pending_updates"`
+	LastUpdateCheck   string               `json:"last_update_check"`
+	BitLockerKey      string               `json:"bitlocker_key"`
 }
 
 // WindowsDevice is the persisted Windows agent record in PostgreSQL.
@@ -68,8 +72,12 @@ type WindowsDevice struct {
 	AntivirusActive   bool
 	Latitude          float64
 	Longitude         float64
+	LocalIP           string
 	PublicIP          string
 	WifiBSSID         string
+	PendingUpdates    int
+	LastUpdateCheck   string
+	BitLockerKey      string
 	ServicesUpdatedAt *time.Time
 	LastCheckin       time.Time
 	AgentStatus       string     `gorm:"not null;default:active"`
@@ -110,8 +118,12 @@ type WindowsDeviceJSON struct {
 	AntivirusActive   bool                      `json:"antivirusActive"`
 	Latitude          float64                   `json:"latitude,omitempty"`
 	Longitude         float64                   `json:"longitude,omitempty"`
+	LocalIP           string                    `json:"localIp,omitempty"`
 	PublicIP          string                    `json:"publicIp,omitempty"`
 	WifiBSSID         string                    `json:"wifiBssid,omitempty"`
+	PendingUpdates    int                       `json:"pendingUpdates,omitempty"`
+	LastUpdateCheck   string                    `json:"lastUpdateCheck,omitempty"`
+	BitLockerKey      string                    `json:"bitLockerKey,omitempty"`
 	ServicesUpdatedAt *time.Time                `json:"servicesUpdatedAt,omitempty"`
 	LastCheckin       time.Time                 `json:"lastCheckin"`
 	AgentStatus       string                    `json:"agentStatus"`
@@ -148,8 +160,12 @@ func ToWindowsDeviceJSON(device WindowsDevice) WindowsDeviceJSON {
 		AntivirusActive:   device.AntivirusActive,
 		Latitude:          device.Latitude,
 		Longitude:         device.Longitude,
+		LocalIP:           device.LocalIP,
 		PublicIP:          device.PublicIP,
 		WifiBSSID:         device.WifiBSSID,
+		PendingUpdates:    device.PendingUpdates,
+		LastUpdateCheck:   device.LastUpdateCheck,
+		BitLockerKey:      device.BitLockerKey,
 		ServicesUpdatedAt: device.ServicesUpdatedAt,
 		LastCheckin:       device.LastCheckin,
 		AgentStatus:       normalizeAgentStatus(device.AgentStatus),
