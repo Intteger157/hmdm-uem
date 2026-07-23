@@ -5,9 +5,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$Token,
 
-    [string]$OutDir = "dist",
-
-    [string]$WixImage = "hmdm-wix-builder:local"
+    [string]$OutDir = "dist"
 )
 
 $ErrorActionPreference = "Stop"
@@ -33,74 +31,34 @@ finally {
     Pop-Location
 }
 
-function Invoke-WixBuild {
-    param(
-        [string]$WixCommand
-    )
-
-    Push-Location $installerDir
-    try {
-        & $WixCommand build Package.wxs `
-            -d "ServerUrl=$ServerUrl" `
-            -d "EnrollmentToken=$Token" `
-            -d "AgentBinary=staging/HMDMAgent.exe" `
-            -o "$OutDir/HMDMAgent.msi"
-
-        if ($LASTEXITCODE -ne 0) {
-            throw "wix build failed with exit code $LASTEXITCODE"
-        }
-    }
-    finally {
-        Pop-Location
-    }
-}
-
-function Test-DockerReady {
-    if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
-        return $false
-    }
-
-    docker info *> $null
-    return $LASTEXITCODE -eq 0
-}
-
-$built = $false
-
-if (Test-DockerReady) {
-    Write-Host "Building MSI with WiX in Docker ..."
-    $dockerfile = Join-Path $installerDir "Dockerfile.wix"
-    docker build -f $dockerfile -t $WixImage $installerDir
-    if ($LASTEXITCODE -ne 0) {
-        throw "docker build for WiX failed with exit code $LASTEXITCODE"
-    }
-
-    docker run --rm `
-        -v "${agentRoot}:/src" `
-        -w /src/installer `
-        $WixImage `
-        build Package.wxs `
-            -d "ServerUrl=$ServerUrl" `
-            -d "EnrollmentToken=$Token" `
-            -d "AgentBinary=staging/HMDMAgent.exe" `
-            -o "$OutDir/HMDMAgent.msi"
-
-    if ($LASTEXITCODE -ne 0) {
-        throw "docker wix build failed with exit code $LASTEXITCODE"
-    }
-    $built = $true
-}
-elseif (Get-Command wix -ErrorAction SilentlyContinue) {
-    Write-Host "Building MSI with local WiX ..."
-    Invoke-WixBuild "wix"
-    $built = $true
-}
-
-if (-not $built) {
+if (-not (Get-Command wix -ErrorAction SilentlyContinue)) {
     throw @"
-MSI build failed. Start Docker Desktop and rerun this script.
+WiX v4 is required on Windows to build MSI packages.
 
-Fallback: dotnet tool install --global wix
+Install once:
+  dotnet tool install --global wix
+
+Then restart PowerShell and rerun this script.
+
+Note: WiX cannot build MSI inside a Linux Docker container.
 "@
+}
+
+Write-Host "Building MSI with WiX ..."
+Push-Location $installerDir
+try {
+    wix build Package.wxs `
+        -d "ServerUrl=$ServerUrl" `
+        -d "EnrollmentToken=$Token" `
+        -d "AgentBinary=staging/HMDMAgent.exe" `
+        -o "$OutDir/HMDMAgent.msi"
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "wix build failed with exit code $LASTEXITCODE"
+    }
+}
+finally {
+    Pop-Location
 }
 
 if (-not (Test-Path $outputMsi)) {
