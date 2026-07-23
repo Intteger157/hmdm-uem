@@ -37,6 +37,12 @@ Volume E:
 	}
 }
 
+func TestMapProtectionStatusUnprotectedIgnoresConversion(t *testing.T) {
+	if got := mapProtectionStatus(0, 1); got != "off" {
+		t.Fatalf("unprotected volume with stale conversion=1 should be off, got %q", got)
+	}
+}
+
 func TestSummarizeDiskEncryptionPartial(t *testing.T) {
 	volumes := []DiskVolumeInfo{
 		{MountPoint: "C:", EncryptStatus: "on"},

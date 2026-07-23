@@ -139,25 +139,30 @@ func summarizeDiskEncryption(volumes []DiskVolumeInfo) (primary DiskVolumeInfo, 
 }
 
 func collectEncryptionByDriveLetter() map[string]string {
-	statuses := queryAllManageBDEStatuses()
-	if statuses == nil {
-		statuses = make(map[string]string)
+	statuses := make(map[string]string)
+
+	// Per-drive manage-bde is authoritative — bulk output omits unencrypted volumes
+	// and WMI can report stale ConversionStatus for unprotected drives.
+	for _, drive := range listFixedDriveLetters() {
+		if cliStatus := queryManageBDEStatus(drive); cliStatus == "on" || cliStatus == "off" {
+			statuses[drive] = cliStatus
+		}
 	}
 
-	if wmiStatuses := queryEncryptionViaWMI(); wmiStatuses != nil {
-		for drive, status := range wmiStatuses {
-			if statuses[drive] == "" || statuses[drive] == "unknown" {
+	if bulk := queryAllManageBDEStatuses(); bulk != nil {
+		for drive, status := range bulk {
+			if statuses[drive] == "" && status != "" && status != "unknown" {
 				statuses[drive] = status
 			}
 		}
 	}
 
 	for _, drive := range listFixedDriveLetters() {
-		if statuses[drive] != "" && statuses[drive] != "unknown" {
+		if statuses[drive] != "" {
 			continue
 		}
-		if cliStatus := queryManageBDEStatus(drive); cliStatus != "unknown" {
-			statuses[drive] = cliStatus
+		if wmiStatus := queryEncryptionViaWMIForDrive(drive); wmiStatus != "unknown" {
+			statuses[drive] = wmiStatus
 			continue
 		}
 		if psStatus := queryEncryptionViaPowerShell(drive); psStatus != "unknown" {
@@ -168,9 +173,7 @@ func collectEncryptionByDriveLetter() map[string]string {
 			statuses[drive] = blStatus
 			continue
 		}
-		if statuses[drive] == "" {
-			statuses[drive] = "unknown"
-		}
+		statuses[drive] = "unknown"
 	}
 	return statuses
 }
@@ -205,17 +208,23 @@ func parseManageBDEStatusOutput(text string) map[string]string {
 		}
 
 		switch {
-		case strings.Contains(lower, "protection on"),
-			strings.Contains(lower, "fully encrypted"),
-			strings.Contains(lower, "encryption in progress"),
-			strings.Contains(lower, "decryption in progress"),
-			strings.Contains(lower, "lock status:") && strings.Contains(lower, "locked"),
-			strings.Contains(lower, "bitlocker on"):
+		case strings.Contains(lower, "protection status:") && strings.Contains(lower, "protection on"):
 			statuses[currentDrive] = "on"
-		case strings.Contains(lower, "protection off"),
-			strings.Contains(lower, "fully decrypted"),
+		case strings.Contains(lower, "protection status:") && strings.Contains(lower, "protection off"):
+			statuses[currentDrive] = "off"
+		case strings.Contains(lower, "conversion status:") && strings.Contains(lower, "fully encrypted"):
+			statuses[currentDrive] = "on"
+		case strings.Contains(lower, "conversion status:") && strings.Contains(lower, "fully decrypted"):
+			statuses[currentDrive] = "off"
+		case strings.Contains(lower, "encryption in progress"),
+			strings.Contains(lower, "decryption in progress"):
+			statuses[currentDrive] = "on"
+		case strings.Contains(lower, "lock status:") && strings.Contains(lower, "locked"):
+			statuses[currentDrive] = "on"
+		case strings.Contains(lower, "bitlocker on"):
+			statuses[currentDrive] = "on"
+		case strings.Contains(lower, "bitlocker off"),
 			strings.Contains(lower, "not protected"),
-			strings.Contains(lower, "bitlocker off"),
 			strings.Contains(lower, "encryption method:") && strings.Contains(lower, "none"),
 			strings.Contains(lower, "bitlocker version:") && strings.Contains(lower, "none"):
 			statuses[currentDrive] = "off"
@@ -238,26 +247,18 @@ func parseManageBDEVolumeHeader(line string) string {
 	return ""
 }
 
-func queryEncryptionViaWMI() map[string]string {
+func queryEncryptionViaWMIForDrive(drive string) string {
+	letter := strings.TrimSuffix(drive, ":") + ":"
 	var volumes []win32EncryptableVolumeFull
 	err := wmi.Query(
-		"SELECT DriveLetter, ProtectionStatus, ConversionStatus FROM Win32_EncryptableVolume WHERE DriveLetter IS NOT NULL",
+		fmt.Sprintf("SELECT DriveLetter, ProtectionStatus, ConversionStatus FROM Win32_EncryptableVolume WHERE DriveLetter = '%s'", letter),
 		&volumes,
 		"root\\CIMV2\\Security\\MicrosoftVolumeEncryption",
 	)
-	if err != nil {
-		return nil
+	if err != nil || len(volumes) == 0 {
+		return "unknown"
 	}
-
-	statuses := make(map[string]string, len(volumes))
-	for _, volume := range volumes {
-		drive := normalizeDriveLetter(volume.DriveLetter)
-		if drive == "" {
-			continue
-		}
-		statuses[drive] = mapProtectionStatus(volume.ProtectionStatus, volume.ConversionStatus)
-	}
-	return statuses
+	return mapProtectionStatus(volumes[0].ProtectionStatus, volumes[0].ConversionStatus)
 }
 
 func mapProtectionStatus(protectionStatus, conversionStatus uint32) string {
@@ -265,9 +266,7 @@ func mapProtectionStatus(protectionStatus, conversionStatus uint32) string {
 	case 1:
 		return "on"
 	case 0:
-		if conversionStatus == 1 || conversionStatus == 2 || conversionStatus == 3 || conversionStatus == 4 {
-			return "on"
-		}
+		// Unprotected volumes are not encrypted even if ConversionStatus is stale.
 		return "off"
 	case 2:
 		if conversionStatus == 1 || conversionStatus == 2 || conversionStatus == 3 || conversionStatus == 4 {
@@ -291,15 +290,15 @@ func queryManageBDEStatus(drive string) string {
 	text := strings.ToLower(string(output))
 
 	switch {
-	case strings.Contains(text, "protection on"),
-		strings.Contains(text, "fully encrypted"),
+	case strings.Contains(text, "protection status:") && strings.Contains(text, "protection on"),
+		strings.Contains(text, "conversion status:") && strings.Contains(text, "fully encrypted"),
 		strings.Contains(text, "encryption in progress"),
 		strings.Contains(text, "decryption in progress"),
 		strings.Contains(text, "lock status:") && strings.Contains(text, "locked"),
 		strings.Contains(text, "bitlocker on"):
 		return "on"
-	case strings.Contains(text, "protection off"),
-		strings.Contains(text, "fully decrypted"),
+	case strings.Contains(text, "protection status:") && strings.Contains(text, "protection off"),
+		strings.Contains(text, "conversion status:") && strings.Contains(text, "fully decrypted"),
 		strings.Contains(text, "not protected"),
 		strings.Contains(text, "bitlocker off"),
 		strings.Contains(text, "bitlocker version:    none"),
@@ -317,7 +316,7 @@ func queryManageBDEStatus(drive string) string {
 func queryEncryptionViaPowerShell(drive string) string {
 	letter := strings.TrimSuffix(drive, ":") + ":"
 	script := fmt.Sprintf(
-		"$v = Get-CimInstance -Namespace 'root/CIMV2/Security/MicrosoftVolumeEncryption' -ClassName Win32_EncryptableVolume -Filter \"DriveLetter='%s'\" -ErrorAction SilentlyContinue | Select-Object -First 1; if ($null -eq $v) { exit 2 }; switch ($v.ProtectionStatus) { 1 { 'on' } 0 { if ($v.ConversionStatus -eq 1 -or $v.ConversionStatus -eq 2 -or $v.ConversionStatus -eq 3) { 'on' } else { 'off' } } default { 'unknown' } }",
+		"$v = Get-CimInstance -Namespace 'root/CIMV2/Security/MicrosoftVolumeEncryption' -ClassName Win32_EncryptableVolume -Filter \"DriveLetter='%s'\" -ErrorAction SilentlyContinue | Select-Object -First 1; if ($null -eq $v) { exit 2 }; switch ($v.ProtectionStatus) { 1 { 'on' } 0 { 'off' } default { 'unknown' } }",
 		letter,
 	)
 
