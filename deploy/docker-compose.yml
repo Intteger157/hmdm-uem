@@ -71,6 +71,12 @@ services:
       FILES_DIR: /opt/hmdm/files
     volumes:
       - ./volumes/files:/opt/hmdm/files
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8082/rest/windows/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   frontend-v2:
     build:
