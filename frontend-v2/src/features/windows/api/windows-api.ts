@@ -6,6 +6,7 @@ import type {
   DeviceListView,
   DeviceSearchParams,
   DeviceView,
+  BitLockerStatus,
 } from '@/shared/api/types/device'
 import type {
   DeviceDiskVolume,
@@ -317,7 +318,7 @@ export function filesRelativePathFromUrl(fileUrl: string): string {
 function mapEncryptionToBitLocker(
   status: WindowsEncryptionStatus | undefined,
   diskEncrypted?: boolean,
-): 'on' | 'off' | 'unknown' {
+): BitLockerStatus {
   if (status === 'all') {
     return 'on'
   }

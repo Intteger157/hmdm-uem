@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, ChevronRight } from 'lucide-react'
+import { ArrowLeft, ChevronRight, Lock, LockKeyhole, LockOpen } from 'lucide-react'
 import { DeviceActionsPanel } from '@/features/devices/components/DeviceActionsPanel'
 import { useDeviceByNumber } from '@/features/devices/hooks/use-device-by-number-query'
 import {
@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress, ProgressLabel, ProgressValue } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { Platform } from '@/shared/api/types/platform'
 import type { DeviceView } from '@/shared/api/types/device'
 import type { DeviceDiskVolume } from '@/shared/api/types/device-detail'
@@ -154,10 +155,6 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
               value={device.ramGb != null ? `${device.ramGb} GB` : NA}
             />
             <WindowsDiskMetrics device={device} na={NA} t={t} />
-            <MetricCard
-              label={t('deviceDetail.metrics.encryption')}
-              value={resolveEncryptionLabel(device, t)}
-            />
             <MetricCard
               label={t('deviceDetail.metrics.currentUser')}
               value={formatWindowsCurrentUser(device.currentUser, NA, device.localUsers)}
@@ -304,28 +301,6 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
   )
 }
 
-function resolveEncryptionLabel(device: DeviceView, t: TFunction): string {
-  switch (device.encryptionStatus) {
-    case 'all':
-      return t('deviceDetail.encrypted')
-    case 'partial':
-      return t('deviceDetail.partiallyEncrypted')
-    case 'none':
-      return t('deviceDetail.notEncrypted')
-    case 'unknown':
-      return t('deviceDetail.encryptionUnknown')
-    default:
-      break
-  }
-  if (device.diskEncrypted === true) {
-    return t('deviceDetail.encrypted')
-  }
-  if (device.diskEncrypted === false) {
-    return t('deviceDetail.notEncrypted')
-  }
-  return t('deviceDetail.encryptionUnknown')
-}
-
 function formatDriveEncryptStatus(status: DeviceDiskVolume['encryptStatus'], t: TFunction): string {
   switch (status) {
     case 'on':
@@ -335,6 +310,50 @@ function formatDriveEncryptStatus(status: DeviceDiskVolume['encryptStatus'], t: 
     default:
       return t('deviceDetail.encryptionUnknown')
   }
+}
+
+function DriveEncryptionIcon({
+  status,
+  t,
+}: {
+  status: DeviceDiskVolume['encryptStatus']
+  t: TFunction
+}) {
+  const label = formatDriveEncryptStatus(status, t)
+
+  const iconConfig = {
+    on: {
+      Icon: Lock,
+      className: 'text-emerald-600 dark:text-emerald-400',
+    },
+    off: {
+      Icon: LockOpen,
+      className: 'text-muted-foreground',
+    },
+    unknown: {
+      Icon: LockKeyhole,
+      className: 'text-muted-foreground/50',
+    },
+  }[status === 'on' || status === 'off' ? status : 'unknown']
+
+  const { Icon, className } = iconConfig
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <span
+            role="img"
+            aria-label={label}
+            className="inline-flex shrink-0 items-center"
+          >
+            <Icon className={cn('size-3.5', className)} strokeWidth={2.25} />
+          </span>
+        }
+      />
+      <TooltipContent side="top">{label}</TooltipContent>
+    </Tooltip>
+  )
 }
 
 function WindowsDiskMetrics({
@@ -388,17 +407,17 @@ function WindowsDiskMetrics({
         {disks.map((disk) => {
           const percent =
             disk.totalGb > 0 ? Math.round((disk.usedGb / disk.totalGb) * 100) : undefined
-          const title = disk.label
-            ? `${disk.mountPoint} · ${disk.label}`
-            : disk.mountPoint
 
           return (
             <div key={disk.mountPoint} className="space-y-1.5">
-              <div className="flex items-center justify-between gap-3 text-xs">
-                <span className="font-medium">{title}</span>
-                <span className="text-muted-foreground">
-                  {formatDriveEncryptStatus(disk.encryptStatus, t)}
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="inline-flex items-center gap-1 font-medium">
+                  {disk.mountPoint}
+                  <DriveEncryptionIcon status={disk.encryptStatus} t={t} />
                 </span>
+                {disk.label ? (
+                  <span className="truncate text-muted-foreground">· {disk.label}</span>
+                ) : null}
               </div>
               {percent != null ? (
                 <Progress value={percent}>
