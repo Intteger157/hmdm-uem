@@ -183,7 +183,7 @@ export function WindowsConfigProfileFormSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-xl">
+      <SheetContent side="right" className="w-full overflow-y-auto md:max-w-2xl">
         <SheetHeader>
           <SheetTitle>
             {isEdit ? t('windowsConfigurations.form.editTitle') : t('windowsConfigurations.form.createTitle')}
@@ -194,11 +194,11 @@ export function WindowsConfigProfileFormSheet({
         <Form {...form}>
           <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-1 flex-col gap-4 px-4 pb-4">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="general">{t('windowsConfigurations.form.general')}</TabsTrigger>
-                <TabsTrigger value="policies">{t('windowsConfigurations.form.securityPolicies')}</TabsTrigger>
-                <TabsTrigger value="apps">{t('windowsConfigurations.form.requiredApps')}</TabsTrigger>
-                <TabsTrigger value="assignments">{t('windowsConfigurations.form.assignments')}</TabsTrigger>
+              <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 p-1">
+                <TabsTrigger value="general" className="whitespace-nowrap">{t('windowsConfigurations.form.general')}</TabsTrigger>
+                <TabsTrigger value="policies" className="whitespace-nowrap">{t('windowsConfigurations.form.securityPolicies')}</TabsTrigger>
+                <TabsTrigger value="apps" className="whitespace-nowrap">{t('windowsConfigurations.form.requiredApps')}</TabsTrigger>
+                <TabsTrigger value="assignments" className="whitespace-nowrap">{t('windowsConfigurations.form.assignments')}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="general" className="mt-4 space-y-4">
