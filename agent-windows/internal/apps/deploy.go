@@ -70,7 +70,10 @@ func DeployRequired(required []RequiredApp, opts DeployOptions) {
 	state, err := LoadAppsState()
 	if err != nil {
 		log.Printf("app state load failed: %v", err)
-		state = AppsState{LastCheckTimes: map[string]string{}}
+		state = AppsState{
+			LastCheckTimes: map[string]string{},
+			InstalledApps:  map[string]InstalledAppEntry{},
+		}
 	}
 
 	installed := system.CollectInstalledSoftware()
@@ -95,6 +98,17 @@ func DeployRequired(required []RequiredApp, opts DeployOptions) {
 }
 
 func deployApp(app RequiredApp, opts DeployOptions, state *AppsState, installed []system.InstalledSoftwareInfo) (checked bool, err error) {
+	if state.HasInstalledVersion(app.ID, app.Version) {
+		log.Printf(
+			"app deploy: skip id=%d name=%q version=%q (already installed per local cache)",
+			app.ID,
+			app.Name,
+			app.Version,
+		)
+		reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusSuccess, "")
+		return false, nil
+	}
+
 	if !beginAppDeploy(app.ID) {
 		log.Printf("app deploy: skip id=%d name=%q, install already in progress on device", app.ID, app.Name)
 		return false, nil
@@ -147,14 +161,15 @@ func deployWingetApp(app RequiredApp, opts DeployOptions, state *AppsState) (boo
 		}
 		progress.Report(InstallStatusSuccess, output)
 		reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusSuccess, "")
-		state.MarkChecked(app.ID, time.Now().UTC())
+		state.MarkInstalled(app.ID, app.Version)
 		return true, nil
 	}
 
 	if !shouldCheckUpdate(app, state) {
 		progress.Report(InstallStatusSuccess, fmt.Sprintf("Package %q already installed; update check skipped", wingetID))
 		reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusSuccess, "Already installed")
-		return false, nil
+		state.MarkInstalled(app.ID, app.Version)
+		return true, nil
 	}
 
 	progress.Report(InstallStatusInstalling, fmt.Sprintf("Running: winget upgrade --id %s --silent", wingetID))
@@ -165,7 +180,7 @@ func deployWingetApp(app RequiredApp, opts DeployOptions, state *AppsState) (boo
 	}
 	progress.Report(InstallStatusSuccess, output)
 	reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusSuccess, "")
-	state.MarkChecked(app.ID, time.Now().UTC())
+	state.MarkInstalled(app.ID, app.Version)
 	return true, nil
 }
 
@@ -190,9 +205,10 @@ func deployURLApp(app RequiredApp, opts DeployOptions, state *AppsState, install
 	)
 
 	if alreadyInstalled && !shouldCheckUpdate(app, state) {
+		state.MarkInstalled(app.ID, app.Version)
 		progress.Report(InstallStatusSuccess, "App already installed; skipping deployment")
 		reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusSuccess, "Already installed")
-		return false, nil
+		return true, nil
 	}
 
 	resolvedURL, err := resolveDownloadURL(opts.BaseURL, rawURL)
@@ -235,7 +251,7 @@ func deployURLApp(app RequiredApp, opts DeployOptions, state *AppsState, install
 	progress.Report(InstallStatusSuccess, resultMessage)
 	reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusSuccess, resultMessage)
 
-	state.MarkChecked(app.ID, time.Now().UTC())
+	state.MarkInstalled(app.ID, app.Version)
 	return true, nil
 }
 

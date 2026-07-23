@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hmdm/server-windows/internal/db"
@@ -210,34 +209,9 @@ func (h *WindowsHandler) ReportDeviceAppStatus(c *gin.Context) {
 		return
 	}
 
-	now := time.Now()
-	record := models.DeviceAppStatus{
-		DeviceID:     device.ID,
-		AppID:        req.AppID,
-		Status:       status,
-		ErrorMessage: strings.TrimSpace(req.Error),
-		UpdatedAt:    now,
-	}
-
-	var existing models.DeviceAppStatus
-	err := db.DB.Where("device_id = ? AND app_id = ?", device.ID, req.AppID).First(&existing).Error
-	switch {
-	case errors.Is(err, gorm.ErrRecordNotFound):
-		if err := db.DB.Create(&record).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save app status"})
-			return
-		}
-	case err != nil:
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup app status"})
+	if err := upsertDeviceAppStatus(device.ID, req.AppID, status, req.Error); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save app status"})
 		return
-	default:
-		existing.Status = status
-		existing.ErrorMessage = record.ErrorMessage
-		existing.UpdatedAt = now
-		if err := db.DB.Save(&existing).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update app status"})
-			return
-		}
 	}
 
 	log.Printf("[report-app-status] device_id=%d app_id=%d status=%q", device.ID, req.AppID, status)

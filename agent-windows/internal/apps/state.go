@@ -8,14 +8,22 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
 
 const appsStateFilePath = `C:\ProgramData\HMDM\Agent\apps_state.json`
 
-// AppsState tracks per-app update check timestamps on the device.
+// InstalledAppEntry records a successful deployment for one catalog app.
+type InstalledAppEntry struct {
+	Version     string `json:"version"`
+	InstalledAt string `json:"installedAt,omitempty"`
+}
+
+// AppsState tracks per-app update checks and locally confirmed installs on the device.
 type AppsState struct {
-	LastCheckTimes map[string]string `json:"lastCheckTimes"`
+	LastCheckTimes map[string]string            `json:"lastCheckTimes"`
+	InstalledApps  map[string]InstalledAppEntry `json:"installedApps,omitempty"`
 }
 
 func LoadAppsState() (AppsState, error) {
@@ -34,6 +42,9 @@ func LoadAppsState() (AppsState, error) {
 	if state.LastCheckTimes == nil {
 		state.LastCheckTimes = map[string]string{}
 	}
+	if state.InstalledApps == nil {
+		state.InstalledApps = map[string]InstalledAppEntry{}
+	}
 	return state, nil
 }
 
@@ -43,6 +54,9 @@ func SaveAppsState(state AppsState) error {
 	}
 	if state.LastCheckTimes == nil {
 		state.LastCheckTimes = map[string]string{}
+	}
+	if state.InstalledApps == nil {
+		state.InstalledApps = map[string]InstalledAppEntry{}
 	}
 
 	payload, err := json.MarshalIndent(state, "", "  ")
@@ -72,6 +86,34 @@ func (state *AppsState) MarkChecked(appID uint, checkedAt time.Time) {
 		state.LastCheckTimes = map[string]string{}
 	}
 	state.LastCheckTimes[appKey(appID)] = checkedAt.UTC().Format(time.RFC3339)
+}
+
+// HasInstalledVersion reports whether the agent already deployed this app version successfully.
+func (state AppsState) HasInstalledVersion(appID uint, version string) bool {
+	if state.InstalledApps == nil {
+		return false
+	}
+	entry, ok := state.InstalledApps[appKey(appID)]
+	if !ok {
+		return false
+	}
+	return appVersionsMatch(entry.Version, version)
+}
+
+// MarkInstalled records a successful deployment in the local cache.
+func (state *AppsState) MarkInstalled(appID uint, version string) {
+	if state.InstalledApps == nil {
+		state.InstalledApps = map[string]InstalledAppEntry{}
+	}
+	state.InstalledApps[appKey(appID)] = InstalledAppEntry{
+		Version:     strings.TrimSpace(version),
+		InstalledAt: time.Now().UTC().Format(time.RFC3339),
+	}
+	state.MarkChecked(appID, time.Now().UTC())
+}
+
+func appVersionsMatch(installed, required string) bool {
+	return strings.EqualFold(strings.TrimSpace(installed), strings.TrimSpace(required))
 }
 
 func appKey(appID uint) string {

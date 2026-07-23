@@ -108,9 +108,15 @@ func buildEffectiveConfig(device models.WindowsDevice) (models.EffectiveConfigRe
 		return models.EffectiveConfigResponse{}, err
 	}
 
+	mergedApps := mergeRequiredApps(requiredApps, directApps)
+	filteredApps, err := excludeSuccessfulDirectApps(device.ID, mergedApps)
+	if err != nil {
+		return models.EffectiveConfigResponse{}, err
+	}
+
 	response := models.EffectiveConfigResponse{
 		Payload:         merged,
-		RequiredApps:    mergeRequiredApps(requiredApps, directApps),
+		RequiredApps:    filteredApps,
 		AppliedProfiles: applied,
 	}
 
@@ -279,4 +285,67 @@ func mergeRequiredApps(lists ...[]models.RequiredApp) []models.RequiredApp {
 		}
 	}
 	return merged
+}
+
+func excludeSuccessfulDirectApps(deviceID uint, apps []models.RequiredApp) ([]models.RequiredApp, error) {
+	directAppIDs, err := loadDirectAssignedAppIDSet(deviceID)
+	if err != nil || len(directAppIDs) == 0 {
+		return apps, err
+	}
+
+	directIDs := make([]uint, 0, len(directAppIDs))
+	for appID := range directAppIDs {
+		directIDs = append(directIDs, appID)
+	}
+
+	successfulDirectIDs, err := loadSuccessfulAppIDSet(deviceID, directIDs)
+	if err != nil || len(successfulDirectIDs) == 0 {
+		return apps, err
+	}
+
+	filtered := make([]models.RequiredApp, 0, len(apps))
+	for _, app := range apps {
+		if _, isDirect := directAppIDs[app.ID]; isDirect {
+			if _, isSuccessful := successfulDirectIDs[app.ID]; isSuccessful {
+				continue
+			}
+		}
+		filtered = append(filtered, app)
+	}
+	return filtered, nil
+}
+
+func loadDirectAssignedAppIDSet(deviceID uint) (map[uint]struct{}, error) {
+	var links []models.WindowsDeviceApp
+	if err := db.DB.Where("device_id = ?", deviceID).Find(&links).Error; err != nil {
+		return nil, err
+	}
+	if len(links) == 0 {
+		return map[uint]struct{}{}, nil
+	}
+
+	appIDs := make(map[uint]struct{}, len(links))
+	for _, link := range links {
+		appIDs[link.AppID] = struct{}{}
+	}
+	return appIDs, nil
+}
+
+func loadSuccessfulAppIDSet(deviceID uint, appIDs []uint) (map[uint]struct{}, error) {
+	if len(appIDs) == 0 {
+		return map[uint]struct{}{}, nil
+	}
+
+	var statuses []models.DeviceAppStatus
+	if err := db.DB.
+		Where("device_id = ? AND app_id IN ? AND status = ?", deviceID, appIDs, models.AppStatusSuccess).
+		Find(&statuses).Error; err != nil {
+		return nil, err
+	}
+
+	successful := make(map[uint]struct{}, len(statuses))
+	for _, status := range statuses {
+		successful[status.AppID] = struct{}{}
+	}
+	return successful, nil
 }

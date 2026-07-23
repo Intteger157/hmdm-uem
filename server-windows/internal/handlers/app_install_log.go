@@ -74,6 +74,9 @@ func (h *WindowsHandler) ReportAppInstallLog(c *gin.Context) {
 			return
 		}
 		log.Printf("[app-install-log] updated id=%d hardware_id=%q app_id=%d status=%q", existing.ID, deviceID, req.AppID, status)
+		if isTerminalAppInstallLogStatus(status) {
+			syncDirectAppStatusFromInstallLog(deviceID, req.AppID, status, output)
+		}
 		c.Status(http.StatusOK)
 		return
 	}
@@ -94,7 +97,19 @@ func (h *WindowsHandler) ReportAppInstallLog(c *gin.Context) {
 	}
 
 	log.Printf("[app-install-log] created id=%d hardware_id=%q app_id=%d status=%q", entry.ID, deviceID, req.AppID, status)
+	if isTerminalAppInstallLogStatus(status) {
+		syncDirectAppStatusFromInstallLog(deviceID, req.AppID, status, output)
+	}
 	c.Status(http.StatusOK)
+}
+
+func isTerminalAppInstallLogStatus(status string) bool {
+	switch status {
+	case models.AppInstallStatusSuccess, models.AppInstallStatusFailed:
+		return true
+	default:
+		return false
+	}
 }
 
 func resolveAppInstallLogTarget(deviceID string, appID uint, status string) (*models.DeviceCommandLog, bool, error) {

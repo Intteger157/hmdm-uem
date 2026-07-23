@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -110,12 +111,17 @@ func (h *WindowsHandler) UnassignDeviceApp(c *gin.Context) {
 }
 
 func upsertDeviceAppStatusPending(deviceID, appID uint) error {
+	return upsertDeviceAppStatus(deviceID, appID, models.AppStatusPending, "")
+}
+
+func upsertDeviceAppStatus(deviceID, appID uint, status, errorMessage string) error {
 	now := time.Now()
 	record := models.DeviceAppStatus{
-		DeviceID:  deviceID,
-		AppID:     appID,
-		Status:    models.AppStatusPending,
-		UpdatedAt: now,
+		DeviceID:     deviceID,
+		AppID:        appID,
+		Status:       status,
+		ErrorMessage: strings.TrimSpace(errorMessage),
+		UpdatedAt:    now,
 	}
 
 	var existing models.DeviceAppStatus
@@ -126,11 +132,42 @@ func upsertDeviceAppStatusPending(deviceID, appID uint) error {
 	case err != nil:
 		return err
 	default:
-		existing.Status = models.AppStatusPending
-		existing.ErrorMessage = ""
+		existing.Status = status
+		existing.ErrorMessage = record.ErrorMessage
 		existing.UpdatedAt = now
 		return db.DB.Save(&existing).Error
 	}
+}
+
+func syncDirectAppStatusFromInstallLog(hardwareID string, appID uint, installStatus, output string) {
+	var device models.WindowsDevice
+	if err := db.DB.Where("hardware_id = ?", hardwareID).First(&device).Error; err != nil {
+		log.Printf("[app-install-log] direct status sync skipped: device lookup failed hardware_id=%q err=%v", hardwareID, err)
+		return
+	}
+
+	var link models.WindowsDeviceApp
+	if err := db.DB.Where("device_id = ? AND app_id = ?", device.ID, appID).First(&link).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return
+		}
+		log.Printf("[app-install-log] direct status sync skipped: assignment lookup failed device_id=%d app_id=%d err=%v", device.ID, appID, err)
+		return
+	}
+
+	appStatus := models.AppStatusSuccess
+	errorMessage := ""
+	if installStatus == models.AppInstallStatusFailed {
+		appStatus = models.AppStatusFailed
+		errorMessage = output
+	}
+
+	if err := upsertDeviceAppStatus(device.ID, appID, appStatus, errorMessage); err != nil {
+		log.Printf("[app-install-log] direct status sync failed: device_id=%d app_id=%d status=%q err=%v", device.ID, appID, appStatus, err)
+		return
+	}
+
+	log.Printf("[app-install-log] synced direct app status device_id=%d app_id=%d status=%q", device.ID, appID, appStatus)
 }
 
 func deleteDirectDeviceApps(deviceID uint) error {
