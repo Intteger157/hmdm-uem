@@ -29,6 +29,20 @@ type installPayload struct {
 	URL string `json:"url"`
 }
 
+// ExecutePowerShellScript runs a script string and returns captured stdout/stderr.
+func ExecutePowerShellScript(script string) Result {
+	script = strings.TrimSpace(script)
+	if script == "" {
+		return Result{Success: false, Message: "powershell script is empty"}
+	}
+
+	payload, err := json.Marshal(powershellPayload{Script: script})
+	if err != nil {
+		return Result{Success: false, Message: fmt.Sprintf("marshal payload: %v", err)}
+	}
+	return runPowerShell(payload)
+}
+
 // Execute runs a remote command locally on the Windows agent.
 func Execute(action string, payload json.RawMessage) Result {
 	switch action {

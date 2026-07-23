@@ -44,6 +44,14 @@ function statusBadgeClassName(status: DeviceCommandLogEntry['status']) {
   }
 }
 
+function truncatePayload(payload: string, maxLen = 120): string {
+  const trimmed = payload.trim()
+  if (trimmed.length <= maxLen) {
+    return trimmed
+  }
+  return `${trimmed.slice(0, maxLen)}…`
+}
+
 export function WindowsDeviceActionLogsTab({ hardwareId }: WindowsDeviceActionLogsTabProps) {
   const { t } = useTranslation()
   const [selectedOutput, setSelectedOutput] = useState<DeviceCommandLogEntry | null>(null)
@@ -94,7 +102,12 @@ export function WindowsDeviceActionLogsTab({ hardwareId }: WindowsDeviceActionLo
                       {formatDeviceTimestamp(Date.parse(entry.createdAt))}
                     </td>
                     <td className="px-4 py-2.5 font-medium">{entry.commandName}</td>
-                    <td className="px-4 py-2.5 font-mono text-xs">{entry.payload}</td>
+                    <td
+                      className="max-w-xs px-4 py-2.5 font-mono text-xs truncate"
+                      title={entry.payload}
+                    >
+                      {truncatePayload(entry.payload)}
+                    </td>
                     <td className="px-4 py-2.5">
                       <Badge
                         variant={statusBadgeVariant(entry.status)}

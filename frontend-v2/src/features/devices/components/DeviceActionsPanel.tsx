@@ -39,6 +39,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
 import { useWindowsDeviceCommandMutation } from '@/features/windows/hooks/use-windows-device-command'
+import { useQueueWindowsDeviceCommandMutation } from '@/features/windows/hooks/use-queue-windows-device-command'
 import {
   WindowsInstallDialog,
   WindowsPowerShellDialog,
@@ -128,6 +129,7 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
   const [installOpen, setInstallOpen] = useState(false)
 
   const windowsCommandMutation = useWindowsDeviceCommandMutation(device.number)
+  const queueLogMutation = useQueueWindowsDeviceCommandMutation(device.number)
 
   const runAndroidCommand = async (actionId: AndroidCommandAction) => {
     try {
@@ -387,13 +389,17 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
       <WindowsPowerShellDialog
         open={powershellOpen}
         onOpenChange={setPowershellOpen}
-        isPending={windowsCommandMutation.isPending}
+        isPending={queueLogMutation.isPending}
         onSubmit={(script) => {
-          void queueWindowsCommand('powershell', { script }).then((ok) => {
-            if (ok) {
+          void queueLogMutation
+            .mutateAsync({ commandName: 'powershell', payload: script })
+            .then(() => {
               setPowershellOpen(false)
-            }
-          })
+              toast.success(t('deviceDetail.actions.powershellQueued'))
+            })
+            .catch(() => {
+              toast.error(t('deviceDetail.actions.error'))
+            })
         }}
       />
 

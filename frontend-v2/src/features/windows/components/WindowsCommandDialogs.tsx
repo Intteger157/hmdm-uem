@@ -42,7 +42,7 @@ export function WindowsPowerShellDialog({
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>{t('deviceDetail.actions.powershell')}</DialogTitle>
-          <DialogDescription>{t('deviceDetail.actions.powershellDescription')}</DialogDescription>
+          <DialogDescription>{t('deviceDetail.actions.powershellModalDescription')}</DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
           <Label htmlFor="windows-ps-script">{t('deviceDetail.actions.powershellScript')}</Label>
@@ -50,8 +50,8 @@ export function WindowsPowerShellDialog({
             id="windows-ps-script"
             value={script}
             onChange={(e) => setScript(e.target.value)}
-            rows={8}
-            className="font-mono text-xs"
+            rows={10}
+            className="font-mono text-sm w-full bg-muted/50"
           />
         </div>
         <DialogFooter>
@@ -59,7 +59,7 @@ export function WindowsPowerShellDialog({
             {t('common.cancel')}
           </Button>
           <Button type="button" onClick={handleSubmit} disabled={isPending || !script.trim()}>
-            {t('deviceDetail.actions.run')}
+            {t('deviceDetail.actions.powershellExecute')}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -310,6 +310,8 @@ export async function restartWindowsDeviceService(
   return response.data
 }
 
+export type WindowsDeviceCommandName = 'UninstallUpdate' | 'powershell'
+
 export interface DeviceCommandLogEntry {
   id: number
   commandName: string
@@ -335,7 +337,7 @@ interface EnqueueDeviceCommandResponse {
 /** Queues a logged remote command (DeviceCommandLog) for a Windows agent. */
 export async function queueWindowsDeviceCommand(
   hardwareId: string,
-  commandName: 'UninstallUpdate',
+  commandName: WindowsDeviceCommandName,
   payload: string,
 ): Promise<EnqueueDeviceCommandResponse> {
   if (isMockApiEnabled()) {

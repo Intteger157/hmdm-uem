@@ -20,6 +20,8 @@ func ExecuteDeviceCommand(commandName, payload string) Result {
 	switch commandName {
 	case "UninstallUpdate":
 		return uninstallWindowsUpdate(payload)
+	case "powershell":
+		return ExecutePowerShellScript(payload)
 	default:
 		return Result{Success: false, Message: fmt.Sprintf("unsupported command: %s", commandName)}
 	}

@@ -47,6 +47,8 @@ func (h *WindowsHandler) enqueueDeviceCommandLog(c *gin.Context, hardwareID, com
 			c.JSON(http.StatusBadRequest, gin.H{"error": "payload must be a KB number like KB5012345"})
 			return
 		}
+	case models.CommandNamePowerShell:
+		// payload is raw script text (non-empty check above)
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported commandName"})
 		return
@@ -224,6 +226,28 @@ func toDeviceCommandLogJSON(entry models.DeviceCommandLog) models.DeviceCommandL
 		CreatedAt:   entry.CreatedAt,
 		ExecutedAt:  entry.ExecutedAt,
 	}
+}
+
+func parsePowerShellPayload(raw json.RawMessage) string {
+	if len(raw) == 0 {
+		return ""
+	}
+
+	var asObject struct {
+		Script string `json:"script"`
+	}
+	if err := json.Unmarshal(raw, &asObject); err == nil {
+		if script := strings.TrimSpace(asObject.Script); script != "" {
+			return script
+		}
+	}
+
+	var asString string
+	if err := json.Unmarshal(raw, &asString); err == nil {
+		return strings.TrimSpace(asString)
+	}
+
+	return strings.TrimSpace(string(raw))
 }
 
 func parseUninstallUpdatePayload(raw json.RawMessage) (string, bool) {

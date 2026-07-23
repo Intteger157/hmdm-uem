@@ -8,7 +8,10 @@ const (
 	CommandLogStatusFailed  = "Failed"
 )
 
-const CommandNameUninstallUpdate = "UninstallUpdate"
+const (
+	CommandNameUninstallUpdate = "UninstallUpdate"
+	CommandNamePowerShell      = "powershell"
+)
 
 // DeviceCommandLog stores queued and completed remote commands with raw agent output.
 type DeviceCommandLog struct {

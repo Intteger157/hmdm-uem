@@ -56,6 +56,16 @@ func (h *WindowsHandler) EnqueueCommand(c *gin.Context) {
 		return
 	}
 
+	if action == models.CommandNamePowerShell {
+		script := parsePowerShellPayload(req.Payload)
+		if script == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "powershell script is required"})
+			return
+		}
+		h.enqueueDeviceCommandLog(c, hardwareID, models.CommandNamePowerShell, script)
+		return
+	}
+
 	var device models.WindowsDevice
 	if err := db.DB.Where("hardware_id = ?", hardwareID).First(&device).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
