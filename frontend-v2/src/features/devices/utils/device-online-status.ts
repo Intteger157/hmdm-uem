@@ -1,4 +1,4 @@
-export type DeviceOnlineStatusCode = 'green' | 'yellow' | 'red' | 'grey'
+export type DeviceOnlineStatusCode = 'green' | 'yellow' | 'red' | 'grey' | 'brown'
 
 /** Android sends device info at most every 15 minutes (WorkManager minimum). */
 export const DEVICE_ONLINE_GREEN_MS = 20 * 60 * 1000
