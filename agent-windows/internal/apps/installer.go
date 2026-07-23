@@ -127,7 +127,7 @@ $argList = @(%s)
 $stdoutFile = [System.IO.Path]::GetTempFileName()
 $stderrFile = [System.IO.Path]::GetTempFileName()
 try {
-  $process = Start-Process -LiteralPath $installerPath -ArgumentList $argList -Wait -PassThru -WindowStyle Hidden -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
+  $process = Start-Process -FilePath $installerPath -ArgumentList $argList -Wait -PassThru -WindowStyle Hidden -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
   if ($null -eq $process) {
     [Console]::Error.WriteLine('Start-Process returned null')
     exit 1
