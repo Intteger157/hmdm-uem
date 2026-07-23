@@ -116,6 +116,8 @@ func (h *WindowsHandler) Inventory(c *gin.Context) {
 	device.Hostname = req.Hostname
 	device.OSVersion = req.OSVersion
 	device.CPU = req.CPU
+	device.CPUCores = req.CPUCores
+	device.CPUFrequencyGHz = req.CPUFrequencyGHz
 	device.RAM_GB = req.RAM_GB
 	device.DiskTotal_GB = req.DiskTotal_GB
 	device.DiskUsed_GB = req.DiskUsed_GB
@@ -126,6 +128,7 @@ func (h *WindowsHandler) Inventory(c *gin.Context) {
 	device.UptimeSeconds = req.UptimeSeconds
 	device.AntivirusName = req.AntivirusName
 	device.AntivirusActive = req.AntivirusActive
+	device.AntivirusDefinitionsUpdated = req.AntivirusDefinitionsUpdated
 	device.Latitude = req.Latitude
 	device.Longitude = req.Longitude
 	device.LocalIP = req.LocalIP
@@ -155,6 +158,18 @@ func (h *WindowsHandler) Inventory(c *gin.Context) {
 		log.Printf("[inventory] encode installed software failed: hardware_id=%q err=%v", deviceID, err)
 	} else {
 		device.InstalledSoftware = installedSoftware
+	}
+
+	if pendingUpdates, err := models.EncodeWindowsUpdates(req.PendingUpdatesList); err != nil {
+		log.Printf("[inventory] encode pending updates failed: hardware_id=%q err=%v", deviceID, err)
+	} else {
+		device.PendingUpdatesList = pendingUpdates
+	}
+
+	if installedUpdates, err := models.EncodeWindowsUpdates(req.InstalledUpdatesList); err != nil {
+		log.Printf("[inventory] encode installed updates failed: hardware_id=%q err=%v", deviceID, err)
+	} else {
+		device.InstalledUpdatesList = installedUpdates
 	}
 
 	if err := db.DB.Save(&device).Error; err != nil {

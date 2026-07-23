@@ -14,6 +14,7 @@ import type {
   LocalUser,
   WindowsEncryptionStatus,
   WindowsService,
+  WindowsUpdateItem,
 } from '@/shared/api/types/device-detail'
 
 /** Go server-windows list item (GET /rest/windows/devices). */
@@ -23,6 +24,8 @@ export interface WindowsDeviceDto {
   hostname: string
   osVersion: string
   cpu: string
+  cpuCores?: number
+  cpuFrequencyGhz?: number
   ramGb: number
   diskTotalGb: number
   diskUsedGb: number
@@ -38,6 +41,7 @@ export interface WindowsDeviceDto {
   uptimeSeconds?: number
   antivirusName?: string
   antivirusActive?: boolean
+  antivirusDefinitionsUpdated?: string
   latitude?: number
   longitude?: number
   publicIp?: string
@@ -45,6 +49,8 @@ export interface WindowsDeviceDto {
   wifiBssid?: string
   pendingUpdates?: number
   lastUpdateCheck?: string
+  pendingUpdatesList?: WindowsUpdateItem[]
+  installedUpdatesList?: WindowsUpdateItem[]
   bitLockerKey?: string
   lastCheckin: string
   agentStatus?: string
@@ -91,6 +97,8 @@ function mapWindowsDeviceToView(raw: WindowsDeviceDto): DeviceView {
     windowsAgentStatus: mapWindowsAgentStatus(raw.agentStatus),
     uninstalledAt: Number.isFinite(uninstalledAt) ? uninstalledAt : undefined,
     cpu: raw.cpu || undefined,
+    cpuCores: raw.cpuCores || undefined,
+    cpuFrequencyGhz: raw.cpuFrequencyGhz || undefined,
     ramGb: raw.ramGb || undefined,
     diskTotalGb: raw.diskTotalGb || undefined,
     diskUsedGb: raw.diskUsedGb || undefined,
@@ -104,6 +112,7 @@ function mapWindowsDeviceToView(raw: WindowsDeviceDto): DeviceView {
     uptimeSeconds: raw.uptimeSeconds || undefined,
     antivirusName: raw.antivirusName || undefined,
     antivirusActive: raw.antivirusActive,
+    antivirusDefinitionsUpdated: raw.antivirusDefinitionsUpdated || undefined,
     latitude: raw.latitude || undefined,
     longitude: raw.longitude || undefined,
     publicIp: raw.publicIp || undefined,
@@ -111,6 +120,8 @@ function mapWindowsDeviceToView(raw: WindowsDeviceDto): DeviceView {
     wifiBssid: raw.wifiBssid || undefined,
     pendingUpdates: raw.pendingUpdates ?? undefined,
     lastUpdateCheck: raw.lastUpdateCheck || undefined,
+    pendingUpdatesList: raw.pendingUpdatesList ?? [],
+    installedUpdatesList: raw.installedUpdatesList ?? [],
     bitLockerKey: raw.bitLockerKey || undefined,
     lastUpdate: Number.isFinite(lastUpdate) ? lastUpdate : undefined,
   }

@@ -32,3 +32,9 @@ export interface LocalUser {
   isAdmin: boolean
   status: LocalUserStatus
 }
+
+export interface WindowsUpdateItem {
+  title: string
+  kb?: string
+  installedOn?: string
+}

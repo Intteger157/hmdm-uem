@@ -38,6 +38,17 @@ func collectDefenderRealTimeProtectionEnabled() bool {
 	return parseRealTimeProtectionEnabled(string(output), err)
 }
 
+func collectAntivirusDefinitionsUpdated() string {
+	script := `$ErrorActionPreference = 'SilentlyContinue'; $updated = (Get-MpComputerStatus).AntivirusSignatureLastUpdated; if ($null -eq $updated) { exit 2 }; $updated.ToString('o')`
+	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(output))
+}
+
 func parseRealTimeProtectionEnabled(output string, err error) bool {
 	if err != nil {
 		return false

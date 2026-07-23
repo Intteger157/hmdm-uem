@@ -63,6 +63,20 @@ type ServiceRecord struct {
 	Status      string `json:"status"`
 }
 
+// InventoryWindowsUpdate mirrors one Windows update in agent inventory payload.
+type InventoryWindowsUpdate struct {
+	Title       string `json:"title"`
+	KB          string `json:"kb,omitempty"`
+	InstalledOn string `json:"installed_on,omitempty"`
+}
+
+// WindowsUpdateRecord is stored in windows_devices pending/installed updates JSONB.
+type WindowsUpdateRecord struct {
+	Title       string `json:"title"`
+	KB          string `json:"kb,omitempty"`
+	InstalledOn string `json:"installedOn,omitempty"`
+}
+
 // DeviceServicesResponse is returned by GET /rest/windows/devices/:hardwareId/services.
 type DeviceServicesResponse struct {
 	Items     []ServiceRecord `json:"items"`

@@ -41,17 +41,24 @@ import { resolveDeviceOnlineStatusCode } from '@/features/devices/utils/device-o
 import { usePeriodicNow } from '@/shared/hooks/use-periodic-now'
 import { ANDROID_BRAND_COLOR, AndroidIcon, BatteryLevelIcon } from '@/components/icons/platform-icons'
 import { Badge } from '@/components/ui/badge'
-import { buttonVariants } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Progress, ProgressLabel, ProgressValue } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { Platform } from '@/shared/api/types/platform'
 import type { DeviceView } from '@/shared/api/types/device'
-import type { DeviceDiskVolume } from '@/shared/api/types/device-detail'
+import type { DeviceDiskVolume, WindowsUpdateItem } from '@/shared/api/types/device-detail'
 import type { TFunction } from 'i18next'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 import { useState, type ReactNode } from 'react'
 
 const STATUS_BADGE: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -64,7 +71,8 @@ const STATUS_BADGE: Record<string, 'default' | 'secondary' | 'destructive' | 'ou
 
 const NA = 'N/A'
 const METRIC_ICON_CLASS = 'size-8'
-const TILE_HEADER_ICON_CLASS = 'h-4 w-4 text-muted-foreground opacity-50'
+const TILE_HEADER_ICON_CLASS = 'size-5 text-muted-foreground/70'
+const INTERACTIVE_TILE_CLASS = 'cursor-pointer hover:bg-accent/50 transition-colors'
 
 function deviceTitle(device: DeviceView): string {
   if (device.platform === 'windows') {
@@ -336,6 +344,20 @@ function WindowsOverviewGrid({
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
       <MetricCard
         className="h-full"
+        label={t('devices.columns.hostname')}
+        value={device.hostname ?? NA}
+        mono
+        headerIcon={Monitor}
+      />
+      <MetricCard
+        className="h-full"
+        label={t('deviceDetail.metrics.model')}
+        value={device.model ?? device.manufacturer ?? NA}
+        headerIcon={Layers}
+        valueClassName="text-lg"
+      />
+      <MetricCard
+        className="h-full"
         label={t('devices.columns.number')}
         value={device.number}
         mono
@@ -350,29 +372,10 @@ function WindowsOverviewGrid({
       />
       <MetricCard
         className="h-full"
-        label={t('deviceDetail.metrics.lastOnline')}
-        value={formatDeviceTimestamp(device.lastUpdate)}
-        headerIcon={Clock}
-      />
-      <MetricCard
-        className="h-full"
-        label={t('devices.columns.hostname')}
-        value={device.hostname ?? NA}
-        mono
-        headerIcon={Monitor}
-      />
-      <MetricCard
-        className="h-full"
         label={t('devices.columns.windowsBuild')}
         value={device.windowsBuild ?? NA}
         headerIcon={AppWindow}
         valueClassName="text-lg"
-      />
-      <MetricCard
-        className="h-full"
-        label={t('deviceDetail.metrics.ram')}
-        value={device.ramGb != null ? `${device.ramGb} GB` : NA}
-        headerIcon={MemoryStick}
       />
       <MetricCard
         className="h-full"
@@ -381,6 +384,7 @@ function WindowsOverviewGrid({
         headerIcon={Activity}
         valueClassName="text-lg"
       />
+      <NetworkMetricCard className="h-full" device={device} na={na} t={t} />
       <MetricCard
         className="h-full"
         label={t('deviceDetail.metrics.currentUser')}
@@ -389,24 +393,16 @@ function WindowsOverviewGrid({
         headerIcon={User}
         valueClassName="text-lg"
       />
-      <MetricCard
-        className="h-full lg:col-span-2"
-        label={t('deviceDetail.metrics.cpu')}
-        value={device.cpu ?? NA}
-        headerIcon={Cpu}
-        valueClassName="text-lg"
-      />
-      <AntivirusMetricCard className="h-full" device={device} na={na} t={t} />
-      <NetworkMetricCard className="h-full" device={device} na={na} t={t} />
-      <WindowsUpdateMetricCard className="h-full" device={device} na={na} t={t} />
+      <CpuMetricCard className="h-full" device={device} na={na} t={t} />
       <MetricCard
         className="h-full"
-        label={t('deviceDetail.metrics.model')}
-        value={device.model ?? device.manufacturer ?? NA}
-        headerIcon={Layers}
-        valueClassName="text-lg"
+        label={t('deviceDetail.metrics.ram')}
+        value={device.ramGb != null ? `${device.ramGb} GB` : NA}
+        headerIcon={MemoryStick}
       />
-      <WindowsDiskMetrics className="h-full lg:col-span-3" device={device} na={na} t={t} />
+      <AntivirusMetricCard className="h-full" device={device} na={na} t={t} />
+      <WindowsUpdateMetricCard className="h-full" device={device} na={na} t={t} />
+      <WindowsDiskMetrics className="h-full lg:col-span-4" device={device} na={na} t={t} />
     </div>
   )
 }
@@ -422,6 +418,80 @@ function formatDriveEncryptStatus(status: DeviceDiskVolume['encryptStatus'], t: 
   }
 }
 
+function formatCpuFrequency(ghz: number | undefined, na: string): string {
+  if (ghz == null || !Number.isFinite(ghz) || ghz <= 0) {
+    return na
+  }
+  return `${ghz.toFixed(2)} GHz`
+}
+
+function CpuMetricCard({
+  device,
+  na,
+  t,
+  className,
+}: {
+  device: DeviceView
+  na: string
+  t: TFunction
+  className?: string
+}) {
+  const [open, setOpen] = useState(false)
+  const cpuName = device.cpu?.trim() || na
+  const cores =
+    device.cpuCores != null && device.cpuCores > 0 ? String(device.cpuCores) : na
+  const frequency = formatCpuFrequency(device.cpuFrequencyGhz, na)
+
+  return (
+    <>
+      <Card
+        className={cn('h-full', INTERACTIVE_TILE_CLASS, className)}
+        onClick={() => setOpen(true)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            setOpen(true)
+          }
+        }}
+      >
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 pb-2 pt-4">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            {t('deviceDetail.metrics.cpu')}
+          </CardTitle>
+          <Cpu className={TILE_HEADER_ICON_CLASS} />
+        </CardHeader>
+        <CardContent className="px-4 pb-4">
+          <p className="line-clamp-2 text-lg font-bold leading-tight">{cpuName}</p>
+        </CardContent>
+      </Card>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('deviceDetail.cpuDialog.title')}</DialogTitle>
+          </DialogHeader>
+          <dl className="space-y-3 text-sm">
+            <div className="flex flex-col gap-1">
+              <dt className="text-muted-foreground">{t('deviceDetail.cpuDialog.name')}</dt>
+              <dd className="font-medium">{cpuName}</dd>
+            </div>
+            <div className="flex flex-col gap-1">
+              <dt className="text-muted-foreground">{t('deviceDetail.cpuDialog.cores')}</dt>
+              <dd className="font-medium">{cores}</dd>
+            </div>
+            <div className="flex flex-col gap-1">
+              <dt className="text-muted-foreground">{t('deviceDetail.cpuDialog.frequency')}</dt>
+              <dd className="font-medium">{frequency}</dd>
+            </div>
+          </dl>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+
 function AntivirusMetricCard({
   device,
   na,
@@ -433,37 +503,98 @@ function AntivirusMetricCard({
   t: TFunction
   className?: string
 }) {
+  const [open, setOpen] = useState(false)
   const name = device.antivirusName?.trim() || t('deviceDetail.antivirus.unknown')
   const active = device.antivirusActive === true
   const StatusIcon = active ? Shield : ShieldOff
+  const definitionsUpdated = formatWindowsUpdateCheck(device.antivirusDefinitionsUpdated, na)
 
   return (
-    <Card className={cn('h-full', className)}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 pb-2 pt-4">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {t('deviceDetail.metrics.antivirus')}
-        </CardTitle>
-        <Shield className={TILE_HEADER_ICON_CLASS} />
-      </CardHeader>
-      <CardContent className="px-4 pb-4">
-        <div className="flex items-start gap-3">
-          <StatusIcon
-            className={cn(
-              'mt-0.5 size-5 shrink-0',
-              active ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive',
-            )}
-            strokeWidth={2.25}
-          />
-          <div className="min-w-0">
-            <p className="truncate text-xl font-bold leading-tight">{name}</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {active ? t('deviceDetail.antivirus.active') : t('deviceDetail.antivirus.inactive')}
-            </p>
+    <>
+      <Card
+        className={cn('h-full', INTERACTIVE_TILE_CLASS, className)}
+        onClick={() => setOpen(true)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            setOpen(true)
+          }
+        }}
+      >
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 pb-2 pt-4">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            {t('deviceDetail.metrics.antivirus')}
+          </CardTitle>
+          <Shield className={TILE_HEADER_ICON_CLASS} />
+        </CardHeader>
+        <CardContent className="px-4 pb-4">
+          <div className="flex items-start gap-3">
+            <StatusIcon
+              className={cn(
+                'mt-0.5 size-5 shrink-0',
+                active ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive',
+              )}
+              strokeWidth={2.25}
+            />
+            <div className="min-w-0">
+              <p className="truncate text-xl font-bold leading-tight">{name}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {active ? t('deviceDetail.antivirus.active') : t('deviceDetail.antivirus.inactive')}
+              </p>
+            </div>
           </div>
-        </div>
-        {!device.antivirusName ? <span className="sr-only">{na}</span> : null}
-      </CardContent>
-    </Card>
+          {!device.antivirusName ? <span className="sr-only">{na}</span> : null}
+        </CardContent>
+      </Card>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t('deviceDetail.antivirusDialog.title')}</DialogTitle>
+          </DialogHeader>
+          <dl className="space-y-3 text-sm">
+            <div className="flex flex-col gap-1">
+              <dt className="text-muted-foreground">{t('deviceDetail.antivirusDialog.product')}</dt>
+              <dd className="font-medium">{name}</dd>
+            </div>
+            <div className="flex flex-col gap-1">
+              <dt className="text-muted-foreground">{t('deviceDetail.antivirusDialog.status')}</dt>
+              <dd className="font-medium">
+                {active ? t('deviceDetail.antivirus.active') : t('deviceDetail.antivirus.inactive')}
+              </dd>
+            </div>
+            <div className="flex flex-col gap-1">
+              <dt className="text-muted-foreground">
+                {t('deviceDetail.antivirusDialog.definitionsUpdated')}
+              </dt>
+              <dd className="font-medium">{definitionsUpdated}</dd>
+            </div>
+          </dl>
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium">{t('deviceDetail.antivirusDialog.historyTitle')}</h4>
+            <div className="overflow-x-auto rounded-md border">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/40 text-left">
+                    <th className="px-3 py-2 font-medium">{t('deviceDetail.antivirusDialog.historyEvent')}</th>
+                    <th className="px-3 py-2 font-medium">{t('deviceDetail.antivirusDialog.historyDate')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="px-3 py-3 text-muted-foreground" colSpan={2}>
+                      {t('deviceDetail.antivirusDialog.historyPlaceholder')}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
@@ -514,28 +645,156 @@ function WindowsUpdateMetricCard({
   t: TFunction
   className?: string
 }) {
+  const [open, setOpen] = useState(false)
   const pending = device.pendingUpdates != null ? String(device.pendingUpdates) : na
   const lastChecked = formatWindowsUpdateCheck(device.lastUpdateCheck, na)
+  const pendingList = device.pendingUpdatesList ?? []
+  const installedList = device.installedUpdatesList ?? []
+
+  const handleRollback = () => {
+    toast(t('deviceDetail.windowsUpdateDialog.rollbackTriggered'))
+  }
 
   return (
-    <Card className={cn('h-full', className)}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 pb-2 pt-4">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {t('deviceDetail.metrics.windowsUpdate')}
-        </CardTitle>
-        <RefreshCcw className={TILE_HEADER_ICON_CLASS} />
-      </CardHeader>
-      <CardContent className="space-y-2 px-4 pb-4">
-        <p className="text-sm text-muted-foreground">
-          {t('deviceDetail.windowsUpdate.pending')}{' '}
-          <span className="text-base font-bold text-foreground">{pending}</span>
-        </p>
-        <p className="text-sm text-muted-foreground">
-          {t('deviceDetail.windowsUpdate.lastChecked')}{' '}
-          <span className="text-base font-bold text-foreground">{lastChecked}</span>
-        </p>
-      </CardContent>
-    </Card>
+    <>
+      <Card
+        className={cn('h-full', INTERACTIVE_TILE_CLASS, className)}
+        onClick={() => setOpen(true)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            setOpen(true)
+          }
+        }}
+      >
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 pb-2 pt-4">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            {t('deviceDetail.metrics.windowsUpdate')}
+          </CardTitle>
+          <RefreshCcw className={TILE_HEADER_ICON_CLASS} />
+        </CardHeader>
+        <CardContent className="space-y-2 px-4 pb-4">
+          <p className="text-sm text-muted-foreground">
+            {t('deviceDetail.windowsUpdate.pending')}{' '}
+            <span className="text-base font-bold text-foreground">{pending}</span>
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {t('deviceDetail.windowsUpdate.lastChecked')}{' '}
+            <span className="text-base font-bold text-foreground">{lastChecked}</span>
+          </p>
+        </CardContent>
+      </Card>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{t('deviceDetail.windowsUpdateDialog.title')}</DialogTitle>
+          </DialogHeader>
+          <Tabs defaultValue="pending">
+            <TabsList>
+              <TabsTrigger value="pending">
+                {t('deviceDetail.windowsUpdateDialog.pendingTab')}
+              </TabsTrigger>
+              <TabsTrigger value="installed">
+                {t('deviceDetail.windowsUpdateDialog.installedTab')}
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="pending" className="mt-4">
+              <WindowsUpdateTable
+                emptyLabel={t('deviceDetail.windowsUpdateDialog.noPending')}
+                na={na}
+                rows={pendingList}
+                showInstalledOn={false}
+                t={t}
+              />
+            </TabsContent>
+            <TabsContent value="installed" className="mt-4">
+              <WindowsUpdateTable
+                emptyLabel={t('deviceDetail.windowsUpdateDialog.noInstalled')}
+                na={na}
+                onRollback={handleRollback}
+                rows={installedList}
+                showActions
+                showInstalledOn
+                t={t}
+              />
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+
+function WindowsUpdateTable({
+  rows,
+  emptyLabel,
+  na,
+  t,
+  showInstalledOn = false,
+  showActions = false,
+  onRollback,
+}: {
+  rows: WindowsUpdateItem[]
+  emptyLabel: string
+  na: string
+  t: TFunction
+  showInstalledOn?: boolean
+  showActions?: boolean
+  onRollback?: (update: WindowsUpdateItem) => void
+}) {
+  if (rows.length === 0) {
+    return <p className="text-sm text-muted-foreground">{emptyLabel}</p>
+  }
+
+  return (
+    <div className="max-h-80 overflow-auto rounded-md border">
+      <table className="w-full text-sm">
+        <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
+          <tr className="border-b text-left">
+            <th className="px-3 py-2 font-medium">{t('deviceDetail.windowsUpdateDialog.columnTitle')}</th>
+            <th className="px-3 py-2 font-medium">{t('deviceDetail.windowsUpdateDialog.columnKb')}</th>
+            {showInstalledOn ? (
+              <th className="px-3 py-2 font-medium">
+                {t('deviceDetail.windowsUpdateDialog.columnInstalledOn')}
+              </th>
+            ) : null}
+            {showActions ? (
+              <th className="px-3 py-2 font-medium">{t('deviceDetail.windowsUpdateDialog.columnActions')}</th>
+            ) : null}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, index) => (
+            <tr key={`${row.kb ?? row.title}-${index}`} className="border-b last:border-b-0">
+              <td className="px-3 py-2 align-top">{row.title || na}</td>
+              <td className="px-3 py-2 align-top font-mono">{row.kb || na}</td>
+              {showInstalledOn ? (
+                <td className="px-3 py-2 align-top whitespace-nowrap">
+                  {formatWindowsUpdateCheck(row.installedOn, na)}
+                </td>
+              ) : null}
+              {showActions ? (
+                <td className="px-3 py-2 align-top">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      onRollback?.(row)
+                    }}
+                  >
+                    {t('deviceDetail.windowsUpdateDialog.rollback')}
+                  </Button>
+                </td>
+              ) : null}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
 

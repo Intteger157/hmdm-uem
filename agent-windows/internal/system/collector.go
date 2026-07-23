@@ -14,12 +14,21 @@ import (
 	"github.com/yusufpapurcu/wmi"
 )
 
+// WindowsUpdateItem is a pending or installed Windows update entry.
+type WindowsUpdateItem struct {
+	Title       string `json:"title"`
+	KB          string `json:"kb,omitempty"`
+	InstalledOn string `json:"installed_on,omitempty"`
+}
+
 // DeviceInfo holds inventory fields reported to the MDM server.
 type DeviceInfo struct {
-	Hostname          string                  `json:"hostname"`
-	OSVersion         string                  `json:"os_version"`
-	CPU               string                  `json:"cpu"`
-	RAM_GB            int                     `json:"ram_gb"`
+	Hostname                     string                  `json:"hostname"`
+	OSVersion                    string                  `json:"os_version"`
+	CPU                          string                  `json:"cpu"`
+	CPUCores                     int                     `json:"cpu_cores,omitempty"`
+	CPUFrequencyGHz              float64                 `json:"cpu_frequency_ghz,omitempty"`
+	RAM_GB                       int                     `json:"ram_gb"`
 	DiskTotal_GB      int                     `json:"disk_total_gb"`
 	DiskUsed_GB       int                     `json:"disk_used_gb"`
 	Manufacturer      string                  `json:"manufacturer,omitempty"`
@@ -27,15 +36,18 @@ type DeviceInfo struct {
 	SerialNumber      string                  `json:"serial_number,omitempty"`
 	CurrentUser       string                  `json:"current_user,omitempty"`
 	UptimeSeconds     int64                   `json:"uptime_seconds,omitempty"`
-	AntivirusName     string                  `json:"antivirus_name,omitempty"`
-	AntivirusActive   bool                    `json:"antivirus_active"`
+	AntivirusName                string                  `json:"antivirus_name,omitempty"`
+	AntivirusActive              bool                    `json:"antivirus_active"`
+	AntivirusDefinitionsUpdated  string                  `json:"antivirus_definitions_updated,omitempty"`
 	Latitude          float64                 `json:"latitude,omitempty"`
 	Longitude         float64                 `json:"longitude,omitempty"`
 	LocalIP           string                  `json:"local_ip,omitempty"`
 	PublicIP          string                  `json:"public_ip,omitempty"`
 	WifiBSSID         string                  `json:"wifi_bssid,omitempty"`
-	PendingUpdates    int                     `json:"pending_updates,omitempty"`
-	LastUpdateCheck   string                  `json:"last_update_check,omitempty"`
+	PendingUpdates               int                     `json:"pending_updates,omitempty"`
+	LastUpdateCheck              string                  `json:"last_update_check,omitempty"`
+	PendingUpdatesList           []WindowsUpdateItem     `json:"pending_updates_list,omitempty"`
+	InstalledUpdatesList         []WindowsUpdateItem     `json:"installed_updates_list,omitempty"`
 	BitLockerKey      string                  `json:"bitlocker_key,omitempty"`
 	DiskEncrypted     bool                    `json:"disk_encrypted"`
 	EncryptionStatus  string                  `json:"encryption_status,omitempty"`
@@ -95,7 +107,7 @@ func CollectInfo() (*DeviceInfo, error) {
 		return nil, fmt.Errorf("host info: %w", err)
 	}
 
-	cpuModel, err := collectCPUModel()
+	cpuModel, cpuCores, cpuFrequencyGHz, err := collectCPUInfo()
 	if err != nil {
 		return nil, fmt.Errorf("cpu: %w", err)
 	}
@@ -115,27 +127,33 @@ func CollectInfo() (*DeviceInfo, error) {
 
 	uptimeSeconds := collectUptimeSeconds()
 	antivirusName, antivirusActive := collectAntivirusStatus()
+	antivirusDefinitionsUpdated := collectAntivirusDefinitionsUpdated()
 	latitude, longitude, wifiBSSID := collectLocationInfo()
 	localIP := collectLocalIPv4()
-	pendingUpdates, lastUpdateCheck := collectWindowsUpdateInfo()
+	pendingUpdates, lastUpdateCheck, pendingUpdatesList, installedUpdatesList := collectWindowsUpdateInfo()
 	bitLockerKey := collectBitLockerRecoveryKey()
 
 	return &DeviceInfo{
-		Hostname:          hostname,
-		OSVersion:         formatOSVersion(hostInfo),
-		CPU:               cpuModel,
-		RAM_GB:            bytesToRoundedGB(memInfo.Total),
+		Hostname:                    hostname,
+		OSVersion:                   formatOSVersion(hostInfo),
+		CPU:                         cpuModel,
+		CPUCores:                    cpuCores,
+		CPUFrequencyGHz:             cpuFrequencyGHz,
+		RAM_GB:                      bytesToRoundedGB(memInfo.Total),
 		DiskTotal_GB:      primaryDisk.Total_GB,
 		DiskUsed_GB:       primaryDisk.Used_GB,
-		UptimeSeconds:     uptimeSeconds,
-		AntivirusName:     antivirusName,
-		AntivirusActive:   antivirusActive,
+		UptimeSeconds:               uptimeSeconds,
+		AntivirusName:               antivirusName,
+		AntivirusActive:             antivirusActive,
+		AntivirusDefinitionsUpdated: antivirusDefinitionsUpdated,
 		Latitude:          latitude,
 		Longitude:         longitude,
 		LocalIP:           localIP,
 		WifiBSSID:         wifiBSSID,
-		PendingUpdates:    pendingUpdates,
-		LastUpdateCheck:   lastUpdateCheck,
+		PendingUpdates:              pendingUpdates,
+		LastUpdateCheck:             lastUpdateCheck,
+		PendingUpdatesList:          pendingUpdatesList,
+		InstalledUpdatesList:        installedUpdatesList,
 		BitLockerKey:      bitLockerKey,
 		DiskEncrypted:     diskEncrypted,
 		EncryptionStatus:  encryptionStatus,
@@ -149,15 +167,30 @@ func CollectInfo() (*DeviceInfo, error) {
 	}, nil
 }
 
-func collectCPUModel() (string, error) {
+func collectCPUInfo() (model string, cores int, frequencyGHz float64, err error) {
 	cpus, err := cpu.Info()
 	if err != nil {
-		return "", err
+		return "", 0, 0, err
 	}
 	if len(cpus) == 0 {
-		return "", fmt.Errorf("no CPU information available")
+		return "", 0, 0, fmt.Errorf("no CPU information available")
 	}
-	return cpus[0].ModelName, nil
+
+	model = cpus[0].ModelName
+	for _, info := range cpus {
+		if info.Cores > 0 {
+			cores += int(info.Cores)
+		}
+	}
+	if cores == 0 {
+		if logical, countErr := cpu.Counts(true); countErr == nil && logical > 0 {
+			cores = logical
+		}
+	}
+	if cpus[0].Mhz > 0 {
+		frequencyGHz = cpus[0].Mhz / 1000
+	}
+	return model, cores, frequencyGHz, nil
 }
 
 func collectSystemDiskUsage() (*disk.UsageStat, error) {

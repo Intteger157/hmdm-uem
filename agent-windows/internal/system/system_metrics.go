@@ -11,8 +11,10 @@ import (
 )
 
 type windowsUpdateInfo struct {
-	PendingUpdates  int
-	LastUpdateCheck string
+	PendingUpdates       int
+	LastUpdateCheck      string
+	PendingUpdatesList   []WindowsUpdateItem
+	InstalledUpdatesList []WindowsUpdateItem
 }
 
 func collectLocalIPv4() string {
@@ -45,16 +47,43 @@ func collectLocalIPv4() string {
 	return ""
 }
 
-func collectWindowsUpdateInfo() (pendingUpdates int, lastUpdateCheck string) {
+func collectWindowsUpdateInfo() (pendingUpdates int, lastUpdateCheck string, pendingList, installedList []WindowsUpdateItem) {
 	script := `
 $ErrorActionPreference = 'SilentlyContinue'
-$pending = 0
+$pendingCount = 0
+$pendingList = @()
 try {
   $session = New-Object -ComObject Microsoft.Update.Session
   $searcher = $session.CreateUpdateSearcher()
   $result = $searcher.Search("IsInstalled=0 and Type='Software'")
-  $pending = [int]$result.Updates.Count
+  $pendingCount = [int]$result.Updates.Count
+  foreach ($update in $result.Updates) {
+    $kb = ''
+    if ($update.KBArticleIDs.Count -gt 0) {
+      $kb = 'KB' + $update.KBArticleIDs.Item(0)
+    }
+    $pendingList += [pscustomobject]@{
+      Title = [string]$update.Title
+      KB = $kb
+    }
+  }
 } catch {}
+
+$installedList = @()
+Get-HotFix -ErrorAction SilentlyContinue |
+  Sort-Object InstalledOn -Descending |
+  Select-Object -First 50 |
+  ForEach-Object {
+    $installedOn = ''
+    if ($null -ne $_.InstalledOn) {
+      $installedOn = $_.InstalledOn.ToString('o')
+    }
+    $installedList += [pscustomobject]@{
+      Title = [string]$_.Description
+      KB = [string]$_.HotFixID
+      InstalledOn = $installedOn
+    }
+  }
 
 $lastCheck = ''
 $detect = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\Results\Detect' -ErrorAction SilentlyContinue
@@ -63,37 +92,29 @@ if ($null -ne $detect -and $detect.LastSuccessTime) {
 }
 
 [pscustomobject]@{
-  PendingUpdates = $pending
+  PendingUpdates = $pendingCount
   LastUpdateCheck = $lastCheck
-} | ConvertTo-Json -Compress
+  PendingUpdatesList = $pendingList
+  InstalledUpdatesList = $installedList
+} | ConvertTo-Json -Compress -Depth 4
 `
 
 	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return 0, ""
+		return 0, "", nil, nil
 	}
 
 	var info windowsUpdateInfo
 	if err := json.Unmarshal(output, &info); err != nil {
-		return 0, ""
+		return 0, "", nil, nil
 	}
-	return info.PendingUpdates, strings.TrimSpace(info.LastUpdateCheck)
+	return info.PendingUpdates, strings.TrimSpace(info.LastUpdateCheck), info.PendingUpdatesList, info.InstalledUpdatesList
 }
 
 func collectBitLockerRecoveryKey() string {
-	script := `
-$ErrorActionPreference = 'SilentlyContinue'
-Import-Module BitLocker -ErrorAction SilentlyContinue
-$volume = Get-BitLockerVolume -MountPoint 'C:' -ErrorAction SilentlyContinue
-if ($null -eq $volume) { exit 2 }
-$key = $volume.KeyProtector |
-  Where-Object { $_.KeyProtectorType -eq 'RecoveryPassword' } |
-  Select-Object -First 1 -ExpandProperty RecoveryPassword
-if ([string]::IsNullOrWhiteSpace($key)) { exit 2 }
-$key
-`
+	script := `$WarningPreference = 'SilentlyContinue'; (Get-BitLockerVolume -MountPoint C).KeyProtector | Where-Object {$_.KeyProtectorType -eq 'RecoveryPassword'} | Select-Object -ExpandProperty RecoveryPassword`
 
 	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}

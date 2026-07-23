@@ -4,6 +4,7 @@ import type {
   InstalledSoftware,
   LocalUser,
   WindowsEncryptionStatus,
+  WindowsUpdateItem,
 } from '@/shared/api/types/device-detail'
 
 export interface LookupItem {
@@ -98,6 +99,8 @@ export interface DeviceView {
   manufacturer?: string
   model?: string
   cpu?: string
+  cpuCores?: number
+  cpuFrequencyGhz?: number
   ramGb?: number
   diskTotalGb?: number
   diskUsedGb?: number
@@ -111,12 +114,15 @@ export interface DeviceView {
   uptimeSeconds?: number
   antivirusName?: string
   antivirusActive?: boolean
+  antivirusDefinitionsUpdated?: string
   latitude?: number
   longitude?: number
   localIp?: string
   wifiBssid?: string
   pendingUpdates?: number
   lastUpdateCheck?: string
+  pendingUpdatesList?: WindowsUpdateItem[]
+  installedUpdatesList?: WindowsUpdateItem[]
   bitLockerKey?: string
 }
 

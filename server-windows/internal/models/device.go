@@ -20,8 +20,10 @@ type EnrollResponse struct {
 type InventoryRequest struct {
 	Hostname          string               `json:"hostname"`
 	OSVersion         string               `json:"os_version"`
-	CPU               string               `json:"cpu"`
-	RAM_GB            int                  `json:"ram_gb"`
+	CPU                          string                    `json:"cpu"`
+	CPUCores                     int                       `json:"cpu_cores,omitempty"`
+	CPUFrequencyGHz              float64                   `json:"cpu_frequency_ghz,omitempty"`
+	RAM_GB                       int                       `json:"ram_gb"`
 	DiskTotal_GB      int                  `json:"disk_total_gb"`
 	DiskUsed_GB       int                  `json:"disk_used_gb"`
 	Manufacturer      string               `json:"manufacturer"`
@@ -34,16 +36,19 @@ type InventoryRequest struct {
 	LocalUsers        []InventoryLocalUser  `json:"local_users"`
 	InstalledSoftware []InventorySoftware  `json:"installed_software"`
 	UptimeSeconds     int64                `json:"uptime_seconds"`
-	AntivirusName     string               `json:"antivirus_name"`
-	AntivirusActive   bool                 `json:"antivirus_active"`
+	AntivirusName                string               `json:"antivirus_name"`
+	AntivirusActive              bool                 `json:"antivirus_active"`
+	AntivirusDefinitionsUpdated  string               `json:"antivirus_definitions_updated"`
 	Latitude          float64              `json:"latitude"`
 	Longitude         float64              `json:"longitude"`
 	LocalIP           string               `json:"local_ip"`
 	PublicIP          string               `json:"public_ip"`
 	WifiBSSID         string               `json:"wifi_bssid"`
-	PendingUpdates    int                  `json:"pending_updates"`
-	LastUpdateCheck   string               `json:"last_update_check"`
-	BitLockerKey      string               `json:"bitlocker_key"`
+	PendingUpdates               int                        `json:"pending_updates"`
+	LastUpdateCheck              string                     `json:"last_update_check"`
+	PendingUpdatesList           []InventoryWindowsUpdate   `json:"pending_updates_list"`
+	InstalledUpdatesList         []InventoryWindowsUpdate   `json:"installed_updates_list"`
+	BitLockerKey                 string                     `json:"bitlocker_key"`
 }
 
 // WindowsDevice is the persisted Windows agent record in PostgreSQL.
@@ -53,8 +58,10 @@ type WindowsDevice struct {
 	EnrollmentToken   string
 	Hostname          string
 	OSVersion         string
-	CPU               string
-	RAM_GB            int
+	CPU                          string
+	CPUCores                     int
+	CPUFrequencyGHz              float64
+	RAM_GB                       int
 	DiskTotal_GB      int
 	DiskUsed_GB       int
 	Manufacturer      string
@@ -68,16 +75,19 @@ type WindowsDevice struct {
 	InstalledSoftware json.RawMessage `gorm:"type:jsonb"`
 	Services          json.RawMessage `gorm:"type:jsonb"`
 	UptimeSeconds     int64
-	AntivirusName     string
-	AntivirusActive   bool
+	AntivirusName                string
+	AntivirusActive              bool
+	AntivirusDefinitionsUpdated  string
 	Latitude          float64
 	Longitude         float64
 	LocalIP           string
 	PublicIP          string
 	WifiBSSID         string
-	PendingUpdates    int
-	LastUpdateCheck   string
-	BitLockerKey      string
+	PendingUpdates               int
+	LastUpdateCheck              string
+	PendingUpdatesList           json.RawMessage `gorm:"type:jsonb"`
+	InstalledUpdatesList         json.RawMessage `gorm:"type:jsonb"`
+	BitLockerKey                 string
 	ServicesUpdatedAt *time.Time
 	LastCheckin       time.Time
 	AgentStatus       string     `gorm:"not null;default:active"`
@@ -100,8 +110,10 @@ type WindowsDeviceJSON struct {
 	HardwareID        string                    `json:"hardwareId"`
 	Hostname          string                    `json:"hostname"`
 	OSVersion         string                    `json:"osVersion"`
-	CPU               string                    `json:"cpu"`
-	RAM_GB            int                       `json:"ramGb"`
+	CPU                          string                    `json:"cpu"`
+	CPUCores                     int                       `json:"cpuCores,omitempty"`
+	CPUFrequencyGHz              float64                   `json:"cpuFrequencyGhz,omitempty"`
+	RAM_GB                       int                       `json:"ramGb"`
 	DiskTotal_GB      int                       `json:"diskTotalGb"`
 	DiskUsed_GB       int                       `json:"diskUsedGb"`
 	Manufacturer      string                    `json:"manufacturer,omitempty"`
@@ -114,16 +126,19 @@ type WindowsDeviceJSON struct {
 	LocalUsers        []LocalUserRecord         `json:"localUsers,omitempty"`
 	InstalledSoftware []InstalledSoftwareRecord `json:"installedSoftware,omitempty"`
 	UptimeSeconds     int64                     `json:"uptimeSeconds,omitempty"`
-	AntivirusName     string                    `json:"antivirusName,omitempty"`
-	AntivirusActive   bool                      `json:"antivirusActive"`
+	AntivirusName                string                    `json:"antivirusName,omitempty"`
+	AntivirusActive              bool                      `json:"antivirusActive"`
+	AntivirusDefinitionsUpdated  string                    `json:"antivirusDefinitionsUpdated,omitempty"`
 	Latitude          float64                   `json:"latitude,omitempty"`
 	Longitude         float64                   `json:"longitude,omitempty"`
 	LocalIP           string                    `json:"localIp,omitempty"`
 	PublicIP          string                    `json:"publicIp,omitempty"`
 	WifiBSSID         string                    `json:"wifiBssid,omitempty"`
-	PendingUpdates    int                       `json:"pendingUpdates,omitempty"`
-	LastUpdateCheck   string                    `json:"lastUpdateCheck,omitempty"`
-	BitLockerKey      string                    `json:"bitLockerKey,omitempty"`
+	PendingUpdates               int                       `json:"pendingUpdates,omitempty"`
+	LastUpdateCheck              string                    `json:"lastUpdateCheck,omitempty"`
+	PendingUpdatesList           []WindowsUpdateRecord     `json:"pendingUpdatesList,omitempty"`
+	InstalledUpdatesList         []WindowsUpdateRecord     `json:"installedUpdatesList,omitempty"`
+	BitLockerKey                 string                    `json:"bitLockerKey,omitempty"`
 	ServicesUpdatedAt *time.Time                `json:"servicesUpdatedAt,omitempty"`
 	LastCheckin       time.Time                 `json:"lastCheckin"`
 	AgentStatus       string                    `json:"agentStatus"`
@@ -142,8 +157,10 @@ func ToWindowsDeviceJSON(device WindowsDevice) WindowsDeviceJSON {
 		HardwareID:        device.HardwareID,
 		Hostname:          device.Hostname,
 		OSVersion:         device.OSVersion,
-		CPU:               device.CPU,
-		RAM_GB:            device.RAM_GB,
+		CPU:                          device.CPU,
+		CPUCores:                     device.CPUCores,
+		CPUFrequencyGHz:              device.CPUFrequencyGHz,
+		RAM_GB:                       device.RAM_GB,
 		DiskTotal_GB:      device.DiskTotal_GB,
 		DiskUsed_GB:       device.DiskUsed_GB,
 		Manufacturer:      device.Manufacturer,
@@ -156,16 +173,19 @@ func ToWindowsDeviceJSON(device WindowsDevice) WindowsDeviceJSON {
 		LocalUsers:        decodeLocalUsers(device.LocalUsers),
 		InstalledSoftware: decodeInstalledSoftware(device.InstalledSoftware),
 		UptimeSeconds:     device.UptimeSeconds,
-		AntivirusName:     device.AntivirusName,
-		AntivirusActive:   device.AntivirusActive,
+		AntivirusName:                device.AntivirusName,
+		AntivirusActive:              device.AntivirusActive,
+		AntivirusDefinitionsUpdated:  device.AntivirusDefinitionsUpdated,
 		Latitude:          device.Latitude,
 		Longitude:         device.Longitude,
 		LocalIP:           device.LocalIP,
 		PublicIP:          device.PublicIP,
 		WifiBSSID:         device.WifiBSSID,
-		PendingUpdates:    device.PendingUpdates,
-		LastUpdateCheck:   device.LastUpdateCheck,
-		BitLockerKey:      device.BitLockerKey,
+		PendingUpdates:               device.PendingUpdates,
+		LastUpdateCheck:              device.LastUpdateCheck,
+		PendingUpdatesList:           decodeWindowsUpdates(device.PendingUpdatesList),
+		InstalledUpdatesList:         decodeWindowsUpdates(device.InstalledUpdatesList),
+		BitLockerKey:                 device.BitLockerKey,
 		ServicesUpdatedAt: device.ServicesUpdatedAt,
 		LastCheckin:       device.LastCheckin,
 		AgentStatus:       normalizeAgentStatus(device.AgentStatus),
@@ -178,6 +198,38 @@ func normalizeAgentStatus(raw string) string {
 		return AgentStatusUninstalled
 	}
 	return AgentStatusActive
+}
+
+func decodeWindowsUpdates(raw json.RawMessage) []WindowsUpdateRecord {
+	if len(raw) == 0 {
+		return nil
+	}
+	var updates []WindowsUpdateRecord
+	if err := json.Unmarshal(raw, &updates); err != nil {
+		return nil
+	}
+	return updates
+}
+
+func EncodeWindowsUpdates(updates []InventoryWindowsUpdate) (json.RawMessage, error) {
+	if len(updates) == 0 {
+		return nil, nil
+	}
+
+	records := make([]WindowsUpdateRecord, 0, len(updates))
+	for _, update := range updates {
+		records = append(records, WindowsUpdateRecord{
+			Title:       update.Title,
+			KB:          update.KB,
+			InstalledOn: update.InstalledOn,
+		})
+	}
+
+	encoded, err := json.Marshal(records)
+	if err != nil {
+		return nil, err
+	}
+	return encoded, nil
 }
 
 func decodeDisks(raw json.RawMessage) []DiskVolumeRecord {
