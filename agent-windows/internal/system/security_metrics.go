@@ -15,10 +15,7 @@ import (
 	"github.com/yusufpapurcu/wmi"
 )
 
-type antivirusProduct struct {
-	DisplayName  string
-	ProductState uint32
-}
+const defenderProductName = "Windows Defender"
 
 type wifiAdapter struct {
 	NetConnectionStatus uint16
@@ -41,57 +38,22 @@ func collectUptimeSeconds() int64 {
 }
 
 func collectAntivirusStatus() (name string, active bool) {
-	if defenderName, defenderActive := collectDefenderStatus(); defenderName != "" {
-		return defenderName, defenderActive
-	}
-	return collectAntivirusFromWMI()
+	return defenderProductName, collectDefenderRealTimeProtectionEnabled()
 }
 
-func collectDefenderStatus() (string, bool) {
-	script := `$s = Get-MpComputerStatus -ErrorAction SilentlyContinue; if ($null -eq $s) { exit 2 }; [pscustomobject]@{ Name = 'Windows Defender'; RealTimeProtectionEnabled = [bool]$s.RealTimeProtectionEnabled; AntivirusEnabled = [bool]$s.AntivirusEnabled } | ConvertTo-Json -Compress`
+func collectDefenderRealTimeProtectionEnabled() bool {
+	script := `$ErrorActionPreference = 'Stop'; (Get-MpComputerStatus | Select-Object -ExpandProperty RealTimeProtectionEnabled).ToString()`
 	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", false
-	}
-
-	var parsed struct {
-		Name                      string `json:"Name"`
-		RealTimeProtectionEnabled bool   `json:"RealTimeProtectionEnabled"`
-		AntivirusEnabled          bool   `json:"AntivirusEnabled"`
-	}
-	if err := json.Unmarshal(output, &parsed); err != nil {
-		return "", false
-	}
-	active := parsed.RealTimeProtectionEnabled || parsed.AntivirusEnabled
-	return strings.TrimSpace(parsed.Name), active
+	return parseRealTimeProtectionEnabled(string(output), err)
 }
 
-func collectAntivirusFromWMI() (string, bool) {
-	var products []antivirusProduct
-	err := wmi.Query("SELECT displayName, productState FROM AntiVirusProduct", &products, "root\\SecurityCenter2")
-	if err != nil || len(products) == 0 {
-		return "", false
+func parseRealTimeProtectionEnabled(output string, err error) bool {
+	if err != nil {
+		return false
 	}
-
-	bestName := ""
-	bestActive := false
-	for _, product := range products {
-		displayName := strings.TrimSpace(product.DisplayName)
-		if displayName == "" {
-			continue
-		}
-		active := (product.ProductState & 0x1000) == 0x1000
-		if bestName == "" || active {
-			bestName = displayName
-			bestActive = active
-		}
-		if active {
-			break
-		}
-	}
-	return bestName, bestActive
+	return strings.EqualFold(strings.TrimSpace(output), "true")
 }
 
 func collectLocationInfo() (latitude, longitude float64, publicIP, wifiBSSID string) {

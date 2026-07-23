@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import axios from 'axios'
 import { RefreshCw } from 'lucide-react'
+import { toast } from 'sonner'
 import {
   getWindowsDeviceServices,
   refreshWindowsDeviceServices,
@@ -16,6 +18,22 @@ import { cn } from '@/lib/utils'
 
 interface WindowsDeviceServicesTabProps {
   hardwareId: string
+}
+
+function extractRestartErrorMessage(error: unknown): string {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data as { error?: string } | undefined
+    if (data?.error?.trim()) {
+      return data.error.trim()
+    }
+    if (error.message.trim()) {
+      return error.message.trim()
+    }
+  }
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim()
+  }
+  return 'Unknown error'
 }
 
 export function WindowsDeviceServicesTab({ hardwareId }: WindowsDeviceServicesTabProps) {
@@ -89,10 +107,21 @@ export function WindowsDeviceServicesTab({ hardwareId }: WindowsDeviceServicesTa
     setError(null)
     try {
       const queued = await restartWindowsDeviceService(hardwareId, serviceName)
-      await waitForWindowsCommandResult(hardwareId, queued.id)
+      const result = await waitForWindowsCommandResult(hardwareId, queued.id)
+      if (!result) {
+        const message = t('deviceDetail.services.restartTimeout')
+        toast.error(t('deviceDetail.services.restartError', { message }))
+        return
+      }
+      if (!result.success) {
+        toast.error(t('deviceDetail.services.restartError', { message: result.message }))
+        return
+      }
+      toast.success(t('deviceDetail.services.restartSuccess'))
       await loadServices()
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t('deviceDetail.services.restartFailed'))
+      const message = extractRestartErrorMessage(err)
+      toast.error(t('deviceDetail.services.restartError', { message }))
     } finally {
       setRestartingService(null)
     }

@@ -3,6 +3,7 @@
 package commands
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os/exec"
@@ -53,23 +54,37 @@ func restartService(payload json.RawMessage) Result {
 	}
 
 	script := fmt.Sprintf(
-		"Restart-Service -Name '%s' -Force -ErrorAction Stop",
+		"$ErrorActionPreference = 'Stop'; Restart-Service -Name '%s' -Force",
 		escapePowerShellSingleQuoted(serviceName),
 	)
-	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script)
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	output, err := cmd.CombinedOutput()
-	message := strings.TrimSpace(string(output))
+	stdout, stderr, err := runPowerShellScript(script)
 	if err != nil {
+		message := strings.TrimSpace(stderr)
+		if message == "" {
+			message = strings.TrimSpace(stdout)
+		}
 		if message == "" {
 			message = err.Error()
 		}
-		return Result{Success: false, Message: fmt.Sprintf("restart service failed: %s", message)}
+		return Result{Success: false, Message: message}
 	}
+
+	message := strings.TrimSpace(stdout)
 	if message == "" {
 		message = fmt.Sprintf("service %s restarted", serviceName)
 	}
 	return Result{Success: true, Message: message}
+}
+
+func runPowerShellScript(script string) (stdout, stderr string, err error) {
+	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+
+	var stdoutBuf, stderrBuf bytes.Buffer
+	cmd.Stdout = &stdoutBuf
+	cmd.Stderr = &stderrBuf
+	err = cmd.Run()
+	return stdoutBuf.String(), stderrBuf.String(), err
 }
 
 func parseServiceEntries(raw []byte) ([]serviceEntry, error) {
