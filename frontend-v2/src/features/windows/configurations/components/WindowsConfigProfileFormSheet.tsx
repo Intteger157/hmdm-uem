@@ -46,6 +46,7 @@ const configProfileFormSchema = z.object({
   payload: z.object({
     defenderEnabled: z.boolean(),
     blockUsbStorage: z.boolean(),
+    usbReadOnly: z.boolean(),
     screenLockTimeout: z.number().int().min(0),
   }),
   groupIds: z.array(z.number().int().positive()),
@@ -82,6 +83,7 @@ function toFormValues(
     payload: {
       defenderEnabled: profile.payload.defenderEnabled,
       blockUsbStorage: profile.payload.blockUsbStorage,
+      usbReadOnly: profile.payload.usbReadOnly ?? false,
       screenLockTimeout: profile.payload.screenLockTimeout,
     },
     groupIds: assignments?.groupIds ?? [],
@@ -248,6 +250,22 @@ export function WindowsConfigProfileFormSheet({
                         <BoolField
                           id="windows-config-usb"
                           label={t('windowsConfigurations.form.blockUsbStorage')}
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="payload.usbReadOnly"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <BoolField
+                          id="windows-config-usb-readonly"
+                          label={t('windowsConfigurations.form.usbReadOnly')}
                           checked={field.value}
                           onCheckedChange={field.onChange}
                         />

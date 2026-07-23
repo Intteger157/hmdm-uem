@@ -68,6 +68,9 @@ export function WindowsAppliedConfigurationCard({ hardwareId }: WindowsAppliedCo
                 usb: data?.payload.blockUsbStorage
                   ? t('deviceDetail.appliedConfiguration.blocked')
                   : t('deviceDetail.appliedConfiguration.allowed'),
+                usbReadOnly: data?.payload.usbReadOnly
+                  ? t('deviceDetail.appliedConfiguration.readOnly')
+                  : t('deviceDetail.appliedConfiguration.readWrite'),
                 lockTimeout: data?.payload.screenLockTimeout ?? 0,
               })}
             </p>

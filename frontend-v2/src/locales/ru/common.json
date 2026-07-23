@@ -1075,6 +1075,7 @@
   "windowsConfigurations.form.isActive": "Пометить профиль как активный",
   "windowsConfigurations.form.defenderEnabled": "Включить Windows Defender Real-time Protection",
   "windowsConfigurations.form.blockUsbStorage": "Блокировать съёмные USB-накопители",
+  "windowsConfigurations.form.usbReadOnly": "Запретить запись на USB-накопители (только чтение)",
   "windowsConfigurations.form.screenLockTimeout": "Таймаут блокировки экрана (минуты)",
   "windowsConfigurations.form.screenLockTimeoutHint": "0 — автоблокировка отключена.",
   "windowsConfigurations.form.create": "Создать профиль",
@@ -1104,5 +1105,9 @@
   "deviceDetail.appliedConfiguration.disabled": "выключен",
   "deviceDetail.appliedConfiguration.blocked": "заблокирован",
   "deviceDetail.appliedConfiguration.allowed": "разрешён",
-  "deviceDetail.appliedConfiguration.summary": "Defender {{defender}}, USB {{usb}}, блокировка экрана {{lockTimeout}} мин"
+  "deviceDetail.appliedConfiguration.readOnly": "только чтение",
+  "deviceDetail.appliedConfiguration.readWrite": "чтение/запись",
+  "deviceDetail.appliedConfiguration.summary": "Defender {{defender}}, блокировка USB {{usb}}, доступ USB {{usbReadOnly}}, блокировка экрана {{lockTimeout}} мин",
+  "deviceDetail.metrics.battery": "Батарея",
+  "deviceDetail.battery.desktopNoBattery": "Desktop / No Battery",
 }

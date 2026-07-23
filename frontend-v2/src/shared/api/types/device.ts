@@ -112,6 +112,8 @@ export interface DeviceView {
   installedSoftware?: InstalledSoftware[]
   localUsers?: LocalUser[]
   /** Windows security & location metrics */
+  batteryLevel?: number
+  batteryStatus?: string
   uptimeSeconds?: number
   antivirusName?: string
   antivirusActive?: boolean

@@ -25,6 +25,7 @@ func OverlayConfigPayload(base, overlay WindowsConfigProfilePayload) WindowsConf
 	return WindowsConfigProfilePayload{
 		DefenderEnabled:   overlay.DefenderEnabled,
 		BlockUsbStorage:   overlay.BlockUsbStorage,
+		UsbReadOnly:       overlay.UsbReadOnly,
 		ScreenLockTimeout: overlay.ScreenLockTimeout,
 	}
 }

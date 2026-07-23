@@ -53,6 +53,8 @@ export interface WindowsDeviceDto {
   pendingUpdatesList?: WindowsUpdateItem[]
   installedUpdatesList?: WindowsUpdateItem[]
   bitLockerKey?: string
+  batteryLevel?: number | null
+  batteryStatus?: string
   lastCheckin: string
   agentStatus?: string
   uninstalledAt?: string
@@ -125,6 +127,8 @@ function mapWindowsDeviceToView(raw: WindowsDeviceDto): DeviceView {
     pendingUpdatesList: raw.pendingUpdatesList ?? [],
     installedUpdatesList: raw.installedUpdatesList ?? [],
     bitLockerKey: raw.bitLockerKey || undefined,
+    batteryLevel: raw.batteryLevel ?? undefined,
+    batteryStatus: raw.batteryStatus || undefined,
     lastUpdate: Number.isFinite(lastUpdate) ? lastUpdate : undefined,
   }
 }

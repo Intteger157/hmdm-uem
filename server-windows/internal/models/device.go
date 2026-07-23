@@ -50,6 +50,8 @@ type InventoryRequest struct {
 	PendingUpdatesList           []InventoryWindowsUpdate   `json:"pending_updates_list"`
 	InstalledUpdatesList         []InventoryWindowsUpdate   `json:"installed_updates_list"`
 	BitLockerKey                 string                     `json:"bitlocker_key"`
+	BatteryLevel                 *int                       `json:"battery_level,omitempty"`
+	BatteryStatus                string                     `json:"battery_status,omitempty"`
 }
 
 // WindowsDevice is the persisted Windows agent record in PostgreSQL.
@@ -90,6 +92,8 @@ type WindowsDevice struct {
 	PendingUpdatesList           json.RawMessage `gorm:"type:jsonb"`
 	InstalledUpdatesList         json.RawMessage `gorm:"type:jsonb"`
 	BitLockerKey                 string
+	BatteryLevel                 *int `gorm:"column:battery_level"`
+	BatteryStatus                string
 	ServicesUpdatedAt *time.Time
 	LastCheckin       time.Time
 	AgentStatus       string     `gorm:"not null;default:active"`
@@ -143,6 +147,8 @@ type WindowsDeviceJSON struct {
 	PendingUpdatesList           []WindowsUpdateRecord     `json:"pendingUpdatesList,omitempty"`
 	InstalledUpdatesList         []WindowsUpdateRecord     `json:"installedUpdatesList,omitempty"`
 	BitLockerKey                 string                    `json:"bitLockerKey,omitempty"`
+	BatteryLevel                 *int                      `json:"batteryLevel,omitempty"`
+	BatteryStatus                string                    `json:"batteryStatus,omitempty"`
 	ServicesUpdatedAt *time.Time                `json:"servicesUpdatedAt,omitempty"`
 	LastCheckin       time.Time                 `json:"lastCheckin"`
 	AgentStatus       string                    `json:"agentStatus"`
@@ -193,6 +199,8 @@ func ToWindowsDeviceJSON(device WindowsDevice) WindowsDeviceJSON {
 		PendingUpdatesList:           decodeWindowsUpdates(device.PendingUpdatesList),
 		InstalledUpdatesList:         decodeWindowsUpdates(device.InstalledUpdatesList),
 		BitLockerKey:                 device.BitLockerKey,
+		BatteryLevel:                 device.BatteryLevel,
+		BatteryStatus:                device.BatteryStatus,
 		ServicesUpdatedAt: device.ServicesUpdatedAt,
 		LastCheckin:       device.LastCheckin,
 		AgentStatus:       normalizeAgentStatus(device.AgentStatus),

@@ -1075,6 +1075,7 @@
   "windowsConfigurations.form.isActive": "Mark profile as active",
   "windowsConfigurations.form.defenderEnabled": "Enable Windows Defender Real-time Protection",
   "windowsConfigurations.form.blockUsbStorage": "Block USB Removable Storage",
+  "windowsConfigurations.form.usbReadOnly": "Prevent writing to USB drives (Read-Only)",
   "windowsConfigurations.form.screenLockTimeout": "Screen Lock Timeout (minutes)",
   "windowsConfigurations.form.screenLockTimeoutHint": "0 disables automatic screen lock.",
   "windowsConfigurations.form.create": "Create Profile",
@@ -1104,5 +1105,9 @@
   "deviceDetail.appliedConfiguration.disabled": "disabled",
   "deviceDetail.appliedConfiguration.blocked": "blocked",
   "deviceDetail.appliedConfiguration.allowed": "allowed",
-  "deviceDetail.appliedConfiguration.summary": "Defender {{defender}}, USB {{usb}}, screen lock {{lockTimeout}} min"
+  "deviceDetail.appliedConfiguration.readOnly": "read-only",
+  "deviceDetail.appliedConfiguration.readWrite": "read/write",
+  "deviceDetail.appliedConfiguration.summary": "Defender {{defender}}, USB block {{usb}}, USB access {{usbReadOnly}}, screen lock {{lockTimeout}} min",
+  "deviceDetail.metrics.battery": "Battery",
+  "deviceDetail.battery.desktopNoBattery": "Desktop / No Battery",
 }

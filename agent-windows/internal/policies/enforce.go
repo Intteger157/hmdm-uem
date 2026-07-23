@@ -6,9 +6,10 @@ import "fmt"
 
 // EnforcePolicies applies all MVP policies from the effective payload.
 func EnforcePolicies(payload Payload) []Result {
-	results := make([]Result, 0, 3)
+	results := make([]Result, 0, 4)
 	results = append(results, enforceDefender(payload.DefenderEnabled))
 	results = append(results, enforceUSBBlock(payload.BlockUsbStorage))
+	results = append(results, enforceUsbReadOnly(payload.UsbReadOnly))
 	results = append(results, enforceScreenLockTimeout(payload.ScreenLockTimeout))
 	return results
 }
@@ -27,7 +28,7 @@ func NeedsEnforcement(desired Payload) (bool, error) {
 
 // IsCompliant checks whether the current machine state matches the desired payload.
 func IsCompliant(desired Payload) (bool, []Result) {
-	results := make([]Result, 0, 3)
+	results := make([]Result, 0, 4)
 
 	defenderEnabled, err := readDefenderEnabled()
 	if err != nil {
@@ -73,6 +74,19 @@ func IsCompliant(desired Payload) (bool, []Result) {
 		})
 	} else {
 		results = append(results, Result{Name: "USB", Success: true, Message: "compliant"})
+	}
+
+	usbReadOnly, err := readUsbReadOnly()
+	if err != nil {
+		results = append(results, Result{Name: "USB Read-Only", Success: false, Message: err.Error()})
+	} else if usbReadOnly != desired.UsbReadOnly {
+		results = append(results, Result{
+			Name:    "USB Read-Only",
+			Success: false,
+			Message: fmt.Sprintf("expected read-only %v, found %v", desired.UsbReadOnly, usbReadOnly),
+		})
+	} else {
+		results = append(results, Result{Name: "USB Read-Only", Success: true, Message: "compliant"})
 	}
 
 	currentTimeout, err := readScreenLockTimeout()

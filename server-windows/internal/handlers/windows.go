@@ -138,6 +138,8 @@ func (h *WindowsHandler) Inventory(c *gin.Context) {
 	device.PendingUpdates = req.PendingUpdates
 	device.LastUpdateCheck = req.LastUpdateCheck
 	device.BitLockerKey = req.BitLockerKey
+	device.BatteryLevel = req.BatteryLevel
+	device.BatteryStatus = req.BatteryStatus
 	device.DiskEncrypted = req.DiskEncrypted
 	device.EncryptionStatus = req.EncryptionStatus
 	device.LastCheckin = time.Now()

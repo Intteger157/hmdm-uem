@@ -5,6 +5,10 @@ import {
   AppWindow,
   ArrowLeft,
   Barcode,
+  Battery,
+  BatteryCharging,
+  BatteryLow,
+  BatteryMedium,
   ChevronRight,
   Clock,
   Cpu,
@@ -416,6 +420,7 @@ function WindowsOverviewGrid({
         headerIcon={MemoryStick}
       />
       <AntivirusMetricCard className="h-full" device={device} na={na} t={t} />
+      <BatteryMetricCard className="h-full" device={device} t={t} />
       <WindowsUpdateMetricCard className="h-full" device={device} hardwareId={device.number} na={na} t={t} />
       <WindowsDiskMetrics className="h-full lg:col-span-4" device={device} na={na} t={t} />
     </div>
@@ -510,6 +515,64 @@ function CpuMetricCard({
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+function resolveBatteryHeaderIcon(
+  level: number | undefined,
+  status: string | undefined,
+): LucideIcon {
+  if (status?.toLowerCase().includes('charging')) {
+    return BatteryCharging
+  }
+  if (level == null) {
+    return Battery
+  }
+  if (level >= 80) {
+    return Battery
+  }
+  if (level >= 40) {
+    return BatteryMedium
+  }
+  if (level >= 20) {
+    return Battery
+  }
+  return BatteryLow
+}
+
+function BatteryMetricCard({
+  device,
+  t,
+  className,
+}: {
+  device: DeviceView
+  t: TFunction
+  className?: string
+}) {
+  const level = device.batteryLevel
+  const status = device.batteryStatus?.trim()
+  const hasBattery = level != null
+  const HeaderIcon = resolveBatteryHeaderIcon(level, status)
+
+  return (
+    <Card className={cn('h-full', className)}>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 pb-2 pt-4">
+        <CardTitle className="text-sm font-medium text-muted-foreground">
+          {t('deviceDetail.metrics.battery')}
+        </CardTitle>
+        <HeaderIcon className={TILE_HEADER_ICON_CLASS} />
+      </CardHeader>
+      <CardContent className="px-4 pb-4">
+        {hasBattery ? (
+          <div className="space-y-1">
+            <p className="text-3xl font-bold leading-tight">{level}%</p>
+            {status ? <p className="text-sm text-muted-foreground">{status}</p> : null}
+          </div>
+        ) : (
+          <p className="text-lg text-muted-foreground">{t('deviceDetail.battery.desktopNoBattery')}</p>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 

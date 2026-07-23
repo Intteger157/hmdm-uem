@@ -6,6 +6,7 @@ package policies
 type Payload struct {
 	DefenderEnabled   bool `json:"defenderEnabled"`
 	BlockUsbStorage   bool `json:"blockUsbStorage"`
+	UsbReadOnly       bool `json:"usbReadOnly"`
 	ScreenLockTimeout int  `json:"screenLockTimeout"`
 }
 
@@ -34,5 +35,6 @@ type Result struct {
 func EqualPayload(a, b Payload) bool {
 	return a.DefenderEnabled == b.DefenderEnabled &&
 		a.BlockUsbStorage == b.BlockUsbStorage &&
+		a.UsbReadOnly == b.UsbReadOnly &&
 		a.ScreenLockTimeout == b.ScreenLockTimeout
 }

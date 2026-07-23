@@ -10,6 +10,7 @@ import (
 type WindowsConfigProfilePayload struct {
 	DefenderEnabled   bool `json:"defenderEnabled"`
 	BlockUsbStorage   bool `json:"blockUsbStorage"`
+	UsbReadOnly       bool `json:"usbReadOnly"`
 	ScreenLockTimeout int  `json:"screenLockTimeout"`
 }
 

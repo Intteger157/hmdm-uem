@@ -55,6 +55,8 @@ type DeviceInfo struct {
 	Disks             []DiskVolumeInfo        `json:"disks,omitempty"`
 	LocalUsers        []LocalUserInfo         `json:"local_users,omitempty"`
 	InstalledSoftware []InstalledSoftwareInfo `json:"installed_software,omitempty"`
+	BatteryLevel      *int                    `json:"battery_level,omitempty"`
+	BatteryStatus     string                  `json:"battery_status,omitempty"`
 }
 
 // Collector gathers hardware and OS information from the local machine.
@@ -133,6 +135,7 @@ func CollectInfo() (*DeviceInfo, error) {
 	localIP := collectLocalIPv4()
 	pendingUpdates, lastUpdateCheck, pendingUpdatesList, installedUpdatesList := collectWindowsUpdateInfo()
 	bitLockerKey := collectBitLockerRecoveryKey()
+	batteryLevel, batteryStatus := collectBatteryInfo()
 
 	return &DeviceInfo{
 		Hostname:                    hostname,
@@ -166,6 +169,8 @@ func CollectInfo() (*DeviceInfo, error) {
 		CurrentUser:       currentUser,
 		LocalUsers:        localUsers,
 		InstalledSoftware: installedSoftware,
+		BatteryLevel:      batteryLevel,
+		BatteryStatus:     batteryStatus,
 	}, nil
 }
 

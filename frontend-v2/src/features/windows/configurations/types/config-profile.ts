@@ -1,6 +1,7 @@
 export interface WindowsConfigProfilePayload {
   defenderEnabled: boolean
   blockUsbStorage: boolean
+  usbReadOnly: boolean
   screenLockTimeout: number
 }
 
@@ -62,5 +63,6 @@ export interface WindowsDeviceOption {
 export const DEFAULT_WINDOWS_CONFIG_PROFILE_PAYLOAD: WindowsConfigProfilePayload = {
   defenderEnabled: false,
   blockUsbStorage: false,
+  usbReadOnly: false,
   screenLockTimeout: 0,
 }
