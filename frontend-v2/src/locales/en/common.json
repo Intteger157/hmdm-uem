@@ -890,7 +890,7 @@
   "deviceDetail.actions.powershellSnippets.checkPendingReboots": "Check Pending Reboots",
   "deviceDetail.actions.powershellExecute": "Execute Script",
   "deviceDetail.actions.powershellQueued": "Script queued. Navigate to Action Logs to view the execution output.",
-  "deviceDetail.actions.installDescription": "Download and run an installer (.exe) from the provided URL.",
+  "deviceDetail.actions.installDescription": "Select an application from the catalog to deploy to this device.",
   "deviceDetail.actions.installUrl": "Installer URL",
   "deviceDetail.actions.restartConfirm": "Schedule a restart for \"{{device}}\" in 60 seconds?",
   "deviceDetail.actions.bitlockerConfirm": "Attempt to enable BitLocker on \"{{device}}\"? Admin rights on the PC are required.",

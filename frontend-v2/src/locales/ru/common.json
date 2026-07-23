@@ -890,7 +890,7 @@
   "deviceDetail.actions.powershellSnippets.checkPendingReboots": "Проверить ожидающие перезагрузки",
   "deviceDetail.actions.powershellExecute": "Выполнить скрипт",
   "deviceDetail.actions.powershellQueued": "Скрипт поставлен в очередь. Откройте Action Logs, чтобы посмотреть вывод.",
-  "deviceDetail.actions.installDescription": "Скачать и запустить установщик (.exe) по URL.",
+  "deviceDetail.actions.installDescription": "Выберите приложение из каталога для развёртывания на это устройство.",
   "deviceDetail.actions.installUrl": "URL установщика",
   "deviceDetail.actions.restartConfirm": "Запланировать перезагрузку «{{device}}» через 60 секунд?",
   "deviceDetail.actions.bitlockerConfirm": "Попытаться включить BitLocker на «{{device}}»? Нужны права администратора на ПК.",

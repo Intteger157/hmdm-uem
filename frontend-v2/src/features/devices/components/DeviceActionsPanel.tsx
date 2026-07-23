@@ -6,7 +6,6 @@ import {
   MapPin,
   MessageSquare,
   Monitor,
-  Package,
   RefreshCw,
   RotateCcw,
   ScrollText,
@@ -43,10 +42,7 @@ import { useWindowsDeviceCommandMutation } from '@/features/windows/hooks/use-wi
 import { useQueueWindowsDeviceCommandMutation } from '@/features/windows/hooks/use-queue-windows-device-command'
 import { DeployApplicationDialog } from '@/features/devices/components/DeployApplicationDialog'
 import { useDeviceAppStatusesQuery } from '@/features/windows/applications/hooks/use-windows-software-apps'
-import {
-  WindowsInstallDialog,
-  WindowsPowerShellDialog,
-} from '@/features/windows/components/WindowsCommandDialogs'
+import { WindowsPowerShellDialog } from '@/features/windows/components/WindowsCommandDialogs'
 import type { WindowsCommandAction } from '@/features/windows/api/windows-api'
 import { waitForWindowsCommandResult } from '@/features/windows/lib/wait-for-command-result'
 
@@ -78,7 +74,8 @@ interface WindowsActionDef {
   labelKey: string
   variant?: 'outline' | 'destructive'
   requiresConfirm?: boolean
-  opensDialog?: 'powershell' | 'install'
+  opensDialog?: 'powershell' | 'catalog'
+  descriptionKey?: string
 }
 
 const ANDROID_ACTIONS: AndroidActionDef[] = [
@@ -108,7 +105,13 @@ const WINDOWS_ACTIONS: WindowsActionDef[] = [
   { id: 'restart', icon: RotateCcw, labelKey: 'deviceDetail.actions.restart', requiresConfirm: true },
   { id: 'lock', icon: Lock, labelKey: 'deviceDetail.actions.lock' },
   { id: 'bitlocker_enable', icon: Shield, labelKey: 'deviceDetail.actions.bitlocker', requiresConfirm: true },
-  { id: 'install', icon: Download, labelKey: 'deviceDetail.actions.install', opensDialog: 'install' },
+  {
+    id: 'install',
+    icon: Download,
+    labelKey: 'deviceDetail.actions.install',
+    opensDialog: 'catalog',
+    descriptionKey: 'deviceDetail.actions.installDescription',
+  },
   { id: 'powershell', icon: Terminal, labelKey: 'deviceDetail.actions.powershell', opensDialog: 'powershell' },
   { id: 'wipe', icon: Trash2, labelKey: 'deviceDetail.actions.wipe', variant: 'destructive', requiresConfirm: true },
 ]
@@ -129,7 +132,6 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
   const [windowsConfirmAction, setWindowsConfirmAction] = useState<WindowsCommandAction | null>(null)
   const [powershellOpen, setPowershellOpen] = useState(false)
-  const [installOpen, setInstallOpen] = useState(false)
   const [deployAppOpen, setDeployAppOpen] = useState(false)
 
   const windowsCommandMutation = useWindowsDeviceCommandMutation(device.number)
@@ -213,8 +215,8 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
       setPowershellOpen(true)
       return
     }
-    if (action.opensDialog === 'install') {
-      setInstallOpen(true)
+    if (action.opensDialog === 'catalog') {
+      setDeployAppOpen(true)
       return
     }
     if (action.requiresConfirm) {
@@ -375,7 +377,9 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
-                <CardDescription className="text-xs">{t('deviceDetail.actions.windowsHint')}</CardDescription>
+                <CardDescription className="text-xs">
+                  {t(action.descriptionKey ?? 'deviceDetail.actions.windowsHint')}
+                </CardDescription>
                 <Button
                   type="button"
                   size="sm"
@@ -390,28 +394,6 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
             </Card>
           )
         })}
-        <Card className="transition-colors hover:bg-muted/30">
-          <CardHeader className="pb-2">
-            <div className="flex items-center gap-2">
-              <div className="flex size-8 items-center justify-center rounded-md bg-muted">
-                <Package className="size-4" />
-              </div>
-              <CardTitle className="text-sm font-medium">{t('deviceDetail.appDeployments.deployAction')}</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <CardDescription className="text-xs">{t('deviceDetail.actions.deployAppHint')}</CardDescription>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="mt-3 w-full"
-              onClick={() => setDeployAppOpen(true)}
-            >
-              {t('deviceDetail.actions.run')}
-            </Button>
-          </CardContent>
-        </Card>
       </div>
 
       <WindowsPowerShellDialog
@@ -428,19 +410,6 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
             .catch(() => {
               toast.error(t('deviceDetail.actions.error'))
             })
-        }}
-      />
-
-      <WindowsInstallDialog
-        open={installOpen}
-        onOpenChange={setInstallOpen}
-        isPending={windowsCommandMutation.isPending}
-        onSubmit={(url) => {
-          void queueWindowsCommand('install', { url }).then((ok) => {
-            if (ok) {
-              setInstallOpen(false)
-            }
-          })
         }}
       />
 

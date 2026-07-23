@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -64,7 +65,8 @@ export function DeployApplicationDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{t('deviceDetail.appDeployments.deployTitle')}</DialogTitle>
+          <DialogTitle>{t('deviceDetail.actions.install')}</DialogTitle>
+          <DialogDescription>{t('deviceDetail.actions.installDescription')}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-2">
