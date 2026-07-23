@@ -19,7 +19,8 @@ function matchApp(app: SoftwareApp, query: string): boolean {
   return (
     app.name.toLowerCase().includes(query) ||
     (app.version ?? '').toLowerCase().includes(query) ||
-    app.downloadUrl.toLowerCase().includes(query)
+    (app.downloadUrl ?? '').toLowerCase().includes(query) ||
+    (app.wingetId ?? '').toLowerCase().includes(query)
   )
 }
 
@@ -135,7 +136,11 @@ export function WindowsAppCatalogPage() {
                     <tr key={app.id} className="border-b last:border-0">
                       <td className="px-4 py-3">
                         <div className="font-medium">{app.name}</div>
-                        <div className="mt-0.5 max-w-md truncate text-xs text-muted-foreground">{app.downloadUrl}</div>
+                        <div className="mt-0.5 max-w-md truncate text-xs text-muted-foreground">
+                          {app.appType === 'winget'
+                            ? app.wingetId || '—'
+                            : app.downloadUrl || '—'}
+                        </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">{app.version || '—'}</td>
                       <td className="px-4 py-3 font-mono text-xs">{app.installArgs || '—'}</td>

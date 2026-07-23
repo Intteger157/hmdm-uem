@@ -1,9 +1,16 @@
+export type SoftwareAppType = 'upload' | 'url' | 'winget'
+export type UpdateFrequency = 'daily' | 'weekly'
+
 export interface SoftwareApp {
   id: number
   name: string
   version: string
   downloadUrl: string
   installArgs: string
+  appType: SoftwareAppType
+  wingetId: string
+  autoUpdate: boolean
+  updateFrequency: UpdateFrequency | ''
   createdAt: string
   updatedAt: string
 }
@@ -16,8 +23,12 @@ export interface SoftwareAppListResponse {
 export interface UpsertSoftwareAppPayload {
   name: string
   version?: string
-  downloadUrl: string
+  downloadUrl?: string
   installArgs?: string
+  appType: SoftwareAppType
+  wingetId?: string
+  autoUpdate?: boolean
+  updateFrequency?: UpdateFrequency
 }
 
 export interface UploadApplicationResponse {

@@ -102,11 +102,15 @@ type EffectiveConfigPayload struct {
 
 // RequiredAppPayload is one app required by effective configuration.
 type RequiredAppPayload struct {
-	ID          uint   `json:"id"`
-	Name        string `json:"name"`
-	Version     string `json:"version"`
-	DownloadURL string `json:"downloadUrl"`
-	InstallArgs string `json:"installArgs"`
+	ID              uint   `json:"id"`
+	Name            string `json:"name"`
+	Version         string `json:"version"`
+	DownloadURL     string `json:"downloadUrl"`
+	InstallArgs     string `json:"installArgs"`
+	AppType         string `json:"appType"`
+	WingetID        string `json:"wingetId"`
+	AutoUpdate      bool   `json:"autoUpdate"`
+	UpdateFrequency string `json:"updateFrequency"`
 }
 
 // EffectiveConfigResponse is returned by GET /rest/windows/devices/:id/effective-config.

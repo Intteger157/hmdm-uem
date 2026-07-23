@@ -4,7 +4,6 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hmdm/server-windows/internal/db"
@@ -67,27 +66,19 @@ func (h *WindowsHandler) CreateSoftwareApp(c *gin.Context) {
 		return
 	}
 
-	name := strings.TrimSpace(req.Name)
-	downloadURL := strings.TrimSpace(req.DownloadURL)
-	if name == "" || downloadURL == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "name and downloadUrl are required"})
+	app := models.SoftwareApp{}
+	if err := applyUpsertRequest(&app, req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	app := models.SoftwareApp{
-		Name:        name,
-		Version:     strings.TrimSpace(req.Version),
-		DownloadURL: downloadURL,
-		InstallArgs: strings.TrimSpace(req.InstallArgs),
-	}
-
 	if err := db.DB.Create(&app).Error; err != nil {
-		log.Printf("[create-software-app] save failed: name=%q err=%v", name, err)
+		log.Printf("[create-software-app] save failed: name=%q err=%v", app.Name, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create software app"})
 		return
 	}
 
-	log.Printf("[create-software-app] created id=%d name=%q", app.ID, app.Name)
+	log.Printf("[create-software-app] created id=%d name=%q type=%q", app.ID, app.Name, app.AppType)
 	c.JSON(http.StatusCreated, models.ToSoftwareAppJSON(app))
 }
 
@@ -105,13 +96,6 @@ func (h *WindowsHandler) UpdateSoftwareApp(c *gin.Context) {
 		return
 	}
 
-	name := strings.TrimSpace(req.Name)
-	downloadURL := strings.TrimSpace(req.DownloadURL)
-	if name == "" || downloadURL == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "name and downloadUrl are required"})
-		return
-	}
-
 	var app models.SoftwareApp
 	if err := db.DB.First(&app, appID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -122,10 +106,10 @@ func (h *WindowsHandler) UpdateSoftwareApp(c *gin.Context) {
 		return
 	}
 
-	app.Name = name
-	app.Version = strings.TrimSpace(req.Version)
-	app.DownloadURL = downloadURL
-	app.InstallArgs = strings.TrimSpace(req.InstallArgs)
+	if err := applyUpsertRequest(&app, req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	if err := db.DB.Save(&app).Error; err != nil {
 		log.Printf("[update-software-app] save failed: id=%d err=%v", appID, err)

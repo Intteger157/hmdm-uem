@@ -216,12 +216,20 @@ func loadRequiredAppsForProfiles(profileIDs []uint) ([]models.RequiredApp, error
 
 	required := make([]models.RequiredApp, 0, len(apps))
 	for _, app := range apps {
+		appType := app.AppType
+		if appType == "" {
+			appType = models.AppTypeURL
+		}
 		required = append(required, models.RequiredApp{
-			ID:          app.ID,
-			Name:        app.Name,
-			Version:     app.Version,
-			DownloadURL: app.DownloadURL,
-			InstallArgs: app.InstallArgs,
+			ID:              app.ID,
+			Name:            app.Name,
+			Version:         app.Version,
+			DownloadURL:     app.DownloadURL,
+			InstallArgs:     app.InstallArgs,
+			AppType:         appType,
+			WingetID:        app.WingetID,
+			AutoUpdate:      app.AutoUpdate,
+			UpdateFrequency: app.UpdateFrequency,
 		})
 	}
 	return required, nil

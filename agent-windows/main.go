@@ -285,11 +285,15 @@ func syncPolicyFromServer(cfg *config.Config, apiClient *api.APIClient) {
 		requiredApps := make([]apps.RequiredApp, 0, len(response.RequiredApps))
 		for _, app := range response.RequiredApps {
 			requiredApps = append(requiredApps, apps.RequiredApp{
-				ID:          app.ID,
-				Name:        app.Name,
-				Version:     app.Version,
-				DownloadURL: app.DownloadURL,
-				InstallArgs: app.InstallArgs,
+				ID:              app.ID,
+				Name:            app.Name,
+				Version:         app.Version,
+				DownloadURL:     app.DownloadURL,
+				InstallArgs:     app.InstallArgs,
+				AppType:         app.AppType,
+				WingetID:        app.WingetID,
+				AutoUpdate:      app.AutoUpdate,
+				UpdateFrequency: app.UpdateFrequency,
 			})
 		}
 
