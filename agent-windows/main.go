@@ -12,15 +12,17 @@ import (
 	"github.com/hmdm/agent-windows/internal/api"
 	"github.com/hmdm/agent-windows/internal/commands"
 	"github.com/hmdm/agent-windows/internal/config"
+	"github.com/hmdm/agent-windows/internal/policies"
 	"github.com/hmdm/agent-windows/internal/system"
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/debug"
 )
 
 const (
-	serviceName         = "HMDMAgent"
-	enrollmentRetryWait = 30 * time.Second
-	inventoryInterval   = 10 * time.Second
+	serviceName              = "HMDMAgent"
+	enrollmentRetryWait      = 30 * time.Second
+	inventoryInterval        = 10 * time.Second
+	policyComplianceInterval = time.Hour
 )
 
 var inflightInventoryCommands sync.Map
@@ -198,6 +200,8 @@ func runAgentLoop(stop <-chan struct{}, cfg *config.Config, apiClient *api.APICl
 	ticker := time.NewTicker(inventoryInterval)
 	defer ticker.Stop()
 
+	go runPolicyComplianceLoop(stop, cfg, apiClient)
+
 	for {
 		select {
 		case <-stop:
@@ -224,6 +228,7 @@ func runAgentLoop(stop <-chan struct{}, cfg *config.Config, apiClient *api.APICl
 					}
 					log.Printf("inventory command processing failed: %v", err)
 				}
+				syncPolicyFromServer(cfg, apiClient)
 			}
 
 			if err := processPendingCommands(stop, cfg, apiClient); err != nil {
@@ -233,6 +238,59 @@ func runAgentLoop(stop <-chan struct{}, cfg *config.Config, apiClient *api.APICl
 				log.Printf("command processing failed: %v", err)
 			}
 		}
+	}
+}
+
+func runPolicyComplianceLoop(stop <-chan struct{}, cfg *config.Config, apiClient *api.APIClient) {
+	ticker := time.NewTicker(policyComplianceInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-stop:
+			return
+		case <-ticker.C:
+			if cfg.AuthToken == "" {
+				continue
+			}
+			reporter := policies.NewReporter(apiClient, cfg.AuthToken, cfg.HardwareID)
+			if err := policies.RunComplianceCheck(reporter); err != nil {
+				if handleReenrollNeeded(cfg, err) {
+					continue
+				}
+				log.Printf("policy compliance check failed: %v", err)
+			}
+		}
+	}
+}
+
+func syncPolicyFromServer(cfg *config.Config, apiClient *api.APIClient) {
+	if cfg.AuthToken == "" || cfg.HardwareID == "" {
+		return
+	}
+
+	reporter := policies.NewReporter(apiClient, cfg.AuthToken, cfg.HardwareID)
+	err := policies.SyncFromServer(func() (policies.EffectiveConfig, error) {
+		response, err := apiClient.FetchEffectiveConfig(cfg.AuthToken, cfg.HardwareID)
+		if err != nil {
+			return policies.EffectiveConfig{}, err
+		}
+		return policies.EffectiveConfig{
+			Payload: policies.Payload{
+				DefenderEnabled:   response.Payload.DefenderEnabled,
+				BlockUsbStorage:   response.Payload.BlockUsbStorage,
+				ScreenLockTimeout: response.Payload.ScreenLockTimeout,
+			},
+			ProfileID:   response.ProfileID,
+			ProfileName: response.ProfileName,
+			Source:      response.Source,
+		}, nil
+	}, reporter)
+	if err != nil {
+		if handleReenrollNeeded(cfg, err) {
+			return
+		}
+		log.Printf("policy sync failed: %v", err)
 	}
 }
 

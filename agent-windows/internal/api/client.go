@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -16,12 +17,14 @@ import (
 )
 
 const (
-	enrollPath           = "/rest/windows/enroll"
-	inventoryPath        = "/rest/windows/inventory"
-	uninstallPath        = "/rest/windows/uninstall"
-	pollCommandPath      = "/rest/windows/commands/poll"
-	completeCommandPath  = "/rest/windows/commands/%d/complete"
-	submitCommandResultPath = "/rest/windows/commands/%d/result"
+	enrollPath                = "/rest/windows/enroll"
+	inventoryPath             = "/rest/windows/inventory"
+	uninstallPath             = "/rest/windows/uninstall"
+	pollCommandPath           = "/rest/windows/commands/poll"
+	completeCommandPath       = "/rest/windows/commands/%d/complete"
+	submitCommandResultPath   = "/rest/windows/commands/%d/result"
+	effectiveConfigPath       = "/rest/windows/devices/%s/effective-config"
+	policyEnforcementLogPath  = "/rest/windows/devices/%s/policy-enforcement"
 )
 
 // ErrUnauthorized indicates the server rejected the current auth token.
@@ -83,6 +86,21 @@ type PendingDeviceCommand struct {
 	ID          uint
 	CommandName string
 	Payload     string
+}
+
+// EffectiveConfigPayload is the merged policy payload for a Windows device.
+type EffectiveConfigPayload struct {
+	DefenderEnabled   bool `json:"defenderEnabled"`
+	BlockUsbStorage   bool `json:"blockUsbStorage"`
+	ScreenLockTimeout int  `json:"screenLockTimeout"`
+}
+
+// EffectiveConfigResponse is returned by GET /rest/windows/devices/:id/effective-config.
+type EffectiveConfigResponse struct {
+	Payload     EffectiveConfigPayload `json:"payload"`
+	ProfileID   uint                   `json:"profileId,omitempty"`
+	ProfileName string                 `json:"profileName,omitempty"`
+	Source      string                 `json:"source,omitempty"`
 }
 
 // NewAPIClient constructs an API client from the given configuration.
@@ -349,5 +367,83 @@ func (c *APIClient) SubmitCommandResult(authToken, hwid string, commandID uint, 
 		return nil
 	default:
 		return fmt.Errorf("command result failed with HTTP %d", resp.StatusCode)
+	}
+}
+
+// FetchEffectiveConfig returns the merged effective policy for this device.
+func (c *APIClient) FetchEffectiveConfig(authToken, hwid string) (EffectiveConfigResponse, error) {
+	url := c.baseURL + fmt.Sprintf(effectiveConfigPath, url.PathEscape(hwid))
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return EffectiveConfigResponse{}, fmt.Errorf("create effective-config request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+authToken)
+	req.Header.Set("X-Device-Id", hwid)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return EffectiveConfigResponse{}, fmt.Errorf("send effective-config request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return EffectiveConfigResponse{}, fmt.Errorf("read effective-config response: %w", err)
+	}
+
+	switch resp.StatusCode {
+	case http.StatusUnauthorized:
+		return EffectiveConfigResponse{}, ErrUnauthorized
+	case http.StatusNotFound:
+		return EffectiveConfigResponse{}, ErrDeviceNotFound
+	case http.StatusOK:
+		var parsed EffectiveConfigResponse
+		if err := json.Unmarshal(body, &parsed); err != nil {
+			return EffectiveConfigResponse{}, fmt.Errorf("decode effective-config response: %w", err)
+		}
+		return parsed, nil
+	default:
+		return EffectiveConfigResponse{}, fmt.Errorf("effective-config failed with HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+}
+
+// ReportPolicyEnforcement uploads policy enforcement output to Action Logs.
+func (c *APIClient) ReportPolicyEnforcement(authToken, hwid string, success bool, output string) error {
+	payload, err := json.Marshal(map[string]any{
+		"success": success,
+		"output":  output,
+	})
+	if err != nil {
+		return fmt.Errorf("marshal policy enforcement request: %w", err)
+	}
+
+	url := c.baseURL + fmt.Sprintf(policyEnforcementLogPath, url.PathEscape(hwid))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(payload))
+	if err != nil {
+		return fmt.Errorf("create policy enforcement request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+authToken)
+	req.Header.Set("X-Device-Id", hwid)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("send policy enforcement request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if _, err := io.Copy(io.Discard, resp.Body); err != nil {
+		return fmt.Errorf("read policy enforcement response: %w", err)
+	}
+
+	switch resp.StatusCode {
+	case http.StatusUnauthorized:
+		return ErrUnauthorized
+	case http.StatusOK, http.StatusNoContent:
+		return nil
+	default:
+		return fmt.Errorf("policy enforcement log failed with HTTP %d", resp.StatusCode)
 	}
 }
