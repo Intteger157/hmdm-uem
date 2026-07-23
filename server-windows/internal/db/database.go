@@ -23,6 +23,7 @@ func InitDB(dsn string) (*gorm.DB, error) {
 	if err := database.AutoMigrate(
 		&models.WindowsDevice{},
 		&models.WindowsDeviceCommand{},
+		&models.DeviceCommandLog{},
 		&models.WindowsEnrollmentToken{},
 		&models.WindowsAgentInstaller{},
 	); err != nil {

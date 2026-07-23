@@ -41,7 +41,16 @@ func (h *WindowsHandler) EnqueueCommand(c *gin.Context) {
 		return
 	}
 
+	if commandName := strings.TrimSpace(req.CommandName); commandName != "" {
+		h.enqueueDeviceCommandLog(c, hardwareID, commandName, payloadString(req.Payload))
+		return
+	}
+
 	action := strings.TrimSpace(req.Action)
+	if action == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "action or commandName is required"})
+		return
+	}
 	if _, ok := allowedCommandActions[action]; !ok {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported action"})
 		return

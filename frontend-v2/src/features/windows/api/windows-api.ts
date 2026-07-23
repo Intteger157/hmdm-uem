@@ -308,6 +308,59 @@ export async function restartWindowsDeviceService(
   return response.data
 }
 
+export interface DeviceCommandLogEntry {
+  id: number
+  commandName: string
+  payload: string
+  status: 'Pending' | 'Success' | 'Failed'
+  output?: string
+  createdAt: string
+  executedAt?: string
+}
+
+export interface DeviceCommandLogListResponse {
+  items: DeviceCommandLogEntry[]
+  totalItemsCount: number
+}
+
+interface EnqueueDeviceCommandResponse {
+  id: number
+  commandName: string
+  payload: string
+  status: string
+}
+
+/** Queues a logged remote command (DeviceCommandLog) for a Windows agent. */
+export async function queueWindowsDeviceCommand(
+  hardwareId: string,
+  commandName: 'UninstallUpdate',
+  payload: string,
+): Promise<EnqueueDeviceCommandResponse> {
+  if (isMockApiEnabled()) {
+    return { id: Date.now(), commandName, payload, status: 'Pending' }
+  }
+
+  const encoded = encodeURIComponent(hardwareId)
+  const response = await windowsApi.post<EnqueueDeviceCommandResponse>(
+    `/devices/${encoded}/commands`,
+    { commandName, payload },
+  )
+  return response.data
+}
+
+/** Returns command execution history for a Windows device. */
+export async function getWindowsDeviceCommandLogs(
+  hardwareId: string,
+): Promise<DeviceCommandLogListResponse> {
+  if (isMockApiEnabled()) {
+    return { items: [], totalItemsCount: 0 }
+  }
+
+  const encoded = encodeURIComponent(hardwareId)
+  const response = await windowsApi.get<DeviceCommandLogListResponse>(`/devices/${encoded}/logs`)
+  return response.data
+}
+
 export interface WindowsEnrollmentSetupResponse {
   orgEnrollmentSecret: string
   installerConfigured: boolean

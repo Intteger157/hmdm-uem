@@ -45,6 +45,7 @@ func main() {
 			windows.DELETE("/devices/:hardwareId", windowsHandler.DeleteDevice)
 			windows.POST("/devices/:hardwareId/commands", windowsHandler.EnqueueCommand)
 			windows.GET("/devices/:hardwareId/commands/latest", windowsHandler.GetLatestCommand)
+			windows.GET("/devices/:hardwareId/logs", windowsHandler.ListDeviceCommandLogs)
 			windows.GET("/devices/:hardwareId/services", windowsHandler.GetDeviceServices)
 			windows.POST("/devices/:hardwareId/services/refresh", windowsHandler.RefreshDeviceServices)
 			windows.POST("/devices/:hardwareId/services/:serviceName/restart", windowsHandler.RestartDeviceService)
@@ -59,6 +60,7 @@ func main() {
 			windows.POST("/uninstall", windowsHandler.Uninstall)
 			windows.GET("/commands/poll", windowsHandler.PollCommand)
 			windows.POST("/commands/:commandId/complete", windowsHandler.CompleteCommand)
+			windows.POST("/commands/:commandId/result", windowsHandler.SubmitCommandResult)
 		}
 	}
 

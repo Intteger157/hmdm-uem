@@ -26,6 +26,7 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import { DeviceActionsPanel } from '@/features/devices/components/DeviceActionsPanel'
 import { WindowsDeviceServicesTab } from '@/features/devices/components/WindowsDeviceServicesTab'
+import { WindowsDeviceActionLogsTab } from '@/features/devices/components/WindowsDeviceActionLogsTab'
 import { useDeviceByNumber } from '@/features/devices/hooks/use-device-by-number-query'
 import {
   formatDeviceEnrollTime,
@@ -59,6 +60,7 @@ import type { DeviceDiskVolume, WindowsUpdateItem } from '@/shared/api/types/dev
 import type { TFunction } from 'i18next'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { queueWindowsDeviceCommand } from '@/features/windows/api/windows-api'
 import { useState, type ReactNode } from 'react'
 
 const STATUS_BADGE: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -230,6 +232,9 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
           {device.platform === 'windows' ? (
             <TabsTrigger value="services">{t('deviceDetail.tabs.services')}</TabsTrigger>
           ) : null}
+          {device.platform === 'windows' ? (
+            <TabsTrigger value="logs">{t('deviceDetail.tabs.actionLogs')}</TabsTrigger>
+          ) : null}
           <TabsTrigger value="actions">{t('deviceDetail.tabs.actions')}</TabsTrigger>
         </TabsList>
 
@@ -323,6 +328,12 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
           </TabsContent>
         ) : null}
 
+        {device.platform === 'windows' ? (
+          <TabsContent value="logs" className="mt-4">
+            <WindowsDeviceActionLogsTab hardwareId={device.number} />
+          </TabsContent>
+        ) : null}
+
         <TabsContent value="actions" className="mt-4">
           <DeviceActionsPanel device={device} platform={device.platform} />
         </TabsContent>
@@ -401,7 +412,7 @@ function WindowsOverviewGrid({
         headerIcon={MemoryStick}
       />
       <AntivirusMetricCard className="h-full" device={device} na={na} t={t} />
-      <WindowsUpdateMetricCard className="h-full" device={device} na={na} t={t} />
+      <WindowsUpdateMetricCard className="h-full" device={device} hardwareId={device.number} na={na} t={t} />
       <WindowsDiskMetrics className="h-full lg:col-span-4" device={device} na={na} t={t} />
     </div>
   )
@@ -636,23 +647,40 @@ function NetworkMetricCard({
 
 function WindowsUpdateMetricCard({
   device,
+  hardwareId,
   na,
   t,
   className,
 }: {
   device: DeviceView
+  hardwareId: string
   na: string
   t: TFunction
   className?: string
 }) {
   const [open, setOpen] = useState(false)
+  const [rollingBackKb, setRollingBackKb] = useState<string | null>(null)
   const pending = device.pendingUpdates != null ? String(device.pendingUpdates) : na
   const lastChecked = formatWindowsUpdateCheck(device.lastUpdateCheck, na)
   const pendingList = device.pendingUpdatesList ?? []
   const installedList = device.installedUpdatesList ?? []
 
-  const handleRollback = () => {
-    toast(t('deviceDetail.windowsUpdateDialog.rollbackTriggered'))
+  const handleRollback = async (update: WindowsUpdateItem) => {
+    const kb = update.kb?.trim()
+    if (!kb) {
+      toast.error(t('deviceDetail.windowsUpdateDialog.rollbackMissingKb'))
+      return
+    }
+
+    setRollingBackKb(kb)
+    try {
+      await queueWindowsDeviceCommand(hardwareId, 'UninstallUpdate', kb)
+      toast.success(t('deviceDetail.windowsUpdateDialog.rollbackQueued'))
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t('deviceDetail.windowsUpdateDialog.rollbackFailed'))
+    } finally {
+      setRollingBackKb(null)
+    }
   }
 
   return (
@@ -714,7 +742,8 @@ function WindowsUpdateMetricCard({
               <WindowsUpdateTable
                 emptyLabel={t('deviceDetail.windowsUpdateDialog.noInstalled')}
                 na={na}
-                onRollback={handleRollback}
+                onRollback={(update) => void handleRollback(update)}
+                rollingBackKb={rollingBackKb}
                 rows={installedList}
                 showActions
                 showInstalledOn
@@ -735,6 +764,7 @@ function WindowsUpdateTable({
   t,
   showInstalledOn = false,
   showActions = false,
+  rollingBackKb = null,
   onRollback,
 }: {
   rows: WindowsUpdateItem[]
@@ -743,6 +773,7 @@ function WindowsUpdateTable({
   t: TFunction
   showInstalledOn?: boolean
   showActions?: boolean
+  rollingBackKb?: string | null
   onRollback?: (update: WindowsUpdateItem) => void
 }) {
   if (rows.length === 0) {
@@ -781,6 +812,7 @@ function WindowsUpdateTable({
                   <Button
                     size="sm"
                     variant="outline"
+                    disabled={!row.kb?.trim() || rollingBackKb === row.kb}
                     onClick={(event) => {
                       event.stopPropagation()
                       onRollback?.(row)

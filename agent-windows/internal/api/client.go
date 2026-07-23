@@ -21,6 +21,7 @@ const (
 	uninstallPath        = "/rest/windows/uninstall"
 	pollCommandPath      = "/rest/windows/commands/poll"
 	completeCommandPath  = "/rest/windows/commands/%d/complete"
+	submitCommandResultPath = "/rest/windows/commands/%d/result"
 )
 
 // ErrUnauthorized indicates the server rejected the current auth token.
@@ -55,11 +56,33 @@ type completeCommandRequest struct {
 	Message string `json:"message"`
 }
 
-// PendingCommand describes a command fetched from the server queue.
+type inventorySyncResponse struct {
+	Commands []pendingDeviceCommandResponse `json:"commands"`
+}
+
+type pendingDeviceCommandResponse struct {
+	ID          uint   `json:"id"`
+	CommandName string `json:"commandName"`
+	Payload     string `json:"payload"`
+}
+
+type submitCommandResultRequest struct {
+	Status string `json:"status"`
+	Output string `json:"output"`
+}
+
+// PendingCommand describes a command fetched from the server poll queue.
 type PendingCommand struct {
 	ID      uint
 	Action  string
 	Payload json.RawMessage
+}
+
+// PendingDeviceCommand is a command delivered during inventory check-in.
+type PendingDeviceCommand struct {
+	ID          uint
+	CommandName string
+	Payload     string
 }
 
 // NewAPIClient constructs an API client from the given configuration.
@@ -115,16 +138,16 @@ func (c *APIClient) Enroll(enrollToken, hwid string) (string, error) {
 	return parsed.AuthToken, nil
 }
 
-// SendInventory posts device inventory to the MDM server.
-func (c *APIClient) SendInventory(authToken, hwid string, info *system.DeviceInfo) error {
+// SendInventory posts device inventory to the MDM server and returns pending commands.
+func (c *APIClient) SendInventory(authToken, hwid string, info *system.DeviceInfo) ([]PendingDeviceCommand, error) {
 	payload, err := json.Marshal(info)
 	if err != nil {
-		return fmt.Errorf("marshal inventory: %w", err)
+		return nil, fmt.Errorf("marshal inventory: %w", err)
 	}
 
 	req, err := http.NewRequest(http.MethodPost, c.baseURL+inventoryPath, bytes.NewReader(payload))
 	if err != nil {
-		return fmt.Errorf("create inventory request: %w", err)
+		return nil, fmt.Errorf("create inventory request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -133,23 +156,39 @@ func (c *APIClient) SendInventory(authToken, hwid string, info *system.DeviceInf
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("send inventory request: %w", err)
+		return nil, fmt.Errorf("send inventory request: %w", err)
 	}
 	defer resp.Body.Close()
 
-	if _, err := io.Copy(io.Discard, resp.Body); err != nil {
-		return fmt.Errorf("read inventory response: %w", err)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read inventory response: %w", err)
 	}
 
 	switch resp.StatusCode {
 	case http.StatusUnauthorized:
-		return ErrUnauthorized
+		return nil, ErrUnauthorized
 	case http.StatusNotFound:
-		return ErrDeviceNotFound
+		return nil, ErrDeviceNotFound
 	case http.StatusOK, http.StatusCreated, http.StatusAccepted, http.StatusNoContent:
-		return nil
+		if len(body) == 0 {
+			return nil, nil
+		}
+		var parsed inventorySyncResponse
+		if err := json.Unmarshal(body, &parsed); err != nil {
+			return nil, fmt.Errorf("decode inventory response: %w", err)
+		}
+		commands := make([]PendingDeviceCommand, 0, len(parsed.Commands))
+		for _, item := range parsed.Commands {
+			commands = append(commands, PendingDeviceCommand{
+				ID:          item.ID,
+				CommandName: item.CommandName,
+				Payload:     item.Payload,
+			})
+		}
+		return commands, nil
 	default:
-		return fmt.Errorf("inventory failed with HTTP %d", resp.StatusCode)
+		return nil, fmt.Errorf("inventory failed with HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
 	}
 }
 
@@ -265,5 +304,50 @@ func (c *APIClient) CompleteCommand(authToken, hwid string, commandID uint, succ
 		return nil
 	default:
 		return fmt.Errorf("complete failed with HTTP %d", resp.StatusCode)
+	}
+}
+
+// SubmitCommandResult reports DeviceCommandLog execution output back to the server.
+func (c *APIClient) SubmitCommandResult(authToken, hwid string, commandID uint, success bool, output string) error {
+	status := "Failed"
+	if success {
+		status = "Success"
+	}
+
+	payload, err := json.Marshal(submitCommandResultRequest{
+		Status: status,
+		Output: output,
+	})
+	if err != nil {
+		return fmt.Errorf("marshal command result: %w", err)
+	}
+
+	url := c.baseURL + fmt.Sprintf(submitCommandResultPath, commandID)
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(payload))
+	if err != nil {
+		return fmt.Errorf("create command result request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+authToken)
+	req.Header.Set("X-Device-Id", hwid)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("send command result request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if _, err := io.Copy(io.Discard, resp.Body); err != nil {
+		return fmt.Errorf("read command result response: %w", err)
+	}
+
+	switch resp.StatusCode {
+	case http.StatusUnauthorized:
+		return ErrUnauthorized
+	case http.StatusOK, http.StatusNoContent:
+		return nil
+	default:
+		return fmt.Errorf("command result failed with HTTP %d", resp.StatusCode)
 	}
 }

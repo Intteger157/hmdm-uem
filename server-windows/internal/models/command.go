@@ -32,8 +32,9 @@ func (WindowsDeviceCommand) TableName() string {
 
 // EnqueueCommandRequest is sent by the admin UI.
 type EnqueueCommandRequest struct {
-	Action  string          `json:"action" binding:"required"`
-	Payload json.RawMessage `json:"payload"`
+	Action      string          `json:"action"`
+	CommandName string          `json:"commandName"`
+	Payload     json.RawMessage `json:"payload"`
 }
 
 // EnqueueCommandResponse confirms command creation.

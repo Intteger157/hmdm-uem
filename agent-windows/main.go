@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/hmdm/agent-windows/internal/api"
@@ -21,6 +22,8 @@ const (
 	enrollmentRetryWait = 30 * time.Second
 	inventoryInterval   = 10 * time.Second
 )
+
+var inflightInventoryCommands sync.Map
 
 var (
 	debugMode       = flag.Bool("debug", false, "run in console mode for debugging")
@@ -207,13 +210,20 @@ func runAgentLoop(stop <-chan struct{}, cfg *config.Config, apiClient *api.APICl
 				}
 			}
 
-			if err := uploadInventory(cfg, apiClient); err != nil {
+			pendingCommands, err := uploadInventory(cfg, apiClient)
+			if err != nil {
 				if handleReenrollNeeded(cfg, err) {
 					continue
 				}
 				log.Printf("inventory upload failed: %v", err)
 			} else {
 				log.Printf("inventory upload succeeded")
+				if err := processInventoryCommands(cfg, apiClient, pendingCommands); err != nil {
+					if handleReenrollNeeded(cfg, err) {
+						continue
+					}
+					log.Printf("inventory command processing failed: %v", err)
+				}
 			}
 
 			if err := processPendingCommands(stop, cfg, apiClient); err != nil {
@@ -226,14 +236,36 @@ func runAgentLoop(stop <-chan struct{}, cfg *config.Config, apiClient *api.APICl
 	}
 }
 
-func uploadInventory(cfg *config.Config, apiClient *api.APIClient) error {
+func uploadInventory(cfg *config.Config, apiClient *api.APIClient) ([]api.PendingDeviceCommand, error) {
 	info, err := system.CollectInfo()
 	if err != nil {
-		return fmt.Errorf("inventory collection failed: %w", err)
+		return nil, fmt.Errorf("inventory collection failed: %w", err)
 	}
 
-	if err := apiClient.SendInventory(cfg.AuthToken, cfg.HardwareID, info); err != nil {
-		return err
+	commands, err := apiClient.SendInventory(cfg.AuthToken, cfg.HardwareID, info)
+	if err != nil {
+		return nil, err
+	}
+	return commands, nil
+}
+
+func processInventoryCommands(cfg *config.Config, apiClient *api.APIClient, pendingCommands []api.PendingDeviceCommand) error {
+	for _, command := range pendingCommands {
+		if _, loaded := inflightInventoryCommands.LoadOrStore(command.ID, true); loaded {
+			continue
+		}
+
+		func(command api.PendingDeviceCommand) {
+			defer inflightInventoryCommands.Delete(command.ID)
+
+			log.Printf("executing inventory command id=%d name=%s payload=%s", command.ID, command.CommandName, command.Payload)
+			result := commands.ExecuteDeviceCommand(command.CommandName, command.Payload)
+			if err := apiClient.SubmitCommandResult(cfg.AuthToken, cfg.HardwareID, command.ID, result.Success, result.Message); err != nil {
+				log.Printf("inventory command id=%d result upload failed: %v", command.ID, err)
+				return
+			}
+			log.Printf("inventory command id=%d finished success=%v", command.ID, result.Success)
+		}(command)
 	}
 	return nil
 }
@@ -257,7 +289,7 @@ func processPendingCommands(stop <-chan struct{}, cfg *config.Config, apiClient 
 		log.Printf("executing command id=%d action=%s", command.ID, command.Action)
 
 		if command.Action == "sync" {
-			if err := uploadInventory(cfg, apiClient); err != nil {
+			if _, err := uploadInventory(cfg, apiClient); err != nil {
 				reportErr := apiClient.CompleteCommand(cfg.AuthToken, cfg.HardwareID, command.ID, false, err.Error())
 				if reportErr != nil {
 					return reportErr

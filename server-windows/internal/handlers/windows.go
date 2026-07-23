@@ -189,7 +189,9 @@ func (h *WindowsHandler) Inventory(c *gin.Context) {
 		req.DiskTotal_GB,
 	)
 
-	c.Status(http.StatusOK)
+	c.JSON(http.StatusOK, models.InventorySyncResponse{
+		Commands: pendingDeviceCommands(deviceID),
+	})
 }
 
 // Uninstall marks a device as having removed the Windows agent.
