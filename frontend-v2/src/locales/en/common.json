@@ -834,6 +834,7 @@
   "deviceDetail.actionLogs.batteryReportReady": "Battery report generated. Use the button below to download the HTML file.",
   "deviceDetail.location.openMap": "Open in Google Maps",
   "deviceDetail.location.wifiBssid": "Wi-Fi MAC: {{bssid}}",
+  "deviceDetail.tabs.overview": "Overview",
   "deviceDetail.tabs.software": "Installed Software",
   "deviceDetail.tabs.users": "Local Users",
   "deviceDetail.tabs.services": "Services",

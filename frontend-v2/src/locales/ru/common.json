@@ -834,6 +834,7 @@
   "deviceDetail.actionLogs.batteryReportReady": "Отчёт по батарее сформирован. Используйте кнопку ниже, чтобы скачать HTML-файл.",
   "deviceDetail.location.openMap": "Открыть в Google Maps",
   "deviceDetail.location.wifiBssid": "Wi-Fi MAC: {{bssid}}",
+  "deviceDetail.tabs.overview": "Обзор",
   "deviceDetail.tabs.software": "Установленное ПО",
   "deviceDetail.tabs.users": "Локальные пользователи",
   "deviceDetail.tabs.services": "Службы",

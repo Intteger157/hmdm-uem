@@ -87,6 +87,7 @@ const METRIC_CARD_HEADER_CLASS = 'flex flex-row items-center justify-between spa
 const METRIC_CARD_CONTENT_CLASS = 'px-3 pb-2.5'
 const METRIC_VALUE_CLASS = 'text-base font-bold leading-tight'
 const INTERACTIVE_TILE_CLASS = 'cursor-pointer hover:bg-accent/50 transition-colors'
+const TAB_CONTENT_CLASS = 'mt-0 w-full focus-visible:outline-none'
 
 function deviceTitle(device: DeviceView): string {
   if (device.platform === 'windows') {
@@ -110,7 +111,6 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
   const { t } = useTranslation()
   const now = usePeriodicNow()
   const { data: device, isLoading, error } = useDeviceByNumber(deviceNumber, platform)
-  const [activeTab, setActiveTab] = useState('software')
 
   if (isLoading) {
     return <DeviceDetailSkeleton />
@@ -142,8 +142,7 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
   const enrollTime = resolveEnrollTime(device)
   const publicIp = resolvePublicIp(device)
   const onlineStatus = resolveDeviceOnlineStatusCode(device, now)
-  const showLocalUsers = device.platform === 'windows'
-  const tabValue = !showLocalUsers && activeTab === 'users' ? 'software' : activeTab
+  const isWindows = device.platform === 'windows'
   const title = deviceTitle(device)
   const identifier = deviceIdentifier(device)
   const showIdentifierSubtitle = identifier !== title
@@ -175,90 +174,95 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
         </div>
       </div>
 
-      <Tabs value={tabValue} onValueChange={setActiveTab} className="space-y-3">
-        <TabsList variant="line">
-          <TabsTrigger value="software">{t('deviceDetail.tabs.software')}</TabsTrigger>
-          {showLocalUsers ? (
-            <TabsTrigger value="users">{t('deviceDetail.tabs.users')}</TabsTrigger>
+      <Tabs defaultValue="overview" className="w-full space-y-3">
+        <TabsList variant="line" className="w-full justify-start overflow-x-auto">
+          <TabsTrigger value="overview">{t('deviceDetail.tabs.overview')}</TabsTrigger>
+          <TabsTrigger value="installed-software">{t('deviceDetail.tabs.software')}</TabsTrigger>
+          {isWindows ? (
+            <TabsTrigger value="local-users">{t('deviceDetail.tabs.users')}</TabsTrigger>
           ) : null}
-          {device.platform === 'windows' ? (
+          {isWindows ? (
             <TabsTrigger value="services">{t('deviceDetail.tabs.services')}</TabsTrigger>
           ) : null}
-          {device.platform === 'windows' ? (
-            <TabsTrigger value="logs">{t('deviceDetail.tabs.actionLogs')}</TabsTrigger>
+          {isWindows ? (
+            <TabsTrigger value="action-logs">{t('deviceDetail.tabs.actionLogs')}</TabsTrigger>
           ) : null}
           <TabsTrigger value="actions">{t('deviceDetail.tabs.actions')}</TabsTrigger>
         </TabsList>
 
-        {device.platform === 'windows' ? (
-          <>
-            <WindowsOverviewGrid device={device} na={NA} t={t} />
-            <WindowsAppliedConfigurationCard hardwareId={device.number} />
-            <WindowsAppDeploymentsCard hardwareId={device.number} />
-          </>
-        ) : (
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
-            <MetricCard
-              label={t('devices.columns.number')}
-              value={device.number}
-              mono
-              headerIcon={Hash}
-            />
-            <MetricCard
-              label={t('deviceDetail.metrics.model')}
-              value={device.model ?? device.manufacturer ?? device.info?.model ?? NA}
-              headerIcon={Layers}
-            />
-            <MetricCard
-              label={t('deviceDetail.metrics.lastOnline')}
-              value={formatDeviceTimestamp(device.lastUpdate)}
-              headerIcon={Clock}
-            />
-            <MetricCard
-              label={t('deviceDetail.metrics.serial')}
-              value={device.serialNumber ?? device.serial ?? device.info?.serial ?? NA}
-              mono
-              headerIcon={Barcode}
-            />
-            <MetricCard label={t('devices.columns.imei')} value={device.imei ?? device.info?.imei ?? NA} mono />
-            <MetricCard
-              label={t('devices.columns.androidVersion')}
-              value={androidVersion ?? NA}
-              headerIcon={Monitor}
-              leadingIcon={
-                androidVersion ? (
-                  <AndroidIcon className={cn(METRIC_ICON_CLASS, ANDROID_BRAND_COLOR)} />
-                ) : undefined
-              }
-            />
-            <MetricCard
-              label={t('devices.columns.battery')}
-              value={batteryLevel != null ? `${batteryLevel}%` : NA}
-              leadingIcon={
-                batteryLevel != null ? (
-                  <BatteryLevelIcon level={batteryLevel} className={METRIC_ICON_CLASS} />
-                ) : undefined
-              }
-            />
-            <MetricCard
-              label={t('devices.columns.launcherVersion')}
-              value={launcherVersion ?? NA}
-            />
-            <MetricCard
-              label={t('deviceDetail.metrics.enrolled')}
-              value={
-                enrollTime != null ? formatDeviceEnrollTime(enrollTime) : t('devices.date.unknown')
-              }
-            />
-            <MetricCard label={t('deviceDetail.metrics.publicIp')} value={publicIp ?? NA} mono />
+        <TabsContent value="overview" className={TAB_CONTENT_CLASS}>
+          <div className="space-y-3">
+            {isWindows ? (
+              <>
+                <WindowsOverviewGrid device={device} na={NA} t={t} />
+                <WindowsAppliedConfigurationCard hardwareId={device.number} />
+                <WindowsAppDeploymentsCard hardwareId={device.number} />
+              </>
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
+                <MetricCard
+                  label={t('devices.columns.number')}
+                  value={device.number}
+                  mono
+                  headerIcon={Hash}
+                />
+                <MetricCard
+                  label={t('deviceDetail.metrics.model')}
+                  value={device.model ?? device.manufacturer ?? device.info?.model ?? NA}
+                  headerIcon={Layers}
+                />
+                <MetricCard
+                  label={t('deviceDetail.metrics.lastOnline')}
+                  value={formatDeviceTimestamp(device.lastUpdate)}
+                  headerIcon={Clock}
+                />
+                <MetricCard
+                  label={t('deviceDetail.metrics.serial')}
+                  value={device.serialNumber ?? device.serial ?? device.info?.serial ?? NA}
+                  mono
+                  headerIcon={Barcode}
+                />
+                <MetricCard label={t('devices.columns.imei')} value={device.imei ?? device.info?.imei ?? NA} mono />
+                <MetricCard
+                  label={t('devices.columns.androidVersion')}
+                  value={androidVersion ?? NA}
+                  headerIcon={Monitor}
+                  leadingIcon={
+                    androidVersion ? (
+                      <AndroidIcon className={cn(METRIC_ICON_CLASS, ANDROID_BRAND_COLOR)} />
+                    ) : undefined
+                  }
+                />
+                <MetricCard
+                  label={t('devices.columns.battery')}
+                  value={batteryLevel != null ? `${batteryLevel}%` : NA}
+                  leadingIcon={
+                    batteryLevel != null ? (
+                      <BatteryLevelIcon level={batteryLevel} className={METRIC_ICON_CLASS} />
+                    ) : undefined
+                  }
+                />
+                <MetricCard
+                  label={t('devices.columns.launcherVersion')}
+                  value={launcherVersion ?? NA}
+                />
+                <MetricCard
+                  label={t('deviceDetail.metrics.enrolled')}
+                  value={
+                    enrollTime != null ? formatDeviceEnrollTime(enrollTime) : t('devices.date.unknown')
+                  }
+                />
+                <MetricCard label={t('deviceDetail.metrics.publicIp')} value={publicIp ?? NA} mono />
+              </div>
+            )}
           </div>
-        )}
+        </TabsContent>
 
-        <TabsContent value="software" className="mt-0">
-          <Card>
+        <TabsContent value="installed-software" className={TAB_CONTENT_CLASS}>
+          <Card className="w-full">
             <CardContent className="p-0">
-              <div className="max-h-80 overflow-auto">
-                <table className="w-full text-left text-sm">
+              <div className="w-full overflow-x-auto">
+                <table className="w-full min-w-full text-left text-sm">
                   <thead className="sticky top-0 border-b bg-muted/80 backdrop-blur">
                     <tr className="text-muted-foreground">
                       <th className="px-4 py-2.5 font-medium">{t('deviceDetail.software.name')}</th>
@@ -290,67 +294,69 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
           </Card>
         </TabsContent>
 
-        {showLocalUsers ? (
-          <TabsContent value="users" className="mt-0">
-            <Card>
+        {isWindows ? (
+          <TabsContent value="local-users" className={TAB_CONTENT_CLASS}>
+            <Card className="w-full">
               <CardContent className="p-0">
-                <table className="w-full text-left text-sm">
-                  <thead className="border-b bg-muted/40 text-muted-foreground">
-                    <tr>
-                      <th className="px-4 py-2.5 font-medium">{t('deviceDetail.users.username')}</th>
-                      <th className="px-4 py-2.5 font-medium">{t('deviceDetail.users.admin')}</th>
-                      <th className="px-4 py-2.5 font-medium">{t('deviceDetail.users.status')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(device.localUsers ?? []).map((user) => (
-                      <tr key={user.username} className="border-b last:border-0">
-                        <td className="px-4 py-2.5 font-mono text-xs">{user.username}</td>
-                        <td className="px-4 py-2.5">
-                          {user.isAdmin ? t('deviceDetail.users.yes') : t('deviceDetail.users.no')}
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <Badge
-                            variant={
-                              user.status === 'active'
-                                ? 'default'
-                                : user.status === 'locked'
-                                  ? 'destructive'
-                                  : 'secondary'
-                            }
-                          >
-                            {user.status}
-                          </Badge>
-                        </td>
-                      </tr>
-                    ))}
-                    {(device.localUsers ?? []).length === 0 && (
+                <div className="w-full overflow-x-auto">
+                  <table className="w-full min-w-full text-left text-sm">
+                    <thead className="border-b bg-muted/40 text-muted-foreground">
                       <tr>
-                        <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
-                          {t('deviceDetail.users.empty')}
-                        </td>
+                        <th className="px-4 py-2.5 font-medium">{t('deviceDetail.users.username')}</th>
+                        <th className="px-4 py-2.5 font-medium">{t('deviceDetail.users.admin')}</th>
+                        <th className="px-4 py-2.5 font-medium">{t('deviceDetail.users.status')}</th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {(device.localUsers ?? []).map((user) => (
+                        <tr key={user.username} className="border-b last:border-0">
+                          <td className="px-4 py-2.5 font-mono text-xs">{user.username}</td>
+                          <td className="px-4 py-2.5">
+                            {user.isAdmin ? t('deviceDetail.users.yes') : t('deviceDetail.users.no')}
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <Badge
+                              variant={
+                                user.status === 'active'
+                                  ? 'default'
+                                  : user.status === 'locked'
+                                    ? 'destructive'
+                                    : 'secondary'
+                              }
+                            >
+                              {user.status}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                      {(device.localUsers ?? []).length === 0 && (
+                        <tr>
+                          <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
+                            {t('deviceDetail.users.empty')}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
         ) : null}
 
-        {device.platform === 'windows' ? (
-          <TabsContent value="services" className="mt-0">
+        {isWindows ? (
+          <TabsContent value="services" className={TAB_CONTENT_CLASS}>
             <WindowsDeviceServicesTab hardwareId={device.number} />
           </TabsContent>
         ) : null}
 
-        {device.platform === 'windows' ? (
-          <TabsContent value="logs" className="mt-0">
+        {isWindows ? (
+          <TabsContent value="action-logs" className={TAB_CONTENT_CLASS}>
             <WindowsDeviceActionLogsTab hardwareId={device.number} />
           </TabsContent>
         ) : null}
 
-        <TabsContent value="actions" className="mt-0">
+        <TabsContent value="actions" className={TAB_CONTENT_CLASS}>
           <DeviceActionsPanel device={device} platform={device.platform} />
         </TabsContent>
       </Tabs>
@@ -1123,21 +1129,27 @@ function DeviceDetailSkeleton() {
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-4 w-40" />
       </div>
-      <Skeleton className="h-9 w-full max-w-xl" />
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <Card key={i} className="h-full">
-            <CardHeader className={METRIC_CARD_HEADER_CLASS}>
-              <Skeleton className="h-3 w-16" />
-              <Skeleton className="h-3.5 w-3.5 rounded-full" />
-            </CardHeader>
-            <CardContent className={METRIC_CARD_CONTENT_CLASS}>
-              <Skeleton className="h-5 w-24" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-      <Skeleton className="h-64 w-full" />
+      <Tabs defaultValue="overview" className="w-full space-y-3">
+        <TabsList variant="line" className="w-full justify-start overflow-x-auto">
+          <Skeleton className="h-9 w-20" />
+          <Skeleton className="h-9 w-32" />
+          <Skeleton className="h-9 w-28" />
+          <Skeleton className="h-9 w-24" />
+        </TabsList>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Card key={i} className="h-full">
+              <CardHeader className={METRIC_CARD_HEADER_CLASS}>
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-3.5 w-3.5 rounded-full" />
+              </CardHeader>
+              <CardContent className={METRIC_CARD_CONTENT_CLASS}>
+                <Skeleton className="h-5 w-24" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </Tabs>
     </div>
   )
 }
