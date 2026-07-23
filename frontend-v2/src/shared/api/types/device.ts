@@ -100,6 +100,7 @@ export interface DeviceView {
   model?: string
   cpu?: string
   cpuCores?: number
+  cpuThreads?: number
   cpuFrequencyGhz?: number
   ramGb?: number
   diskTotalGb?: number

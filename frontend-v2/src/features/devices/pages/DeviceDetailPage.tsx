@@ -451,6 +451,8 @@ function CpuMetricCard({
   const cpuName = device.cpu?.trim() || na
   const cores =
     device.cpuCores != null && device.cpuCores > 0 ? String(device.cpuCores) : na
+  const threads =
+    device.cpuThreads != null && device.cpuThreads > 0 ? String(device.cpuThreads) : na
   const frequency = formatCpuFrequency(device.cpuFrequencyGhz, na)
 
   return (
@@ -489,8 +491,12 @@ function CpuMetricCard({
               <dd className="font-medium">{cpuName}</dd>
             </div>
             <div className="flex flex-col gap-1">
-              <dt className="text-muted-foreground">{t('deviceDetail.cpuDialog.cores')}</dt>
+              <dt className="text-muted-foreground">{t('deviceDetail.cpuDialog.physicalCores')}</dt>
               <dd className="font-medium">{cores}</dd>
+            </div>
+            <div className="flex flex-col gap-1">
+              <dt className="text-muted-foreground">{t('deviceDetail.cpuDialog.logicalProcessors')}</dt>
+              <dd className="font-medium">{threads}</dd>
             </div>
             <div className="flex flex-col gap-1">
               <dt className="text-muted-foreground">{t('deviceDetail.cpuDialog.frequency')}</dt>

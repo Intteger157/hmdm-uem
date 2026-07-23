@@ -27,6 +27,7 @@ type DeviceInfo struct {
 	OSVersion                    string                  `json:"os_version"`
 	CPU                          string                  `json:"cpu"`
 	CPUCores                     int                     `json:"cpu_cores,omitempty"`
+	CPUThreads                   int                     `json:"cpu_threads,omitempty"`
 	CPUFrequencyGHz              float64                 `json:"cpu_frequency_ghz,omitempty"`
 	RAM_GB                       int                     `json:"ram_gb"`
 	DiskTotal_GB      int                     `json:"disk_total_gb"`
@@ -107,7 +108,7 @@ func CollectInfo() (*DeviceInfo, error) {
 		return nil, fmt.Errorf("host info: %w", err)
 	}
 
-	cpuModel, cpuCores, cpuFrequencyGHz, err := collectCPUInfo()
+	cpuModel, cpuCores, cpuThreads, cpuFrequencyGHz, err := collectCPUInfo()
 	if err != nil {
 		return nil, fmt.Errorf("cpu: %w", err)
 	}
@@ -138,6 +139,7 @@ func CollectInfo() (*DeviceInfo, error) {
 		OSVersion:                   formatOSVersion(hostInfo),
 		CPU:                         cpuModel,
 		CPUCores:                    cpuCores,
+		CPUThreads:                  cpuThreads,
 		CPUFrequencyGHz:             cpuFrequencyGHz,
 		RAM_GB:                      bytesToRoundedGB(memInfo.Total),
 		DiskTotal_GB:      primaryDisk.Total_GB,
@@ -167,30 +169,28 @@ func CollectInfo() (*DeviceInfo, error) {
 	}, nil
 }
 
-func collectCPUInfo() (model string, cores int, frequencyGHz float64, err error) {
+func collectCPUInfo() (model string, cores int, threads int, frequencyGHz float64, err error) {
 	cpus, err := cpu.Info()
 	if err != nil {
-		return "", 0, 0, err
+		return "", 0, 0, 0, err
 	}
 	if len(cpus) == 0 {
-		return "", 0, 0, fmt.Errorf("no CPU information available")
+		return "", 0, 0, 0, fmt.Errorf("no CPU information available")
 	}
 
 	model = cpus[0].ModelName
-	for _, info := range cpus {
-		if info.Cores > 0 {
-			cores += int(info.Cores)
-		}
+
+	if physical, countErr := cpu.Counts(false); countErr == nil && physical > 0 {
+		cores = physical
 	}
-	if cores == 0 {
-		if logical, countErr := cpu.Counts(true); countErr == nil && logical > 0 {
-			cores = logical
-		}
+	if logical, countErr := cpu.Counts(true); countErr == nil && logical > 0 {
+		threads = logical
 	}
+
 	if cpus[0].Mhz > 0 {
 		frequencyGHz = cpus[0].Mhz / 1000
 	}
-	return model, cores, frequencyGHz, nil
+	return model, cores, threads, frequencyGHz, nil
 }
 
 func collectSystemDiskUsage() (*disk.UsageStat, error) {

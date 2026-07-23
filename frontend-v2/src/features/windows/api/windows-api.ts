@@ -25,6 +25,7 @@ export interface WindowsDeviceDto {
   osVersion: string
   cpu: string
   cpuCores?: number
+  cpuThreads?: number
   cpuFrequencyGhz?: number
   ramGb: number
   diskTotalGb: number
@@ -98,6 +99,7 @@ function mapWindowsDeviceToView(raw: WindowsDeviceDto): DeviceView {
     uninstalledAt: Number.isFinite(uninstalledAt) ? uninstalledAt : undefined,
     cpu: raw.cpu || undefined,
     cpuCores: raw.cpuCores || undefined,
+    cpuThreads: raw.cpuThreads || undefined,
     cpuFrequencyGhz: raw.cpuFrequencyGhz || undefined,
     ramGb: raw.ramGb || undefined,
     diskTotalGb: raw.diskTotalGb || undefined,

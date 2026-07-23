@@ -117,6 +117,7 @@ func (h *WindowsHandler) Inventory(c *gin.Context) {
 	device.OSVersion = req.OSVersion
 	device.CPU = req.CPU
 	device.CPUCores = req.CPUCores
+	device.CPUThreads = req.CPUThreads
 	device.CPUFrequencyGHz = req.CPUFrequencyGHz
 	device.RAM_GB = req.RAM_GB
 	device.DiskTotal_GB = req.DiskTotal_GB

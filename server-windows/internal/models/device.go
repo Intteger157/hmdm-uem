@@ -22,6 +22,7 @@ type InventoryRequest struct {
 	OSVersion         string               `json:"os_version"`
 	CPU                          string                    `json:"cpu"`
 	CPUCores                     int                       `json:"cpu_cores,omitempty"`
+	CPUThreads                   int                       `json:"cpu_threads,omitempty"`
 	CPUFrequencyGHz              float64                   `json:"cpu_frequency_ghz,omitempty"`
 	RAM_GB                       int                       `json:"ram_gb"`
 	DiskTotal_GB      int                  `json:"disk_total_gb"`
@@ -60,6 +61,7 @@ type WindowsDevice struct {
 	OSVersion         string
 	CPU                          string
 	CPUCores                     int
+	CPUThreads                   int
 	CPUFrequencyGHz              float64
 	RAM_GB                       int
 	DiskTotal_GB      int
@@ -112,6 +114,7 @@ type WindowsDeviceJSON struct {
 	OSVersion         string                    `json:"osVersion"`
 	CPU                          string                    `json:"cpu"`
 	CPUCores                     int                       `json:"cpuCores,omitempty"`
+	CPUThreads                   int                       `json:"cpuThreads,omitempty"`
 	CPUFrequencyGHz              float64                   `json:"cpuFrequencyGhz,omitempty"`
 	RAM_GB                       int                       `json:"ramGb"`
 	DiskTotal_GB      int                       `json:"diskTotalGb"`
@@ -159,6 +162,7 @@ func ToWindowsDeviceJSON(device WindowsDevice) WindowsDeviceJSON {
 		OSVersion:         device.OSVersion,
 		CPU:                          device.CPU,
 		CPUCores:                     device.CPUCores,
+		CPUThreads:                   device.CPUThreads,
 		CPUFrequencyGHz:              device.CPUFrequencyGHz,
 		RAM_GB:                       device.RAM_GB,
 		DiskTotal_GB:      device.DiskTotal_GB,
