@@ -1179,6 +1179,8 @@
   "deviceDetail.appDeployments.deployAppLabel": "Приложение",
   "deviceDetail.appDeployments.deployAppPlaceholder": "Выберите приложение...",
   "deviceDetail.appDeployments.deployNoApps": "Все приложения из каталога уже назначены на это устройство.",
+  "deviceDetail.appDeployments.deployCatalogEmpty": "В каталоге пока нет приложений. Добавьте их в Windows Management → Applications.",
+  "deviceDetail.appDeployments.deployLoadError": "Не удалось загрузить каталог приложений.",
   "deviceDetail.appDeployments.deployConfirm": "Развернуть",
   "deviceDetail.appDeployments.deploySuccess": "Приложение назначено на устройство",
   "deviceDetail.appDeployments.deployError": "Не удалось назначить приложение",

@@ -41,7 +41,10 @@ import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
 import { useWindowsDeviceCommandMutation } from '@/features/windows/hooks/use-windows-device-command'
 import { useQueueWindowsDeviceCommandMutation } from '@/features/windows/hooks/use-queue-windows-device-command'
 import { DeployApplicationDialog } from '@/features/devices/components/DeployApplicationDialog'
-import { useDeviceAppStatusesQuery } from '@/features/windows/applications/hooks/use-windows-software-apps'
+import {
+  useDeviceAppStatusesQuery,
+  useSoftwareAppsQuery,
+} from '@/features/windows/applications/hooks/use-windows-software-apps'
 import { WindowsPowerShellDialog } from '@/features/windows/components/WindowsCommandDialogs'
 import type { WindowsCommandAction } from '@/features/windows/api/windows-api'
 import { waitForWindowsCommandResult } from '@/features/windows/lib/wait-for-command-result'
@@ -137,7 +140,8 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
   const windowsCommandMutation = useWindowsDeviceCommandMutation(device.number)
   const queueLogMutation = useQueueWindowsDeviceCommandMutation(device.number)
   const deviceAppStatusesQuery = useDeviceAppStatusesQuery(device.number, platform === 'windows')
-  const assignedAppIds = (deviceAppStatusesQuery.data?.items ?? []).map((item) => item.appId)
+  const deviceAppStatuses = deviceAppStatusesQuery.data?.items ?? []
+  useSoftwareAppsQuery(platform === 'windows')
 
   const runAndroidCommand = async (actionId: AndroidCommandAction) => {
     try {
@@ -439,7 +443,7 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
         hardwareId={device.number}
         open={deployAppOpen}
         onOpenChange={setDeployAppOpen}
-        assignedAppIds={assignedAppIds}
+        deviceAppStatuses={deviceAppStatuses}
       />
     </>
   )

@@ -1179,6 +1179,8 @@
   "deviceDetail.appDeployments.deployAppLabel": "Application",
   "deviceDetail.appDeployments.deployAppPlaceholder": "Select an application...",
   "deviceDetail.appDeployments.deployNoApps": "All catalog applications are already assigned to this device.",
+  "deviceDetail.appDeployments.deployCatalogEmpty": "No applications in the catalog yet. Add one under Windows Management → Applications.",
+  "deviceDetail.appDeployments.deployLoadError": "Failed to load the application catalog.",
   "deviceDetail.appDeployments.deployConfirm": "Deploy",
   "deviceDetail.appDeployments.deploySuccess": "Application assigned to device",
   "deviceDetail.appDeployments.deployError": "Failed to assign application",

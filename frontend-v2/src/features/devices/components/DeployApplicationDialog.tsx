@@ -15,29 +15,44 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
+import type { DeviceAppStatusItem } from '@/features/windows/applications/types/software-app'
 
 interface DeployApplicationDialogProps {
   hardwareId: string
   open: boolean
   onOpenChange: (open: boolean) => void
-  assignedAppIds: number[]
+  deviceAppStatuses?: DeviceAppStatusItem[]
 }
 
 export function DeployApplicationDialog({
   hardwareId,
   open,
   onOpenChange,
-  assignedAppIds,
+  deviceAppStatuses = [],
 }: DeployApplicationDialogProps) {
   const { t } = useTranslation()
   const softwareAppsQuery = useSoftwareAppsQuery(open)
   const assignMutation = useAssignDeviceAppMutation()
   const [selectedAppId, setSelectedAppId] = useState('')
 
-  const availableApps = useMemo(() => {
-    const assigned = new Set(assignedAppIds)
-    return (softwareAppsQuery.data ?? []).filter((app) => !assigned.has(app.id))
-  }, [assignedAppIds, softwareAppsQuery.data])
+  const statusByAppId = useMemo(() => {
+    const map = new Map<number, DeviceAppStatusItem['status']>()
+    for (const item of deviceAppStatuses) {
+      map.set(item.appId, item.status)
+    }
+    return map
+  }, [deviceAppStatuses])
+
+  const catalogApps = softwareAppsQuery.data ?? []
+
+  const formatAppLabel = (app: (typeof catalogApps)[number]) => {
+    const base = app.version ? `${app.name} (${app.version})` : app.name
+    const status = statusByAppId.get(app.id)
+    if (!status) {
+      return base
+    }
+    return `${base} — ${status}`
+  }
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
@@ -79,14 +94,17 @@ export function DeployApplicationDialog({
             onChange={(event) => setSelectedAppId(event.target.value)}
           >
             <option value="">{t('deviceDetail.appDeployments.deployAppPlaceholder')}</option>
-            {availableApps.map((app) => (
+            {catalogApps.map((app) => (
               <option key={app.id} value={String(app.id)}>
-                {app.version ? `${app.name} (${app.version})` : app.name}
+                {formatAppLabel(app)}
               </option>
             ))}
           </select>
-          {!softwareAppsQuery.isLoading && availableApps.length === 0 ? (
-            <p className="text-xs text-muted-foreground">{t('deviceDetail.appDeployments.deployNoApps')}</p>
+          {softwareAppsQuery.isError ? (
+            <p className="text-xs text-destructive">{t('deviceDetail.appDeployments.deployLoadError')}</p>
+          ) : null}
+          {!softwareAppsQuery.isLoading && !softwareAppsQuery.isError && catalogApps.length === 0 ? (
+            <p className="text-xs text-muted-foreground">{t('deviceDetail.appDeployments.deployCatalogEmpty')}</p>
           ) : null}
         </div>
 
