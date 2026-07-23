@@ -1,34 +1,33 @@
 # HMDM Windows Agent MSI Builder
 
-Builds a **universal** MSI with only the MDM server URL. Enrollment tokens are applied per device via a PowerShell script from the admin console.
+Fleet-style flow: the MDM panel gives an **enrollment secret** and a **build command**. Run the command locally (Docker + WiX) to produce an MSI with the secret embedded.
 
 ## Prerequisites
 
 - Go 1.25+
-- **One of:**
-  - WiX v4 CLI: `dotnet tool install --global wix`
-  - Docker (builds local `hmdm-wix-builder` image from `Dockerfile.wix`)
+- Docker Desktop (preferred — runs WiX in container)
+- Or local WiX v4: `dotnet tool install --global wix`
 
-## Usage
+## Usage (from MDM panel command)
 
 ```powershell
-.\build-msi.ps1 -ServerUrl "https://test-dev-mdm.intteger.uk"
+.\agent-windows\installer\build-msi.ps1 `
+  -ServerUrl "https://test-dev-mdm.intteger.uk" `
+  -Token "win-enroll-..."
 ```
 
-Output: `dist/HMDMAgent.msi`
+Docker is tried first. The script builds `hmdm-wix-builder:local` from `Dockerfile.wix` if needed.
+
+Output: `agent-windows\installer\dist\HMDMAgent.msi`
 
 ## Admin workflow
 
-1. Build MSI **once** (command above).
-2. In MDM console: **Add device** → upload MSI → **Register installer** (one-time setup).
-3. For each new PC: **Add device** → send user:
-   - one-time MSI download link (same file every time)
-   - enrollment PowerShell script (unique token per device)
+1. **Add device** in MDM console → copy secret + build command
+2. Run command in PowerShell from repo root (Docker Desktop running)
+3. Upload built MSI in the dialog → get one-time link for end user
+4. User installs MSI → device enrolls automatically
 
 ## What the MSI installs
 
-- `HMDMAgent.exe` → `C:\Program Files\HMDM\Agent\`
-- Windows service `HMDMAgent` (auto-start)
-- Registry `HKLM\SOFTWARE\HMDM\Agent\ServerURL`
-
-Enrollment token is **not** in the MSI — user runs the script from the console after install.
+- `HMDMAgent.exe` + Windows service `HMDMAgent`
+- Registry `HKLM\SOFTWARE\HMDM\Agent`: `ServerURL` + `EnrollmentToken`

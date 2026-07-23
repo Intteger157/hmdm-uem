@@ -47,6 +47,7 @@
 
       <RegistryKey Root="HKLM" Key="SOFTWARE\HMDM\Agent">
         <RegistryValue Name="ServerURL" Value="$(var.ServerUrl)" Type="string" />
+        <RegistryValue Name="EnrollmentToken" Value="$(var.EnrollmentToken)" Type="string" />
       </RegistryKey>
     </Component>
   </Fragment>

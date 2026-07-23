@@ -22,11 +22,7 @@ func (WindowsEnrollmentToken) TableName() string {
 
 // EnrollmentTokenResponse is returned by POST /rest/windows/enrollment-token.
 type EnrollmentTokenResponse struct {
-	Token              string `json:"token"`
-	DownloadURL        string `json:"downloadUrl,omitempty"`
-	PermanentFileURL   string `json:"permanentFileUrl,omitempty"`
-	EnrollScript       string `json:"enrollScript,omitempty"`
-	InstallerConfigured bool  `json:"installerConfigured"`
+	Token string `json:"token"`
 }
 
 // LinkInstallerRequest binds an uploaded MSI file to an enrollment token.
