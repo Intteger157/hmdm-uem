@@ -25,6 +25,7 @@ const (
 	submitCommandResultPath   = "/rest/windows/commands/%d/result"
 	effectiveConfigPath       = "/rest/windows/devices/%s/effective-config"
 	policyEnforcementLogPath  = "/rest/windows/devices/%s/policy-enforcement"
+	appStatusPath             = "/rest/windows/devices/%s/apps/status"
 )
 
 // ErrUnauthorized indicates the server rejected the current auth token.
@@ -92,15 +93,26 @@ type PendingDeviceCommand struct {
 type EffectiveConfigPayload struct {
 	DefenderEnabled   bool `json:"defenderEnabled"`
 	BlockUsbStorage   bool `json:"blockUsbStorage"`
+	UsbReadOnly       bool `json:"usbReadOnly"`
 	ScreenLockTimeout int  `json:"screenLockTimeout"`
+}
+
+// RequiredAppPayload is one app required by effective configuration.
+type RequiredAppPayload struct {
+	ID          uint   `json:"id"`
+	Name        string `json:"name"`
+	Version     string `json:"version"`
+	DownloadURL string `json:"downloadUrl"`
+	InstallArgs string `json:"installArgs"`
 }
 
 // EffectiveConfigResponse is returned by GET /rest/windows/devices/:id/effective-config.
 type EffectiveConfigResponse struct {
-	Payload     EffectiveConfigPayload `json:"payload"`
-	ProfileID   uint                   `json:"profileId,omitempty"`
-	ProfileName string                 `json:"profileName,omitempty"`
-	Source      string                 `json:"source,omitempty"`
+	Payload      EffectiveConfigPayload `json:"payload"`
+	RequiredApps []RequiredAppPayload   `json:"requiredApps"`
+	ProfileID    uint                   `json:"profileId,omitempty"`
+	ProfileName  string                 `json:"profileName,omitempty"`
+	Source       string                 `json:"source,omitempty"`
 }
 
 // NewAPIClient constructs an API client from the given configuration.
@@ -445,5 +457,46 @@ func (c *APIClient) ReportPolicyEnforcement(authToken, hwid string, success bool
 		return nil
 	default:
 		return fmt.Errorf("policy enforcement log failed with HTTP %d", resp.StatusCode)
+	}
+}
+
+// ReportAppStatus uploads app deployment progress for one required app.
+func (c *APIClient) ReportAppStatus(authToken, hwid string, appID uint, status, errMsg string) error {
+	payload, err := json.Marshal(map[string]any{
+		"appId":  appID,
+		"status": status,
+		"error":  errMsg,
+	})
+	if err != nil {
+		return fmt.Errorf("marshal app status request: %w", err)
+	}
+
+	url := c.baseURL + fmt.Sprintf(appStatusPath, url.PathEscape(hwid))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(payload))
+	if err != nil {
+		return fmt.Errorf("create app status request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+authToken)
+	req.Header.Set("X-Device-Id", hwid)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("send app status request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if _, err := io.Copy(io.Discard, resp.Body); err != nil {
+		return fmt.Errorf("read app status response: %w", err)
+	}
+
+	switch resp.StatusCode {
+	case http.StatusUnauthorized:
+		return ErrUnauthorized
+	case http.StatusOK, http.StatusNoContent:
+		return nil
+	default:
+		return fmt.Errorf("app status report failed with HTTP %d", resp.StatusCode)
 	}
 }

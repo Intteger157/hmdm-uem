@@ -44,6 +44,13 @@ export interface WindowsConfigProfileAssignments {
 
 export interface WindowsEffectiveConfig {
   payload: WindowsConfigProfilePayload
+  requiredApps?: Array<{
+    id: number
+    name: string
+    version: string
+    downloadUrl: string
+    installArgs: string
+  }>
   profileId?: number
   profileName?: string
   source?: 'direct' | 'group' | ''

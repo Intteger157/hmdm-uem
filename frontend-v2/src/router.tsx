@@ -25,6 +25,7 @@ import { AuthLayout } from '@/layouts/AuthLayout'
 import { FilesListPage } from '@/features/files/pages/FilesListPage'
 import { PublicQrEnrollmentPage } from '@/features/devices/pages/PublicQrEnrollmentPage'
 import { WindowsConfigurationsPage } from '@/features/windows/configurations/pages/WindowsConfigurationsPage'
+import { WindowsAppCatalogPage } from '@/features/windows/applications/pages/WindowsAppCatalogPage'
 import { WindowsWorkInProgressPage } from '@/features/windows/pages/WindowsWorkInProgressPage'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { isPlatform } from '@/shared/api/types/platform'
@@ -197,7 +198,7 @@ const windowsScriptsRoute = createRoute({
 const windowsApplicationsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/windows/applications',
-  component: WindowsWorkInProgressPage,
+  component: WindowsAppCatalogPage,
 })
 
 const publicQrRoute = createRoute({

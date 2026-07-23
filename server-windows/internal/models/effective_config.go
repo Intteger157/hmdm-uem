@@ -12,13 +12,23 @@ type AppliedProfileSource struct {
 	Source      string `json:"source"`
 }
 
+// RequiredApp is one app the agent must install for a device.
+type RequiredApp struct {
+	ID          uint   `json:"id"`
+	Name        string `json:"name"`
+	Version     string `json:"version"`
+	DownloadURL string `json:"downloadUrl"`
+	InstallArgs string `json:"installArgs"`
+}
+
 // EffectiveConfigResponse is the merged policy payload for one device.
 type EffectiveConfigResponse struct {
-	Payload          WindowsConfigProfilePayload `json:"payload"`
-	ProfileID        uint                        `json:"profileId,omitempty"`
-	ProfileName      string                      `json:"profileName,omitempty"`
-	Source           string                      `json:"source,omitempty"`
-	AppliedProfiles  []AppliedProfileSource      `json:"appliedProfiles"`
+	Payload         WindowsConfigProfilePayload `json:"payload"`
+	RequiredApps    []RequiredApp               `json:"requiredApps"`
+	ProfileID       uint                        `json:"profileId,omitempty"`
+	ProfileName     string                      `json:"profileName,omitempty"`
+	Source          string                      `json:"source,omitempty"`
+	AppliedProfiles []AppliedProfileSource      `json:"appliedProfiles"`
 }
 
 func OverlayConfigPayload(base, overlay WindowsConfigProfilePayload) WindowsConfigProfilePayload {

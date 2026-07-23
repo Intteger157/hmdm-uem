@@ -7,6 +7,11 @@ import { z } from 'zod'
 import { fetchWindowsDeviceOptions } from '@/features/windows/configurations/api/windows-configurations-api'
 import { WindowsAssignmentMultiSelect } from '@/features/windows/configurations/components/WindowsAssignmentMultiSelect'
 import {
+  useAssignConfigProfileAppsMutation,
+  useConfigProfileAppsQuery,
+  useSoftwareAppsQuery,
+} from '@/features/windows/applications/hooks/use-windows-software-apps'
+import {
   useAssignWindowsConfigProfileMutation,
   useUpsertWindowsConfigProfileMutation,
   useWindowsConfigProfileAssignmentsQuery,
@@ -51,6 +56,7 @@ const configProfileFormSchema = z.object({
   }),
   groupIds: z.array(z.number().int().positive()),
   deviceIds: z.array(z.number().int().positive()),
+  appIds: z.array(z.number().int().positive()),
 })
 
 type ConfigProfileFormValues = z.infer<typeof configProfileFormSchema>
@@ -64,6 +70,7 @@ interface WindowsConfigProfileFormSheetProps {
 function toFormValues(
   profile: WindowsConfigProfile | null,
   assignments?: { groupIds: number[]; deviceIds: number[] },
+  profileApps?: { appIds: number[] },
 ): ConfigProfileFormValues {
   if (!profile) {
     return {
@@ -73,6 +80,7 @@ function toFormValues(
       payload: { ...DEFAULT_WINDOWS_CONFIG_PROFILE_PAYLOAD },
       groupIds: [],
       deviceIds: [],
+      appIds: [],
     }
   }
 
@@ -88,6 +96,7 @@ function toFormValues(
     },
     groupIds: assignments?.groupIds ?? [],
     deviceIds: assignments?.deviceIds ?? [],
+    appIds: profileApps?.appIds ?? [],
   }
 }
 
@@ -100,9 +109,12 @@ export function WindowsConfigProfileFormSheet({
   const isEdit = profile != null
   const upsertMutation = useUpsertWindowsConfigProfileMutation()
   const assignMutation = useAssignWindowsConfigProfileMutation()
+  const assignAppsMutation = useAssignConfigProfileAppsMutation()
   const [activeTab, setActiveTab] = useState('general')
 
   const assignmentsQuery = useWindowsConfigProfileAssignmentsQuery(profile?.id ?? null, open && isEdit)
+  const profileAppsQuery = useConfigProfileAppsQuery(profile?.id ?? null, open && isEdit)
+  const softwareAppsQuery = useSoftwareAppsQuery(open)
   const groupsQuery = useWindowsDeviceGroupsQuery(open)
   const devicesQuery = useQuery({
     queryKey: ['windows-device-options'],
@@ -120,8 +132,8 @@ export function WindowsConfigProfileFormSheet({
       setActiveTab('general')
       return
     }
-    form.reset(toFormValues(profile, assignmentsQuery.data))
-  }, [open, profile, assignmentsQuery.data, form])
+    form.reset(toFormValues(profile, assignmentsQuery.data, profileAppsQuery.data))
+  }, [open, profile, assignmentsQuery.data, profileAppsQuery.data, form])
 
   const handleSubmit = form.handleSubmit(async (values) => {
     try {
@@ -143,6 +155,11 @@ export function WindowsConfigProfileFormSheet({
         },
       })
 
+      await assignAppsMutation.mutateAsync({
+        profileId: saved.id,
+        appIds: values.appIds,
+      })
+
       toast.success(isEdit ? t('windowsConfigurations.form.updated') : t('windowsConfigurations.form.created'))
       onOpenChange(false)
     } catch {
@@ -150,7 +167,7 @@ export function WindowsConfigProfileFormSheet({
     }
   })
 
-  const isPending = upsertMutation.isPending || assignMutation.isPending
+  const isPending = upsertMutation.isPending || assignMutation.isPending || assignAppsMutation.isPending
   const groupOptions = (groupsQuery.data ?? []).map((group) => ({
     value: group.id,
     label: group.name,
@@ -158,6 +175,10 @@ export function WindowsConfigProfileFormSheet({
   const deviceOptions = (devicesQuery.data ?? []).map((device) => ({
     value: device.id,
     label: device.label,
+  }))
+  const appOptions = (softwareAppsQuery.data ?? []).map((app) => ({
+    value: app.id,
+    label: app.version ? `${app.name} (${app.version})` : app.name,
   }))
 
   return (
@@ -173,9 +194,10 @@ export function WindowsConfigProfileFormSheet({
         <Form {...form}>
           <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-1 flex-col gap-4 px-4 pb-4">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="general">{t('windowsConfigurations.form.general')}</TabsTrigger>
                 <TabsTrigger value="policies">{t('windowsConfigurations.form.securityPolicies')}</TabsTrigger>
+                <TabsTrigger value="apps">{t('windowsConfigurations.form.requiredApps')}</TabsTrigger>
                 <TabsTrigger value="assignments">{t('windowsConfigurations.form.assignments')}</TabsTrigger>
               </TabsList>
 
@@ -294,6 +316,29 @@ export function WindowsConfigProfileFormSheet({
                         {t('windowsConfigurations.form.screenLockTimeoutHint')}
                       </p>
                       <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </TabsContent>
+
+              <TabsContent value="apps" className="mt-4 space-y-4">
+                <p className="text-sm text-muted-foreground">{t('windowsConfigurations.requiredApps.hint')}</p>
+                <FormField
+                  control={form.control}
+                  name="appIds"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <WindowsAssignmentMultiSelect
+                          id="windows-config-apps"
+                          label={t('windowsConfigurations.requiredApps.apps')}
+                          options={appOptions}
+                          selectedIds={field.value}
+                          onChange={field.onChange}
+                          disabled={isPending || softwareAppsQuery.isLoading}
+                          emptyLabel={t('windowsConfigurations.requiredApps.noApps')}
+                        />
+                      </FormControl>
                     </FormItem>
                   )}
                 />

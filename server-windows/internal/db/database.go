@@ -30,6 +30,9 @@ func InitDB(dsn string) (*gorm.DB, error) {
 		&models.WindowsDeviceGroup{},
 		&models.WindowsProfileDevice{},
 		&models.WindowsProfileGroup{},
+		&models.SoftwareApp{},
+		&models.ProfileApp{},
+		&models.DeviceAppStatus{},
 	); err != nil {
 		return nil, fmt.Errorf("migrate database: %w", err)
 	}

@@ -2,6 +2,8 @@
 
 package policies
 
+import "github.com/hmdm/agent-windows/internal/apps"
+
 // Payload mirrors the effective configuration payload from server-windows.
 type Payload struct {
 	DefenderEnabled   bool `json:"defenderEnabled"`
@@ -12,11 +14,12 @@ type Payload struct {
 
 // EffectiveConfig is the full effective-config API response cached locally.
 type EffectiveConfig struct {
-	Payload     Payload `json:"payload"`
-	ProfileID   uint    `json:"profileId,omitempty"`
-	ProfileName string  `json:"profileName,omitempty"`
-	Source      string  `json:"source,omitempty"`
-	UpdatedAt   string  `json:"updatedAt,omitempty"`
+	Payload      Payload            `json:"payload"`
+	RequiredApps []apps.RequiredApp `json:"requiredApps"`
+	ProfileID    uint               `json:"profileId,omitempty"`
+	ProfileName  string             `json:"profileName,omitempty"`
+	Source       string             `json:"source,omitempty"`
+	UpdatedAt    string             `json:"updatedAt,omitempty"`
 }
 
 // AppliedPolicy tracks the last successfully enforced payload.

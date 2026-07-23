@@ -88,8 +88,19 @@ func buildEffectiveConfig(device models.WindowsDevice) (models.EffectiveConfigRe
 
 	merged := models.MergeConfigPayloads(groupPayloads, directPayloads)
 
+	profileIDs := make([]uint, 0, len(applied))
+	for _, entry := range applied {
+		profileIDs = append(profileIDs, entry.ProfileID)
+	}
+
+	requiredApps, err := loadRequiredAppsForProfiles(profileIDs)
+	if err != nil {
+		return models.EffectiveConfigResponse{}, err
+	}
+
 	response := models.EffectiveConfigResponse{
 		Payload:         merged,
+		RequiredApps:    requiredApps,
 		AppliedProfiles: applied,
 	}
 
@@ -168,4 +179,45 @@ func loadDirectAssignedProfiles(deviceID uint) ([]profileAssignmentEntry, error)
 		})
 	}
 	return entries, nil
+}
+
+func loadRequiredAppsForProfiles(profileIDs []uint) ([]models.RequiredApp, error) {
+	if len(profileIDs) == 0 {
+		return nil, nil
+	}
+
+	var links []models.ProfileApp
+	if err := db.DB.Where("profile_id IN ?", profileIDs).Order("profile_id ASC, app_id ASC").Find(&links).Error; err != nil {
+		return nil, err
+	}
+	if len(links) == 0 {
+		return nil, nil
+	}
+
+	appIDs := make([]uint, 0, len(links))
+	seen := make(map[uint]struct{}, len(links))
+	for _, link := range links {
+		if _, ok := seen[link.AppID]; ok {
+			continue
+		}
+		seen[link.AppID] = struct{}{}
+		appIDs = append(appIDs, link.AppID)
+	}
+
+	var apps []models.SoftwareApp
+	if err := db.DB.Where("id IN ?", appIDs).Order("id ASC").Find(&apps).Error; err != nil {
+		return nil, err
+	}
+
+	required := make([]models.RequiredApp, 0, len(apps))
+	for _, app := range apps {
+		required = append(required, models.RequiredApp{
+			ID:          app.ID,
+			Name:        app.Name,
+			Version:     app.Version,
+			DownloadURL: app.DownloadURL,
+			InstallArgs: app.InstallArgs,
+		})
+	}
+	return required, nil
 }

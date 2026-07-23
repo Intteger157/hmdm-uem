@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/hmdm/agent-windows/internal/api"
+	"github.com/hmdm/agent-windows/internal/apps"
 	"github.com/hmdm/agent-windows/internal/commands"
 	"github.com/hmdm/agent-windows/internal/config"
 	"github.com/hmdm/agent-windows/internal/policies"
@@ -254,7 +255,8 @@ func runPolicyComplianceLoop(stop <-chan struct{}, cfg *config.Config, apiClient
 				continue
 			}
 			reporter := policies.NewReporter(apiClient, cfg.AuthToken, cfg.HardwareID)
-			if err := policies.RunComplianceCheck(reporter); err != nil {
+			appReporter := policies.NewAppStatusReporter(apiClient, cfg.AuthToken, cfg.HardwareID)
+			if err := policies.RunComplianceCheck(reporter, appReporter); err != nil {
 				if handleReenrollNeeded(cfg, err) {
 					continue
 				}
@@ -270,22 +272,37 @@ func syncPolicyFromServer(cfg *config.Config, apiClient *api.APIClient) {
 	}
 
 	reporter := policies.NewReporter(apiClient, cfg.AuthToken, cfg.HardwareID)
+	appReporter := policies.NewAppStatusReporter(apiClient, cfg.AuthToken, cfg.HardwareID)
 	err := policies.SyncFromServer(func() (policies.EffectiveConfig, error) {
 		response, err := apiClient.FetchEffectiveConfig(cfg.AuthToken, cfg.HardwareID)
 		if err != nil {
 			return policies.EffectiveConfig{}, err
 		}
+
+		requiredApps := make([]apps.RequiredApp, 0, len(response.RequiredApps))
+		for _, app := range response.RequiredApps {
+			requiredApps = append(requiredApps, apps.RequiredApp{
+				ID:          app.ID,
+				Name:        app.Name,
+				Version:     app.Version,
+				DownloadURL: app.DownloadURL,
+				InstallArgs: app.InstallArgs,
+			})
+		}
+
 		return policies.EffectiveConfig{
 			Payload: policies.Payload{
 				DefenderEnabled:   response.Payload.DefenderEnabled,
 				BlockUsbStorage:   response.Payload.BlockUsbStorage,
+				UsbReadOnly:       response.Payload.UsbReadOnly,
 				ScreenLockTimeout: response.Payload.ScreenLockTimeout,
 			},
-			ProfileID:   response.ProfileID,
-			ProfileName: response.ProfileName,
-			Source:      response.Source,
+			RequiredApps: requiredApps,
+			ProfileID:    response.ProfileID,
+			ProfileName:  response.ProfileName,
+			Source:       response.Source,
 		}, nil
-	}, reporter)
+	}, reporter, appReporter)
 	if err != nil {
 		if handleReenrollNeeded(cfg, err) {
 			return

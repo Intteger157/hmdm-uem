@@ -196,6 +196,9 @@ func (h *WindowsHandler) DeleteConfigProfile(c *gin.Context) {
 	if err := deleteConfigProfileAssignments(profileID); err != nil {
 		log.Printf("[delete-config-profile] cleanup assignments failed: id=%d err=%v", profileID, err)
 	}
+	if err := deleteConfigProfileApps(profileID); err != nil {
+		log.Printf("[delete-config-profile] cleanup profile apps failed: id=%d err=%v", profileID, err)
+	}
 
 	log.Printf("[delete-config-profile] deleted id=%d", profileID)
 	c.Status(http.StatusNoContent)

@@ -435,3 +435,8 @@ func formatModelLabel(manufacturer, model string) string {
 		return ""
 	}
 }
+
+// CollectInstalledSoftware returns installed programs from the local registry inventory.
+func CollectInstalledSoftware() []InstalledSoftwareInfo {
+	return collectInstalledSoftware()
+}
