@@ -3,13 +3,17 @@ import { Package } from 'lucide-react'
 import { useDeviceAppStatusesQuery } from '@/features/windows/applications/hooks/use-windows-software-apps'
 import type { AppDeploymentStatus } from '@/features/windows/applications/types/software-app'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
 interface WindowsAppDeploymentsCardProps {
   hardwareId: string
+  className?: string
 }
+
+const CARD_HEADER_CLASS = 'flex flex-row items-center justify-between space-y-0 px-3 pb-1 pt-2.5'
+const CARD_CONTENT_CLASS = 'px-3 pb-2.5'
 
 function statusBadgeVariant(status: AppDeploymentStatus) {
   switch (status) {
@@ -41,7 +45,7 @@ function statusBadgeClassName(status: AppDeploymentStatus) {
   }
 }
 
-export function WindowsAppDeploymentsCard({ hardwareId }: WindowsAppDeploymentsCardProps) {
+export function WindowsAppDeploymentsCard({ hardwareId, className }: WindowsAppDeploymentsCardProps) {
   const { t } = useTranslation()
   const { data, isLoading, isError } = useDeviceAppStatusesQuery(hardwareId)
   const items = data?.items ?? []
@@ -49,12 +53,13 @@ export function WindowsAppDeploymentsCard({ hardwareId }: WindowsAppDeploymentsC
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader className="pb-3">
-          <Skeleton className="h-5 w-40" />
+      <Card className={cn('h-full', className)}>
+        <CardHeader className={CARD_HEADER_CLASS}>
+          <Skeleton className="h-3 w-28" />
+          <Skeleton className="size-4 rounded-full" />
         </CardHeader>
-        <CardContent>
-          <Skeleton className="h-16 w-full" />
+        <CardContent className={CARD_CONTENT_CLASS}>
+          <Skeleton className="h-12 w-full" />
         </CardContent>
       </Card>
     )
@@ -69,59 +74,46 @@ export function WindowsAppDeploymentsCard({ hardwareId }: WindowsAppDeploymentsC
   )
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Package className="size-4 text-muted-foreground" />
-              {t('deviceDetail.appDeployments.title')}
-            </CardTitle>
-            <CardDescription>
-              {inProgress
-                ? t('deviceDetail.appDeployments.installing', {
-                    current: successCount + 1,
-                    total: items.length,
-                  })
-                : t('deviceDetail.appDeployments.progress', {
-                    count: successCount,
-                    total: items.length,
-                  })}
-            </CardDescription>
-          </div>
+    <Card className={cn('h-full', className)}>
+      <CardHeader className={CARD_HEADER_CLASS}>
+        <div className="min-w-0 space-y-0.5">
+          <CardTitle className="text-xs font-medium text-muted-foreground">
+            {t('deviceDetail.appDeployments.title')}
+          </CardTitle>
+          <p className="text-[11px] leading-tight text-muted-foreground">
+            {inProgress
+              ? t('deviceDetail.appDeployments.installing', {
+                  current: successCount + 1,
+                  total: items.length,
+                })
+              : t('deviceDetail.appDeployments.progress', {
+                  count: successCount,
+                  total: items.length,
+                })}
+          </p>
         </div>
+        <Package className="size-4 shrink-0 text-muted-foreground/70" />
       </CardHeader>
-      <CardContent className="p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b bg-muted/50">
-              <tr className="text-muted-foreground">
-                <th className="px-4 py-2.5 font-medium">{t('deviceDetail.appDeployments.columns.app')}</th>
-                <th className="px-4 py-2.5 font-medium">{t('deviceDetail.appDeployments.columns.status')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr key={item.appId} className="border-b last:border-0">
-                  <td className="px-4 py-2.5">
-                    <div className="font-medium">{item.appName}</div>
-                    {item.errorMessage ? (
-                      <div className="mt-0.5 text-xs text-destructive">{item.errorMessage}</div>
-                    ) : null}
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <Badge
-                      variant={statusBadgeVariant(item.status)}
-                      className={cn(statusBadgeClassName(item.status))}
-                    >
-                      {t(`deviceDetail.appDeployments.status.${item.status}`)}
-                    </Badge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      <CardContent className={cn(CARD_CONTENT_CLASS, 'space-y-1.5 pt-0')}>
+        {items.map((item) => (
+          <div
+            key={item.appId}
+            className="flex items-start justify-between gap-2 border-b border-border/60 pb-1.5 last:border-0 last:pb-0"
+          >
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium leading-tight">{item.appName}</p>
+              {item.errorMessage ? (
+                <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-destructive">{item.errorMessage}</p>
+              ) : null}
+            </div>
+            <Badge
+              variant={statusBadgeVariant(item.status)}
+              className={cn('shrink-0 text-[10px]', statusBadgeClassName(item.status))}
+            >
+              {t(`deviceDetail.appDeployments.status.${item.status}`)}
+            </Badge>
+          </div>
+        ))}
       </CardContent>
     </Card>
   )

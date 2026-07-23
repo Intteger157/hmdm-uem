@@ -4,22 +4,31 @@ import { useWindowsDeviceEffectiveConfigQuery } from '@/features/windows/configu
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 
 interface WindowsAppliedConfigurationCardProps {
   hardwareId: string
+  className?: string
 }
 
-export function WindowsAppliedConfigurationCard({ hardwareId }: WindowsAppliedConfigurationCardProps) {
+const CARD_HEADER_CLASS = 'flex flex-row items-center justify-between space-y-0 px-3 pb-1 pt-2.5'
+const CARD_CONTENT_CLASS = 'px-3 pb-2.5'
+
+export function WindowsAppliedConfigurationCard({
+  hardwareId,
+  className,
+}: WindowsAppliedConfigurationCardProps) {
   const { t } = useTranslation()
   const { data, isLoading, isError } = useWindowsDeviceEffectiveConfigQuery(hardwareId)
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader className="pb-2">
-          <Skeleton className="h-5 w-48" />
+      <Card className={cn('h-full', className)}>
+        <CardHeader className={CARD_HEADER_CLASS}>
+          <Skeleton className="h-3 w-32" />
+          <Skeleton className="size-4 rounded-full" />
         </CardHeader>
-        <CardContent>
+        <CardContent className={CARD_CONTENT_CLASS}>
           <Skeleton className="h-4 w-full" />
         </CardContent>
       </Card>
@@ -28,11 +37,14 @@ export function WindowsAppliedConfigurationCard({ hardwareId }: WindowsAppliedCo
 
   if (isError) {
     return (
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">{t('deviceDetail.appliedConfiguration.title')}</CardTitle>
+      <Card className={cn('h-full', className)}>
+        <CardHeader className={CARD_HEADER_CLASS}>
+          <CardTitle className="text-xs font-medium text-muted-foreground">
+            {t('deviceDetail.appliedConfiguration.title')}
+          </CardTitle>
+          <Shield className="size-4 text-muted-foreground/70" />
         </CardHeader>
-        <CardContent className="text-sm text-destructive">
+        <CardContent className={cn(CARD_CONTENT_CLASS, 'text-xs text-destructive')}>
           {t('deviceDetail.appliedConfiguration.loadFailed')}
         </CardContent>
       </Card>
@@ -42,25 +54,27 @@ export function WindowsAppliedConfigurationCard({ hardwareId }: WindowsAppliedCo
   const hasProfile = Boolean(data?.profileName)
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{t('deviceDetail.appliedConfiguration.title')}</CardTitle>
-        <Shield className="size-4 text-muted-foreground" />
+    <Card className={cn('h-full', className)}>
+      <CardHeader className={CARD_HEADER_CLASS}>
+        <CardTitle className="text-xs font-medium text-muted-foreground">
+          {t('deviceDetail.appliedConfiguration.title')}
+        </CardTitle>
+        <Shield className="size-4 text-muted-foreground/70" />
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className={cn(CARD_CONTENT_CLASS, 'space-y-1.5')}>
         {hasProfile ? (
           <>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-medium">{data?.profileName}</span>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-sm font-semibold leading-tight">{data?.profileName}</span>
               {data?.source ? (
-                <Badge variant={data.source === 'direct' ? 'default' : 'secondary'}>
+                <Badge variant={data.source === 'direct' ? 'default' : 'secondary'} className="text-[10px]">
                   {data.source === 'direct'
                     ? t('deviceDetail.appliedConfiguration.direct')
                     : t('deviceDetail.appliedConfiguration.group')}
                 </Badge>
               ) : null}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs leading-relaxed text-muted-foreground">
               {t('deviceDetail.appliedConfiguration.summary', {
                 defender: data?.payload.defenderEnabled
                   ? t('deviceDetail.appliedConfiguration.enabled')
@@ -76,7 +90,7 @@ export function WindowsAppliedConfigurationCard({ hardwareId }: WindowsAppliedCo
             </p>
           </>
         ) : (
-          <p className="text-sm text-muted-foreground">{t('deviceDetail.appliedConfiguration.none')}</p>
+          <p className="text-xs text-muted-foreground">{t('deviceDetail.appliedConfiguration.none')}</p>
         )}
       </CardContent>
     </Card>

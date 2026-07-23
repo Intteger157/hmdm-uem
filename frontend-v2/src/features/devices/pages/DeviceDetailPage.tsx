@@ -175,7 +175,10 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
       </div>
 
       <Tabs defaultValue="overview" className="w-full space-y-3">
-        <TabsList variant="line" className="w-full justify-start overflow-x-auto">
+        <TabsList
+          variant="line"
+          className="h-auto w-full flex-wrap justify-start gap-1 [&_[data-slot=tabs-trigger]]:flex-none"
+        >
           <TabsTrigger value="overview">{t('deviceDetail.tabs.overview')}</TabsTrigger>
           <TabsTrigger value="installed-software">{t('deviceDetail.tabs.software')}</TabsTrigger>
           {isWindows ? (
@@ -193,11 +196,7 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
         <TabsContent value="overview" className={TAB_CONTENT_CLASS}>
           <div className="space-y-3">
             {isWindows ? (
-              <>
-                <WindowsOverviewGrid device={device} na={NA} t={t} />
-                <WindowsAppliedConfigurationCard hardwareId={device.number} />
-                <WindowsAppDeploymentsCard hardwareId={device.number} />
-              </>
+              <WindowsOverviewGrid device={device} na={NA} t={t} />
             ) : (
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
                 <MetricCard
@@ -374,14 +373,15 @@ function WindowsOverviewGrid({
   t: TFunction
 }) {
   return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
-      <MetricCard
-        className="h-full"
-        label={t('devices.columns.hostname')}
-        value={device.hostname ?? NA}
-        mono
-        headerIcon={Monitor}
-      />
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+        <MetricCard
+          className="h-full"
+          label={t('devices.columns.hostname')}
+          value={device.hostname ?? NA}
+          mono
+          headerIcon={Monitor}
+        />
       <MetricCard
         className="h-full"
         label={t('deviceDetail.metrics.model')}
@@ -433,6 +433,12 @@ function WindowsOverviewGrid({
       <BatteryMetricCard className="h-full" device={device} hardwareId={device.number} t={t} />
       <WindowsUpdateMetricCard className="h-full" device={device} hardwareId={device.number} na={na} t={t} />
       <WindowsDiskMetrics className="h-full xl:col-span-5" device={device} na={na} t={t} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <WindowsAppliedConfigurationCard hardwareId={device.number} className="h-full" />
+        <WindowsAppDeploymentsCard hardwareId={device.number} className="h-full" />
+      </div>
     </div>
   )
 }
@@ -1130,7 +1136,7 @@ function DeviceDetailSkeleton() {
         <Skeleton className="h-4 w-40" />
       </div>
       <Tabs defaultValue="overview" className="w-full space-y-3">
-        <TabsList variant="line" className="w-full justify-start overflow-x-auto">
+        <TabsList variant="line" className="h-auto w-full flex-wrap justify-start gap-1">
           <Skeleton className="h-9 w-20" />
           <Skeleton className="h-9 w-32" />
           <Skeleton className="h-9 w-28" />
