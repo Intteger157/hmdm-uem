@@ -58,7 +58,12 @@ func collectDiskVolumes() []DiskVolumeInfo {
 		}
 
 		usage, err := disk.Usage(part.Mountpoint)
-		if err != nil || usage.Total == 0 {
+		totalGB := 0
+		usedGB := 0
+		if err == nil && usage.Total > 0 {
+			totalGB = bytesToRoundedGB(usage.Total)
+			usedGB = bytesToRoundedGB(usage.Used)
+		} else if encryptStatus := encryptionByDrive[mount]; encryptStatus != "on" {
 			continue
 		}
 
@@ -66,9 +71,24 @@ func collectDiskVolumes() []DiskVolumeInfo {
 		volumes = append(volumes, DiskVolumeInfo{
 			MountPoint:    mount,
 			Label:         lookupVolumeLabel(mount),
-			Total_GB:      bytesToRoundedGB(usage.Total),
-			Used_GB:       bytesToRoundedGB(usage.Used),
+			Total_GB:      totalGB,
+			Used_GB:       usedGB,
 			EncryptStatus: fallbackEncryptStatus(encryptionByDrive[mount]),
+		})
+	}
+
+	for drive, encryptStatus := range encryptionByDrive {
+		if _, exists := seen[drive]; exists {
+			continue
+		}
+		if !isFixedDataVolume(drive) {
+			continue
+		}
+		seen[drive] = struct{}{}
+		volumes = append(volumes, DiskVolumeInfo{
+			MountPoint:    drive,
+			Label:         lookupVolumeLabel(drive),
+			EncryptStatus: fallbackEncryptStatus(encryptStatus),
 		})
 	}
 
@@ -119,10 +139,19 @@ func summarizeDiskEncryption(volumes []DiskVolumeInfo) (primary DiskVolumeInfo, 
 }
 
 func collectEncryptionByDriveLetter() map[string]string {
-	statuses := queryEncryptionViaWMI()
+	statuses := queryAllManageBDEStatuses()
 	if statuses == nil {
 		statuses = make(map[string]string)
 	}
+
+	if wmiStatuses := queryEncryptionViaWMI(); wmiStatuses != nil {
+		for drive, status := range wmiStatuses {
+			if statuses[drive] == "" || statuses[drive] == "unknown" {
+				statuses[drive] = status
+			}
+		}
+	}
+
 	for _, drive := range listFixedDriveLetters() {
 		if statuses[drive] != "" && statuses[drive] != "unknown" {
 			continue
@@ -139,10 +168,74 @@ func collectEncryptionByDriveLetter() map[string]string {
 			statuses[drive] = blStatus
 			continue
 		}
-		// Fixed data volumes without BitLocker data are treated as not encrypted.
-		statuses[drive] = "off"
+		if statuses[drive] == "" {
+			statuses[drive] = "unknown"
+		}
 	}
 	return statuses
+}
+
+func queryAllManageBDEStatuses() map[string]string {
+	cmd := exec.Command("manage-bde.exe", "-status")
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	output, err := cmd.CombinedOutput()
+	text := string(output)
+	if err != nil && !strings.Contains(strings.ToLower(text), "volume") {
+		return nil
+	}
+	return parseManageBDEStatusOutput(text)
+}
+
+func parseManageBDEStatusOutput(text string) map[string]string {
+	statuses := make(map[string]string)
+	lines := strings.Split(text, "\n")
+	var currentDrive string
+
+	for _, rawLine := range lines {
+		line := strings.TrimSpace(rawLine)
+		lower := strings.ToLower(line)
+
+		if drive := parseManageBDEVolumeHeader(line); drive != "" {
+			currentDrive = drive
+			continue
+		}
+
+		if currentDrive == "" {
+			continue
+		}
+
+		switch {
+		case strings.Contains(lower, "protection on"),
+			strings.Contains(lower, "fully encrypted"),
+			strings.Contains(lower, "encryption in progress"),
+			strings.Contains(lower, "decryption in progress"),
+			strings.Contains(lower, "lock status:") && strings.Contains(lower, "locked"),
+			strings.Contains(lower, "bitlocker on"):
+			statuses[currentDrive] = "on"
+		case strings.Contains(lower, "protection off"),
+			strings.Contains(lower, "fully decrypted"),
+			strings.Contains(lower, "not protected"),
+			strings.Contains(lower, "bitlocker off"),
+			strings.Contains(lower, "encryption method:") && strings.Contains(lower, "none"),
+			strings.Contains(lower, "bitlocker version:") && strings.Contains(lower, "none"):
+			statuses[currentDrive] = "off"
+		}
+	}
+
+	return statuses
+}
+
+func parseManageBDEVolumeHeader(line string) string {
+	lower := strings.ToLower(strings.TrimSpace(line))
+	if !strings.HasPrefix(lower, "volume ") {
+		return ""
+	}
+
+	rest := strings.TrimSpace(strings.TrimPrefix(lower, "volume "))
+	if len(rest) >= 2 && rest[1] == ':' {
+		return normalizeDriveLetter(strings.ToUpper(rest[:1]) + ":")
+	}
+	return ""
 }
 
 func queryEncryptionViaWMI() map[string]string {
@@ -201,11 +294,14 @@ func queryManageBDEStatus(drive string) string {
 	case strings.Contains(text, "protection on"),
 		strings.Contains(text, "fully encrypted"),
 		strings.Contains(text, "encryption in progress"),
-		strings.Contains(text, "decryption in progress"):
+		strings.Contains(text, "decryption in progress"),
+		strings.Contains(text, "lock status:") && strings.Contains(text, "locked"),
+		strings.Contains(text, "bitlocker on"):
 		return "on"
 	case strings.Contains(text, "protection off"),
 		strings.Contains(text, "fully decrypted"),
 		strings.Contains(text, "not protected"),
+		strings.Contains(text, "bitlocker off"),
 		strings.Contains(text, "bitlocker version:    none"),
 		strings.Contains(text, "encryption method:    none"),
 		strings.Contains(text, "percentage encrypted: 0.0%"):
@@ -242,7 +338,7 @@ func queryEncryptionViaPowerShell(drive string) string {
 
 func queryEncryptionViaBitLockerModule(drive string) string {
 	script := fmt.Sprintf(
-		"$ErrorActionPreference='SilentlyContinue'; Import-Module BitLocker; $v = Get-BitLockerVolume -MountPoint '%s' -ErrorAction SilentlyContinue | Select-Object -First 1; if ($null -eq $v) { exit 2 }; switch ($v.VolumeStatus.ToString()) { 'FullyEncrypted' { 'on' } 'EncryptionInProgress' { 'on' } 'DecryptionInProgress' { 'on' } 'FullyDecrypted' { 'off' } default { 'unknown' } }",
+		"$ErrorActionPreference='SilentlyContinue'; Import-Module BitLocker; $v = Get-BitLockerVolume -MountPoint '%s' -ErrorAction SilentlyContinue | Select-Object -First 1; if ($null -eq $v) { exit 2 }; if ($v.LockStatus -eq 'Locked') { 'on'; exit 0 }; switch ($v.VolumeStatus.ToString()) { 'FullyEncrypted' { 'on' } 'EncryptionInProgress' { 'on' } 'DecryptionInProgress' { 'on' } 'FullyDecrypted' { 'off' } default { 'unknown' } }",
 		drive,
 	)
 
@@ -320,8 +416,8 @@ func normalizeDriveLetter(mountpoint string) string {
 }
 
 func fallbackEncryptStatus(status string) string {
-	if status == "" || status == "unknown" {
-		return "off"
+	if status == "" {
+		return "unknown"
 	}
 	return status
 }

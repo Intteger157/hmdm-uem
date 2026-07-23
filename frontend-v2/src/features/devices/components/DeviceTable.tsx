@@ -45,16 +45,23 @@ const INDICATOR_COLORS: Record<DeviceStatusIndicator, string> = {
   grey: 'bg-slate-400',
 }
 
-const BITLOCKER_LABELS: Record<string, string> = {
-  on: 'Encrypted',
-  off: 'Off',
-  unknown: 'Unknown',
-}
-
 const PS_LABELS: Record<string, string> = {
   idle: 'Idle',
   running: 'Running',
   failed: 'Failed',
+}
+
+function formatBitLockerStatus(status: DeviceView['bitlockerStatus'], t: (key: string) => string): string {
+  switch (status) {
+    case 'on':
+      return t('deviceDetail.encrypted')
+    case 'off':
+      return t('deviceDetail.notEncrypted')
+    case 'partial':
+      return t('deviceDetail.partiallyEncrypted')
+    default:
+      return t('deviceDetail.encryptionUnknown')
+  }
 }
 
 function formatTimestamp(ms?: number): string {
@@ -454,7 +461,7 @@ function WindowsDeviceRow({
       </td>
       <td className="px-4 py-3 font-mono text-xs">{device.windowsBuild ?? '—'}</td>
       <td className="px-4 py-3">
-        {BITLOCKER_LABELS[device.bitlockerStatus ?? 'unknown'] ?? '—'}
+        {formatBitLockerStatus(device.bitlockerStatus, t)}
       </td>
       <td className="px-4 py-3">
         {PS_LABELS[device.powershellExecStatus ?? 'idle'] ?? '—'}

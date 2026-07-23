@@ -322,7 +322,7 @@ function mapEncryptionToBitLocker(
     return 'on'
   }
   if (status === 'partial') {
-    return 'unknown'
+    return 'partial'
   }
   if (status === 'none') {
     return 'off'

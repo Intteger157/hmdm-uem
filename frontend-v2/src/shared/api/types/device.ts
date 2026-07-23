@@ -16,7 +16,7 @@ export interface SelectOption {
   value: string
 }
 
-export type BitLockerStatus = 'on' | 'off' | 'unknown'
+export type BitLockerStatus = 'on' | 'off' | 'partial' | 'unknown'
 export type PowerShellExecStatus = 'idle' | 'running' | 'failed'
 export type WindowsAgentStatus = 'active' | 'uninstalled'
 
