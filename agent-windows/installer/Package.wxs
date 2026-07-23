@@ -3,7 +3,7 @@
   <Package
     Name="HMDM Windows Agent"
     Manufacturer="HMDM"
-    Version="1.0.19.0"
+    Version="1.0.20.0"
     UpgradeCode="a1b2c3d4-e5f6-7890-abcd-ef1234567890"
     Scope="perMachine">
 
@@ -13,7 +13,6 @@
     <MediaTemplate EmbedCab="yes" />
 
     <InstallExecuteSequence>
-      <Custom Action="CleanupOldAgentService" Before="InstallServices" Condition="NOT REMOVE" />
       <Custom Action="EnsureAgentService" After="InstallServices" Condition="NOT REMOVE" />
       <Custom Action="NotifyServerUninstall" Before="RemoveFiles" Condition="REMOVE=&quot;ALL&quot;" />
     </InstallExecuteSequence>
@@ -43,7 +42,8 @@
         Type="ownProcess"
         Start="auto"
         ErrorControl="normal"
-        Account="LocalSystem" />
+        Account="LocalSystem"
+        Vital="yes" />
 
       <ServiceControl
         Id="HMDMAgentServiceControl"
@@ -51,7 +51,7 @@
         Start="install"
         Stop="both"
         Remove="uninstall"
-        Wait="no" />
+        Wait="yes" />
 
       <RegistryKey Root="HKLM" Key="SOFTWARE\HMDM\Agent">
         <RegistryValue Name="ServerURL" Value="$(var.ServerUrl)" Type="string" />
@@ -62,18 +62,10 @@
 
   <Fragment>
     <CustomAction
-      Id="CleanupOldAgentService"
-      Directory="System6432Folder"
-      ExeCommand="cmd.exe /c sc stop HMDMAgent &amp; sc delete HMDMAgent"
-      Execute="deferred"
-      Impersonate="no"
-      Return="ignore" />
-
-    <CustomAction
       Id="EnsureAgentService"
       Directory="System6432Folder"
-      ExeCommand="cmd.exe /c sc query HMDMAgent &gt;nul 2&gt;&amp;1 || sc create HMDMAgent binPath= &quot;[AGENTDIR]HMDMAgent.exe&quot; start= auto obj= LocalSystem DisplayName= &quot;HMDM Windows Agent&quot;"
-      Execute="deferred"
+      ExeCommand="cmd.exe /c sc create HMDMAgent binPath= &quot;[AGENTDIR]HMDMAgent.exe&quot; start= auto obj= LocalSystem DisplayName= &quot;HMDM Windows Agent&quot;"
+      Execute="commit"
       Impersonate="no"
       Return="ignore" />
 
