@@ -24,6 +24,7 @@ const (
 
 var (
 	debugMode       = flag.Bool("debug", false, "run in console mode for debugging")
+	uninstallMode   = flag.Bool("uninstall", false, "notify MDM server that the agent is being removed")
 	serverURL       = flag.String("server", "", "MDM server URL for debug when registry value is empty (e.g. https://mdm.example.com)")
 	enrollmentToken = flag.String("token", "", "enrollment token for debug when registry value is empty")
 )
@@ -43,6 +44,10 @@ func run() error {
 	})
 	log.Printf("using server URL: %s", cfg.ServerURL)
 	apiClient := api.NewAPIClient(cfg)
+
+	if *uninstallMode {
+		return runUninstallNotify(&cfg, apiClient)
+	}
 
 	inService, err := svc.IsWindowsService()
 	if err != nil {
@@ -65,6 +70,26 @@ func run() error {
 		os.Exit(2)
 		return nil
 	}
+}
+
+func runUninstallNotify(cfg *config.Config, apiClient *api.APIClient) error {
+	hardwareID, err := system.GetHardwareID()
+	if err != nil {
+		return fmt.Errorf("resolve hardware id: %w", err)
+	}
+
+	if cfg.AuthToken == "" {
+		log.Printf("no auth token in registry, skipping uninstall notify")
+		return nil
+	}
+
+	log.Printf("notifying server that agent is being removed (hwid=%s)", hardwareID)
+	if err := apiClient.NotifyUninstall(cfg.AuthToken, hardwareID); err != nil {
+		return fmt.Errorf("notify uninstall: %w", err)
+	}
+
+	log.Printf("uninstall notify succeeded")
+	return nil
 }
 
 func performHandshake(cfg *config.Config, apiClient *api.APIClient, stop <-chan struct{}) error {

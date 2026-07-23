@@ -538,6 +538,8 @@
   "devices.status.yellow": "Idle",
   "devices.status.red": "Offline",
   "devices.status.grey": "Unknown",
+  "devices.status.brown": "Agent removed",
+  "devices.windowsAgent.uninstalled": "Agent removed",
   "devices.compliance.green": "OK",
   "devices.compliance.yellow": "Warning",
   "devices.compliance.red": "Problem",

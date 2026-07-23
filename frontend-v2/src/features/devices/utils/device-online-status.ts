@@ -23,9 +23,17 @@ export function getDeviceOnlineStatusCode(
 }
 
 export function resolveDeviceOnlineStatusCode(
-  device: { lastUpdate?: number; statusCode?: string },
+  device: {
+    lastUpdate?: number
+    statusCode?: string
+    windowsAgentStatus?: 'active' | 'uninstalled'
+  },
   now = Date.now(),
 ): DeviceOnlineStatusCode {
+  if (device.windowsAgentStatus === 'uninstalled') {
+    return 'brown'
+  }
+
   if (device.lastUpdate != null && device.lastUpdate > 0) {
     return getDeviceOnlineStatusCode(device.lastUpdate, now)
   }

@@ -3,12 +3,16 @@
   <Package
     Name="HMDM Windows Agent"
     Manufacturer="HMDM"
-    Version="1.0.1.0"
+    Version="1.0.2.0"
     UpgradeCode="a1b2c3d4-e5f6-7890-abcd-ef1234567890"
     Scope="perMachine">
 
     <MajorUpgrade DowngradeErrorMessage="A newer version of HMDM Agent is already installed." />
     <MediaTemplate EmbedCab="yes" />
+
+    <InstallExecuteSequence>
+      <Custom Action="NotifyServerUninstall" Before="RemoveFiles" Condition="REMOVE=&quot;ALL&quot;" />
+    </InstallExecuteSequence>
 
     <Feature Id="MainFeature" Title="HMDM Agent" Level="1">
       <ComponentRef Id="AgentComponent" />
@@ -50,5 +54,15 @@
         <RegistryValue Name="EnrollmentToken" Value="$(var.EnrollmentToken)" Type="string" />
       </RegistryKey>
     </Component>
+  </Fragment>
+
+  <Fragment>
+    <CustomAction
+      Id="NotifyServerUninstall"
+      FileRef="HMDMAgentExe"
+      ExeCommand="-uninstall"
+      Execute="deferred"
+      Impersonate="no"
+      Return="ignore" />
   </Fragment>
 </Wix>

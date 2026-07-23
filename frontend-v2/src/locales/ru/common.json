@@ -538,6 +538,8 @@
   "devices.status.yellow": "Неактивно",
   "devices.status.red": "Офлайн",
   "devices.status.grey": "Неизвестно",
+  "devices.status.brown": "Агент удалён",
+  "devices.windowsAgent.uninstalled": "Агент удалён",
   "devices.compliance.green": "OK",
   "devices.compliance.yellow": "Предупреждение",
   "devices.compliance.red": "Проблема",

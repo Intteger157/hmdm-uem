@@ -56,7 +56,14 @@ type WindowsDevice struct {
 	LocalUsers        json.RawMessage `gorm:"type:jsonb"`
 	InstalledSoftware json.RawMessage `gorm:"type:jsonb"`
 	LastCheckin       time.Time
+	AgentStatus       string     `gorm:"not null;default:active"`
+	UninstalledAt     *time.Time
 }
+
+const (
+	AgentStatusActive      = "active"
+	AgentStatusUninstalled = "uninstalled"
+)
 
 // TableName pins Windows inventory to a dedicated table, isolated from Java MDM `devices`.
 func (WindowsDevice) TableName() string {
@@ -83,6 +90,8 @@ type WindowsDeviceJSON struct {
 	LocalUsers        []LocalUserRecord         `json:"localUsers,omitempty"`
 	InstalledSoftware []InstalledSoftwareRecord `json:"installedSoftware,omitempty"`
 	LastCheckin       time.Time                 `json:"lastCheckin"`
+	AgentStatus       string                    `json:"agentStatus"`
+	UninstalledAt     *time.Time                `json:"uninstalledAt,omitempty"`
 }
 
 // WindowsDeviceListResponse is returned by GET /rest/windows/devices.
@@ -111,7 +120,16 @@ func ToWindowsDeviceJSON(device WindowsDevice) WindowsDeviceJSON {
 		LocalUsers:        decodeLocalUsers(device.LocalUsers),
 		InstalledSoftware: decodeInstalledSoftware(device.InstalledSoftware),
 		LastCheckin:       device.LastCheckin,
+		AgentStatus:       normalizeAgentStatus(device.AgentStatus),
+		UninstalledAt:     device.UninstalledAt,
 	}
+}
+
+func normalizeAgentStatus(raw string) string {
+	if raw == AgentStatusUninstalled {
+		return AgentStatusUninstalled
+	}
+	return AgentStatusActive
 }
 
 func decodeDisks(raw json.RawMessage) []DiskVolumeRecord {

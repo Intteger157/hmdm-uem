@@ -18,6 +18,7 @@ export interface SelectOption {
 
 export type BitLockerStatus = 'on' | 'off' | 'unknown'
 export type PowerShellExecStatus = 'idle' | 'running' | 'failed'
+export type WindowsAgentStatus = 'active' | 'uninstalled'
 
 export interface DeviceApplicationView {
   pkg: string
@@ -88,6 +89,8 @@ export interface DeviceView {
   /** Windows-only list columns */
   hostname?: string
   windowsBuild?: string
+  windowsAgentStatus?: WindowsAgentStatus
+  uninstalledAt?: number
   bitlockerStatus?: BitLockerStatus
   powershellExecStatus?: PowerShellExecStatus
   /** Detail view — hardware & inventory */

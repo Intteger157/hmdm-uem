@@ -52,6 +52,7 @@ func main() {
 			windows.GET("/downloads/:downloadToken", windowsHandler.DownloadInstaller)
 			windows.POST("/enroll", windowsHandler.Enroll)
 			windows.POST("/inventory", windowsHandler.Inventory)
+			windows.POST("/uninstall", windowsHandler.Uninstall)
 			windows.GET("/commands/poll", windowsHandler.PollCommand)
 			windows.POST("/commands/:commandId/complete", windowsHandler.CompleteCommand)
 		}

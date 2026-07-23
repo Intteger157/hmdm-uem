@@ -412,22 +412,38 @@ function WindowsDeviceRow({
   const onlineStatus = resolveDeviceOnlineStatusCode(device, now)
 
   return (
-    <tr className="border-b last:border-b-0 hover:bg-muted/20">
+    <tr
+      className={cn(
+        'border-b last:border-b-0 hover:bg-muted/20',
+        device.windowsAgentStatus === 'uninstalled' && 'bg-orange-500/10',
+      )}
+    >
       <td className="px-4 py-3">
         <StatusDot
           statusCode={onlineStatus}
-          title={t(`devices.status.${onlineStatus}`)}
+          title={
+            device.windowsAgentStatus === 'uninstalled'
+              ? t('devices.status.brown')
+              : t(`devices.status.${onlineStatus}`)
+          }
         />
       </td>
       <td className="px-4 py-3 font-mono text-xs font-medium">
-        <Link
-          to="/devices/$deviceNumber"
-          params={{ deviceNumber: device.number }}
-          search={{ platform: 'windows' }}
-          className="text-primary hover:underline"
-        >
-          {device.hostname ?? device.number}
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            to="/devices/$deviceNumber"
+            params={{ deviceNumber: device.number }}
+            search={{ platform: 'windows' }}
+            className="text-primary hover:underline"
+          >
+            {device.hostname ?? device.number}
+          </Link>
+          {device.windowsAgentStatus === 'uninstalled' && (
+            <span className="rounded-md bg-orange-500/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-orange-700 dark:text-orange-300">
+              {t('devices.windowsAgent.uninstalled')}
+            </span>
+          )}
+        </div>
       </td>
       <td className="px-4 py-3 text-muted-foreground">{device.description || '—'}</td>
       <td className="px-4 py-3">

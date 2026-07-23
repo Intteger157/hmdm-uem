@@ -34,6 +34,8 @@ export interface WindowsDeviceDto {
   localUsers?: LocalUser[]
   installedSoftware?: InstalledSoftware[]
   lastCheckin: string
+  agentStatus?: string
+  uninstalledAt?: string
 }
 
 export interface WindowsDeviceListDto {
@@ -48,8 +50,13 @@ const windowsApi = axios.create({
   },
 })
 
+function mapWindowsAgentStatus(raw?: string): 'active' | 'uninstalled' {
+  return raw === 'uninstalled' ? 'uninstalled' : 'active'
+}
+
 function mapWindowsDeviceToView(raw: WindowsDeviceDto): DeviceView {
   const lastUpdate = raw.lastCheckin ? Date.parse(raw.lastCheckin) : undefined
+  const uninstalledAt = raw.uninstalledAt ? Date.parse(raw.uninstalledAt) : undefined
   const modelLabel =
     raw.manufacturer && raw.model
       ? `${raw.manufacturer} ${raw.model}`
@@ -68,6 +75,8 @@ function mapWindowsDeviceToView(raw: WindowsDeviceDto): DeviceView {
     serial: raw.serialNumber || undefined,
     currentUser: raw.currentUser || undefined,
     windowsBuild: raw.osVersion || undefined,
+    windowsAgentStatus: mapWindowsAgentStatus(raw.agentStatus),
+    uninstalledAt: Number.isFinite(uninstalledAt) ? uninstalledAt : undefined,
     cpu: raw.cpu || undefined,
     ramGb: raw.ramGb || undefined,
     diskTotalGb: raw.diskTotalGb || undefined,

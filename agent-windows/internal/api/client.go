@@ -18,6 +18,7 @@ import (
 const (
 	enrollPath           = "/rest/windows/enroll"
 	inventoryPath        = "/rest/windows/inventory"
+	uninstallPath        = "/rest/windows/uninstall"
 	pollCommandPath      = "/rest/windows/commands/poll"
 	completeCommandPath  = "/rest/windows/commands/%d/complete"
 )
@@ -144,6 +145,36 @@ func (c *APIClient) SendInventory(authToken, hwid string, info *system.DeviceInf
 		return nil
 	default:
 		return fmt.Errorf("inventory failed with HTTP %d", resp.StatusCode)
+	}
+}
+
+// NotifyUninstall tells the MDM server the agent is being removed from this PC.
+func (c *APIClient) NotifyUninstall(authToken, hwid string) error {
+	req, err := http.NewRequest(http.MethodPost, c.baseURL+uninstallPath, http.NoBody)
+	if err != nil {
+		return fmt.Errorf("create uninstall request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+authToken)
+	req.Header.Set("X-Device-Id", hwid)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("send uninstall request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if _, err := io.Copy(io.Discard, resp.Body); err != nil {
+		return fmt.Errorf("read uninstall response: %w", err)
+	}
+
+	switch resp.StatusCode {
+	case http.StatusUnauthorized:
+		return ErrUnauthorized
+	case http.StatusOK, http.StatusNoContent:
+		return nil
+	default:
+		return fmt.Errorf("uninstall notify failed with HTTP %d", resp.StatusCode)
 	}
 }
 

@@ -65,6 +65,13 @@ func (h *WindowsHandler) Enroll(c *gin.Context) {
 		log.Printf("[enroll] existing device hardware_id=%q", req.HardwareID)
 	}
 
+	markDeviceAgentActive(&device)
+	if err := db.DB.Save(&device).Error; err != nil {
+		log.Printf("[enroll] activate device failed: hardware_id=%q err=%v", req.HardwareID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to activate device"})
+		return
+	}
+
 	if err := markEnrollmentTokenUsed(req.EnrollmentToken, req.HardwareID); err != nil {
 		log.Printf("[enroll] mark token used failed: hardware_id=%q err=%v", req.HardwareID, err)
 	}
@@ -119,6 +126,7 @@ func (h *WindowsHandler) Inventory(c *gin.Context) {
 	device.DiskEncrypted = req.DiskEncrypted
 	device.EncryptionStatus = req.EncryptionStatus
 	device.LastCheckin = time.Now()
+	markDeviceAgentActive(&device)
 
 	if disks, err := models.EncodeDisks(req.Disks); err != nil {
 		log.Printf("[inventory] encode disks failed: hardware_id=%q err=%v", deviceID, err)
@@ -156,6 +164,60 @@ func (h *WindowsHandler) Inventory(c *gin.Context) {
 	)
 
 	c.Status(http.StatusOK)
+}
+
+// Uninstall marks a device as having removed the Windows agent.
+func (h *WindowsHandler) Uninstall(c *gin.Context) {
+	deviceID, ok := agentDeviceIDFromRequest(c)
+	if !ok {
+		return
+	}
+
+	var device models.WindowsDevice
+	if err := db.DB.Where("hardware_id = ?", deviceID).First(&device).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "device not found"})
+			return
+		}
+
+		log.Printf("[uninstall] lookup failed: hardware_id=%q err=%v", deviceID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup device"})
+		return
+	}
+
+	now := time.Now().UTC()
+	device.AgentStatus = models.AgentStatusUninstalled
+	device.UninstalledAt = &now
+
+	if err := db.DB.Save(&device).Error; err != nil {
+		log.Printf("[uninstall] save failed: hardware_id=%q err=%v", deviceID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to mark device uninstalled"})
+		return
+	}
+
+	log.Printf("[uninstall] agent removed hardware_id=%q hostname=%q", deviceID, device.Hostname)
+	c.Status(http.StatusOK)
+}
+
+func agentDeviceIDFromRequest(c *gin.Context) (string, bool) {
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing or invalid authorization header"})
+		return "", false
+	}
+
+	deviceID := strings.TrimSpace(c.GetHeader("X-Device-Id"))
+	if deviceID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing X-Device-Id header"})
+		return "", false
+	}
+
+	return deviceID, true
+}
+
+func markDeviceAgentActive(device *models.WindowsDevice) {
+	device.AgentStatus = models.AgentStatusActive
+	device.UninstalledAt = nil
 }
 
 // ListDevices returns paginated Windows agents from the windows_devices table.
