@@ -29,7 +29,13 @@ function statusBadgeVariant(status: DeviceCommandLogEntry['status']) {
       return 'destructive'
     case 'Downloading':
     case 'Installing':
+    case 'AppDownload':
+    case 'AppInstall':
       return 'secondary'
+    case 'AppCheck':
+    case 'AppUnblock':
+    case 'AppResult':
+      return 'outline'
     default:
       return 'outline'
   }
@@ -40,10 +46,16 @@ function statusBadgeClassName(status: DeviceCommandLogEntry['status']) {
     case 'Pending':
       return 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300'
     case 'Success':
+    case 'AppResult':
       return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
     case 'Downloading':
     case 'Installing':
+    case 'AppDownload':
+    case 'AppInstall':
       return 'border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300'
+    case 'AppCheck':
+    case 'AppUnblock':
+      return 'border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300'
     case 'Failed':
       return ''
     default:

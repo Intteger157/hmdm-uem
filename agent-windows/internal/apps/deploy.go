@@ -170,6 +170,7 @@ func deployURLApp(app RequiredApp, opts DeployOptions, state *AppsState, install
 
 	if alreadyInstalled && !shouldCheckUpdate(app, state) {
 		reportStep(opts.StepLogger, app.ID, app.Name, InstallStepAppCheck, "App already installed; skipping deployment")
+		reportStatus(opts.StatusReporter, app.ID, app.Name, "Success", "Already installed")
 		return false, nil
 	}
 

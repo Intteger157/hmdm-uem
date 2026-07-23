@@ -31,6 +31,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { DeviceActionsPanel } from '@/features/devices/components/DeviceActionsPanel'
+import { WindowsAppDeploymentsCard } from '@/features/devices/components/WindowsAppDeploymentsCard'
 import { WindowsDeviceServicesTab } from '@/features/devices/components/WindowsDeviceServicesTab'
 import { WindowsDeviceActionLogsTab } from '@/features/devices/components/WindowsDeviceActionLogsTab'
 import { WindowsAppliedConfigurationCard } from '@/features/windows/configurations/components/WindowsAppliedConfigurationCard'
@@ -175,6 +176,7 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
         <>
           <WindowsOverviewGrid device={device} na={NA} t={t} />
           <WindowsAppliedConfigurationCard hardwareId={device.number} />
+          <WindowsAppDeploymentsCard hardwareId={device.number} />
         </>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">

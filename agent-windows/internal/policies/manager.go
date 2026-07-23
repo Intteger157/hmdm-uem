@@ -25,6 +25,10 @@ func SyncFromServer(fetch func() (EffectiveConfig, error), report Reporter, depl
 		return handleNoPolicyConfig(report)
 	}
 
+	if len(config.RequiredApps) > 0 {
+		apps.DeployRequired(config.RequiredApps, deploy)
+	}
+
 	configHash := ConfigHash(config)
 	if configHash == LoadLastSyncedConfigHash() {
 		return nil
@@ -47,9 +51,6 @@ func SyncFromServer(fetch func() (EffectiveConfig, error), report Reporter, depl
 				log.Printf("policy sync: failed to save reported hash: %v", markErr)
 			}
 		}
-		if saveErr := SaveLastSyncedConfigHash(configHash); saveErr != nil {
-			log.Printf("policy sync: failed to save synced hash: %v", saveErr)
-		}
 		return err
 	}
 
@@ -70,7 +71,6 @@ func SyncFromServer(fetch func() (EffectiveConfig, error), report Reporter, depl
 		log.Printf("policy sync: failed to save synced hash: %v", err)
 	}
 
-	apps.DeployRequired(config.RequiredApps, deploy)
 	return nil
 }
 
@@ -86,6 +86,10 @@ func RunComplianceCheck(report Reporter, deploy apps.DeployOptions) error {
 	}
 	if config.UpdatedAt == "" || !config.HasAssignedPolicy() {
 		return nil
+	}
+
+	if len(config.RequiredApps) > 0 {
+		apps.DeployRequired(config.RequiredApps, deploy)
 	}
 
 	results, reconciled, err := ReconcileCompliance(config.Payload)
@@ -106,7 +110,6 @@ func RunComplianceCheck(report Reporter, deploy apps.DeployOptions) error {
 		}
 	}
 
-	apps.DeployRequired(config.RequiredApps, deploy)
 	return nil
 }
 

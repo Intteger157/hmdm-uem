@@ -320,7 +320,7 @@ export interface DeviceCommandLogEntry {
   id: number
   commandName: string
   payload: string
-  status: 'Pending' | 'Success' | 'Failed' | 'Downloading' | 'Installing'
+  status: 'Pending' | 'Success' | 'Failed' | 'Downloading' | 'Installing' | 'AppCheck' | 'AppDownload' | 'AppUnblock' | 'AppInstall' | 'AppResult'
   output?: string
   createdAt: string
   executedAt?: string
