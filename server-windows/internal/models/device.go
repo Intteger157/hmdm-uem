@@ -60,9 +60,9 @@ type WindowsDevice struct {
 	Hostname          string
 	OSVersion         string
 	CPU                          string
-	CPUCores                     int
-	CPUThreads                   int
-	CPUFrequencyGHz              float64
+	CPUCores                     int `gorm:"column:cpu_cores"`
+	CPUThreads                   int `gorm:"column:cpu_threads"`
+	CPUFrequencyGHz              float64 `gorm:"column:cpu_frequency_ghz"`
 	RAM_GB                       int
 	DiskTotal_GB      int
 	DiskUsed_GB       int

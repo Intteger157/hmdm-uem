@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-var kbPattern = regexp.MustCompile(`^KB[0-9]+$`)
+var kbDigitsPattern = regexp.MustCompile(`[0-9]+`)
 
 // ExecuteDeviceCommand runs a DeviceCommandLog action and returns combined console output.
 func ExecuteDeviceCommand(commandName, payload string) Result {
@@ -26,13 +26,13 @@ func ExecuteDeviceCommand(commandName, payload string) Result {
 }
 
 func uninstallWindowsUpdate(kb string) Result {
-	kb = strings.ToUpper(strings.TrimSpace(kb))
-	if !kbPattern.MatchString(kb) {
+	kb = strings.TrimSpace(kb)
+	if kb == "" || !kbDigitsPattern.MatchString(kb) {
 		return Result{Success: false, Message: "invalid KB payload"}
 	}
 
 	script := fmt.Sprintf(
-		`$ErrorActionPreference = 'Stop'; $kb = '%s'; $Pkg = Get-WindowsPackage -Online | Where-Object { $_.ReleaseType -like '*Update*' -and $_.PackageName -match $kb }; if ($Pkg) { Remove-WindowsPackage -Online -PackageName $Pkg.PackageName -NoRestart } else { Write-Error 'Update package not found' }`,
+		`$ErrorActionPreference = 'Stop'; $kb = '%s' -replace '[^0-9]', ''; $Pkg = Get-WindowsPackage -Online | Where-Object { $_.PackageName -match $kb }; if ($Pkg) { Write-Output 'Found via DISM, removing...'; Remove-WindowsPackage -Online -PackageName $Pkg[0].PackageName -NoRestart } else { Write-Output 'Not found in DISM. Attempting WUSA fallback...'; Start-Process -FilePath "wusa.exe" -ArgumentList "/uninstall /kb:$kb /quiet /norestart" -Wait -NoNewWindow; Write-Output 'WUSA fallback executed.' }`,
 		escapePowerShellSingleQuoted(kb),
 	)
 
@@ -50,7 +50,7 @@ func uninstallWindowsUpdate(kb string) Result {
 		return Result{Success: false, Message: output}
 	}
 	if strings.TrimSpace(output) == "" {
-		output = "update package removed"
+		output = "update uninstall command completed"
 	}
 	return Result{Success: true, Message: output}
 }

@@ -180,12 +180,11 @@ func collectCPUInfo() (model string, cores int, threads int, frequencyGHz float6
 
 	model = cpus[0].ModelName
 
-	if physical, countErr := cpu.Counts(false); countErr == nil && physical > 0 {
-		cores = physical
-	}
-	if logical, countErr := cpu.Counts(true); countErr == nil && logical > 0 {
-		threads = logical
-	}
+	physicalCores, _ := cpu.Counts(false)
+	logicalThreads, _ := cpu.Counts(true)
+	cores = physicalCores
+	threads = logicalThreads
+	cores, threads = reconcileCPUCounts(cores, threads)
 
 	if cpus[0].Mhz > 0 {
 		frequencyGHz = cpus[0].Mhz / 1000
