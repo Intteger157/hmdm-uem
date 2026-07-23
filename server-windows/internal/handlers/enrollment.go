@@ -150,11 +150,12 @@ func markEnrollmentTokenUsed(token, hardwareID string) error {
 
 func buildMsiCommand(c *gin.Context, orgToken string) string {
 	scheme := "https"
-	if c.Request.TLS == nil {
-		scheme = "http"
-	}
 	if forwarded := c.GetHeader("X-Forwarded-Proto"); forwarded != "" {
 		scheme = strings.TrimSpace(strings.Split(forwarded, ",")[0])
+	} else if c.Request.TLS != nil {
+		scheme = "https"
+	} else if strings.HasPrefix(c.Request.Host, "localhost") || strings.HasPrefix(c.Request.Host, "127.0.0.1") {
+		scheme = "http"
 	}
 
 	host := c.Request.Host

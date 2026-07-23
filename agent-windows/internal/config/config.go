@@ -3,12 +3,14 @@ package config
 
 import (
 	"fmt"
+	"strings"
 
 	"golang.org/x/sys/windows/registry"
 )
 
 const (
 	registryKeyPath         = `SOFTWARE\HMDM\Agent`
+	registryKeyPathWOW6432  = `SOFTWARE\WOW6432Node\HMDM\Agent`
 	registryEnrollmentToken = "EnrollmentToken"
 	registryAuthToken       = "AuthToken"
 	registryServerURL       = "ServerURL"
@@ -36,9 +38,9 @@ func LoadConfig(overrides DebugOverrides) Config {
 	}
 
 	if serverURL := readRegistryString(registryServerURL); serverURL != "" {
-		cfg.ServerURL = serverURL
+		cfg.ServerURL = normalizeServerURL(serverURL)
 	} else if overrides.ServerURL != "" {
-		cfg.ServerURL = overrides.ServerURL
+		cfg.ServerURL = normalizeServerURL(overrides.ServerURL)
 	}
 
 	cfg.EnrollmentToken = readRegistryString(registryEnrollmentToken)
@@ -53,16 +55,9 @@ func LoadConfig(overrides DebugOverrides) Config {
 
 // SaveAuthToken persists the JWT returned by enrollment.
 func SaveAuthToken(token string) error {
-	key, _, err := registry.CreateKey(registry.LOCAL_MACHINE, registryKeyPath, registry.SET_VALUE)
-	if err != nil {
-		return fmt.Errorf("open registry key: %w", err)
+	if err := writeRegistryString(registryAuthToken, token); err != nil {
+		return err
 	}
-	defer key.Close()
-
-	if err := key.SetStringValue(registryAuthToken, token); err != nil {
-		return fmt.Errorf("write auth token: %w", err)
-	}
-
 	return nil
 }
 
@@ -85,7 +80,15 @@ func ClearAuthToken() error {
 }
 
 func readRegistryString(name string) string {
-	key, err := registry.OpenKey(registry.LOCAL_MACHINE, registryKeyPath, registry.QUERY_VALUE)
+	if value := readRegistryStringAt(registryKeyPath, name); value != "" {
+		return value
+	}
+	// WiX may write settings under WOW6432Node when the package is not marked x64.
+	return readRegistryStringAt(registryKeyPathWOW6432, name)
+}
+
+func readRegistryStringAt(keyPath, name string) string {
+	key, err := registry.OpenKey(registry.LOCAL_MACHINE, keyPath, registry.QUERY_VALUE)
 	if err != nil {
 		return ""
 	}
@@ -97,4 +100,34 @@ func readRegistryString(name string) string {
 	}
 
 	return value
+}
+
+func writeRegistryString(name, value string) error {
+	key, _, err := registry.CreateKey(registry.LOCAL_MACHINE, registryKeyPath, registry.SET_VALUE)
+	if err != nil {
+		return fmt.Errorf("open registry key: %w", err)
+	}
+	defer key.Close()
+
+	if err := key.SetStringValue(name, value); err != nil {
+		return fmt.Errorf("write %s: %w", name, err)
+	}
+
+	return nil
+}
+
+func normalizeServerURL(raw string) string {
+	trimmed := strings.TrimRight(strings.TrimSpace(raw), "/")
+	if trimmed == "" {
+		return defaultServerURL
+	}
+
+	lower := strings.ToLower(trimmed)
+	if strings.HasPrefix(lower, "http://") &&
+		!strings.Contains(lower, "localhost") &&
+		!strings.Contains(lower, "127.0.0.1") {
+		return "https://" + strings.TrimPrefix(trimmed, "http://")
+	}
+
+	return trimmed
 }
