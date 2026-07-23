@@ -61,6 +61,11 @@ func main() {
 			windows.GET("/commands/poll", windowsHandler.PollCommand)
 			windows.POST("/commands/:commandId/complete", windowsHandler.CompleteCommand)
 			windows.POST("/commands/:commandId/result", windowsHandler.SubmitCommandResult)
+			windows.GET("/configurations", windowsHandler.ListConfigProfiles)
+			windows.POST("/configurations", windowsHandler.CreateConfigProfile)
+			windows.GET("/configurations/:id", windowsHandler.GetConfigProfile)
+			windows.PUT("/configurations/:id", windowsHandler.UpdateConfigProfile)
+			windows.DELETE("/configurations/:id", windowsHandler.DeleteConfigProfile)
 		}
 	}
 

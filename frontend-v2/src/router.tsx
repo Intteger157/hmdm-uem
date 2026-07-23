@@ -24,6 +24,7 @@ import { AppLayout } from '@/layouts/AppLayout'
 import { AuthLayout } from '@/layouts/AuthLayout'
 import { FilesListPage } from '@/features/files/pages/FilesListPage'
 import { PublicQrEnrollmentPage } from '@/features/devices/pages/PublicQrEnrollmentPage'
+import { WindowsConfigurationsPage } from '@/features/windows/configurations/pages/WindowsConfigurationsPage'
 import { WindowsWorkInProgressPage } from '@/features/windows/pages/WindowsWorkInProgressPage'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { isPlatform } from '@/shared/api/types/platform'
@@ -184,7 +185,7 @@ const messagingRoute = createRoute({
 const windowsConfigurationsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/windows/configurations',
-  component: WindowsWorkInProgressPage,
+  component: WindowsConfigurationsPage,
 })
 
 const windowsScriptsRoute = createRoute({
