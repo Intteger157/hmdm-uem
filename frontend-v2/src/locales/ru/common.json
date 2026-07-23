@@ -1109,5 +1109,5 @@
   "deviceDetail.appliedConfiguration.readWrite": "чтение/запись",
   "deviceDetail.appliedConfiguration.summary": "Defender {{defender}}, блокировка USB {{usb}}, доступ USB {{usbReadOnly}}, блокировка экрана {{lockTimeout}} мин",
   "deviceDetail.metrics.battery": "Батарея",
-  "deviceDetail.battery.desktopNoBattery": "Desktop / No Battery",
+  "deviceDetail.battery.desktopNoBattery": "Desktop / No Battery"
 }

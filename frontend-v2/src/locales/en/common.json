@@ -1109,5 +1109,5 @@
   "deviceDetail.appliedConfiguration.readWrite": "read/write",
   "deviceDetail.appliedConfiguration.summary": "Defender {{defender}}, USB block {{usb}}, USB access {{usbReadOnly}}, screen lock {{lockTimeout}} min",
   "deviceDetail.metrics.battery": "Battery",
-  "deviceDetail.battery.desktopNoBattery": "Desktop / No Battery",
+  "deviceDetail.battery.desktopNoBattery": "Desktop / No Battery"
 }
