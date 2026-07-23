@@ -64,7 +64,7 @@ func (h *WindowsHandler) UploadApplication(c *gin.Context) {
 	publicPath := fmt.Sprintf("/storage/apps/%s", storedName)
 	publicURL := normalizeDownloadURL(buildPublicURL(c, publicPath))
 
-	log.Printf("[upload-application] stored file=%q name=%q version=%q", storedName, name, version)
+	log.Printf("[upload-application] stored path=%q url=%q name=%q version=%q", destPath, publicURL, name, version)
 	c.JSON(http.StatusOK, models.UploadApplicationResponse{
 		URL:     publicURL,
 		Name:    name,

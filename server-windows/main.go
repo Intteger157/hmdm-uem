@@ -36,7 +36,13 @@ func main() {
 	if err := appstorage.EnsureAppsDirectory(); err != nil {
 		log.Printf("apps storage directory init failed: %v", err)
 	}
-	router.StaticFS("/storage/apps", gin.Dir(appstorage.AppsDirectory(), false))
+	appsDir := appstorage.AppsDirectory()
+	if entries, err := os.ReadDir(appsDir); err != nil {
+		log.Printf("apps storage directory %q unreadable: %v", appsDir, err)
+	} else {
+		log.Printf("apps storage directory %q (%d file(s)) served at /storage/apps/", appsDir, len(entries))
+	}
+	router.StaticFS("/storage/apps", gin.Dir(appsDir, false))
 
 	windowsHandler := handlers.NewWindowsHandler()
 	rest := router.Group("/rest")

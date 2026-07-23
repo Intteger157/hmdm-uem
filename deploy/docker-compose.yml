@@ -69,6 +69,7 @@ services:
       LISTEN_ADDR: ":8082"
       GIN_MODE: ${GIN_MODE:-release}
       FILES_DIR: /opt/hmdm/files
+      APPS_UPLOAD_DIR: /opt/hmdm/files/apps
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
       PUBLIC_PROTOCOL: ${PUBLIC_PROTOCOL:-https}
     volumes:
