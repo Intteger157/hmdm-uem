@@ -71,6 +71,33 @@ function truncatePayload(payload: string, maxLen = 120): string {
   return `${trimmed.slice(0, maxLen)}…`
 }
 
+function formatLogPayload(entry: DeviceCommandLogEntry): string {
+  if (entry.commandName !== 'AppInstall') {
+    return truncatePayload(entry.payload)
+  }
+
+  try {
+    const parsed = JSON.parse(entry.payload) as { appName?: string; appId?: number }
+    if (parsed.appName) {
+      return parsed.appName
+    }
+    if (parsed.appId != null) {
+      return `appId=${parsed.appId}`
+    }
+  } catch {
+    // fall through
+  }
+
+  return truncatePayload(entry.payload)
+}
+
+function formatLogCommandName(entry: DeviceCommandLogEntry, t: (key: string) => string): string {
+  if (entry.commandName === 'AppInstall') {
+    return t('deviceDetail.actionLogs.appInstall')
+  }
+  return entry.commandName
+}
+
 function downloadBatteryReportHtml(output: string) {
   const blob = new Blob([output], { type: 'text/html' })
   const url = URL.createObjectURL(blob)
@@ -130,12 +157,12 @@ export function WindowsDeviceActionLogsTab({ hardwareId }: WindowsDeviceActionLo
                     <td className="px-4 py-2.5 whitespace-nowrap">
                       {formatDeviceTimestamp(Date.parse(entry.createdAt))}
                     </td>
-                    <td className="px-4 py-2.5 font-medium">{entry.commandName}</td>
+                    <td className="px-4 py-2.5 font-medium">{formatLogCommandName(entry, t)}</td>
                     <td
                       className="max-w-xs px-4 py-2.5 font-mono text-xs truncate"
                       title={entry.payload}
                     >
-                      {truncatePayload(entry.payload)}
+                      {formatLogPayload(entry)}
                     </td>
                     <td className="px-4 py-2.5">
                       <Badge

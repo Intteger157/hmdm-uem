@@ -820,6 +820,7 @@
   "deviceDetail.windowsUpdateDialog.installQueued": "Update installation queued. Check Action Logs.",
   "deviceDetail.windowsUpdateDialog.installMissingKb": "KB number is required to install this update",
   "deviceDetail.windowsUpdateDialog.installFailed": "Failed to queue update installation",
+  "deviceDetail.actionLogs.appInstall": "App Install",
   "deviceDetail.actionLogs.date": "Date",
   "deviceDetail.actionLogs.command": "Command",
   "deviceDetail.actionLogs.payload": "Payload",

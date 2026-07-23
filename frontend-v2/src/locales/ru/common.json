@@ -820,6 +820,7 @@
   "deviceDetail.windowsUpdateDialog.installQueued": "Установка обновления поставлена в очередь. Смотрите Action Logs.",
   "deviceDetail.windowsUpdateDialog.installMissingKb": "Для установки нужен номер KB",
   "deviceDetail.windowsUpdateDialog.installFailed": "Не удалось поставить команду установки",
+  "deviceDetail.actionLogs.appInstall": "Установка приложения",
   "deviceDetail.actionLogs.date": "Дата",
   "deviceDetail.actionLogs.command": "Команда",
   "deviceDetail.actionLogs.payload": "Payload",
