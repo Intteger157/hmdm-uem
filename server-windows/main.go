@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/hmdm/server-windows/internal/db"
 	"github.com/hmdm/server-windows/internal/handlers"
+	appstorage "github.com/hmdm/server-windows/internal/storage"
 )
 
 const (
@@ -31,6 +32,11 @@ func main() {
 	}
 
 	router := gin.Default()
+
+	if err := appstorage.EnsureAppsDirectory(); err != nil {
+		log.Printf("apps storage directory init failed: %v", err)
+	}
+	router.StaticFS("/storage/apps", gin.Dir(appstorage.AppsDirectory(), false))
 
 	windowsHandler := handlers.NewWindowsHandler()
 	rest := router.Group("/rest")
@@ -74,6 +80,7 @@ func main() {
 			windows.GET("/configurations/:id/apps", windowsHandler.GetConfigProfileApps)
 			windows.POST("/configurations/:id/apps", windowsHandler.AssignConfigProfileApps)
 			windows.GET("/apps", windowsHandler.ListSoftwareApps)
+			windows.POST("/applications/upload", windowsHandler.UploadApplication)
 			windows.POST("/apps", windowsHandler.CreateSoftwareApp)
 			windows.GET("/apps/:id", windowsHandler.GetSoftwareApp)
 			windows.PUT("/apps/:id", windowsHandler.UpdateSoftwareApp)

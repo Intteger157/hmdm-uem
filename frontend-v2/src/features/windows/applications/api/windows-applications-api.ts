@@ -1,10 +1,12 @@
 import axios from 'axios'
 import { API_BASE } from '@/shared/api/config'
+import { useAuthStore } from '@/features/auth/store/auth-store'
 import type {
   DeviceAppStatusListResponse,
   ProfileAppsResponse,
   SoftwareApp,
   SoftwareAppListResponse,
+  UploadApplicationResponse,
   UpsertSoftwareAppPayload,
 } from '@/features/windows/applications/types/software-app'
 
@@ -32,6 +34,23 @@ export async function updateSoftwareApp(id: number, payload: UpsertSoftwareAppPa
 
 export async function deleteSoftwareApp(id: number): Promise<void> {
   await windowsApi.delete(`/apps/${id}`)
+}
+
+export async function uploadSoftwareApp(file: File): Promise<UploadApplicationResponse> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const jwt = useAuthStore.getState().jwt
+  const response = await axios.post<UploadApplicationResponse>(
+    `${API_BASE}/windows/applications/upload`,
+    formData,
+    {
+      headers: {
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+    },
+  )
+  return response.data
 }
 
 export async function fetchConfigProfileApps(profileId: number): Promise<ProfileAppsResponse> {

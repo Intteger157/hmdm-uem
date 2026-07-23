@@ -20,6 +20,12 @@ export interface UpsertSoftwareAppPayload {
   installArgs?: string
 }
 
+export interface UploadApplicationResponse {
+  url: string
+  name: string
+  version: string
+}
+
 export type AppDeploymentStatus =
   | 'Pending'
   | 'Downloading'
