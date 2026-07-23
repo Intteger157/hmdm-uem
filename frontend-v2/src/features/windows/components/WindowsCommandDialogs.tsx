@@ -11,7 +11,12 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { NativeSelect } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  DEFAULT_POWERSHELL_SCRIPT,
+  POWERSHELL_SNIPPETS,
+} from '@/features/windows/constants/powershell-snippets'
 
 interface WindowsPowerShellDialogProps {
   open: boolean
@@ -27,7 +32,26 @@ export function WindowsPowerShellDialog({
   isPending,
 }: WindowsPowerShellDialogProps) {
   const { t } = useTranslation()
-  const [script, setScript] = useState('Get-ComputerInfo | Select-Object CsName, WindowsVersion, OsArchitecture')
+  const [script, setScript] = useState(DEFAULT_POWERSHELL_SCRIPT)
+  const [selectedSnippetId, setSelectedSnippetId] = useState('')
+
+  const handleSnippetChange = (snippetId: string) => {
+    setSelectedSnippetId(snippetId)
+    if (!snippetId) {
+      return
+    }
+    const snippet = POWERSHELL_SNIPPETS.find((item) => item.id === snippetId)
+    if (snippet) {
+      setScript(snippet.script)
+    }
+  }
+
+  const handleScriptChange = (value: string) => {
+    setScript(value)
+    if (selectedSnippetId) {
+      setSelectedSnippetId('')
+    }
+  }
 
   const handleSubmit = () => {
     const trimmed = script.trim()
@@ -44,15 +68,33 @@ export function WindowsPowerShellDialog({
           <DialogTitle>{t('deviceDetail.actions.powershell')}</DialogTitle>
           <DialogDescription>{t('deviceDetail.actions.powershellModalDescription')}</DialogDescription>
         </DialogHeader>
-        <div className="space-y-2">
-          <Label htmlFor="windows-ps-script">{t('deviceDetail.actions.powershellScript')}</Label>
-          <Textarea
-            id="windows-ps-script"
-            value={script}
-            onChange={(e) => setScript(e.target.value)}
-            rows={10}
-            className="font-mono text-sm w-full bg-muted/50"
-          />
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="windows-ps-snippet">{t('deviceDetail.actions.powershellTemplateLabel')}</Label>
+            <NativeSelect
+              id="windows-ps-snippet"
+              value={selectedSnippetId}
+              onChange={(e) => handleSnippetChange(e.target.value)}
+              disabled={isPending}
+            >
+              <option value="">{t('deviceDetail.actions.powershellTemplatePlaceholder')}</option>
+              {POWERSHELL_SNIPPETS.map((snippet) => (
+                <option key={snippet.id} value={snippet.id}>
+                  {t(snippet.labelKey)}
+                </option>
+              ))}
+            </NativeSelect>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="windows-ps-script">{t('deviceDetail.actions.powershellScript')}</Label>
+            <Textarea
+              id="windows-ps-script"
+              value={script}
+              onChange={(e) => handleScriptChange(e.target.value)}
+              rows={10}
+              className="font-mono text-sm w-full bg-muted/50"
+            />
+          </div>
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
