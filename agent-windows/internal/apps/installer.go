@@ -4,14 +4,19 @@ package apps
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 )
 
-const exitCodeSuccessRebootRequired = 3010
+const (
+	exitCodeSuccessRebootRequired = 3010
+	installProcessTimeout         = 15 * time.Minute
+)
 
 var exeSilentArgSets = [][]string{
 	{"/S"},
@@ -37,7 +42,7 @@ func runURLInstaller(installerPath, installArgs string) (installRunResult, error
 	if ext == ".msi" {
 		args := strings.Fields(customArgs)
 		cmd, cmdLine := buildInstallerCommandWithArgs(installerPath, args)
-		return runPreparedInstaller(cmd, cmdLine)
+		return runPreparedInstallerWithTimeout(cmd, cmdLine, installProcessTimeout)
 	}
 
 	if customArgs != "" {
@@ -62,6 +67,12 @@ func runURLInstaller(installerPath, installArgs string) (installRunResult, error
 		last.Stdout = combined
 	}
 	return last, fmt.Errorf("all silent install attempts failed")
+}
+
+func runEXEInstaller(installerPath string, args []string, cmdLine string) (installRunResult, error) {
+	script := buildEXEInstallPowerShell(installerPath, args)
+	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script)
+	return runPreparedInstallerWithTimeout(cmd, cmdLine, installProcessTimeout)
 }
 
 func buildInstallerCommand(installerPath, installArgs string) (*exec.Cmd, string) {
@@ -89,62 +100,21 @@ func buildInstallerCommandWithArgs(installerPath string, args []string) (*exec.C
 	}
 }
 
-func runEXEInstaller(installerPath string, args []string, cmdLine string) (installRunResult, error) {
-	script := buildEXEInstallPowerShell(installerPath, args)
-	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script)
-
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-
-	runErr := cmd.Run()
-	processOutput := strings.TrimSpace(stdout.String())
-	processError := strings.TrimSpace(stderr.String())
-
-	result := installRunResult{
-		ExitCode:    commandExitCode(cmd, runErr),
-		CommandLine: cmdLine,
-		Stdout:      processOutput,
-		Stderr:      processError,
-	}
-
-	if isInstallerSuccess(result.ExitCode) {
-		return result, nil
-	}
-
-	return result, fmt.Errorf("installer failed: %s", formatInstallResult(result))
-}
-
 func buildEXEInstallPowerShell(installerPath string, args []string) string {
 	escapedPath := escapePowerShellSingleQuoted(installerPath)
 	argList := formatPowerShellArgumentList(args)
 
+	// Do not redirect stdout/stderr: many GUI EXE installers hang when streams are redirected.
 	return fmt.Sprintf(`
 $ErrorActionPreference = 'Stop'
 $installerPath = '%s'
 $argList = @(%s)
-$stdoutFile = [System.IO.Path]::GetTempFileName()
-$stderrFile = [System.IO.Path]::GetTempFileName()
-try {
-  $process = Start-Process -FilePath $installerPath -ArgumentList $argList -Wait -PassThru -WindowStyle Hidden -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
-  if ($null -eq $process) {
-    [Console]::Error.WriteLine('Start-Process returned null')
-    exit 1
-  }
-  if (Test-Path -LiteralPath $stdoutFile) {
-    $stdout = Get-Content -LiteralPath $stdoutFile -Raw -ErrorAction SilentlyContinue
-    if ($stdout) { Write-Output $stdout }
-  }
-  if (Test-Path -LiteralPath $stderrFile) {
-    $stderr = Get-Content -LiteralPath $stderrFile -Raw -ErrorAction SilentlyContinue
-    if ($stderr) { [Console]::Error.WriteLine($stderr) }
-  }
-  exit $process.ExitCode
+$process = Start-Process -FilePath $installerPath -ArgumentList $argList -Wait -PassThru -WindowStyle Hidden
+if ($null -eq $process) {
+  [Console]::Error.WriteLine('Start-Process returned null')
+  exit 1
 }
-finally {
-  Remove-Item -LiteralPath $stdoutFile,$stderrFile -Force -ErrorAction SilentlyContinue
-}
+exit $process.ExitCode
 `, escapedPath, argList)
 }
 
@@ -163,18 +133,49 @@ func formatPowerShellArgumentList(args []string) string {
 	return strings.Join(quoted, ", ")
 }
 
-func runPreparedInstaller(cmd *exec.Cmd, cmdLine string) (installRunResult, error) {
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+func runPreparedInstallerWithTimeout(cmd *exec.Cmd, cmdLine string, timeout time.Duration) (installRunResult, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
-	runErr := cmd.Run()
+	execPath := cmd.Path
+	if execPath == "" && len(cmd.Args) > 0 {
+		execPath = cmd.Args[0]
+	}
+	var execArgs []string
+	if len(cmd.Args) > 1 {
+		execArgs = cmd.Args[1:]
+	} else if execPath != "" && len(cmd.Args) == 1 {
+		execArgs = nil
+	}
+
+	wrapped := exec.CommandContext(ctx, execPath, execArgs...)
+	wrapped.Dir = cmd.Dir
+	wrapped.Env = cmd.Env
+	wrapped.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+
+	var stdout, stderr bytes.Buffer
+	wrapped.Stdout = &stdout
+	wrapped.Stderr = &stderr
+
+	runErr := wrapped.Run()
 	result := installRunResult{
-		ExitCode:    commandExitCode(cmd, runErr),
+		ExitCode:    commandExitCode(wrapped, runErr),
 		CommandLine: cmdLine,
 		Stdout:      strings.TrimSpace(stdout.String()),
 		Stderr:      strings.TrimSpace(stderr.String()),
+	}
+
+	if ctx.Err() == context.DeadlineExceeded {
+		timeoutMessage := fmt.Sprintf("Install timed out after %s", timeout)
+		if result.Stderr != "" {
+			result.Stderr = result.Stderr + "\n" + timeoutMessage
+		} else {
+			result.Stderr = timeoutMessage
+		}
+		if result.ExitCode == 0 {
+			result.ExitCode = -1
+		}
+		return result, fmt.Errorf("installer timed out: %s", formatInstallResult(result))
 	}
 
 	if isInstallerSuccess(result.ExitCode) {

@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -27,6 +28,8 @@ const (
 
 	downloadTimeout = 15 * time.Minute
 )
+
+var deployGate sync.Mutex
 
 // RequiredApp is one application the agent must install or update.
 type RequiredApp struct {
@@ -57,6 +60,12 @@ func DeployRequired(required []RequiredApp, opts DeployOptions) {
 	if len(required) == 0 {
 		return
 	}
+	if !deployGate.TryLock() {
+		log.Printf("app deploy: skipped, another deployment is already running")
+		return
+	}
+	defer deployGate.Unlock()
+
 	if opts.StatusReporter == nil {
 		log.Printf("app deploy: status reporter not configured; server will keep Pending")
 	}
@@ -207,8 +216,10 @@ func deployURLApp(app RequiredApp, opts DeployOptions, state *AppsState, install
 	progress.Report(InstallStatusInstalling, fmt.Sprintf("Installer path: %s", localPath))
 	reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusInstalling, "")
 
+	log.Printf("app deploy: installing id=%d name=%q path=%q installArgs=%q", app.ID, app.Name, localPath, app.InstallArgs)
 	result, err := runURLInstaller(localPath, app.InstallArgs)
 	if err != nil {
+		log.Printf("app deploy: install failed id=%d name=%q: %v", app.ID, app.Name, err)
 		resultMessage := formatInstallResult(result)
 		if resultMessage == "" {
 			resultMessage = err.Error()
@@ -217,6 +228,7 @@ func deployURLApp(app RequiredApp, opts DeployOptions, state *AppsState, install
 	}
 
 	resultMessage := formatInstallResult(result)
+	log.Printf("app deploy: install succeeded id=%d name=%q exitCode=%d", app.ID, app.Name, result.ExitCode)
 	progress.Report(InstallStatusSuccess, resultMessage)
 	reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusSuccess, resultMessage)
 

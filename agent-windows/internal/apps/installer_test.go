@@ -47,11 +47,14 @@ func TestBuildInstallerCommandMSI(t *testing.T) {
 	}
 }
 
-func TestBuildInstallerCommandEXE(t *testing.T) {
+func TestBuildEXEInstallPowerShellDoesNotRedirectStreams(t *testing.T) {
 	t.Parallel()
 
-	_, cmdLine := buildInstallerCommandWithArgs(`C:\Temp\setup.exe`, []string{"/S"})
-	if cmdLine != `"C:\Temp\setup.exe" /S` {
-		t.Fatalf("unexpected exe command line: %q", cmdLine)
+	script := buildEXEInstallPowerShell(`C:\Temp\setup.exe`, []string{"/S"})
+	if strings.Contains(script, "RedirectStandardOutput") || strings.Contains(script, "RedirectStandardError") {
+		t.Fatalf("installer script must not redirect streams: %q", script)
+	}
+	if !strings.Contains(script, "Start-Process -FilePath") {
+		t.Fatalf("expected Start-Process -FilePath in script: %q", script)
 	}
 }
