@@ -137,13 +137,13 @@ func (s *agentService) Execute(_ []string, requests <-chan svc.ChangeRequest, st
 
 	stopCh := make(chan struct{})
 
-	if err := performHandshake(&s.cfg, s.apiClient, stopCh); err != nil {
-		log.Printf("handshake failed: %v", err)
-		status <- svc.Status{State: svc.Stopped}
-		return false, 0
-	}
-
-	go runAgentLoop(stopCh, &s.cfg, s.apiClient)
+	// Report RUNNING before network enrollment so MSI/service manager does not hang.
+	go func() {
+		if err := performHandshake(&s.cfg, s.apiClient, stopCh); err != nil {
+			log.Printf("handshake failed: %v", err)
+		}
+		runAgentLoop(stopCh, &s.cfg, s.apiClient)
+	}()
 
 	status <- svc.Status{State: svc.Running, Accepts: accepts}
 	log.Printf("%s service started", serviceName)

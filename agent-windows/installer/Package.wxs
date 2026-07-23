@@ -42,7 +42,8 @@
         Name="HMDMAgent"
         Start="install"
         Stop="both"
-        Remove="uninstall" />
+        Remove="uninstall"
+        Wait="no" />
 
       <RegistryKey Root="HKLM" Key="SOFTWARE\HMDM\Agent">
         <RegistryValue Name="ServerURL" Value="$(var.ServerUrl)" Type="string" />
