@@ -44,6 +44,7 @@ func main() {
 			windows.GET("/devices/:hardwareId", windowsHandler.GetDevice)
 			windows.DELETE("/devices/:hardwareId", windowsHandler.DeleteDevice)
 			windows.POST("/devices/:hardwareId/commands", windowsHandler.EnqueueCommand)
+			windows.GET("/devices/:hardwareId/commands/latest", windowsHandler.GetLatestCommand)
 			windows.GET("/enrollment-setup", windowsHandler.GetEnrollmentSetup)
 			windows.POST("/enrollment-token", windowsHandler.CreateEnrollmentToken)
 			windows.GET("/installers/default", windowsHandler.GetDefaultInstaller)

@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
-import { Pencil, QrCode, Trash2 } from 'lucide-react'
+import { Pencil, QrCode, RefreshCw, Trash2 } from 'lucide-react'
 import {
   getConfigurationName,
   getConfigurationQrCodeKey,
@@ -21,8 +21,11 @@ import {
   type DeviceOnlineStatusCode,
 } from '@/features/devices/utils/device-online-status'
 import { usePeriodicNow } from '@/shared/hooks/use-periodic-now'
+import { useWindowsDeviceCommandMutation } from '@/features/windows/hooks/use-windows-device-command'
+import { waitForWindowsCommandResult } from '@/features/windows/lib/wait-for-command-result'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 import type { DeviceListView, DeviceView } from '@/shared/api/types/device'
 import type { Platform } from '@/shared/api/types/platform'
 import { cn } from '@/lib/utils'
@@ -84,7 +87,7 @@ export function DeviceTable({
   const now = usePeriodicNow()
   const devices = data.devices.items
   const showAndroidActions = platform === 'android' && onEditDevice != null
-  const showWindowsActions = platform === 'windows' && onDeleteDevice != null
+  const showWindowsActions = platform === 'windows'
 
   if (isLoading && devices.length === 0) {
     return (
@@ -459,20 +462,67 @@ function WindowsDeviceRow({
       <td className="px-4 py-3 whitespace-nowrap">{formatTimestamp(device.lastUpdate)}</td>
       {showActions && (
         <td className="px-4 py-3">
-          <div className="flex items-center justify-end">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              title={t('devices.actions.delete')}
-              className="text-destructive hover:text-destructive"
-              onClick={() => onDeleteDevice?.(device)}
-            >
-              <Trash2 className="size-3.5" />
-            </Button>
-          </div>
+          <WindowsDeviceRowActions device={device} onDeleteDevice={onDeleteDevice} />
         </td>
       )}
     </tr>
+  )
+}
+
+function WindowsDeviceRowActions({
+  device,
+  onDeleteDevice,
+}: {
+  device: DeviceView
+  onDeleteDevice?: (device: DeviceView) => void
+}) {
+  const { t } = useTranslation()
+  const syncMutation = useWindowsDeviceCommandMutation(device.number)
+  const isUninstalled = device.windowsAgentStatus === 'uninstalled'
+
+  const handleSync = async () => {
+    try {
+      const response = await syncMutation.mutateAsync({ action: 'sync' })
+      toast.success(t('deviceDetail.actions.commandQueued'))
+      void waitForWindowsCommandResult(device.number, response.id).then((result) => {
+        if (!result) {
+          return
+        }
+        if (result.success) {
+          toast.success(result.message)
+        } else {
+          toast.error(result.message)
+        }
+      })
+    } catch {
+      toast.error(t('deviceDetail.actions.error'))
+    }
+  }
+
+  return (
+    <div className="flex items-center justify-end gap-1">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-xs"
+        title={t('devices.actions.sync')}
+        disabled={isUninstalled || syncMutation.isPending}
+        onClick={() => void handleSync()}
+      >
+        <RefreshCw className={cn('size-3.5', syncMutation.isPending && 'animate-spin')} />
+      </Button>
+      {onDeleteDevice ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          title={t('devices.actions.delete')}
+          className="text-destructive hover:text-destructive"
+          onClick={() => onDeleteDevice(device)}
+        >
+          <Trash2 className="size-3.5" />
+        </Button>
+      ) : null}
+    </div>
   )
 }

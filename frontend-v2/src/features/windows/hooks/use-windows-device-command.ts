@@ -5,6 +5,7 @@ import {
   type WindowsCommandPayload,
 } from '@/features/windows/api/windows-api'
 import { deviceByNumberQueryKeys } from '@/features/devices/hooks/use-device-by-number-query'
+import { deviceQueryKeys } from '@/features/devices/hooks/use-devices-query'
 
 export function useWindowsDeviceCommandMutation(hardwareId: string) {
   const queryClient = useQueryClient()
@@ -21,6 +22,7 @@ export function useWindowsDeviceCommandMutation(hardwareId: string) {
       await queryClient.invalidateQueries({
         queryKey: deviceByNumberQueryKeys.detail('windows', hardwareId),
       })
+      await queryClient.invalidateQueries({ queryKey: deviceQueryKeys.all })
     },
   })
 }

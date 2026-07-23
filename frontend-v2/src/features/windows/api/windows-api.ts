@@ -169,6 +169,14 @@ interface EnqueueCommandResponse {
   status: string
 }
 
+export interface WindowsLatestCommandResponse {
+  id: number
+  action: string
+  status: string
+  result?: string
+  completedAt?: string
+}
+
 /** Queues a remote command for a Windows agent (picked up on next poll). */
 export async function sendWindowsDeviceCommand(
   hardwareId: string,
@@ -186,6 +194,21 @@ export async function sendWindowsDeviceCommand(
       action,
       payload: payload ?? {},
     },
+  )
+  return response.data
+}
+
+/** Returns the latest remote command for a Windows device (status/result feedback). */
+export async function getLatestWindowsDeviceCommand(
+  hardwareId: string,
+): Promise<WindowsLatestCommandResponse> {
+  if (isMockApiEnabled()) {
+    return { id: Date.now(), action: 'sync', status: 'completed', result: 'inventory uploaded' }
+  }
+
+  const encoded = encodeURIComponent(hardwareId)
+  const response = await windowsApi.get<WindowsLatestCommandResponse>(
+    `/devices/${encoded}/commands/latest`,
   )
   return response.data
 }

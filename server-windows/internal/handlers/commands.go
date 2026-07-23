@@ -76,6 +76,33 @@ func (h *WindowsHandler) EnqueueCommand(c *gin.Context) {
 	})
 }
 
+// GetLatestCommand returns the most recent command for a device (admin UI feedback).
+func (h *WindowsHandler) GetLatestCommand(c *gin.Context) {
+	hardwareID := strings.TrimSpace(c.Param("hardwareId"))
+	if hardwareID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing hardware id"})
+		return
+	}
+
+	var command models.WindowsDeviceCommand
+	if err := db.DB.Where("hardware_id = ?", hardwareID).Order("id DESC").First(&command).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "no commands"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup command"})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.LatestCommandResponse{
+		ID:          command.ID,
+		Action:      command.Action,
+		Status:      command.Status,
+		Result:      command.Result,
+		CompletedAt: command.CompletedAt,
+	})
+}
+
 // PollCommand returns the oldest pending command for the authenticated device.
 func (h *WindowsHandler) PollCommand(c *gin.Context) {
 	if !validateAgentAuth(c) {

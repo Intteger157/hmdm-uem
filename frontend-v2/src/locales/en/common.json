@@ -685,6 +685,7 @@
   "devices.actions.edit": "Edit device",
   "devices.actions.qr": "Show QR code",
   "devices.actions.delete": "Delete device",
+  "devices.actions.sync": "Force sync",
   "devices.form.addTitle": "Add device",
   "devices.form.addDescription": "Register a new device before enrollment.",
   "devices.form.editTitle": "Edit device",

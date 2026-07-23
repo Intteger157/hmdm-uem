@@ -135,9 +135,12 @@ func collectEncryptionByDriveLetter() map[string]string {
 			statuses[drive] = psStatus
 			continue
 		}
-		if statuses[drive] == "" {
-			statuses[drive] = "unknown"
+		if blStatus := queryEncryptionViaBitLockerModule(drive); blStatus != "unknown" {
+			statuses[drive] = blStatus
+			continue
 		}
+		// Fixed data volumes without BitLocker data are treated as not encrypted.
+		statuses[drive] = "off"
 	}
 	return statuses
 }
@@ -237,6 +240,27 @@ func queryEncryptionViaPowerShell(drive string) string {
 	}
 }
 
+func queryEncryptionViaBitLockerModule(drive string) string {
+	script := fmt.Sprintf(
+		"$ErrorActionPreference='SilentlyContinue'; Import-Module BitLocker; $v = Get-BitLockerVolume -MountPoint '%s' -ErrorAction SilentlyContinue | Select-Object -First 1; if ($null -eq $v) { exit 2 }; switch ($v.VolumeStatus.ToString()) { 'FullyEncrypted' { 'on' } 'EncryptionInProgress' { 'on' } 'DecryptionInProgress' { 'on' } 'FullyDecrypted' { 'off' } default { 'unknown' } }",
+		drive,
+	)
+
+	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	output, err := cmd.CombinedOutput()
+	status := strings.TrimSpace(string(output))
+	if err != nil || status == "" {
+		return "unknown"
+	}
+	switch status {
+	case "on", "off":
+		return status
+	default:
+		return "unknown"
+	}
+}
+
 func listFixedDriveLetters() []string {
 	var disks []win32LogicalDisk
 	if err := wmi.Query("SELECT DeviceID, DriveType FROM Win32_LogicalDisk", &disks); err != nil {
@@ -296,8 +320,8 @@ func normalizeDriveLetter(mountpoint string) string {
 }
 
 func fallbackEncryptStatus(status string) string {
-	if status == "" {
-		return "unknown"
+	if status == "" || status == "unknown" {
+		return "off"
 	}
 	return status
 }

@@ -44,6 +44,7 @@ import {
   WindowsPowerShellDialog,
 } from '@/features/windows/components/WindowsCommandDialogs'
 import type { WindowsCommandAction } from '@/features/windows/api/windows-api'
+import { waitForWindowsCommandResult } from '@/features/windows/lib/wait-for-command-result'
 
 type AndroidDialogAction =
   | 'appSettings'
@@ -171,13 +172,27 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
   const isPending =
     syncMutation.isPending || rebootMutation.isPending || resetMutation.isPending
 
+  const notifyCommandResult = (commandId: number) => {
+    void waitForWindowsCommandResult(device.number, commandId).then((result) => {
+      if (!result) {
+        return
+      }
+      if (result.success) {
+        toast.success(result.message)
+      } else {
+        toast.error(result.message)
+      }
+    })
+  }
+
   const queueWindowsCommand = async (
     action: WindowsCommandAction,
     payload?: { script?: string; url?: string },
   ): Promise<boolean> => {
     try {
-      await windowsCommandMutation.mutateAsync({ action, payload })
+      const response = await windowsCommandMutation.mutateAsync({ action, payload })
       toast.success(t('deviceDetail.actions.commandQueued'))
+      notifyCommandResult(response.id)
       return true
     } catch {
       toast.error(t('deviceDetail.actions.error'))

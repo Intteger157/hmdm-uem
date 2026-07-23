@@ -55,3 +55,12 @@ type CompleteCommandRequest struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
 }
+
+// LatestCommandResponse is returned to the admin UI for command feedback.
+type LatestCommandResponse struct {
+	ID          uint       `json:"id"`
+	Action      string     `json:"action"`
+	Status      string     `json:"status"`
+	Result      string     `json:"result,omitempty"`
+	CompletedAt *time.Time `json:"completedAt,omitempty"`
+}

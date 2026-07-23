@@ -685,6 +685,7 @@
   "devices.actions.edit": "Редактировать",
   "devices.actions.qr": "QR-код",
   "devices.actions.delete": "Удалить",
+  "devices.actions.sync": "Принудительная синхронизация",
   "devices.form.addTitle": "Добавить устройство",
   "devices.form.addDescription": "Зарегистрируйте устройство до enrollment.",
   "devices.form.editTitle": "Редактировать устройство",
