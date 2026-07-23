@@ -14,7 +14,7 @@ dotnet tool install --global wix
 ## One-time setup
 
 1. Open **Devices → Windows → Add device** in MDM console
-2. Copy the **org enrollment secret** (stable, same every time)
+2. Copy the **org enrollment secret** (`win-enroll-org-...`)
 3. Build MSI from repo root:
 
 ```powershell
@@ -23,8 +23,10 @@ dotnet tool install --global wix
   -Token "win-enroll-org-..."
 ```
 
-4. Upload `agent-windows\installer\dist\HMDMAgent.msi` in the dialog
+Output: `agent-windows\installer\dist\HMDMAgent.msi`
 
-## End-user install
+## Distribution
 
-Share the installer link from the console. Each PC enrolls automatically and appears under **Devices → Windows**.
+Distribute `HMDMAgent.msi` to users however you prefer (USB, GPO, file share, email, etc.). No upload to MDM is required.
+
+Each PC enrolls automatically after install and appears under **Devices → Windows**.

@@ -66,4 +66,4 @@ if (-not (Test-Path $outputMsi)) {
 }
 
 Write-Host "Done: $outputMsi"
-Write-Host "Upload this MSI once in MDM console (Devices -> Windows -> Add device)."
+Write-Host "Distribute this MSI to users (USB, GPO, share, etc.). No MDM upload required."
