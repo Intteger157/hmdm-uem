@@ -37,6 +37,18 @@ func TestResolveDownloadURL(t *testing.T) {
 			expected: "https://mdm.example.com/downloads/app.exe",
 		},
 		{
+			name:     "upgrades http to match https base",
+			baseURL:  "https://mdm.example.com",
+			input:    "http://mdm.example.com/storage/apps/installer.exe",
+			expected: "https://mdm.example.com/storage/apps/installer.exe",
+		},
+		{
+			name:     "keeps http for localhost base",
+			baseURL:  "http://localhost:8080",
+			input:    "http://localhost:8080/storage/apps/installer.exe",
+			expected: "http://localhost:8080/storage/apps/installer.exe",
+		},
+		{
 			name:    "empty url",
 			baseURL: "https://mdm.example.com",
 			input:   "   ",

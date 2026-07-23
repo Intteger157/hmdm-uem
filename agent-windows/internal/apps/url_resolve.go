@@ -15,7 +15,7 @@ func resolveDownloadURL(baseURL, downloadURL string) (string, error) {
 
 	lower := strings.ToLower(trimmed)
 	if strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://") {
-		return trimmed, nil
+		return alignDownloadScheme(baseURL, trimmed), nil
 	}
 
 	serverBase := strings.TrimRight(strings.TrimSpace(baseURL), "/")
@@ -33,7 +33,7 @@ func resolveDownloadURL(baseURL, downloadURL string) (string, error) {
 
 	if strings.HasPrefix(trimmed, "/") {
 		origin := parsedBase.Scheme + "://" + parsedBase.Host
-		return origin + trimmed, nil
+		return alignDownloadScheme(serverBase, origin+trimmed), nil
 	}
 
 	ref, err := url.Parse(trimmed)
@@ -41,5 +41,27 @@ func resolveDownloadURL(baseURL, downloadURL string) (string, error) {
 		return "", fmt.Errorf("parse download URL: %w", err)
 	}
 
-	return parsedBase.ResolveReference(ref).String(), nil
+	resolved := parsedBase.ResolveReference(ref).String()
+	return alignDownloadScheme(serverBase, resolved), nil
+}
+
+func alignDownloadScheme(baseURL, downloadURL string) string {
+	base, err := url.Parse(strings.TrimRight(strings.TrimSpace(baseURL), "/"))
+	if err != nil || base.Scheme == "" || base.Host == "" {
+		return downloadURL
+	}
+
+	target, err := url.Parse(strings.TrimSpace(downloadURL))
+	if err != nil || target.Scheme == "" || target.Host == "" {
+		return downloadURL
+	}
+
+	if strings.EqualFold(base.Scheme, "https") && strings.EqualFold(target.Scheme, "http") {
+		if strings.EqualFold(base.Hostname(), target.Hostname()) {
+			target.Scheme = "https"
+			return target.String()
+		}
+	}
+
+	return downloadURL
 }

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -63,7 +62,7 @@ func (h *WindowsHandler) UploadApplication(c *gin.Context) {
 	}
 
 	publicPath := fmt.Sprintf("/storage/apps/%s", storedName)
-	publicURL := buildPublicURL(c, publicPath)
+	publicURL := normalizeDownloadURL(buildPublicURL(c, publicPath))
 
 	log.Printf("[upload-application] stored file=%q name=%q version=%q", storedName, name, version)
 	c.JSON(http.StatusOK, models.UploadApplicationResponse{
@@ -71,24 +70,4 @@ func (h *WindowsHandler) UploadApplication(c *gin.Context) {
 		Name:    name,
 		Version: version,
 	})
-}
-
-func buildPublicURL(c *gin.Context, publicPath string) string {
-	if base := strings.TrimSpace(os.Getenv("PUBLIC_BASE_URL")); base != "" {
-		return strings.TrimRight(base, "/") + publicPath
-	}
-
-	scheme := "http"
-	if c.Request.TLS != nil {
-		scheme = "https"
-	}
-	if forwarded := strings.TrimSpace(c.GetHeader("X-Forwarded-Proto")); forwarded != "" {
-		scheme = forwarded
-	}
-
-	host := strings.TrimSpace(c.GetHeader("X-Forwarded-Host"))
-	if host == "" {
-		host = c.Request.Host
-	}
-	return fmt.Sprintf("%s://%s%s", scheme, host, publicPath)
 }

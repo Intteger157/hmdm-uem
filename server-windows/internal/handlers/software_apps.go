@@ -28,7 +28,9 @@ func (h *WindowsHandler) ListSoftwareApps(c *gin.Context) {
 
 	items := make([]models.SoftwareAppJSON, 0, len(apps))
 	for _, app := range apps {
-		items = append(items, models.ToSoftwareAppJSON(app))
+		item := models.ToSoftwareAppJSON(app)
+		item.DownloadURL = normalizeDownloadURL(item.DownloadURL)
+		items = append(items, item)
 	}
 
 	c.JSON(http.StatusOK, models.SoftwareAppListResponse{
