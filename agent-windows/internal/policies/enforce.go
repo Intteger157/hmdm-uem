@@ -32,11 +32,21 @@ func IsCompliant(desired Payload) (bool, []Result) {
 	defenderEnabled, err := readDefenderEnabled()
 	if err != nil {
 		results = append(results, Result{Name: "Defender", Success: false, Message: err.Error()})
-	} else if defenderEnabled != desired.DefenderEnabled {
+	} else if desired.DefenderEnabled {
+		if defenderEnabled != desired.DefenderEnabled {
+			results = append(results, Result{
+				Name:    "Defender",
+				Success: false,
+				Message: fmt.Sprintf("expected realtime monitoring %v, found %v", desired.DefenderEnabled, defenderEnabled),
+			})
+		} else {
+			results = append(results, Result{Name: "Defender", Success: true, Message: "compliant"})
+		}
+	} else if hasDefenderPolicyKeys() {
 		results = append(results, Result{
 			Name:    "Defender",
 			Success: false,
-			Message: fmt.Sprintf("expected realtime monitoring %v, found %v", desired.DefenderEnabled, defenderEnabled),
+			Message: "expected policy keys removed, found Windows Defender policy registry entries",
 		})
 	} else {
 		results = append(results, Result{Name: "Defender", Success: true, Message: "compliant"})
@@ -45,11 +55,21 @@ func IsCompliant(desired Payload) (bool, []Result) {
 	usbBlocked, err := readUSBBlocked()
 	if err != nil {
 		results = append(results, Result{Name: "USB", Success: false, Message: err.Error()})
-	} else if usbBlocked != desired.BlockUsbStorage {
+	} else if desired.BlockUsbStorage {
+		if usbBlocked != desired.BlockUsbStorage {
+			results = append(results, Result{
+				Name:    "USB",
+				Success: false,
+				Message: fmt.Sprintf("expected block %v, found %v", desired.BlockUsbStorage, usbBlocked),
+			})
+		} else {
+			results = append(results, Result{Name: "USB", Success: true, Message: "compliant"})
+		}
+	} else if usbPolicyKeysPresent() {
 		results = append(results, Result{
 			Name:    "USB",
 			Success: false,
-			Message: fmt.Sprintf("expected block %v, found %v", desired.BlockUsbStorage, usbBlocked),
+			Message: "expected removable storage policy key removed, but registry tattoo remains",
 		})
 	} else {
 		results = append(results, Result{Name: "USB", Success: true, Message: "compliant"})

@@ -6,25 +6,51 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"golang.org/x/sys/windows/registry"
 )
+
+const defenderPolicyKeyPath = `SOFTWARE\Policies\Microsoft\Windows Defender`
 
 func enforceDefender(enabled bool) Result {
 	name := "Defender"
-	disableMonitoring := "$true"
 	if enabled {
-		disableMonitoring = "$false"
+		return enableDefenderMonitoring(name)
 	}
+	return removeDefenderPolicy(name)
+}
 
-	script := fmt.Sprintf(
-		"$ErrorActionPreference = 'Stop'; Set-MpPreference -DisableRealtimeMonitoring %s",
-		disableMonitoring,
-	)
+func enableDefenderMonitoring(name string) Result {
+	script := "$ErrorActionPreference = 'Stop'; Set-MpPreference -DisableRealtimeMonitoring $false"
 	output, err := runPowerShellScript(script, 2*time.Minute)
 	if err != nil {
 		return Result{Name: name, Success: false, Message: output}
 	}
-	if output == "" {
-		output = fmt.Sprintf("realtime monitoring set to %v", enabled)
+	if strings.TrimSpace(output) == "" {
+		output = "realtime monitoring enabled"
+	}
+	return Result{Name: name, Success: true, Message: output}
+}
+
+func removeDefenderPolicy(name string) Result {
+	if err := deleteRegistryTree(registry.LOCAL_MACHINE, defenderPolicyKeyPath); err != nil {
+		return Result{Name: name, Success: false, Message: fmt.Sprintf("remove policy key: %v", err)}
+	}
+
+	script := `
+$ErrorActionPreference = 'SilentlyContinue'
+Set-MpPreference -DisableRealtimeMonitoring $false
+'Windows Defender policy keys removed; control returned to local settings.'
+`
+	output, err := runPowerShellScript(script, 2*time.Minute)
+	if err != nil {
+		if strings.TrimSpace(output) == "" {
+			output = "policy keys removed"
+		}
+		return Result{Name: name, Success: true, Message: strings.TrimSpace(output)}
+	}
+	if strings.TrimSpace(output) == "" {
+		output = "Windows Defender policy keys removed; control returned to local settings."
 	}
 	return Result{Name: name, Success: true, Message: output}
 }
@@ -38,4 +64,13 @@ func readDefenderEnabled() (bool, error) {
 		return false, err
 	}
 	return strings.EqualFold(strings.TrimSpace(output), "on"), nil
+}
+
+func hasDefenderPolicyKeys() bool {
+	key, err := registry.OpenKey(registry.LOCAL_MACHINE, defenderPolicyKeyPath, registry.QUERY_VALUE)
+	if err != nil {
+		return false
+	}
+	key.Close()
+	return true
 }
