@@ -48,6 +48,7 @@ Write-Host "Building MSI with WiX ..."
 Push-Location $installerDir
 try {
     wix build Package.wxs `
+        -arch x64 `
         -d "ServerUrl=$ServerUrl" `
         -d "EnrollmentToken=$Token" `
         -d "AgentBinary=staging/HMDMAgent.exe" `

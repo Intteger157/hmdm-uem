@@ -32,6 +32,7 @@ if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
     -w /src/installer \
     "$WIX_IMAGE" \
     build Package.wxs \
+      -arch x64 \
       -d "ServerUrl=$SERVER_URL" \
       -d "EnrollmentToken=$TOKEN" \
       -d "AgentBinary=staging/HMDMAgent.exe" \
@@ -39,6 +40,7 @@ if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
 elif command -v wix >/dev/null 2>&1; then
   echo "Building MSI with local WiX ..."
   wix build Package.wxs \
+    -arch x64 \
     -d "ServerUrl=$SERVER_URL" \
     -d "EnrollmentToken=$TOKEN" \
     -d "AgentBinary=staging/HMDMAgent.exe" \
