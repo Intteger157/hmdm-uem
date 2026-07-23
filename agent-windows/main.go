@@ -208,7 +208,7 @@ func runAgentLoop(stop <-chan struct{}, cfg *config.Config, apiClient *api.APICl
 			}
 
 			if err := uploadInventory(cfg, apiClient); err != nil {
-				if handleAuthFailure(cfg, err) {
+				if handleReenrollNeeded(cfg, err) {
 					continue
 				}
 				log.Printf("inventory upload failed: %v", err)
@@ -217,7 +217,7 @@ func runAgentLoop(stop <-chan struct{}, cfg *config.Config, apiClient *api.APICl
 			}
 
 			if err := processPendingCommands(stop, cfg, apiClient); err != nil {
-				if handleAuthFailure(cfg, err) {
+				if handleReenrollNeeded(cfg, err) {
 					continue
 				}
 				log.Printf("command processing failed: %v", err)
@@ -278,12 +278,17 @@ func processPendingCommands(stop <-chan struct{}, cfg *config.Config, apiClient 
 	}
 }
 
-func handleAuthFailure(cfg *config.Config, err error) bool {
-	if !errors.Is(err, api.ErrUnauthorized) {
+func handleReenrollNeeded(cfg *config.Config, err error) bool {
+	if !errors.Is(err, api.ErrUnauthorized) && !errors.Is(err, api.ErrDeviceNotFound) {
 		return false
 	}
 
-	log.Printf("request unauthorized, clearing auth token for re-enrollment")
+	if errors.Is(err, api.ErrDeviceNotFound) {
+		log.Printf("device not found on server, clearing auth token for re-enrollment")
+	} else {
+		log.Printf("request unauthorized, clearing auth token for re-enrollment")
+	}
+
 	if clearErr := config.ClearAuthToken(); clearErr != nil {
 		log.Printf("failed to clear auth token: %v", clearErr)
 	}

@@ -11,6 +11,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/hmdm/agent-windows/internal/session"
 )
 
 // Result captures command execution outcome.
@@ -59,9 +61,7 @@ func restart() Result {
 }
 
 func lockWorkstation() Result {
-	cmd := exec.Command("rundll32.exe", "user32.dll,LockWorkStation")
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	if err := cmd.Run(); err != nil {
+	if err := session.RunInteractive(`rundll32.exe user32.dll,LockWorkStation`); err != nil {
 		return Result{Success: false, Message: fmt.Sprintf("lock failed: %v", err)}
 	}
 	return Result{Success: true, Message: "workstation locked"}

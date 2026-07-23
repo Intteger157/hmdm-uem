@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -98,14 +97,14 @@ export function WindowsEnrollmentDialog({ open, onOpenChange }: WindowsEnrollmen
     failKey: string,
   ) => (
     <div className="relative rounded-lg border bg-muted/40">
-      <pre className="overflow-x-auto p-4 pr-24 text-xs leading-relaxed sm:text-sm">
+      <pre className="overflow-x-auto p-4 pr-16 text-xs leading-relaxed sm:text-sm">
         <code>{text}</code>
       </pre>
       <Button
         type="button"
         variant="secondary"
         size="sm"
-        className="absolute right-3 top-3"
+        className="absolute right-3 top-3 gap-1.5 px-2.5"
         onClick={() => void copyText(text, successKey, failKey)}
       >
         <Copy className="size-4" />
@@ -116,10 +115,9 @@ export function WindowsEnrollmentDialog({ open, onOpenChange }: WindowsEnrollmen
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>{t('windows.enrollment.title')}</DialogTitle>
-          <DialogDescription>{t('windows.enrollment.descriptionUniversal')}</DialogDescription>
         </DialogHeader>
 
         {isLoading ? (
@@ -136,10 +134,9 @@ export function WindowsEnrollmentDialog({ open, onOpenChange }: WindowsEnrollmen
             <p>{error}</p>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-5">
             <section className="space-y-2">
               <h3 className="text-sm font-medium">{t('windows.enrollment.secretTitle')}</h3>
-              <p className="text-sm text-muted-foreground">{t('windows.enrollment.secretHintUniversal')}</p>
               {orgSecret &&
                 renderCodeBlock(
                   orgSecret,
@@ -151,7 +148,6 @@ export function WindowsEnrollmentDialog({ open, onOpenChange }: WindowsEnrollmen
 
             <section className="space-y-2">
               <h3 className="text-sm font-medium">{t('windows.enrollment.buildCommandTitle')}</h3>
-              <p className="text-sm text-muted-foreground">{t('windows.enrollment.buildCommandHint')}</p>
               {renderCodeBlock(
                 msiBuildCommand,
                 t('windows.enrollment.copy'),
@@ -159,9 +155,6 @@ export function WindowsEnrollmentDialog({ open, onOpenChange }: WindowsEnrollmen
                 'windows.enrollment.copyFailed',
               )}
             </section>
-
-            <p className="text-sm text-muted-foreground">{t('windows.enrollment.distributeHint')}</p>
-            <p className="text-sm text-muted-foreground">{t('windows.enrollment.devicesAppearHint')}</p>
           </div>
         )}
       </DialogContent>

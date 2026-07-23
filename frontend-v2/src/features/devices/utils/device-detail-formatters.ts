@@ -50,3 +50,30 @@ export function resolvePublicIp(device: DeviceView): string | undefined {
   const ip = device.publicIp?.trim()
   return ip || undefined
 }
+
+/** Hides machine/service accounts that the agent may report instead of a logged-in user. */
+export function formatWindowsCurrentUser(
+  raw?: string,
+  fallback = 'N/A',
+  localUsers?: { username: string; status?: string }[],
+): string {
+  const username = raw?.trim()
+  if (username && !username.endsWith('$')) {
+    const lower = username.toLowerCase()
+    if (lower !== 'system' && lower !== 'local service' && lower !== 'network service') {
+      return username
+    }
+  }
+
+  const activeUser = localUsers?.find(
+    (user) =>
+      user.status === 'active' &&
+      !user.username.endsWith('$') &&
+      !['Guest', 'DefaultAccount', 'WDAGUtilityAccount'].includes(user.username),
+  )
+  if (activeUser?.username) {
+    return activeUser.username
+  }
+
+  return fallback
+}

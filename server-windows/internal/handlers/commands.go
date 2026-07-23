@@ -88,6 +88,8 @@ func (h *WindowsHandler) PollCommand(c *gin.Context) {
 		return
 	}
 
+	resetStaleRunningCommands(deviceID)
+
 	var command models.WindowsDeviceCommand
 	err := db.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
@@ -186,4 +188,18 @@ func parseUintParam(raw string) (uint, bool) {
 		return 0, false
 	}
 	return uint(value), true
+}
+
+func resetStaleRunningCommands(deviceID string) {
+	staleBefore := time.Now().Add(-2 * time.Minute)
+	result := db.DB.Model(&models.WindowsDeviceCommand{}).
+		Where("hardware_id = ? AND status = ? AND updated_at < ?", deviceID, models.CommandStatusRunning, staleBefore).
+		Update("status", models.CommandStatusPending)
+	if result.Error != nil {
+		log.Printf("[poll-command] reset stale running failed: hardware_id=%q err=%v", deviceID, result.Error)
+		return
+	}
+	if result.RowsAffected > 0 {
+		log.Printf("[poll-command] reset %d stale running command(s): hardware_id=%q", result.RowsAffected, deviceID)
+	}
 }

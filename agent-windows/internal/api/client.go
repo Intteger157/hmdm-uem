@@ -26,6 +26,9 @@ const (
 // ErrUnauthorized indicates the server rejected the current auth token.
 var ErrUnauthorized = errors.New("unauthorized")
 
+// ErrDeviceNotFound indicates the device record was removed from the server.
+var ErrDeviceNotFound = errors.New("device not found")
+
 // APIClient wraps REST calls to the MDM backend.
 type APIClient struct {
 	baseURL    string
@@ -141,6 +144,8 @@ func (c *APIClient) SendInventory(authToken, hwid string, info *system.DeviceInf
 	switch resp.StatusCode {
 	case http.StatusUnauthorized:
 		return ErrUnauthorized
+	case http.StatusNotFound:
+		return ErrDeviceNotFound
 	case http.StatusOK, http.StatusCreated, http.StatusAccepted, http.StatusNoContent:
 		return nil
 	default:
@@ -206,6 +211,8 @@ func (c *APIClient) PollCommand(authToken, hwid string) (*PendingCommand, error)
 	switch resp.StatusCode {
 	case http.StatusUnauthorized:
 		return nil, ErrUnauthorized
+	case http.StatusNotFound:
+		return nil, ErrDeviceNotFound
 	case http.StatusOK:
 		var parsed pendingCommandResponse
 		if err := json.Unmarshal(body, &parsed); err != nil {

@@ -4,8 +4,10 @@ package system
 
 import (
 	"fmt"
-	"os/user"
+	"os"
+	"os/exec"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/yusufpapurcu/wmi"
@@ -25,9 +27,13 @@ type InstalledSoftwareInfo struct {
 	InstallDate string `json:"install_date"`
 }
 
-type win32ComputerSystem struct {
+type win32ComputerSystemIdentity struct {
 	Manufacturer string
 	Model        string
+}
+
+type win32ComputerSystemUser struct {
+	UserName string
 }
 
 type win32BIOS struct {
@@ -67,7 +73,7 @@ func collectExtendedInventory() (manufacturer, model, serialNumber, currentUser 
 }
 
 func collectSystemProduct() (manufacturer, model string) {
-	var systems []win32ComputerSystem
+	var systems []win32ComputerSystemIdentity
 	if err := wmi.Query("SELECT Manufacturer, Model FROM Win32_ComputerSystem", &systems); err == nil && len(systems) > 0 {
 		manufacturer = strings.TrimSpace(systems[0].Manufacturer)
 		model = strings.TrimSpace(systems[0].Model)
@@ -189,14 +195,78 @@ func normalizeSerial(raw string) string {
 }
 
 func collectCurrentUser() string {
-	current, err := user.Current()
+	if username := collectLoggedOnUserFromWMI(); username != "" {
+		return username
+	}
+	return collectLoggedOnUserFromQueryUser()
+}
+
+func collectLoggedOnUserFromWMI() string {
+	var systems []win32ComputerSystemUser
+	if err := wmi.Query("SELECT UserName FROM Win32_ComputerSystem", &systems); err != nil || len(systems) == 0 {
+		return ""
+	}
+	return normalizeInteractiveUsername(systems[0].UserName)
+}
+
+func collectLoggedOnUserFromQueryUser() string {
+	cmd := exec.Command("query.exe", "user")
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return ""
 	}
-	if current.Username != "" {
-		return current.Username
+
+	username := parseQueryUserOutput(string(output))
+	if username == "" {
+		return ""
 	}
-	return strings.TrimSpace(current.Name)
+
+	if strings.Contains(username, `\`) {
+		return normalizeInteractiveUsername(username)
+	}
+
+	hostname, err := os.Hostname()
+	if err != nil || strings.TrimSpace(hostname) == "" {
+		return normalizeInteractiveUsername(username)
+	}
+
+	return normalizeInteractiveUsername(hostname + `\` + username)
+}
+
+func parseQueryUserOutput(output string) string {
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "USERNAME") {
+			continue
+		}
+		line = strings.TrimPrefix(strings.TrimSpace(line), ">")
+		fields := strings.Fields(line)
+		if len(fields) == 0 {
+			continue
+		}
+		username := strings.TrimSpace(fields[0])
+		if username == "" || strings.EqualFold(username, "console") {
+			continue
+		}
+		return username
+	}
+	return ""
+}
+
+func normalizeInteractiveUsername(raw string) string {
+	username := strings.TrimSpace(raw)
+	if username == "" {
+		return ""
+	}
+	if strings.HasSuffix(username, "$") {
+		return ""
+	}
+	lower := strings.ToLower(username)
+	if lower == "system" || lower == "local service" || lower == "network service" {
+		return ""
+	}
+	return username
 }
 
 func collectLocalUsers() []LocalUserInfo {

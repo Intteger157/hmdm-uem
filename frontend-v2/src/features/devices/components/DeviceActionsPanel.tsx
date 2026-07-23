@@ -174,12 +174,14 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
   const queueWindowsCommand = async (
     action: WindowsCommandAction,
     payload?: { script?: string; url?: string },
-  ) => {
+  ): Promise<boolean> => {
     try {
       await windowsCommandMutation.mutateAsync({ action, payload })
       toast.success(t('deviceDetail.actions.commandQueued'))
+      return true
     } catch {
       toast.error(t('deviceDetail.actions.error'))
+      return false
     }
   }
 
@@ -372,7 +374,11 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
         onOpenChange={setPowershellOpen}
         isPending={windowsCommandMutation.isPending}
         onSubmit={(script) => {
-          void queueWindowsCommand('powershell', { script }).finally(() => setPowershellOpen(false))
+          void queueWindowsCommand('powershell', { script }).then((ok) => {
+            if (ok) {
+              setPowershellOpen(false)
+            }
+          })
         }}
       />
 
@@ -381,7 +387,11 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
         onOpenChange={setInstallOpen}
         isPending={windowsCommandMutation.isPending}
         onSubmit={(url) => {
-          void queueWindowsCommand('install', { url }).finally(() => setInstallOpen(false))
+          void queueWindowsCommand('install', { url }).then((ok) => {
+            if (ok) {
+              setInstallOpen(false)
+            }
+          })
         }}
       />
 

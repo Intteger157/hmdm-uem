@@ -95,7 +95,7 @@ services:
       hmdm:
         condition: service_healthy
       server-windows:
-        condition: service_started
+        condition: service_healthy
       frontend-v2:
         condition: service_started
     ports:

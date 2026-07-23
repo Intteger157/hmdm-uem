@@ -3,6 +3,7 @@
 package system
 
 import (
+	"fmt"
 	"os/exec"
 	"sort"
 	"strings"
@@ -128,7 +129,13 @@ func collectEncryptionByDriveLetter() map[string]string {
 		}
 		if cliStatus := queryManageBDEStatus(drive); cliStatus != "unknown" {
 			statuses[drive] = cliStatus
-		} else if statuses[drive] == "" {
+			continue
+		}
+		if psStatus := queryEncryptionViaPowerShell(drive); psStatus != "unknown" {
+			statuses[drive] = psStatus
+			continue
+		}
+		if statuses[drive] == "" {
 			statuses[drive] = "unknown"
 		}
 	}
@@ -162,10 +169,18 @@ func mapProtectionStatus(protectionStatus, conversionStatus uint32) string {
 	case 1:
 		return "on"
 	case 0:
-		if conversionStatus == 1 {
+		if conversionStatus == 1 || conversionStatus == 2 || conversionStatus == 3 || conversionStatus == 4 {
 			return "on"
 		}
 		return "off"
+	case 2:
+		if conversionStatus == 1 || conversionStatus == 2 || conversionStatus == 3 || conversionStatus == 4 {
+			return "on"
+		}
+		if conversionStatus == 0 {
+			return "off"
+		}
+		return "unknown"
 	default:
 		return "unknown"
 	}
@@ -177,18 +192,46 @@ func queryManageBDEStatus(drive string) string {
 	cmd := exec.Command("manage-bde.exe", "-status", letter+":")
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	output, err := cmd.CombinedOutput()
-	if err != nil {
+	text := strings.ToLower(string(output))
+
+	switch {
+	case strings.Contains(text, "protection on"),
+		strings.Contains(text, "fully encrypted"),
+		strings.Contains(text, "encryption in progress"),
+		strings.Contains(text, "decryption in progress"):
+		return "on"
+	case strings.Contains(text, "protection off"),
+		strings.Contains(text, "fully decrypted"),
+		strings.Contains(text, "not protected"),
+		strings.Contains(text, "bitlocker version:    none"),
+		strings.Contains(text, "encryption method:    none"),
+		strings.Contains(text, "percentage encrypted: 0.0%"):
+		return "off"
+	default:
+		if err != nil {
+			return "unknown"
+		}
 		return "unknown"
 	}
+}
 
-	text := strings.ToLower(string(output))
-	switch {
-	case strings.Contains(text, "protection on"):
-		return "on"
-	case strings.Contains(text, "fully decrypted"):
-		return "off"
-	case strings.Contains(text, "encryption in progress"), strings.Contains(text, "decryption in progress"):
-		return "on"
+func queryEncryptionViaPowerShell(drive string) string {
+	letter := strings.TrimSuffix(drive, ":") + ":"
+	script := fmt.Sprintf(
+		"$v = Get-CimInstance -Namespace 'root/CIMV2/Security/MicrosoftVolumeEncryption' -ClassName Win32_EncryptableVolume -Filter \"DriveLetter='%s'\" -ErrorAction SilentlyContinue | Select-Object -First 1; if ($null -eq $v) { exit 2 }; switch ($v.ProtectionStatus) { 1 { 'on' } 0 { if ($v.ConversionStatus -eq 1 -or $v.ConversionStatus -eq 2 -or $v.ConversionStatus -eq 3) { 'on' } else { 'off' } } default { 'unknown' } }",
+		letter,
+	)
+
+	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	output, err := cmd.CombinedOutput()
+	status := strings.TrimSpace(string(output))
+	if err != nil || status == "" {
+		return "unknown"
+	}
+	switch status {
+	case "on", "off":
+		return status
 	default:
 		return "unknown"
 	}

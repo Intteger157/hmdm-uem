@@ -6,6 +6,7 @@ import { useDeviceByNumber } from '@/features/devices/hooks/use-device-by-number
 import {
   formatDeviceEnrollTime,
   formatDeviceTimestamp,
+  formatWindowsCurrentUser,
   resolveEnrollTime,
   resolveLauncherVersion,
   resolvePublicIp,
@@ -159,7 +160,7 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
             />
             <MetricCard
               label={t('deviceDetail.metrics.currentUser')}
-              value={device.currentUser ?? NA}
+              value={formatWindowsCurrentUser(device.currentUser, NA, device.localUsers)}
               mono
             />
           </>
