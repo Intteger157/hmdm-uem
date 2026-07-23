@@ -185,6 +185,45 @@ export async function createWindowsEnrollmentToken(): Promise<WindowsEnrollmentT
   return response.data
 }
 
+export interface LinkWindowsInstallerRequest {
+  enrollmentToken: string
+  filesRelativePath: string
+  fileName: string
+  permanentFileUrl: string
+}
+
+export interface LinkWindowsInstallerResponse {
+  downloadUrl: string
+  permanentFileUrl: string
+  downloadToken: string
+}
+
+/** Links an uploaded MSI (Java Files storage) to an enrollment token and returns a one-time download URL. */
+export async function linkWindowsInstaller(
+  request: LinkWindowsInstallerRequest,
+): Promise<LinkWindowsInstallerResponse> {
+  if (isMockApiEnabled()) {
+    const downloadToken = `win-dl-mock-${Date.now()}`
+    return {
+      downloadUrl: `${window.location.origin}/rest/windows/downloads/${downloadToken}`,
+      permanentFileUrl: request.permanentFileUrl,
+      downloadToken,
+    }
+  }
+
+  const response = await windowsApi.post<LinkWindowsInstallerResponse>('/installers/link', request)
+  return response.data
+}
+
+/** Extracts the storage path after `/files/` from a public file URL. */
+export function filesRelativePathFromUrl(fileUrl: string): string {
+  const pathname = new URL(fileUrl).pathname.replace(/^\/+/, '')
+  if (pathname.startsWith('files/')) {
+    return pathname.slice('files/'.length)
+  }
+  return pathname
+}
+
 function mapEncryptionToBitLocker(
   status: WindowsEncryptionStatus | undefined,
   diskEncrypted?: boolean,

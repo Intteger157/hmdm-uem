@@ -44,6 +44,7 @@ services:
       - ./volumes/work:/usr/local/tomcat/work
       - ./volumes/hmdm-config:/usr/local/tomcat/conf/Catalina/localhost
       - ./volumes/webapps:/usr/local/tomcat/webapps
+      - ./volumes/files:/opt/hmdm/files
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1"]
       interval: 10s
@@ -67,6 +68,9 @@ services:
       DATABASE_URL: host=postgresql user=${SQL_USER} password=${SQL_PASS} dbname=${SQL_BASE} port=5432 sslmode=disable
       LISTEN_ADDR: ":8082"
       GIN_MODE: ${GIN_MODE:-release}
+      FILES_DIR: /opt/hmdm/files
+    volumes:
+      - ./volumes/files:/opt/hmdm/files
 
   frontend-v2:
     build:
