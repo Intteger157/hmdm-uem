@@ -79,7 +79,7 @@ func (h *WindowsHandler) LinkInstaller(c *gin.Context) {
 		fileName = filepath.Base(relativePath)
 	}
 
-	record.DownloadToken = downloadToken
+	record.DownloadToken = &downloadToken
 	record.InstallerPath = relativePath
 	record.InstallerFileName = fileName
 	record.PermanentFileURL = strings.TrimSpace(req.PermanentFileURL)

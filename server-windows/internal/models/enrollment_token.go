@@ -9,7 +9,7 @@ type WindowsEnrollmentToken struct {
 	CreatedAt         time.Time  `gorm:"not null"`
 	UsedAt            *time.Time
 	UsedByHWID        string
-	DownloadToken     string     `gorm:"uniqueIndex"`
+	DownloadToken     *string    `gorm:"uniqueIndex"`
 	InstallerPath     string
 	InstallerFileName string
 	PermanentFileURL  string

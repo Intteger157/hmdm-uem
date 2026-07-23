@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"net/http"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -36,6 +37,9 @@ func main() {
 	{
 		windows := rest.Group("/windows")
 		{
+			windows.GET("/health", func(c *gin.Context) {
+				c.JSON(http.StatusOK, gin.H{"status": "ok"})
+			})
 			windows.GET("/devices", windowsHandler.ListDevices)
 			windows.GET("/devices/:hardwareId", windowsHandler.GetDevice)
 			windows.POST("/devices/:hardwareId/commands", windowsHandler.EnqueueCommand)

@@ -18,6 +18,8 @@ func InitDB(dsn string) (*gorm.DB, error) {
 		return nil, fmt.Errorf("connect database: %w", err)
 	}
 
+	normalizeEnrollmentDownloadTokens(database)
+
 	if err := database.AutoMigrate(
 		&models.WindowsDevice{},
 		&models.WindowsDeviceCommand{},
@@ -26,6 +28,25 @@ func InitDB(dsn string) (*gorm.DB, error) {
 		return nil, fmt.Errorf("migrate database: %w", err)
 	}
 
+	normalizeEnrollmentDownloadTokens(database)
+
 	DB = database
 	return database, nil
+}
+
+func normalizeEnrollmentDownloadTokens(database *gorm.DB) {
+	database.Exec(`
+		DO $$
+		BEGIN
+			IF EXISTS (
+				SELECT 1 FROM information_schema.columns
+				WHERE table_name = 'windows_enrollment_tokens'
+				  AND column_name = 'download_token'
+			) THEN
+				UPDATE windows_enrollment_tokens
+				SET download_token = NULL
+				WHERE download_token = '';
+			END IF;
+		END $$;
+	`)
 }
