@@ -143,6 +143,9 @@ func (h *WindowsHandler) DeleteSoftwareApp(c *gin.Context) {
 	if err := db.DB.Where("app_id = ?", appID).Delete(&models.ProfileApp{}).Error; err != nil {
 		log.Printf("[delete-software-app] cleanup profile_apps failed: id=%d err=%v", appID, err)
 	}
+	if err := db.DB.Where("app_id = ?", appID).Delete(&models.WindowsDeviceApp{}).Error; err != nil {
+		log.Printf("[delete-software-app] cleanup windows_device_apps failed: id=%d err=%v", appID, err)
+	}
 	if err := db.DB.Where("app_id = ?", appID).Delete(&models.DeviceAppStatus{}).Error; err != nil {
 		log.Printf("[delete-software-app] cleanup device_app_statuses failed: id=%d err=%v", appID, err)
 	}

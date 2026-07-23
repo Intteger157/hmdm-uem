@@ -139,6 +139,10 @@ func deployURLApp(app RequiredApp, state *AppsState, installed []system.Installe
 	}
 	defer os.Remove(localPath)
 
+	if err := unblockDownloadedFile(localPath); err != nil {
+		return false, fmt.Errorf("unblock file: %w", err)
+	}
+
 	reportStatus(reporter, app.ID, "Installing", "")
 	if err := runInstaller(localPath, app.InstallArgs); err != nil {
 		return false, fmt.Errorf("install: %w", err)
@@ -287,9 +291,28 @@ func runInstaller(installerPath, installArgs string) error {
 		msiArgs = append(msiArgs, args...)
 		cmd = exec.Command("msiexec", msiArgs...)
 	default:
+		if len(args) == 0 {
+			args = []string{"/quiet", "/norestart"}
+		}
 		cmd = exec.Command(installerPath, args...)
 	}
 
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		message := strings.TrimSpace(string(output))
+		if message == "" {
+			return err
+		}
+		return fmt.Errorf("%w: %s", err, message)
+	}
+	return nil
+}
+
+func unblockDownloadedFile(path string) error {
+	escaped := strings.ReplaceAll(path, "'", "''")
+	command := fmt.Sprintf("Unblock-File -LiteralPath '%s'", escaped)
+	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", command)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	output, err := cmd.CombinedOutput()
 	if err != nil {

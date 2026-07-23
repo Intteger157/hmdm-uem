@@ -73,3 +73,13 @@ export async function fetchDeviceAppStatuses(hardwareId: string): Promise<Device
   const response = await windowsApi.get<DeviceAppStatusListResponse>(`/devices/${encoded}/apps/status`)
   return response.data
 }
+
+export async function assignDeviceApp(hardwareId: string, appId: number): Promise<void> {
+  const encodedDevice = encodeURIComponent(hardwareId)
+  await windowsApi.post(`/devices/${encodedDevice}/apps/${appId}/assign`)
+}
+
+export async function unassignDeviceApp(hardwareId: string, appId: number): Promise<void> {
+  const encodedDevice = encodeURIComponent(hardwareId)
+  await windowsApi.delete(`/devices/${encodedDevice}/apps/${appId}/assign`)
+}

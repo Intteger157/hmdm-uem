@@ -1167,6 +1167,14 @@
   "deviceDetail.appDeployments.status.Installing": "Установка",
   "deviceDetail.appDeployments.status.Success": "Успех",
   "deviceDetail.appDeployments.status.Failed": "Ошибка",
+  "deviceDetail.appDeployments.deployAction": "Развернуть приложение",
+  "deviceDetail.appDeployments.deployTitle": "Развернуть приложение",
+  "deviceDetail.appDeployments.deployAppLabel": "Приложение",
+  "deviceDetail.appDeployments.deployAppPlaceholder": "Выберите приложение...",
+  "deviceDetail.appDeployments.deployNoApps": "Все приложения из каталога уже назначены на это устройство.",
+  "deviceDetail.appDeployments.deployConfirm": "Развернуть",
+  "deviceDetail.appDeployments.deploySuccess": "Приложение назначено на устройство",
+  "deviceDetail.appDeployments.deployError": "Не удалось назначить приложение",
   "deviceDetail.metrics.battery": "Батарея",
   "deviceDetail.battery.desktopNoBattery": "Desktop / No Battery"
 }

@@ -103,9 +103,14 @@ func buildEffectiveConfig(device models.WindowsDevice) (models.EffectiveConfigRe
 		return models.EffectiveConfigResponse{}, err
 	}
 
+	directApps, err := loadDirectAssignedApps(device.ID)
+	if err != nil {
+		return models.EffectiveConfigResponse{}, err
+	}
+
 	response := models.EffectiveConfigResponse{
 		Payload:         merged,
-		RequiredApps:    requiredApps,
+		RequiredApps:    mergeRequiredApps(requiredApps, directApps),
 		AppliedProfiles: applied,
 	}
 
@@ -214,6 +219,32 @@ func loadRequiredAppsForProfiles(profileIDs []uint) ([]models.RequiredApp, error
 		return nil, err
 	}
 
+	return softwareAppsToRequiredApps(apps), nil
+}
+
+func loadDirectAssignedApps(deviceID uint) ([]models.RequiredApp, error) {
+	var links []models.WindowsDeviceApp
+	if err := db.DB.Where("device_id = ?", deviceID).Order("app_id ASC").Find(&links).Error; err != nil {
+		return nil, err
+	}
+	if len(links) == 0 {
+		return nil, nil
+	}
+
+	appIDs := make([]uint, 0, len(links))
+	for _, link := range links {
+		appIDs = append(appIDs, link.AppID)
+	}
+
+	var apps []models.SoftwareApp
+	if err := db.DB.Where("id IN ?", appIDs).Order("id ASC").Find(&apps).Error; err != nil {
+		return nil, err
+	}
+
+	return softwareAppsToRequiredApps(apps), nil
+}
+
+func softwareAppsToRequiredApps(apps []models.SoftwareApp) []models.RequiredApp {
 	required := make([]models.RequiredApp, 0, len(apps))
 	for _, app := range apps {
 		appType := app.AppType
@@ -232,5 +263,20 @@ func loadRequiredAppsForProfiles(profileIDs []uint) ([]models.RequiredApp, error
 			UpdateFrequency: app.UpdateFrequency,
 		})
 	}
-	return required, nil
+	return required
+}
+
+func mergeRequiredApps(lists ...[]models.RequiredApp) []models.RequiredApp {
+	seen := make(map[uint]struct{})
+	merged := make([]models.RequiredApp, 0)
+	for _, list := range lists {
+		for _, app := range list {
+			if _, ok := seen[app.ID]; ok {
+				continue
+			}
+			seen[app.ID] = struct{}{}
+			merged = append(merged, app)
+		}
+	}
+	return merged
 }

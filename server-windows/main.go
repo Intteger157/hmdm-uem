@@ -87,6 +87,8 @@ func main() {
 			windows.DELETE("/apps/:id", windowsHandler.DeleteSoftwareApp)
 			windows.GET("/devices/:hardwareId/apps/status", windowsHandler.GetDeviceAppStatuses)
 			windows.POST("/devices/:hardwareId/apps/status", windowsHandler.ReportDeviceAppStatus)
+			windows.POST("/devices/:hardwareId/apps/:appId/assign", windowsHandler.AssignDeviceApp)
+			windows.DELETE("/devices/:hardwareId/apps/:appId/assign", windowsHandler.UnassignDeviceApp)
 			windows.GET("/groups", windowsHandler.ListDeviceGroups)
 			windows.POST("/groups", windowsHandler.CreateDeviceGroup)
 		}

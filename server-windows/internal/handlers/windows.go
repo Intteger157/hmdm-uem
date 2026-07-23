@@ -345,6 +345,18 @@ func (h *WindowsHandler) DeleteDevice(c *gin.Context) {
 		return
 	}
 
+	if err := deleteDirectDeviceApps(device.ID); err != nil {
+		log.Printf("[delete-device] delete direct apps failed: hardware_id=%q err=%v", hardwareID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete direct app assignments"})
+		return
+	}
+
+	if err := db.DB.Where("device_id = ?", device.ID).Delete(&models.DeviceAppStatus{}).Error; err != nil {
+		log.Printf("[delete-device] delete app statuses failed: hardware_id=%q err=%v", hardwareID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete app deployment statuses"})
+		return
+	}
+
 	if err := db.DB.Delete(&device).Error; err != nil {
 		log.Printf("[delete-device] delete failed: hardware_id=%q err=%v", hardwareID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete device"})

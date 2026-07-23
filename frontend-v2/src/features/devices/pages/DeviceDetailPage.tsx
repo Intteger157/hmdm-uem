@@ -32,6 +32,10 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { DeviceActionsPanel } from '@/features/devices/components/DeviceActionsPanel'
+import {
+  DeployApplicationButton,
+  DeployApplicationDialog,
+} from '@/features/devices/components/DeployApplicationDialog'
 import { WindowsDeviceServicesTab } from '@/features/devices/components/WindowsDeviceServicesTab'
 import { WindowsDeviceActionLogsTab } from '@/features/devices/components/WindowsDeviceActionLogsTab'
 import { WindowsAppliedConfigurationCard } from '@/features/windows/configurations/components/WindowsAppliedConfigurationCard'
@@ -602,9 +606,11 @@ function AppDeploymentsMetricCard({
   className?: string
 }) {
   const [open, setOpen] = useState(false)
+  const [deployOpen, setDeployOpen] = useState(false)
   const { data, isLoading } = useDeviceAppStatusesQuery(hardwareId)
 
   const items = data?.items ?? []
+  const assignedAppIds = items.map((item) => item.appId)
   const summary = summarizeAppDeployments(items, data?.requiredTotal ?? 0)
   const HeaderIcon = summary.inProgress ? Loader2 : Package
 
@@ -667,6 +673,9 @@ function AppDeploymentsMetricCard({
           <DialogHeader>
             <DialogTitle>{t('deviceDetail.appDeployments.dialogTitle')}</DialogTitle>
           </DialogHeader>
+          <div className="flex justify-end">
+            <DeployApplicationButton onClick={() => setDeployOpen(true)} />
+          </div>
           {items.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t('deviceDetail.appDeployments.none')}</p>
           ) : (
@@ -701,6 +710,13 @@ function AppDeploymentsMetricCard({
           )}
         </DialogContent>
       </Dialog>
+
+      <DeployApplicationDialog
+        hardwareId={hardwareId}
+        open={deployOpen}
+        onOpenChange={setDeployOpen}
+        assignedAppIds={assignedAppIds}
+      />
     </>
   )
 }

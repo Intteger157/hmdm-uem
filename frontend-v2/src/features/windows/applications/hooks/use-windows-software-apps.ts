@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   assignConfigProfileApps,
+  assignDeviceApp,
   createSoftwareApp,
   deleteSoftwareApp,
   fetchConfigProfileApps,
@@ -80,5 +81,19 @@ export function useDeviceAppStatusesQuery(hardwareId: string, enabled = true) {
     queryFn: () => fetchDeviceAppStatuses(hardwareId),
     enabled: hardwareId.length > 0 && enabled,
     refetchInterval: 15_000,
+  })
+}
+
+export function useAssignDeviceAppMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ hardwareId, appId }: { hardwareId: string; appId: number }) =>
+      assignDeviceApp(hardwareId, appId),
+    onSuccess: async (_data, variables) => {
+      await queryClient.invalidateQueries({
+        queryKey: windowsSoftwareAppQueryKeys.deviceStatuses(variables.hardwareId),
+      })
+    },
   })
 }

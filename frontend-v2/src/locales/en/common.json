@@ -1167,6 +1167,14 @@
   "deviceDetail.appDeployments.status.Installing": "Installing",
   "deviceDetail.appDeployments.status.Success": "Success",
   "deviceDetail.appDeployments.status.Failed": "Failed",
+  "deviceDetail.appDeployments.deployAction": "Deploy Application",
+  "deviceDetail.appDeployments.deployTitle": "Deploy Application",
+  "deviceDetail.appDeployments.deployAppLabel": "Application",
+  "deviceDetail.appDeployments.deployAppPlaceholder": "Select an application...",
+  "deviceDetail.appDeployments.deployNoApps": "All catalog applications are already assigned to this device.",
+  "deviceDetail.appDeployments.deployConfirm": "Deploy",
+  "deviceDetail.appDeployments.deploySuccess": "Application assigned to device",
+  "deviceDetail.appDeployments.deployError": "Failed to assign application",
   "deviceDetail.metrics.battery": "Battery",
   "deviceDetail.battery.desktopNoBattery": "Desktop / No Battery"
 }
