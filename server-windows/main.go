@@ -42,6 +42,8 @@ func main() {
 			})
 			windows.GET("/devices", windowsHandler.ListDevices)
 			windows.GET("/devices/:hardwareId", windowsHandler.GetDevice)
+			windows.PATCH("/devices/:hardwareId/group", windowsHandler.UpdateDeviceGroupMembership)
+			windows.GET("/devices/:hardwareId/effective-config", windowsHandler.GetDeviceEffectiveConfig)
 			windows.DELETE("/devices/:hardwareId", windowsHandler.DeleteDevice)
 			windows.POST("/devices/:hardwareId/commands", windowsHandler.EnqueueCommand)
 			windows.GET("/devices/:hardwareId/commands/latest", windowsHandler.GetLatestCommand)
@@ -66,6 +68,10 @@ func main() {
 			windows.GET("/configurations/:id", windowsHandler.GetConfigProfile)
 			windows.PUT("/configurations/:id", windowsHandler.UpdateConfigProfile)
 			windows.DELETE("/configurations/:id", windowsHandler.DeleteConfigProfile)
+			windows.GET("/configurations/:id/assignments", windowsHandler.GetConfigProfileAssignments)
+			windows.POST("/configurations/:id/assign", windowsHandler.AssignConfigProfile)
+			windows.GET("/groups", windowsHandler.ListDeviceGroups)
+			windows.POST("/groups", windowsHandler.CreateDeviceGroup)
 		}
 	}
 

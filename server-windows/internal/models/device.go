@@ -94,6 +94,7 @@ type WindowsDevice struct {
 	LastCheckin       time.Time
 	AgentStatus       string     `gorm:"not null;default:active"`
 	UninstalledAt     *time.Time
+	GroupID           *uint      `gorm:"index"`
 }
 
 const (
@@ -146,6 +147,8 @@ type WindowsDeviceJSON struct {
 	LastCheckin       time.Time                 `json:"lastCheckin"`
 	AgentStatus       string                    `json:"agentStatus"`
 	UninstalledAt     *time.Time                `json:"uninstalledAt,omitempty"`
+	GroupID           *uint                     `json:"groupId,omitempty"`
+	GroupName         string                    `json:"groupName,omitempty"`
 }
 
 // WindowsDeviceListResponse is returned by GET /rest/windows/devices.
@@ -194,6 +197,7 @@ func ToWindowsDeviceJSON(device WindowsDevice) WindowsDeviceJSON {
 		LastCheckin:       device.LastCheckin,
 		AgentStatus:       normalizeAgentStatus(device.AgentStatus),
 		UninstalledAt:     device.UninstalledAt,
+		GroupID:           device.GroupID,
 	}
 }
 

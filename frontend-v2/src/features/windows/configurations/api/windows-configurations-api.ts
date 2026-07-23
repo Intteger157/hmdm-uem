@@ -4,6 +4,11 @@ import type {
   UpsertWindowsConfigProfilePayload,
   WindowsConfigProfile,
   WindowsConfigProfileListResponse,
+  WindowsConfigProfileAssignments,
+  WindowsDeviceGroup,
+  WindowsDeviceGroupListResponse,
+  WindowsEffectiveConfig,
+  WindowsDeviceOption,
 } from '@/features/windows/configurations/types/config-profile'
 
 const windowsApi = axios.create({
@@ -40,4 +45,54 @@ export async function updateWindowsConfigProfile(
 
 export async function deleteWindowsConfigProfile(id: number): Promise<void> {
   await windowsApi.delete(`/configurations/${id}`)
+}
+
+export async function fetchWindowsConfigProfileAssignments(
+  profileId: number,
+): Promise<WindowsConfigProfileAssignments> {
+  const response = await windowsApi.get<WindowsConfigProfileAssignments>(
+    `/configurations/${profileId}/assignments`,
+  )
+  return response.data
+}
+
+export async function assignWindowsConfigProfile(
+  profileId: number,
+  assignments: WindowsConfigProfileAssignments,
+): Promise<WindowsConfigProfileAssignments> {
+  const response = await windowsApi.post<WindowsConfigProfileAssignments>(
+    `/configurations/${profileId}/assign`,
+    assignments,
+  )
+  return response.data
+}
+
+export async function fetchWindowsDeviceGroups(): Promise<WindowsDeviceGroupListResponse> {
+  const response = await windowsApi.get<WindowsDeviceGroupListResponse>('/groups')
+  return response.data
+}
+
+export async function createWindowsDeviceGroup(name: string): Promise<WindowsDeviceGroup> {
+  const response = await windowsApi.post<WindowsDeviceGroup>('/groups', { name })
+  return response.data
+}
+
+export async function fetchWindowsDeviceOptions(): Promise<WindowsDeviceOption[]> {
+  const response = await windowsApi.get<{ items: Array<{ id: number; hardwareId: string; hostname: string }> }>(
+    '/devices',
+    { params: { pageNum: 1, pageSize: 200 } },
+  )
+  return response.data.items.map((device) => ({
+    id: device.id,
+    hardwareId: device.hardwareId,
+    label: device.hostname?.trim() ? `${device.hostname} (${device.hardwareId})` : device.hardwareId,
+  }))
+}
+
+export async function fetchWindowsDeviceEffectiveConfig(
+  hardwareId: string,
+): Promise<WindowsEffectiveConfig> {
+  const encoded = encodeURIComponent(hardwareId)
+  const response = await windowsApi.get<WindowsEffectiveConfig>(`/devices/${encoded}/effective-config`)
+  return response.data
 }

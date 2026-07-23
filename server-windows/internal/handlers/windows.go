@@ -286,10 +286,7 @@ func (h *WindowsHandler) ListDevices(c *gin.Context) {
 		return
 	}
 
-	items := make([]models.WindowsDeviceJSON, 0, len(devices))
-	for _, device := range devices {
-		items = append(items, models.ToWindowsDeviceJSON(device))
-	}
+	items := enrichDeviceJSONList(devices)
 
 	c.JSON(http.StatusOK, models.WindowsDeviceListResponse{
 		Items:           items,
@@ -317,7 +314,7 @@ func (h *WindowsHandler) GetDevice(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.ToWindowsDeviceJSON(device))
+	c.JSON(http.StatusOK, enrichDeviceJSON(device))
 }
 
 // DeleteDevice removes a Windows agent record and its queued commands.

@@ -27,6 +27,7 @@ import type { LucideIcon } from 'lucide-react'
 import { DeviceActionsPanel } from '@/features/devices/components/DeviceActionsPanel'
 import { WindowsDeviceServicesTab } from '@/features/devices/components/WindowsDeviceServicesTab'
 import { WindowsDeviceActionLogsTab } from '@/features/devices/components/WindowsDeviceActionLogsTab'
+import { WindowsAppliedConfigurationCard } from '@/features/windows/configurations/components/WindowsAppliedConfigurationCard'
 import { useDeviceByNumber } from '@/features/devices/hooks/use-device-by-number-query'
 import {
   formatDeviceEnrollTime,
@@ -164,7 +165,10 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
       </div>
 
       {device.platform === 'windows' ? (
-        <WindowsOverviewGrid device={device} na={NA} t={t} />
+        <>
+          <WindowsOverviewGrid device={device} na={NA} t={t} />
+          <WindowsAppliedConfigurationCard hardwareId={device.number} />
+        </>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
           <MetricCard

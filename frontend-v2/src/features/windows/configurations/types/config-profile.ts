@@ -26,6 +26,39 @@ export interface UpsertWindowsConfigProfilePayload {
   isActive: boolean
 }
 
+export interface WindowsDeviceGroup {
+  id: number
+  name: string
+}
+
+export interface WindowsDeviceGroupListResponse {
+  items: WindowsDeviceGroup[]
+  totalItemsCount: number
+}
+
+export interface WindowsConfigProfileAssignments {
+  groupIds: number[]
+  deviceIds: number[]
+}
+
+export interface WindowsEffectiveConfig {
+  payload: WindowsConfigProfilePayload
+  profileId?: number
+  profileName?: string
+  source?: 'direct' | 'group' | ''
+  appliedProfiles: Array<{
+    profileId: number
+    profileName: string
+    source: 'direct' | 'group'
+  }>
+}
+
+export interface WindowsDeviceOption {
+  id: number
+  hardwareId: string
+  label: string
+}
+
 export const DEFAULT_WINDOWS_CONFIG_PROFILE_PAYLOAD: WindowsConfigProfilePayload = {
   defenderEnabled: false,
   blockUsbStorage: false,
