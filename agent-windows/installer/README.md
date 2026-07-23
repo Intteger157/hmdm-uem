@@ -1,30 +1,30 @@
 # HMDM Windows Agent MSI Builder
 
-Fleet-style flow: MDM panel gives an **enrollment secret** and a **build command**.
+One **universal MSI** for all PCs. The org enrollment secret is embedded at build time.
 
 ## Prerequisites (Windows only)
 
 - Go 1.25+
-- **WiX v4** (MSI can only be built on Windows):
+- WiX v4:
 
 ```powershell
 dotnet tool install --global wix
 ```
 
-WiX **does not** produce valid MSI inside a Linux Docker container.
+## One-time setup
 
-## Usage
+1. Open **Devices → Windows → Add device** in MDM console
+2. Copy the **org enrollment secret** (stable, same every time)
+3. Build MSI from repo root:
 
 ```powershell
 .\agent-windows\installer\build-msi.ps1 `
   -ServerUrl "https://test-dev-mdm.intteger.uk" `
-  -Token "win-enroll-..."
+  -Token "win-enroll-org-..."
 ```
 
-Output: `agent-windows\installer\dist\HMDMAgent.msi`
+4. Upload `agent-windows\installer\dist\HMDMAgent.msi` in the dialog
 
-## Workflow
+## End-user install
 
-1. **Add device** in MDM console → copy secret + command
-2. Run command in PowerShell from repo root
-3. Upload MSI in dialog → one-time link for user
+Share the installer link from the console. Each PC enrolls automatically and appears under **Devices → Windows**.

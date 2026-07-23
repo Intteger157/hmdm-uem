@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AlertCircle, Copy, Loader2, Upload } from 'lucide-react'
 import {
-  createWindowsEnrollmentToken,
+  DEFAULT_AGENT_MSI_NAME,
+  DEFAULT_AGENT_MSI_PATH,
   filesRelativePathFromUrl,
-  linkWindowsInstaller,
+  getWindowsEnrollmentSetup,
+  registerDefaultWindowsInstaller,
 } from '@/features/windows/api/windows-api'
 import { uploadRawFile, updateFile } from '@/features/files/api/files-api'
 import { copyTextToClipboard } from '@/shared/lib/copy-to-clipboard'
@@ -24,63 +26,59 @@ interface WindowsEnrollmentDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
-function buildMsiCommand(serverUrl: string, token: string): string {
-  return `.\\agent-windows\\installer\\build-msi.ps1 -ServerUrl "${serverUrl}" -Token "${token}"`
-}
-
-function installerFileName(token: string): string {
-  const suffix = token.replace(/^win-enroll-/, '').slice(0, 12)
-  return `HMDMAgent-${suffix}.msi`
-}
-
 export function WindowsEnrollmentDialog({ open, onOpenChange }: WindowsEnrollmentDialogProps) {
   const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const [token, setToken] = useState<string | null>(null)
+  const [orgSecret, setOrgSecret] = useState<string | null>(null)
+  const [buildCommand, setBuildCommand] = useState<string | null>(null)
+  const [installerConfigured, setInstallerConfigured] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
   const [permanentFileUrl, setPermanentFileUrl] = useState<string | null>(null)
 
   const serverUrl = typeof window !== 'undefined' ? window.location.origin : ''
 
-  const buildCommand = useMemo(() => {
-    if (!token || !serverUrl) {
+  const fallbackBuildCommand = useMemo(() => {
+    if (!orgSecret || !serverUrl) {
       return ''
     }
-    return buildMsiCommand(serverUrl, token)
-  }, [serverUrl, token])
+    return `.\\agent-windows\\installer\\build-msi.ps1 -ServerUrl "${serverUrl}" -Token "${orgSecret}"`
+  }, [orgSecret, serverUrl])
+
+  const msiBuildCommand = buildCommand || fallbackBuildCommand
 
   useEffect(() => {
     if (!open) {
-      setToken(null)
+      setOrgSecret(null)
+      setBuildCommand(null)
+      setInstallerConfigured(false)
       setError(null)
       setIsLoading(false)
       setIsUploading(false)
       setUploadError(null)
-      setDownloadUrl(null)
       setPermanentFileUrl(null)
       return
     }
 
     let cancelled = false
 
-    const loadToken = async () => {
+    const loadSetup = async () => {
       setIsLoading(true)
       setError(null)
-      setToken(null)
-      setDownloadUrl(null)
-      setPermanentFileUrl(null)
-      setUploadError(null)
 
       try {
-        const response = await createWindowsEnrollmentToken()
-        if (!cancelled) {
-          setToken(response.token)
+        const response = await getWindowsEnrollmentSetup()
+        if (cancelled) {
+          return
         }
+
+        setOrgSecret(response.orgEnrollmentSecret)
+        setBuildCommand(response.buildCommand ?? null)
+        setInstallerConfigured(response.installerConfigured === true)
+        setPermanentFileUrl(response.permanentFileUrl ?? null)
       } catch {
         if (!cancelled) {
           setError(t('windows.enrollment.loadError'))
@@ -92,7 +90,7 @@ export function WindowsEnrollmentDialog({ open, onOpenChange }: WindowsEnrollmen
       }
     }
 
-    void loadToken()
+    void loadSetup()
 
     return () => {
       cancelled = true
@@ -112,11 +110,7 @@ export function WindowsEnrollmentDialog({ open, onOpenChange }: WindowsEnrollmen
     }
   }
 
-  const handleUploadMsi = async (file: File) => {
-    if (!token) {
-      return
-    }
-
+  const handleRegisterInstaller = async (file: File) => {
     setIsUploading(true)
     setUploadError(null)
 
@@ -126,29 +120,27 @@ export function WindowsEnrollmentDialog({ open, onOpenChange }: WindowsEnrollmen
         throw new Error('missing server path')
       }
 
-      const filePath = `windows/agents/${installerFileName(token)}`
       const saved = await updateFile({
         tmpPath: raw.serverPath,
-        filePath,
-        description: t('windows.enrollment.installerDescription', { token }),
+        filePath: DEFAULT_AGENT_MSI_PATH,
+        description: t('windows.enrollment.universalInstallerDescription'),
       })
 
       if (!saved.url) {
         throw new Error('missing file url')
       }
 
-      const linked = await linkWindowsInstaller({
-        enrollmentToken: token,
+      await registerDefaultWindowsInstaller({
         filesRelativePath: filesRelativePathFromUrl(saved.url),
-        fileName: installerFileName(token),
+        fileName: DEFAULT_AGENT_MSI_NAME,
         permanentFileUrl: saved.url,
       })
 
-      setDownloadUrl(linked.downloadUrl)
-      setPermanentFileUrl(linked.permanentFileUrl)
-      toast.success(t('windows.enrollment.uploadSuccess'))
+      setInstallerConfigured(true)
+      setPermanentFileUrl(saved.url)
+      toast.success(t('windows.enrollment.registerInstallerSuccess'))
     } catch {
-      setUploadError(t('windows.enrollment.uploadError'))
+      setUploadError(t('windows.enrollment.registerInstallerError'))
     } finally {
       setIsUploading(false)
     }
@@ -182,7 +174,7 @@ export function WindowsEnrollmentDialog({ open, onOpenChange }: WindowsEnrollmen
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{t('windows.enrollment.title')}</DialogTitle>
-          <DialogDescription>{t('windows.enrollment.descriptionFleet')}</DialogDescription>
+          <DialogDescription>{t('windows.enrollment.descriptionUniversal')}</DialogDescription>
         </DialogHeader>
 
         {isLoading ? (
@@ -202,93 +194,81 @@ export function WindowsEnrollmentDialog({ open, onOpenChange }: WindowsEnrollmen
           <div className="space-y-6">
             <section className="space-y-2">
               <h3 className="text-sm font-medium">{t('windows.enrollment.secretTitle')}</h3>
-              <p className="text-sm text-muted-foreground">{t('windows.enrollment.secretHint')}</p>
-              {token &&
+              <p className="text-sm text-muted-foreground">{t('windows.enrollment.secretHintUniversal')}</p>
+              {orgSecret &&
                 renderCodeBlock(
-                  token,
+                  orgSecret,
                   t('windows.enrollment.copy'),
                   'windows.enrollment.secretCopied',
                   'windows.enrollment.copyFailed',
                 )}
             </section>
 
-            <section className="space-y-2">
-              <h3 className="text-sm font-medium">{t('windows.enrollment.buildCommandTitle')}</h3>
-              <p className="text-sm text-muted-foreground">{t('windows.enrollment.buildCommandHint')}</p>
-              {renderCodeBlock(
-                buildCommand,
-                t('windows.enrollment.copy'),
-                'windows.enrollment.copied',
-                'windows.enrollment.copyFailed',
-              )}
-            </section>
-
-            <section className="space-y-2">
-              <h3 className="text-sm font-medium">{t('windows.enrollment.msiUploadTitle')}</h3>
-              <p className="text-sm text-muted-foreground">{t('windows.enrollment.msiUploadHint')}</p>
-              <div className="flex items-center gap-2">
-                <Input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".msi"
-                  className="hidden"
-                  disabled={isUploading || downloadUrl != null}
-                  onChange={(event) => {
-                    const file = event.target.files?.[0]
-                    if (file) {
-                      void handleUploadMsi(file)
-                    }
-                    event.target.value = ''
-                  }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={isUploading || downloadUrl != null}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  {isUploading ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Upload className="size-4" />
-                  )}
-                  {isUploading
-                    ? t('windows.enrollment.uploading')
-                    : t('windows.enrollment.uploadButton')}
-                </Button>
-              </div>
-              {uploadError && (
-                <p className="text-sm text-destructive" role="alert">
-                  {uploadError}
-                </p>
-              )}
-            </section>
-
-            {downloadUrl && (
-              <section className="space-y-2">
-                <h3 className="text-sm font-medium">{t('windows.enrollment.downloadLinkTitle')}</h3>
-                <p className="text-sm text-muted-foreground">{t('windows.enrollment.downloadLinkHint')}</p>
+            {!installerConfigured && (
+              <section className="space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
+                <h3 className="text-sm font-medium">{t('windows.enrollment.setupTitle')}</h3>
+                <p className="text-sm text-muted-foreground">{t('windows.enrollment.setupHint')}</p>
                 {renderCodeBlock(
-                  downloadUrl,
-                  t('windows.enrollment.copyLink'),
-                  'windows.enrollment.linkCopied',
+                  msiBuildCommand,
+                  t('windows.enrollment.copy'),
+                  'windows.enrollment.copied',
                   'windows.enrollment.copyFailed',
                 )}
-                {permanentFileUrl && (
-                  <p className="text-xs text-muted-foreground">
-                    {t('windows.enrollment.permanentFileHint')}{' '}
-                    <a
-                      href={permanentFileUrl}
-                      className="underline underline-offset-2"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {permanentFileUrl}
-                    </a>
+                <div className="flex items-center gap-2 pt-1">
+                  <Input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".msi"
+                    className="hidden"
+                    disabled={isUploading}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0]
+                      if (file) {
+                        void handleRegisterInstaller(file)
+                      }
+                      event.target.value = ''
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isUploading}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {isUploading ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Upload className="size-4" />
+                    )}
+                    {isUploading
+                      ? t('windows.enrollment.uploading')
+                      : t('windows.enrollment.registerInstallerButton')}
+                  </Button>
+                </div>
+                {uploadError && (
+                  <p className="text-sm text-destructive" role="alert">
+                    {uploadError}
                   </p>
                 )}
               </section>
             )}
+
+            {installerConfigured && permanentFileUrl && (
+              <section className="space-y-2">
+                <h3 className="text-sm font-medium">{t('windows.enrollment.downloadLinkTitle')}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {t('windows.enrollment.downloadLinkHintUniversal')}
+                </p>
+                {renderCodeBlock(
+                  permanentFileUrl,
+                  t('windows.enrollment.copyLink'),
+                  'windows.enrollment.linkCopied',
+                  'windows.enrollment.copyFailed',
+                )}
+              </section>
+            )}
+
+            <p className="text-sm text-muted-foreground">{t('windows.enrollment.devicesAppearHint')}</p>
           </div>
         )}
       </DialogContent>

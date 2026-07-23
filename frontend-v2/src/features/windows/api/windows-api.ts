@@ -171,19 +171,65 @@ export async function sendWindowsDeviceCommand(
   return response.data
 }
 
-export interface WindowsEnrollmentTokenResponse {
-  token: string
+export interface WindowsEnrollmentSetupResponse {
+  orgEnrollmentSecret: string
+  installerConfigured: boolean
+  permanentFileUrl?: string
+  buildCommand?: string
+}
+
+/** Returns the shared org enrollment secret and universal MSI status (stable across dialog opens). */
+export async function getWindowsEnrollmentSetup(): Promise<WindowsEnrollmentSetupResponse> {
+  if (isMockApiEnabled()) {
+    return {
+      orgEnrollmentSecret: 'win-enroll-org-mock-secret',
+      installerConfigured: false,
+      buildCommand:
+        '.\\agent-windows\\installer\\build-msi.ps1 -ServerUrl "https://mdm.example.com" -Token "win-enroll-org-mock-secret"',
+    }
+  }
+
+  const response = await windowsApi.get<WindowsEnrollmentSetupResponse>('/enrollment-setup')
+  return response.data
+}
+
+export interface WindowsDefaultInstallerResponse {
+  configured: boolean
+  filesRelativePath?: string
+  fileName?: string
+  permanentFileUrl?: string
 }
 
 export const DEFAULT_AGENT_MSI_NAME = 'HMDMAgent.msi'
+export const DEFAULT_AGENT_MSI_PATH = 'windows/agents/HMDMAgent.msi'
 
-/** Creates a one-time enrollment token for a new Windows agent. */
-export async function createWindowsEnrollmentToken(): Promise<WindowsEnrollmentTokenResponse> {
+/** @deprecated Use getWindowsEnrollmentSetup — kept for compatibility. */
+export async function createWindowsEnrollmentToken(): Promise<WindowsEnrollmentSetupResponse> {
+  return getWindowsEnrollmentSetup()
+}
+
+export async function getDefaultWindowsInstaller(): Promise<WindowsDefaultInstallerResponse> {
   if (isMockApiEnabled()) {
-    return { token: `win-enroll-mock-${Date.now()}` }
+    return { configured: false }
   }
 
-  const response = await windowsApi.post<WindowsEnrollmentTokenResponse>('/enrollment-token')
+  const response = await windowsApi.get<WindowsDefaultInstallerResponse>('/installers/default')
+  return response.data
+}
+
+export async function registerDefaultWindowsInstaller(
+  request: Omit<LinkWindowsInstallerRequest, 'enrollmentToken'>,
+): Promise<WindowsDefaultInstallerResponse> {
+  if (isMockApiEnabled()) {
+    return {
+      configured: true,
+      filesRelativePath: request.filesRelativePath,
+      fileName: request.fileName,
+      permanentFileUrl: request.permanentFileUrl,
+    }
+  }
+
+  const response = await windowsApi.post<WindowsDefaultInstallerResponse>('/installers/default', request)
   return response.data
 }
 

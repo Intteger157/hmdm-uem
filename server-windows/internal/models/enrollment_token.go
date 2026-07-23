@@ -25,6 +25,14 @@ type EnrollmentTokenResponse struct {
 	Token string `json:"token"`
 }
 
+// EnrollmentSetupResponse describes the shared org enrollment secret and universal MSI.
+type EnrollmentSetupResponse struct {
+	OrgEnrollmentSecret string `json:"orgEnrollmentSecret"`
+	InstallerConfigured bool   `json:"installerConfigured"`
+	PermanentFileURL    string `json:"permanentFileUrl,omitempty"`
+	BuildCommand        string `json:"buildCommand,omitempty"`
+}
+
 // LinkInstallerRequest binds an uploaded MSI file to an enrollment token.
 type LinkInstallerRequest struct {
 	EnrollmentToken   string `json:"enrollmentToken" binding:"required"`
