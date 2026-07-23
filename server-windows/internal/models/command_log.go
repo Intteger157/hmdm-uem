@@ -20,6 +20,12 @@ const (
 	AppInstallStatusInstalling  = "Installing"
 	AppInstallStatusSuccess     = "Success"
 	AppInstallStatusFailed      = "Failed"
+
+	AppInstallStepAppCheck    = "AppCheck"
+	AppInstallStepAppDownload = "AppDownload"
+	AppInstallStepAppUnblock  = "AppUnblock"
+	AppInstallStepAppInstall  = "AppInstall"
+	AppInstallStepAppResult   = "AppResult"
 )
 
 // DeviceCommandLog stores queued and completed remote commands with raw agent output.

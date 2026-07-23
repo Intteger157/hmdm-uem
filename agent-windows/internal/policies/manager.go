@@ -1,5 +1,3 @@
-//go:build windows
-
 package policies
 
 import (
@@ -12,7 +10,7 @@ import (
 type Reporter func(success bool, output string) error
 
 // SyncFromServer fetches effective policy, caches it locally, and enforces when changed.
-func SyncFromServer(fetch func() (EffectiveConfig, error), report Reporter, deploy apps.StatusReporter) error {
+func SyncFromServer(fetch func() (EffectiveConfig, error), report Reporter, deploy apps.DeployOptions) error {
 	config, err := fetch()
 	if err != nil {
 		cached, cacheErr := LoadDesiredConfig()
@@ -77,7 +75,7 @@ func SyncFromServer(fetch func() (EffectiveConfig, error), report Reporter, depl
 }
 
 // RunComplianceCheck verifies policy state against cached desired config and re-applies on drift.
-func RunComplianceCheck(report Reporter, deploy apps.StatusReporter) error {
+func RunComplianceCheck(report Reporter, deploy apps.DeployOptions) error {
 	if IsEmptyPolicyHash(LoadLastSyncedConfigHash()) {
 		return nil
 	}
@@ -112,17 +110,23 @@ func RunComplianceCheck(report Reporter, deploy apps.StatusReporter) error {
 	return nil
 }
 
-// NewAppStatusReporter builds a callback that posts app deployment status to the MDM server.
-func NewAppStatusReporter(client *api.APIClient, authToken, hardwareID string) apps.StatusReporter {
-	if client == nil || authToken == "" || hardwareID == "" {
-		return nil
+// NewAppDeployOptions builds callbacks for app deployment status and Action Log steps.
+func NewAppDeployOptions(client *api.APIClient, authToken, hardwareID string) apps.DeployOptions {
+	opts := apps.DeployOptions{}
+	if client != nil {
+		opts.BaseURL = client.BaseURL()
 	}
-	return func(appID uint, appName, status, errMsg string) error {
-		if logErr := client.ReportAppInstallLog(authToken, hardwareID, appID, appName, status, errMsg); logErr != nil {
-			log.Printf("app install log upload failed id=%d status=%s: %v", appID, status, logErr)
-		}
+	if client == nil || authToken == "" || hardwareID == "" {
+		return opts
+	}
+
+	opts.StatusReporter = func(appID uint, appName, status, errMsg string) error {
 		return client.ReportAppStatus(authToken, hardwareID, appID, status, errMsg)
 	}
+	opts.StepLogger = func(appID uint, appName, step, output string) error {
+		return client.ReportAppInstallLog(authToken, hardwareID, appID, appName, step, output)
+	}
+	return opts
 }
 
 // NewReporter builds a callback that posts enforcement output to the MDM server.

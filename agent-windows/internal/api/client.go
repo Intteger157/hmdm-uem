@@ -145,6 +145,14 @@ func NewAPIClient(cfg config.Config) *APIClient {
 	}
 }
 
+// BaseURL returns the configured MDM server URL without a trailing slash.
+func (c *APIClient) BaseURL() string {
+	if c == nil {
+		return ""
+	}
+	return c.baseURL
+}
+
 // Enroll registers the device and returns the auth token issued by the server.
 func (c *APIClient) Enroll(enrollToken, hwid string) (string, error) {
 	payload, err := json.Marshal(enrollRequest{

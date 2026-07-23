@@ -26,6 +26,12 @@ const (
 	UpdateFrequencyWeekly = "weekly"
 
 	downloadTimeout = 15 * time.Minute
+
+	InstallStepAppCheck    = "AppCheck"
+	InstallStepAppDownload = "AppDownload"
+	InstallStepAppUnblock  = "AppUnblock"
+	InstallStepAppInstall  = "AppInstall"
+	InstallStepAppResult   = "AppResult"
 )
 
 // RequiredApp is one application the agent must install or update.
@@ -43,8 +49,17 @@ type RequiredApp struct {
 
 type StatusReporter func(appID uint, appName, status, errMsg string) error
 
+type StepLogger func(appID uint, appName, step, output string) error
+
+// DeployOptions configures app deployment callbacks and server URL resolution.
+type DeployOptions struct {
+	BaseURL        string
+	StatusReporter StatusReporter
+	StepLogger     StepLogger
+}
+
 // DeployRequired installs or updates required apps and reports progress to the server.
-func DeployRequired(required []RequiredApp, reporter StatusReporter) {
+func DeployRequired(required []RequiredApp, opts DeployOptions) {
 	if len(required) == 0 {
 		return
 	}
@@ -59,16 +74,14 @@ func DeployRequired(required []RequiredApp, reporter StatusReporter) {
 	stateChanged := false
 
 	for _, app := range required {
-		checked, deployErr := deployApp(app, &state, installed, reporter)
+		checked, deployErr := deployApp(app, opts, &state, installed)
 		if checked {
 			stateChanged = true
 		}
 		if deployErr != nil {
 			log.Printf("app deployment failed id=%d name=%q: %v", app.ID, app.Name, deployErr)
-			reportStatus(reporter, app.ID, app.Name, "Failed", deployErr.Error())
 			continue
 		}
-		reportStatus(reporter, app.ID, app.Name, "Success", "")
 	}
 
 	if stateChanged {
@@ -78,78 +91,153 @@ func DeployRequired(required []RequiredApp, reporter StatusReporter) {
 	}
 }
 
-func deployApp(app RequiredApp, state *AppsState, installed []system.InstalledSoftwareInfo, reporter StatusReporter) (checked bool, err error) {
+func deployApp(app RequiredApp, opts DeployOptions, state *AppsState, installed []system.InstalledSoftwareInfo) (checked bool, err error) {
 	appType := normalizeAppType(app.AppType)
 	switch appType {
 	case AppTypeWinget:
-		return deployWingetApp(app, state, reporter)
+		return deployWingetApp(app, opts, state)
 	default:
-		return deployURLApp(app, state, installed, reporter)
+		return deployURLApp(app, opts, state, installed)
 	}
 }
 
-func deployWingetApp(app RequiredApp, state *AppsState, reporter StatusReporter) (bool, error) {
+func reportDeployFailure(opts DeployOptions, app RequiredApp, message string, err error) (bool, error) {
+	reportStep(opts.StepLogger, app.ID, app.Name, InstallStepAppResult, message)
+	reportStatus(opts.StatusReporter, app.ID, app.Name, "Failed", message)
+	if err != nil {
+		return false, err
+	}
+	return false, fmt.Errorf("%s", message)
+}
+
+func deployWingetApp(app RequiredApp, opts DeployOptions, state *AppsState) (bool, error) {
 	wingetID := strings.TrimSpace(app.WingetID)
 	if wingetID == "" {
-		return false, fmt.Errorf("missing wingetId")
+		return reportDeployFailure(opts, app, "missing wingetId", fmt.Errorf("missing wingetId"))
 	}
+
+	reportStep(opts.StepLogger, app.ID, app.Name, InstallStepAppCheck, fmt.Sprintf("Checking winget package %q", wingetID))
 
 	installed, err := isWingetInstalled(wingetID)
 	if err != nil {
-		return false, fmt.Errorf("winget list: %w", err)
+		return reportDeployFailure(opts, app, fmt.Sprintf("winget list failed: %v", err), fmt.Errorf("winget list: %w", err))
 	}
 
 	if !installed {
-		reportStatus(reporter, app.ID, app.Name, "Installing", "")
+		reportStep(opts.StepLogger, app.ID, app.Name, InstallStepAppInstall, fmt.Sprintf("winget install --id %s --silent", wingetID))
+		reportStatus(opts.StatusReporter, app.ID, app.Name, "Installing", "")
 		if err := runWinget("install", "--id", wingetID); err != nil {
-			return false, err
+			return reportDeployFailure(opts, app, err.Error(), err)
 		}
+		reportStep(opts.StepLogger, app.ID, app.Name, InstallStepAppResult, "winget install completed successfully")
+		reportStatus(opts.StatusReporter, app.ID, app.Name, "Success", "")
 		state.MarkChecked(app.ID, time.Now().UTC())
 		return true, nil
 	}
 
 	if !shouldCheckUpdate(app, state) {
+		reportStep(opts.StepLogger, app.ID, app.Name, InstallStepAppCheck, fmt.Sprintf("Package %q already installed; update check skipped", wingetID))
 		return false, nil
 	}
 
-	reportStatus(reporter, app.ID, app.Name, "Installing", "")
+	reportStep(opts.StepLogger, app.ID, app.Name, InstallStepAppInstall, fmt.Sprintf("winget upgrade --id %s --silent", wingetID))
+	reportStatus(opts.StatusReporter, app.ID, app.Name, "Installing", "")
 	if err := runWinget("upgrade", "--id", wingetID); err != nil {
-		return false, err
+		return reportDeployFailure(opts, app, err.Error(), err)
 	}
+	reportStep(opts.StepLogger, app.ID, app.Name, InstallStepAppResult, "winget upgrade completed successfully")
+	reportStatus(opts.StatusReporter, app.ID, app.Name, "Success", "")
 	state.MarkChecked(app.ID, time.Now().UTC())
 	return true, nil
 }
 
-func deployURLApp(app RequiredApp, state *AppsState, installed []system.InstalledSoftwareInfo, reporter StatusReporter) (bool, error) {
-	downloadURL := strings.TrimSpace(app.DownloadURL)
-	if downloadURL == "" {
-		return false, fmt.Errorf("missing downloadUrl")
+func deployURLApp(app RequiredApp, opts DeployOptions, state *AppsState, installed []system.InstalledSoftwareInfo) (bool, error) {
+	rawURL := strings.TrimSpace(app.DownloadURL)
+	if rawURL == "" {
+		return reportDeployFailure(opts, app, "missing downloadUrl", fmt.Errorf("missing downloadUrl"))
 	}
 
-	if isAppInstalled(app.Name, app.Version, installed) {
-		if !shouldCheckUpdate(app, state) {
-			return false, nil
-		}
+	alreadyInstalled := isAppInstalled(app.Name, app.Version, installed)
+	checkMessage := fmt.Sprintf(
+		"Required app %q version=%q downloadUrl=%q alreadyInstalled=%v autoUpdate=%v",
+		app.Name,
+		strings.TrimSpace(app.Version),
+		rawURL,
+		alreadyInstalled,
+		app.AutoUpdate,
+	)
+	reportStep(opts.StepLogger, app.ID, app.Name, InstallStepAppCheck, checkMessage)
+
+	if alreadyInstalled && !shouldCheckUpdate(app, state) {
+		reportStep(opts.StepLogger, app.ID, app.Name, InstallStepAppCheck, "App already installed; skipping deployment")
+		return false, nil
 	}
 
-	reportStatus(reporter, app.ID, app.Name, "Downloading", "")
-	localPath, err := downloadInstaller(downloadURL)
+	resolvedURL, err := resolveDownloadURL(opts.BaseURL, rawURL)
 	if err != nil {
-		return false, fmt.Errorf("download: %w", err)
+		return reportDeployFailure(opts, app, fmt.Sprintf("resolve download URL: %v", err), fmt.Errorf("resolve download URL: %w", err))
+	}
+
+	reportStep(opts.StepLogger, app.ID, app.Name, InstallStepAppDownload, fmt.Sprintf("Downloading from %s", resolvedURL))
+	reportStatus(opts.StatusReporter, app.ID, app.Name, "Downloading", "")
+
+	localPath, err := downloadInstaller(resolvedURL)
+	if err != nil {
+		return reportDeployFailure(opts, app, fmt.Sprintf("download failed: %v", err), fmt.Errorf("download: %w", err))
 	}
 	defer os.Remove(localPath)
 
+	reportStep(opts.StepLogger, app.ID, app.Name, InstallStepAppDownload, fmt.Sprintf("Download completed: %s", localPath))
+
 	if err := unblockDownloadedFile(localPath); err != nil {
-		return false, fmt.Errorf("unblock file: %w", err)
+		reportStep(opts.StepLogger, app.ID, app.Name, InstallStepAppUnblock, err.Error())
+		return reportDeployFailure(opts, app, fmt.Sprintf("unblock file: %v", err), fmt.Errorf("unblock file: %w", err))
+	}
+	reportStep(opts.StepLogger, app.ID, app.Name, InstallStepAppUnblock, fmt.Sprintf("Unblock-File applied to %s", localPath))
+
+	cmd, cmdLine := buildInstallerCommand(localPath, app.InstallArgs)
+	reportStep(opts.StepLogger, app.ID, app.Name, InstallStepAppInstall, cmdLine)
+	reportStatus(opts.StatusReporter, app.ID, app.Name, "Installing", "")
+
+	result, err := runPreparedInstaller(cmd)
+	if err != nil {
+		resultMessage := formatInstallResult(result)
+		return reportDeployFailure(opts, app, resultMessage, fmt.Errorf("install: %w", err))
 	}
 
-	reportStatus(reporter, app.ID, app.Name, "Installing", "")
-	if err := runInstaller(localPath, app.InstallArgs); err != nil {
-		return false, fmt.Errorf("install: %w", err)
-	}
+	resultMessage := formatInstallResult(result)
+	reportStep(opts.StepLogger, app.ID, app.Name, InstallStepAppResult, resultMessage)
+	reportStatus(opts.StatusReporter, app.ID, app.Name, "Success", resultMessage)
 
 	state.MarkChecked(app.ID, time.Now().UTC())
 	return true, nil
+}
+
+func runPreparedInstaller(cmd *exec.Cmd) (installRunResult, error) {
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	output, err := cmd.CombinedOutput()
+	message := strings.TrimSpace(string(output))
+	exitCode := commandExitCode(cmd, err)
+
+	result := installRunResult{ExitCode: exitCode, Output: message}
+	if isInstallerSuccess(exitCode) {
+		return result, nil
+	}
+
+	if err != nil && message == "" {
+		return result, fmt.Errorf("installer failed with exit code %d: %w", exitCode, err)
+	}
+	if message == "" {
+		return result, fmt.Errorf("installer failed with exit code %d", exitCode)
+	}
+	return result, fmt.Errorf("installer failed with exit code %d: %s", exitCode, message)
+}
+
+func formatInstallResult(result installRunResult) string {
+	if result.Output == "" {
+		return fmt.Sprintf("ExitCode=%d", result.ExitCode)
+	}
+	return fmt.Sprintf("ExitCode=%d Output=%s", result.ExitCode, result.Output)
 }
 
 func shouldCheckUpdate(app RequiredApp, state *AppsState) bool {
@@ -223,6 +311,15 @@ func reportStatus(reporter StatusReporter, appID uint, appName, status, errMsg s
 	}
 }
 
+func reportStep(logger StepLogger, appID uint, appName, step, output string) {
+	if logger == nil {
+		return
+	}
+	if err := logger(appID, appName, step, output); err != nil {
+		log.Printf("app install step log failed id=%d step=%s: %v", appID, step, err)
+	}
+}
+
 func isAppInstalled(name, version string, installed []system.InstalledSoftwareInfo) bool {
 	targetName := strings.ToLower(strings.TrimSpace(name))
 	if targetName == "" {
@@ -278,35 +375,6 @@ func downloadInstaller(downloadURL string) (string, error) {
 		return "", err
 	}
 	return tempPath, nil
-}
-
-func runInstaller(installerPath, installArgs string) error {
-	args := strings.Fields(strings.TrimSpace(installArgs))
-	ext := strings.ToLower(filepath.Ext(installerPath))
-
-	var cmd *exec.Cmd
-	switch ext {
-	case ".msi":
-		msiArgs := []string{"/i", installerPath, "/qn"}
-		msiArgs = append(msiArgs, args...)
-		cmd = exec.Command("msiexec", msiArgs...)
-	default:
-		if len(args) == 0 {
-			args = []string{"/quiet", "/norestart"}
-		}
-		cmd = exec.Command(installerPath, args...)
-	}
-
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		message := strings.TrimSpace(string(output))
-		if message == "" {
-			return err
-		}
-		return fmt.Errorf("%w: %s", err, message)
-	}
-	return nil
 }
 
 func unblockDownloadedFile(path string) error {

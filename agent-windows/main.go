@@ -255,8 +255,8 @@ func runPolicyComplianceLoop(stop <-chan struct{}, cfg *config.Config, apiClient
 				continue
 			}
 			reporter := policies.NewReporter(apiClient, cfg.AuthToken, cfg.HardwareID)
-			appReporter := policies.NewAppStatusReporter(apiClient, cfg.AuthToken, cfg.HardwareID)
-			if err := policies.RunComplianceCheck(reporter, appReporter); err != nil {
+			deployOpts := policies.NewAppDeployOptions(apiClient, cfg.AuthToken, cfg.HardwareID)
+			if err := policies.RunComplianceCheck(reporter, deployOpts); err != nil {
 				if handleReenrollNeeded(cfg, err) {
 					continue
 				}
@@ -272,7 +272,7 @@ func syncPolicyFromServer(cfg *config.Config, apiClient *api.APIClient) {
 	}
 
 	reporter := policies.NewReporter(apiClient, cfg.AuthToken, cfg.HardwareID)
-	appReporter := policies.NewAppStatusReporter(apiClient, cfg.AuthToken, cfg.HardwareID)
+	deployOpts := policies.NewAppDeployOptions(apiClient, cfg.AuthToken, cfg.HardwareID)
 	err := policies.SyncFromServer(func() (policies.EffectiveConfig, error) {
 		response, err := apiClient.FetchEffectiveConfig(cfg.AuthToken, cfg.HardwareID)
 		if err != nil {
@@ -309,7 +309,7 @@ func syncPolicyFromServer(cfg *config.Config, apiClient *api.APIClient) {
 			ProfileName:  response.ProfileName,
 			Source:       response.Source,
 		}, nil
-	}, reporter, appReporter)
+	}, reporter, deployOpts)
 	if err != nil {
 		if handleReenrollNeeded(cfg, err) {
 			return

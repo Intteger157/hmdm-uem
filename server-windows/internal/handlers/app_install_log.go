@@ -78,7 +78,12 @@ func normalizeAppInstallLogStatus(raw string) string {
 	case models.AppInstallStatusDownloading,
 		models.AppInstallStatusInstalling,
 		models.AppInstallStatusSuccess,
-		models.AppInstallStatusFailed:
+		models.AppInstallStatusFailed,
+		models.AppInstallStepAppCheck,
+		models.AppInstallStepAppDownload,
+		models.AppInstallStepAppUnblock,
+		models.AppInstallStepAppInstall,
+		models.AppInstallStepAppResult:
 		return strings.TrimSpace(raw)
 	default:
 		return ""
