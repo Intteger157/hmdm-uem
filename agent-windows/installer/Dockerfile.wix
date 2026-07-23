@@ -1,0 +1,9 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0-bookworm-slim
+
+RUN dotnet tool install --global wix --version 4.0.5
+
+ENV PATH="/root/.dotnet/tools:${PATH}"
+
+WORKDIR /work
+
+ENTRYPOINT ["wix"]

@@ -25,23 +25,24 @@
 
   <Fragment>
     <Component Id="AgentComponent" Directory="AGENTDIR" Guid="b2c3d4e5-f6a7-8901-bcde-f12345678901">
-      <File Id="HMDMAgentExe" Source="$(var.AgentBinary)" KeyPath="yes">
-        <ServiceInstall
-          Id="HMDMAgentServiceInstall"
-          Name="HMDMAgent"
-          DisplayName="HMDM Windows Agent"
-          Description="Headwind MDM agent for Windows device management"
-          Type="ownProcess"
-          Start="auto"
-          ErrorControl="normal"
-          Account="LocalSystem" />
-        <ServiceControl
-          Id="HMDMAgentServiceControl"
-          Name="HMDMAgent"
-          Start="install"
-          Stop="both"
-          Remove="uninstall" />
-      </File>
+      <File Id="HMDMAgentExe" Source="$(var.AgentBinary)" KeyPath="yes" />
+
+      <ServiceInstall
+        Id="HMDMAgentServiceInstall"
+        Name="HMDMAgent"
+        DisplayName="HMDM Windows Agent"
+        Description="Headwind MDM agent for Windows device management"
+        Type="ownProcess"
+        Start="auto"
+        ErrorControl="normal"
+        Account="LocalSystem" />
+
+      <ServiceControl
+        Id="HMDMAgentServiceControl"
+        Name="HMDMAgent"
+        Start="install"
+        Stop="both"
+        Remove="uninstall" />
 
       <RegistryKey Root="HKLM" Key="SOFTWARE\HMDM\Agent">
         <RegistryValue Name="ServerURL" Value="$(var.ServerUrl)" Type="string" />

@@ -5,7 +5,11 @@ Builds a per-enrollment MSI with `ServerURL` and `EnrollmentToken` baked into th
 ## Prerequisites
 
 - Go 1.25+
-- Docker (for WiX v4 container)
+- **One of:**
+  - WiX v4 CLI: `dotnet tool install --global wix`
+  - Docker (builds local `hmdm-wix-builder` image from `Dockerfile.wix`)
+
+The public `ghcr.io/wixtoolset/wix` image may be unavailable; the script uses a local Docker build instead.
 
 ## Usage
 

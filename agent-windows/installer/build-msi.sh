@@ -9,27 +9,60 @@ fi
 SERVER_URL="$1"
 TOKEN="$2"
 OUT_DIR="${3:-dist}"
-WIX_IMAGE="${WIX_IMAGE:-ghcr.io/wixtoolset/wix:v4.0.5}"
+WIX_IMAGE="${WIX_IMAGE:-hmdm-wix-builder:local}"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 INSTALLER_DIR="$ROOT/installer"
 STAGING_DIR="$INSTALLER_DIR/staging"
 OUTPUT_DIR="$INSTALLER_DIR/$OUT_DIR"
+OUTPUT_MSI="$OUTPUT_DIR/HMDMAgent.msi"
 
 mkdir -p "$STAGING_DIR" "$OUTPUT_DIR"
 
 echo "Building HMDMAgent.exe ..."
 GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o "$STAGING_DIR/HMDMAgent.exe" "$ROOT"
 
-echo "Building MSI with WiX (Docker) ..."
-docker run --rm \
-  -v "$ROOT:/src" \
-  -w /src/installer \
-  "$WIX_IMAGE" \
+run_wix_build() {
   wix build Package.wxs \
     -d "ServerUrl=$SERVER_URL" \
     -d "EnrollmentToken=$TOKEN" \
     -d "AgentBinary=staging/HMDMAgent.exe" \
     -o "$OUT_DIR/HMDMAgent.msi"
+}
 
-echo "Done: $OUTPUT_DIR/HMDMAgent.msi"
+built=0
+cd "$INSTALLER_DIR"
+
+if command -v wix >/dev/null 2>&1; then
+  echo "Building MSI with local WiX ..."
+  if run_wix_build; then
+    built=1
+  fi
+fi
+
+if [[ "$built" -eq 0 ]] && command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+  echo "Building MSI with WiX (Docker) ..."
+  docker build -f Dockerfile.wix -t "$WIX_IMAGE" "$INSTALLER_DIR"
+  docker run --rm \
+    -v "$ROOT:/src" \
+    -w /src/installer \
+    "$WIX_IMAGE" \
+    build Package.wxs \
+      -d "ServerUrl=$SERVER_URL" \
+      -d "EnrollmentToken=$TOKEN" \
+      -d "AgentBinary=staging/HMDMAgent.exe" \
+      -o "$OUT_DIR/HMDMAgent.msi"
+  built=1
+fi
+
+if [[ "$built" -eq 0 ]]; then
+  echo "MSI build failed. Install WiX (dotnet tool install --global wix) or start Docker." >&2
+  exit 1
+fi
+
+if [[ ! -f "$OUTPUT_MSI" ]]; then
+  echo "MSI was not created: $OUTPUT_MSI" >&2
+  exit 1
+fi
+
+echo "Done: $OUTPUT_MSI"
