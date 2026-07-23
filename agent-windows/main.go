@@ -276,6 +276,9 @@ func syncPolicyFromServer(cfg *config.Config, apiClient *api.APIClient) {
 	err := policies.SyncFromServer(func() (policies.EffectiveConfig, error) {
 		response, err := apiClient.FetchEffectiveConfig(cfg.AuthToken, cfg.HardwareID)
 		if err != nil {
+			if errors.Is(err, api.ErrNoEffectivePolicy) {
+				return policies.EffectiveConfig{}, nil
+			}
 			return policies.EffectiveConfig{}, err
 		}
 

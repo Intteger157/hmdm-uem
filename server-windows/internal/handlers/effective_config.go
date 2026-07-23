@@ -42,6 +42,11 @@ func (h *WindowsHandler) GetDeviceEffectiveConfig(c *gin.Context) {
 		return
 	}
 
+	if len(response.AppliedProfiles) == 0 && len(response.RequiredApps) == 0 {
+		c.Status(http.StatusNoContent)
+		return
+	}
+
 	c.JSON(http.StatusOK, response)
 }
 

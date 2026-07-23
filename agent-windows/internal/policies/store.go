@@ -13,9 +13,15 @@ import (
 const policyDirectory = `C:\ProgramData\HMDM\Agent`
 
 var (
-	configFilePath  = filepath.Join(policyDirectory, "config.json")
-	appliedFilePath = filepath.Join(policyDirectory, "applied-policy.json")
+	configFilePath        = filepath.Join(policyDirectory, "config.json")
+	appliedFilePath       = filepath.Join(policyDirectory, "applied-policy.json")
+	syncStateFilePath     = filepath.Join(policyDirectory, "config-sync-state.json")
 )
+
+type syncState struct {
+	LastSyncedHash   string `json:"lastSyncedHash,omitempty"`
+	LastReportedHash string `json:"lastReportedHash,omitempty"`
+}
 
 func SaveDesiredConfig(config EffectiveConfig) error {
 	if err := ensurePolicyDirectory(); err != nil {
@@ -83,6 +89,87 @@ func LoadAppliedPolicy() (AppliedPolicy, error) {
 		return AppliedPolicy{}, fmt.Errorf("decode applied-policy.json: %w", err)
 	}
 	return applied, nil
+}
+
+func LoadSyncState() (syncState, error) {
+	data, err := os.ReadFile(syncStateFilePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return syncState{}, nil
+		}
+		return syncState{}, fmt.Errorf("read config-sync-state.json: %w", err)
+	}
+
+	var state syncState
+	if err := json.Unmarshal(data, &state); err != nil {
+		return syncState{}, fmt.Errorf("decode config-sync-state.json: %w", err)
+	}
+	return state, nil
+}
+
+func SaveSyncState(state syncState) error {
+	if err := ensurePolicyDirectory(); err != nil {
+		return err
+	}
+
+	payload, err := json.MarshalIndent(state, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal config-sync-state: %w", err)
+	}
+	if err := os.WriteFile(syncStateFilePath, payload, 0o644); err != nil {
+		return fmt.Errorf("write config-sync-state.json: %w", err)
+	}
+	return nil
+}
+
+func LoadLastSyncedConfigHash() string {
+	state, err := LoadSyncState()
+	if err != nil {
+		return ""
+	}
+	return state.LastSyncedHash
+}
+
+func LoadLastReportedConfigHash() string {
+	state, err := LoadSyncState()
+	if err != nil {
+		return ""
+	}
+	return state.LastReportedHash
+}
+
+func SaveLastSyncedConfigHash(hash string) error {
+	state, err := LoadSyncState()
+	if err != nil {
+		return err
+	}
+	state.LastSyncedHash = hash
+	return SaveSyncState(state)
+}
+
+func SaveLastReportedConfigHash(hash string) error {
+	state, err := LoadSyncState()
+	if err != nil {
+		return err
+	}
+	state.LastReportedHash = hash
+	return SaveSyncState(state)
+}
+
+// ClearDesiredConfig removes cached desired configuration from disk.
+func ClearDesiredConfig() error {
+	if err := os.Remove(configFilePath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("remove config.json: %w", err)
+	}
+	return nil
+}
+
+// ClearPolicyCache removes desired config and sync hashes while keeping applied-policy history.
+func ClearPolicyCache() error {
+	if err := ClearDesiredConfig(); err != nil {
+		return err
+	}
+	return SaveSyncState(syncState{LastSyncedHash: emptyPolicyHash})
 }
 
 func ensurePolicyDirectory() error {

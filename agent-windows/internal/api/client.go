@@ -31,6 +31,9 @@ const (
 // ErrUnauthorized indicates the server rejected the current auth token.
 var ErrUnauthorized = errors.New("unauthorized")
 
+// ErrNoEffectivePolicy indicates the device has no assigned configuration profile.
+var ErrNoEffectivePolicy = errors.New("no effective policy")
+
 // ErrDeviceNotFound indicates the device record was removed from the server.
 var ErrDeviceNotFound = errors.New("device not found")
 
@@ -115,7 +118,19 @@ type EffectiveConfigResponse struct {
 	Source       string                 `json:"source,omitempty"`
 }
 
-// NewAPIClient constructs an API client from the given configuration.
+// IsEmptyEffectiveConfig reports whether the server returned no assigned profile/policy.
+func IsEmptyEffectiveConfig(response EffectiveConfigResponse) bool {
+	if response.ProfileID > 0 {
+		return false
+	}
+	if strings.TrimSpace(response.ProfileName) != "" {
+		return false
+	}
+	if strings.TrimSpace(response.Source) != "" {
+		return false
+	}
+	return len(response.RequiredApps) == 0
+}
 func NewAPIClient(cfg config.Config) *APIClient {
 	return &APIClient{
 		baseURL: strings.TrimRight(cfg.ServerURL, "/"),
@@ -409,10 +424,20 @@ func (c *APIClient) FetchEffectiveConfig(authToken, hwid string) (EffectiveConfi
 		return EffectiveConfigResponse{}, ErrUnauthorized
 	case http.StatusNotFound:
 		return EffectiveConfigResponse{}, ErrDeviceNotFound
+	case http.StatusNoContent:
+		return EffectiveConfigResponse{}, ErrNoEffectivePolicy
 	case http.StatusOK:
+		trimmedBody := strings.TrimSpace(string(body))
+		if trimmedBody == "" || trimmedBody == "{}" || trimmedBody == "null" {
+			return EffectiveConfigResponse{}, ErrNoEffectivePolicy
+		}
+
 		var parsed EffectiveConfigResponse
 		if err := json.Unmarshal(body, &parsed); err != nil {
 			return EffectiveConfigResponse{}, fmt.Errorf("decode effective-config response: %w", err)
+		}
+		if IsEmptyEffectiveConfig(parsed) {
+			return EffectiveConfigResponse{}, ErrNoEffectivePolicy
 		}
 		return parsed, nil
 	default:

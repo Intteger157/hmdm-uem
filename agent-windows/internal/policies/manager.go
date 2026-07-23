@@ -21,26 +21,55 @@ func SyncFromServer(fetch func() (EffectiveConfig, error), report Reporter, depl
 		}
 		log.Printf("policy sync: using cached config.json (%v)", err)
 		config = cached
-	} else if err := SaveDesiredConfig(config); err != nil {
+	}
+
+	if !config.HasAssignedPolicy() {
+		return handleNoPolicyConfig(report)
+	}
+
+	configHash := ConfigHash(config)
+	if configHash == LoadLastSyncedConfigHash() {
+		return nil
+	}
+
+	if err := SaveDesiredConfig(config); err != nil {
 		log.Printf("policy sync: failed to save config.json: %v", err)
 	}
 
 	results, applied, err := ApplyIfNeeded(config.Payload)
+	reportChange := shouldReportConfigChange(configHash)
 	if err != nil {
 		output, _ := FormatResults(results)
-		if report != nil {
-			_ = report(false, output)
+		log.Printf("policy enforcement failed: %s", output)
+		if report != nil && reportChange {
+			if reportErr := report(false, output); reportErr != nil {
+				log.Printf("policy enforcement log upload failed: %v", reportErr)
+			}
+			if markErr := markConfigReported(configHash); markErr != nil {
+				log.Printf("policy sync: failed to save reported hash: %v", markErr)
+			}
+		}
+		if saveErr := SaveLastSyncedConfigHash(configHash); saveErr != nil {
+			log.Printf("policy sync: failed to save synced hash: %v", saveErr)
 		}
 		return err
 	}
+
 	if applied {
 		output, success := FormatResults(results)
 		log.Printf("policy enforcement completed success=%v\n%s", success, output)
-		if report != nil {
+		if report != nil && reportChange {
 			if reportErr := report(success, output); reportErr != nil {
 				log.Printf("policy enforcement log upload failed: %v", reportErr)
 			}
+			if markErr := markConfigReported(configHash); markErr != nil {
+				log.Printf("policy sync: failed to save reported hash: %v", markErr)
+			}
 		}
+	}
+
+	if err := SaveLastSyncedConfigHash(configHash); err != nil {
+		log.Printf("policy sync: failed to save synced hash: %v", err)
 	}
 
 	apps.DeployRequired(config.RequiredApps, deploy)
@@ -49,24 +78,25 @@ func SyncFromServer(fetch func() (EffectiveConfig, error), report Reporter, depl
 
 // RunComplianceCheck verifies policy state against cached desired config and re-applies on drift.
 func RunComplianceCheck(report Reporter, deploy apps.StatusReporter) error {
+	if IsEmptyPolicyHash(LoadLastSyncedConfigHash()) {
+		return nil
+	}
+
 	config, err := LoadDesiredConfig()
 	if err != nil {
 		return err
 	}
-	if config.UpdatedAt == "" {
+	if config.UpdatedAt == "" || !config.HasAssignedPolicy() {
 		return nil
 	}
 
 	results, reconciled, err := ReconcileCompliance(config.Payload)
 	if err != nil {
 		output, _ := FormatResults(results)
-		if report != nil {
-			_ = report(false, output)
-		}
+		log.Printf("policy compliance reconciliation failed: %s", output)
 		return err
 	}
 	if !reconciled {
-		apps.DeployRequired(config.RequiredApps, deploy)
 		return nil
 	}
 
