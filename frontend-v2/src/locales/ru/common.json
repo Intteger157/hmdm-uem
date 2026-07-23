@@ -1177,6 +1177,7 @@
   "deviceDetail.appDeployments.none": "Нет обязательных приложений",
   "deviceDetail.appDeployments.allInstalled": "{{count}}/{{total}} приложений установлено",
   "deviceDetail.appDeployments.installing": "Установка {{current}} из {{total}}...",
+  "deviceDetail.appDeployments.waitingForAgent": "Ожидание агента ({{total}} в очереди)...",
   "deviceDetail.appDeployments.progress": "{{count}}/{{total}} установлено",
   "deviceDetail.appDeployments.dialogTitle": "Статус развёртывания приложений",
   "deviceDetail.appDeployments.columns.app": "Приложение",

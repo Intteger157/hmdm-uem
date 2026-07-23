@@ -1177,6 +1177,7 @@
   "deviceDetail.appDeployments.none": "No required apps",
   "deviceDetail.appDeployments.allInstalled": "{{count}}/{{total}} Apps Installed",
   "deviceDetail.appDeployments.installing": "Installing {{current}} of {{total}}...",
+  "deviceDetail.appDeployments.waitingForAgent": "Waiting for agent ({{total}} queued)...",
   "deviceDetail.appDeployments.progress": "{{count}}/{{total}} installed",
   "deviceDetail.appDeployments.dialogTitle": "App Deployment Status",
   "deviceDetail.appDeployments.columns.app": "Application",

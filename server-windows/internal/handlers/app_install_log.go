@@ -57,14 +57,14 @@ func (h *WindowsHandler) ReportAppInstallLog(c *gin.Context) {
 	now := time.Now()
 	output := strings.TrimSpace(req.Output)
 
-	existing, err := findActiveAppInstallLog(deviceID, req.AppID)
+	existing, createNew, err := resolveAppInstallLogTarget(deviceID, req.AppID, status)
 	if err != nil {
 		log.Printf("[app-install-log] lookup failed: hardware_id=%q app_id=%d err=%v", deviceID, req.AppID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup app install log"})
 		return
 	}
 
-	if existing != nil {
+	if existing != nil && !createNew {
 		existing.Status = status
 		existing.Output = output
 		existing.ExecutedAt = &now
@@ -97,7 +97,28 @@ func (h *WindowsHandler) ReportAppInstallLog(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-func findActiveAppInstallLog(deviceID string, appID uint) (*models.DeviceCommandLog, error) {
+func resolveAppInstallLogTarget(deviceID string, appID uint, status string) (*models.DeviceCommandLog, bool, error) {
+	latest, err := findLatestAppInstallLog(deviceID, appID)
+	if err != nil {
+		return nil, false, err
+	}
+
+	// New Action Log row when a deployment attempt starts (Downloading after Success/Failed or no prior log).
+	if status == models.AppInstallStatusDownloading {
+		if latest != nil && isActiveAppInstallStatus(latest.Status) {
+			return latest, false, nil
+		}
+		return nil, true, nil
+	}
+
+	if latest != nil && isActiveAppInstallStatus(latest.Status) {
+		return latest, false, nil
+	}
+
+	return nil, true, nil
+}
+
+func findLatestAppInstallLog(deviceID string, appID uint) (*models.DeviceCommandLog, error) {
 	var logs []models.DeviceCommandLog
 	if err := db.DB.
 		Where("device_id = ? AND command_name = ?", deviceID, models.CommandNameAppInstall).
@@ -112,11 +133,21 @@ func findActiveAppInstallLog(deviceID string, appID uint) (*models.DeviceCommand
 		if err != nil || payloadAppID != appID {
 			continue
 		}
-		if isActiveAppInstallStatus(entry.Status) {
-			return &entry, nil
-		}
+		copy := entry
+		return &copy, nil
 	}
 
+	return nil, nil
+}
+
+func findActiveAppInstallLog(deviceID string, appID uint) (*models.DeviceCommandLog, error) {
+	latest, err := findLatestAppInstallLog(deviceID, appID)
+	if err != nil || latest == nil {
+		return latest, err
+	}
+	if isActiveAppInstallStatus(latest.Status) {
+		return latest, nil
+	}
 	return nil, nil
 }
 

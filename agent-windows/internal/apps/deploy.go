@@ -29,7 +29,10 @@ const (
 	downloadTimeout = 15 * time.Minute
 )
 
-var deployGate sync.Mutex
+var (
+	deployAppsMu      sync.Mutex
+	deployingAppIDs   = map[uint]bool{}
+)
 
 // RequiredApp is one application the agent must install or update.
 type RequiredApp struct {
@@ -60,12 +63,6 @@ func DeployRequired(required []RequiredApp, opts DeployOptions) {
 	if len(required) == 0 {
 		return
 	}
-	if !deployGate.TryLock() {
-		log.Printf("app deploy: skipped, another deployment is already running")
-		return
-	}
-	defer deployGate.Unlock()
-
 	if opts.StatusReporter == nil {
 		log.Printf("app deploy: status reporter not configured; server will keep Pending")
 	}
@@ -98,6 +95,12 @@ func DeployRequired(required []RequiredApp, opts DeployOptions) {
 }
 
 func deployApp(app RequiredApp, opts DeployOptions, state *AppsState, installed []system.InstalledSoftwareInfo) (checked bool, err error) {
+	if !beginAppDeploy(app.ID) {
+		log.Printf("app deploy: skip id=%d name=%q, install already in progress on device", app.ID, app.Name)
+		return false, nil
+	}
+	defer endAppDeploy(app.ID)
+
 	appType := normalizeAppType(app.AppType)
 	switch appType {
 	case AppTypeWinget:
@@ -424,4 +427,20 @@ func unblockDownloadedFile(path string) error {
 		return fmt.Errorf("%w: %s", err, message)
 	}
 	return nil
+}
+
+func beginAppDeploy(appID uint) bool {
+	deployAppsMu.Lock()
+	defer deployAppsMu.Unlock()
+	if deployingAppIDs[appID] {
+		return false
+	}
+	deployingAppIDs[appID] = true
+	return true
+}
+
+func endAppDeploy(appID uint) {
+	deployAppsMu.Lock()
+	defer deployAppsMu.Unlock()
+	delete(deployingAppIDs, appID)
 }

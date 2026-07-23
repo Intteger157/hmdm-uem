@@ -72,6 +72,10 @@ export function WindowsAppDeploymentsCard({ hardwareId, className }: WindowsAppD
   const inProgress = items.some(
     (item) => item.status === 'Pending' || item.status === 'Downloading' || item.status === 'Installing',
   )
+  const hasActiveInstall = items.some(
+    (item) => item.status === 'Downloading' || item.status === 'Installing',
+  )
+  const onlyPending = inProgress && !hasActiveInstall
 
   return (
     <Card className={cn('h-full', className)}>
@@ -81,15 +85,17 @@ export function WindowsAppDeploymentsCard({ hardwareId, className }: WindowsAppD
             {t('deviceDetail.appDeployments.title')}
           </CardTitle>
           <p className="text-[11px] leading-tight text-muted-foreground">
-            {inProgress
-              ? t('deviceDetail.appDeployments.installing', {
-                  current: successCount + 1,
-                  total: items.length,
-                })
-              : t('deviceDetail.appDeployments.progress', {
-                  count: successCount,
-                  total: items.length,
-                })}
+            {onlyPending
+              ? t('deviceDetail.appDeployments.waitingForAgent', { total: items.length })
+              : inProgress
+                ? t('deviceDetail.appDeployments.installing', {
+                    current: successCount + 1,
+                    total: items.length,
+                  })
+                : t('deviceDetail.appDeployments.progress', {
+                    count: successCount,
+                    total: items.length,
+                  })}
           </p>
         </div>
         <Package className="size-4 shrink-0 text-muted-foreground/70" />
