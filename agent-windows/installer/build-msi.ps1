@@ -2,9 +2,6 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$ServerUrl,
 
-    [Parameter(Mandatory = $true)]
-    [string]$Token,
-
     [string]$OutDir = "dist",
 
     [string]$WixImage = "hmdm-wix-builder:local"
@@ -42,7 +39,6 @@ function Invoke-WixBuild {
     try {
         & $WixCommand build Package.wxs `
             -d "ServerUrl=$ServerUrl" `
-            -d "EnrollmentToken=$Token" `
             -d "AgentBinary=staging/HMDMAgent.exe" `
             -o "$OutDir/HMDMAgent.msi"
 
@@ -67,7 +63,7 @@ function Test-DockerReady {
 $built = $false
 
 if (Get-Command wix -ErrorAction SilentlyContinue) {
-    Write-Host "Building MSI with local WiX ..."
+    Write-Host "Building universal MSI with local WiX ..."
     try {
         Invoke-WixBuild "wix"
         $built = $true
@@ -78,7 +74,7 @@ if (Get-Command wix -ErrorAction SilentlyContinue) {
 }
 
 if (-not $built -and (Test-DockerReady)) {
-    Write-Host "Building MSI with WiX (Docker) ..."
+    Write-Host "Building universal MSI with WiX (Docker) ..."
     $dockerfile = Join-Path $installerDir "Dockerfile.wix"
     docker build -f $dockerfile -t $WixImage $installerDir
     if ($LASTEXITCODE -ne 0) {
@@ -92,7 +88,6 @@ if (-not $built -and (Test-DockerReady)) {
             $WixImage `
             build Package.wxs `
                 -d "ServerUrl=$ServerUrl" `
-                -d "EnrollmentToken=$Token" `
                 -d "AgentBinary=staging/HMDMAgent.exe" `
                 -o "$OutDir/HMDMAgent.msi"
 
@@ -122,3 +117,4 @@ if (-not (Test-Path $outputMsi)) {
 }
 
 Write-Host "Done: $outputMsi"
+Write-Host "Upload this MSI once in MDM console (Add device -> Register installer)."

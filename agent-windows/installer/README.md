@@ -1,6 +1,6 @@
 # HMDM Windows Agent MSI Builder
 
-Builds a per-enrollment MSI with `ServerURL` and `EnrollmentToken` baked into the registry.
+Builds a **universal** MSI with only the MDM server URL. Enrollment tokens are applied per device via a PowerShell script from the admin console.
 
 ## Prerequisites
 
@@ -9,33 +9,26 @@ Builds a per-enrollment MSI with `ServerURL` and `EnrollmentToken` baked into th
   - WiX v4 CLI: `dotnet tool install --global wix`
   - Docker (builds local `hmdm-wix-builder` image from `Dockerfile.wix`)
 
-The public `ghcr.io/wixtoolset/wix` image may be unavailable; the script uses a local Docker build instead.
-
 ## Usage
 
-From this directory on Windows:
-
 ```powershell
-.\build-msi.ps1 `
-  -ServerUrl "https://test-dev-mdm.intteger.uk" `
-  -Token "win-enroll-abc123..."
-```
-
-On Linux/macOS:
-
-```bash
-chmod +x build-msi.sh
-./build-msi.sh "https://test-dev-mdm.intteger.uk" "win-enroll-abc123..."
+.\build-msi.ps1 -ServerUrl "https://test-dev-mdm.intteger.uk"
 ```
 
 Output: `dist/HMDMAgent.msi`
+
+## Admin workflow
+
+1. Build MSI **once** (command above).
+2. In MDM console: **Add device** → upload MSI → **Register installer** (one-time setup).
+3. For each new PC: **Add device** → send user:
+   - one-time MSI download link (same file every time)
+   - enrollment PowerShell script (unique token per device)
 
 ## What the MSI installs
 
 - `HMDMAgent.exe` → `C:\Program Files\HMDM\Agent\`
 - Windows service `HMDMAgent` (auto-start)
-- Registry `HKLM\SOFTWARE\HMDM\Agent`:
-  - `ServerURL`
-  - `EnrollmentToken`
+- Registry `HKLM\SOFTWARE\HMDM\Agent\ServerURL`
 
-After install, upload the MSI in the MDM console (**Add device** dialog) to get a one-time download link for the end user.
+Enrollment token is **not** in the MSI — user runs the script from the console after install.

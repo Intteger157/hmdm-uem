@@ -37,7 +37,25 @@ func (h *WindowsHandler) CreateEnrollmentToken(c *gin.Context) {
 	}
 
 	log.Printf("[enrollment-token] created token=%q id=%d", token, record.ID)
-	c.JSON(http.StatusOK, models.EnrollmentTokenResponse{Token: token})
+
+	response := models.EnrollmentTokenResponse{
+		Token:               token,
+		InstallerConfigured: hasDefaultInstaller(),
+	}
+
+	if installer, ok := loadDefaultInstaller(); ok {
+		downloadURL, permanentURL, err := linkEnrollmentToInstaller(c, &record, installer)
+		if err != nil {
+			log.Printf("[enrollment-token] link installer failed: token=%q err=%v", token, err)
+		} else {
+			response.DownloadURL = downloadURL
+			response.PermanentFileURL = permanentURL
+			response.EnrollScript = buildEnrollScript(token)
+			response.InstallerConfigured = true
+		}
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 func generateEnrollmentToken() (string, error) {

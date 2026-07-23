@@ -27,6 +27,79 @@ func filesDirectory() string {
 	return "/opt/hmdm/files"
 }
 
+// GetDefaultInstaller returns the shared universal agent MSI registered by admin.
+func (h *WindowsHandler) GetDefaultInstaller(c *gin.Context) {
+	if installer, ok := loadDefaultInstaller(); ok {
+		c.JSON(http.StatusOK, models.DefaultInstallerResponse{
+			Configured:        true,
+			FilesRelativePath: installer.FilesRelativePath,
+			FileName:          installer.FileName,
+			PermanentFileURL:  installer.PermanentFileURL,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.DefaultInstallerResponse{Configured: false})
+}
+
+// RegisterDefaultInstaller stores the single shared agent MSI (upload once, reuse for all enrollments).
+func (h *WindowsHandler) RegisterDefaultInstaller(c *gin.Context) {
+	var req models.RegisterDefaultInstallerRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	relativePath := sanitizeRelativePath(req.FilesRelativePath)
+	if relativePath == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid files path"})
+		return
+	}
+
+	fullPath := filepath.Join(filesDirectory(), filepath.FromSlash(relativePath))
+	if _, err := os.Stat(fullPath); err != nil {
+		if os.IsNotExist(err) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "installer file not found on server"})
+			return
+		}
+		log.Printf("[register-installer] stat failed: path=%q err=%v", fullPath, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to access installer file"})
+		return
+	}
+
+	fileName := strings.TrimSpace(req.FileName)
+	if fileName == "" {
+		fileName = filepath.Base(relativePath)
+	}
+
+	installer := models.WindowsAgentInstaller{
+		FilesRelativePath: relativePath,
+		FileName:          fileName,
+		PermanentFileURL:  strings.TrimSpace(req.PermanentFileURL),
+		CreatedAt:         time.Now().UTC(),
+	}
+
+	if err := db.DB.Where("1 = 1").Delete(&models.WindowsAgentInstaller{}).Error; err != nil {
+		log.Printf("[register-installer] clear previous failed: err=%v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to replace installer"})
+		return
+	}
+
+	if err := db.DB.Create(&installer).Error; err != nil {
+		log.Printf("[register-installer] save failed: path=%q err=%v", relativePath, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to register installer"})
+		return
+	}
+
+	log.Printf("[register-installer] registered path=%q file=%q", relativePath, fileName)
+	c.JSON(http.StatusOK, models.DefaultInstallerResponse{
+		Configured:        true,
+		FilesRelativePath: installer.FilesRelativePath,
+		FileName:          installer.FileName,
+		PermanentFileURL:  installer.PermanentFileURL,
+	})
+}
+
 // LinkInstaller associates an uploaded MSI (Java Files storage) with an enrollment token.
 func (h *WindowsHandler) LinkInstaller(c *gin.Context) {
 	var req models.LinkInstallerRequest
@@ -67,6 +140,11 @@ func (h *WindowsHandler) LinkInstaller(c *gin.Context) {
 		return
 	}
 
+	fileName := strings.TrimSpace(req.FileName)
+	if fileName == "" {
+		fileName = filepath.Base(relativePath)
+	}
+
 	downloadToken, err := generateDownloadToken()
 	if err != nil {
 		log.Printf("[link-installer] generate download token failed: %v", err)
@@ -74,28 +152,18 @@ func (h *WindowsHandler) LinkInstaller(c *gin.Context) {
 		return
 	}
 
-	fileName := strings.TrimSpace(req.FileName)
-	if fileName == "" {
-		fileName = filepath.Base(relativePath)
-	}
-
-	record.DownloadToken = &downloadToken
-	record.InstallerPath = relativePath
-	record.InstallerFileName = fileName
-	record.PermanentFileURL = strings.TrimSpace(req.PermanentFileURL)
-
-	if err := db.DB.Save(&record).Error; err != nil {
+	downloadURL, permanentURL, err := applyInstallerLink(c, &record, relativePath, fileName, strings.TrimSpace(req.PermanentFileURL), downloadToken)
+	if err != nil {
 		log.Printf("[link-installer] save failed: token=%q err=%v", req.EnrollmentToken, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to link installer"})
 		return
 	}
 
-	downloadURL := buildDownloadURL(c, downloadToken)
-	log.Printf("[link-installer] linked token=%q download=%q path=%q", req.EnrollmentToken, downloadToken, relativePath)
+	log.Printf("[link-installer] linked token=%q path=%q", req.EnrollmentToken, relativePath)
 
 	c.JSON(http.StatusOK, models.LinkInstallerResponse{
 		DownloadURL:      downloadURL,
-		PermanentFileURL: record.PermanentFileURL,
+		PermanentFileURL: permanentURL,
 		DownloadToken:    downloadToken,
 	})
 }
@@ -194,4 +262,50 @@ func buildDownloadURL(c *gin.Context, downloadToken string) string {
 	}
 
 	return fmt.Sprintf("%s://%s/rest/windows/downloads/%s", scheme, host, downloadToken)
+}
+
+func hasDefaultInstaller() bool {
+	_, ok := loadDefaultInstaller()
+	return ok
+}
+
+func loadDefaultInstaller() (models.WindowsAgentInstaller, bool) {
+	var installer models.WindowsAgentInstaller
+	err := db.DB.Order("id DESC").First(&installer).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return models.WindowsAgentInstaller{}, false
+	}
+	if err != nil {
+		return models.WindowsAgentInstaller{}, false
+	}
+	return installer, true
+}
+
+func linkEnrollmentToInstaller(c *gin.Context, record *models.WindowsEnrollmentToken, installer models.WindowsAgentInstaller) (string, string, error) {
+	downloadToken, err := generateDownloadToken()
+	if err != nil {
+		return "", "", err
+	}
+
+	return applyInstallerLink(c, record, installer.FilesRelativePath, installer.FileName, installer.PermanentFileURL, downloadToken)
+}
+
+func applyInstallerLink(c *gin.Context, record *models.WindowsEnrollmentToken, relativePath, fileName, permanentURL, downloadToken string) (string, string, error) {
+	record.DownloadToken = &downloadToken
+	record.InstallerPath = relativePath
+	record.InstallerFileName = fileName
+	record.PermanentFileURL = permanentURL
+
+	if err := db.DB.Save(record).Error; err != nil {
+		return "", "", err
+	}
+
+	return buildDownloadURL(c, downloadToken), permanentURL, nil
+}
+
+func buildEnrollScript(token string) string {
+	return fmt.Sprintf(
+		"New-Item -Path \"HKLM:\\SOFTWARE\\HMDM\\Agent\" -Force | Out-Null\nSet-ItemProperty -Path \"HKLM:\\SOFTWARE\\HMDM\\Agent\" -Name \"EnrollmentToken\" -Value \"%s\"\nRestart-Service HMDMAgent -ErrorAction SilentlyContinue",
+		token,
+	)
 }

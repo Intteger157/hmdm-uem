@@ -173,15 +173,59 @@ export async function sendWindowsDeviceCommand(
 
 export interface WindowsEnrollmentTokenResponse {
   token: string
+  downloadUrl?: string
+  permanentFileUrl?: string
+  enrollScript?: string
+  installerConfigured?: boolean
 }
+
+export interface WindowsDefaultInstallerResponse {
+  configured: boolean
+  filesRelativePath?: string
+  fileName?: string
+  permanentFileUrl?: string
+}
+
+export const DEFAULT_AGENT_MSI_NAME = 'HMDMAgent.msi'
+export const DEFAULT_AGENT_MSI_PATH = 'windows/agents/HMDMAgent.msi'
 
 /** Creates a one-time enrollment token for a new Windows agent. */
 export async function createWindowsEnrollmentToken(): Promise<WindowsEnrollmentTokenResponse> {
   if (isMockApiEnabled()) {
-    return { token: `win-enroll-mock-${Date.now()}` }
+    return {
+      token: `win-enroll-mock-${Date.now()}`,
+      installerConfigured: false,
+    }
   }
 
   const response = await windowsApi.post<WindowsEnrollmentTokenResponse>('/enrollment-token')
+  return response.data
+}
+
+/** Returns the shared universal agent MSI registered by admin. */
+export async function getDefaultWindowsInstaller(): Promise<WindowsDefaultInstallerResponse> {
+  if (isMockApiEnabled()) {
+    return { configured: false }
+  }
+
+  const response = await windowsApi.get<WindowsDefaultInstallerResponse>('/installers/default')
+  return response.data
+}
+
+/** Registers the shared universal agent MSI (upload once, reuse for all devices). */
+export async function registerDefaultWindowsInstaller(
+  request: Omit<LinkWindowsInstallerRequest, 'enrollmentToken'>,
+): Promise<WindowsDefaultInstallerResponse> {
+  if (isMockApiEnabled()) {
+    return {
+      configured: true,
+      filesRelativePath: request.filesRelativePath,
+      fileName: request.fileName,
+      permanentFileUrl: request.permanentFileUrl,
+    }
+  }
+
+  const response = await windowsApi.post<WindowsDefaultInstallerResponse>('/installers/default', request)
   return response.data
 }
 
