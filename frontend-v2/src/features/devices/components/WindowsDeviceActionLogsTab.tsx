@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Eye } from 'lucide-react'
 import {
@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { getWindowsDeviceCommandLogs } from '@/features/windows/api/windows-api'
+import { useWindowsDeviceCommandLogsQuery } from '@/features/windows/hooks/use-windows-device-command-logs-query'
 import type { DeviceCommandLogEntry } from '@/features/windows/api/windows-api'
 import { formatDeviceTimestamp } from '@/features/devices/utils/device-detail-formatters'
 import { cn } from '@/lib/utils'
@@ -46,42 +46,11 @@ function statusBadgeClassName(status: DeviceCommandLogEntry['status']) {
 
 export function WindowsDeviceActionLogsTab({ hardwareId }: WindowsDeviceActionLogsTabProps) {
   const { t } = useTranslation()
-  const [logs, setLogs] = useState<DeviceCommandLogEntry[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [selectedOutput, setSelectedOutput] = useState<DeviceCommandLogEntry | null>(null)
+  const { data, isLoading, isError, error } = useWindowsDeviceCommandLogsQuery(hardwareId)
+  const logs = data?.items ?? []
 
-  const loadLogs = useCallback(async () => {
-    setError(null)
-    const response = await getWindowsDeviceCommandLogs(hardwareId)
-    setLogs(response.items ?? [])
-  }, [hardwareId])
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function initialLoad() {
-      setLoading(true)
-      try {
-        await loadLogs()
-      } catch (err: unknown) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : t('deviceDetail.actionLogs.loadFailed'))
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false)
-        }
-      }
-    }
-
-    void initialLoad()
-    return () => {
-      cancelled = true
-    }
-  }, [hardwareId, loadLogs, t])
-
-  if (loading) {
+  if (isLoading) {
     return (
       <Card>
         <CardContent className="space-y-3 p-4">
@@ -93,10 +62,12 @@ export function WindowsDeviceActionLogsTab({ hardwareId }: WindowsDeviceActionLo
     )
   }
 
-  if (error) {
+  if (isError) {
     return (
       <Card>
-        <CardContent className="p-4 text-sm text-destructive">{error}</CardContent>
+        <CardContent className="p-4 text-sm text-destructive">
+          {error instanceof Error ? error.message : t('deviceDetail.actionLogs.loadFailed')}
+        </CardContent>
       </Card>
     )
   }

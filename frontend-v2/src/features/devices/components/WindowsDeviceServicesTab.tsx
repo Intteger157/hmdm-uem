@@ -1,15 +1,16 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import { RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import {
-  getWindowsDeviceServices,
   refreshWindowsDeviceServices,
   restartWindowsDeviceService,
 } from '@/features/windows/api/windows-api'
+import { useWindowsDeviceServicesQuery } from '@/features/windows/hooks/use-windows-device-services-query'
+import { windowsDeviceDetailQueryKeys } from '@/features/windows/hooks/windows-device-detail-query-keys'
 import { waitForWindowsCommandResult } from '@/features/windows/lib/wait-for-command-result'
-import type { WindowsService } from '@/shared/api/types/device-detail'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -38,65 +39,69 @@ function extractRestartErrorMessage(error: unknown): string {
 
 export function WindowsDeviceServicesTab({ hardwareId }: WindowsDeviceServicesTabProps) {
   const { t } = useTranslation()
-  const [services, setServices] = useState<WindowsService[]>([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
+  const autoRefreshAttemptedRef = useRef(false)
   const [refreshing, setRefreshing] = useState(false)
   const [restartingService, setRestartingService] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
-  const loadServices = useCallback(async () => {
-    setError(null)
-    const response = await getWindowsDeviceServices(hardwareId)
-    setServices(response.items ?? [])
-    return response.items ?? []
+  const { data, isLoading, isError, error } = useWindowsDeviceServicesQuery(hardwareId)
+  const services = data?.items ?? []
+
+  useEffect(() => {
+    autoRefreshAttemptedRef.current = false
   }, [hardwareId])
 
   useEffect(() => {
+    if (isLoading || autoRefreshAttemptedRef.current) {
+      return
+    }
+    if (services.length > 0) {
+      return
+    }
+
+    autoRefreshAttemptedRef.current = true
     let cancelled = false
 
-    async function initialLoad() {
-      setLoading(true)
-      setError(null)
+    async function bootstrapServices() {
+      setRefreshing(true)
+      setActionError(null)
       try {
-        const items = await loadServices()
-        if (cancelled) {
-          return
-        }
-        if (items.length === 0) {
-          setRefreshing(true)
-          const queued = await refreshWindowsDeviceServices(hardwareId)
-          await waitForWindowsCommandResult(hardwareId, queued.id)
-          if (!cancelled) {
-            await loadServices()
-          }
+        const queued = await refreshWindowsDeviceServices(hardwareId)
+        await waitForWindowsCommandResult(hardwareId, queued.id)
+        if (!cancelled) {
+          await queryClient.invalidateQueries({
+            queryKey: windowsDeviceDetailQueryKeys.services(hardwareId),
+          })
         }
       } catch (err: unknown) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : t('deviceDetail.services.loadFailed'))
+          setActionError(err instanceof Error ? err.message : t('deviceDetail.services.refreshFailed'))
         }
       } finally {
         if (!cancelled) {
-          setLoading(false)
           setRefreshing(false)
         }
       }
     }
 
-    void initialLoad()
+    void bootstrapServices()
     return () => {
       cancelled = true
     }
-  }, [hardwareId, loadServices, t])
+  }, [hardwareId, isLoading, queryClient, services.length, t])
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    setError(null)
+    setActionError(null)
     try {
       const queued = await refreshWindowsDeviceServices(hardwareId)
       await waitForWindowsCommandResult(hardwareId, queued.id)
-      await loadServices()
+      await queryClient.invalidateQueries({
+        queryKey: windowsDeviceDetailQueryKeys.services(hardwareId),
+      })
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t('deviceDetail.services.refreshFailed'))
+      setActionError(err instanceof Error ? err.message : t('deviceDetail.services.refreshFailed'))
     } finally {
       setRefreshing(false)
     }
@@ -104,7 +109,7 @@ export function WindowsDeviceServicesTab({ hardwareId }: WindowsDeviceServicesTa
 
   const handleRestart = async (serviceName: string) => {
     setRestartingService(serviceName)
-    setError(null)
+    setActionError(null)
     try {
       const queued = await restartWindowsDeviceService(hardwareId, serviceName)
       const result = await waitForWindowsCommandResult(hardwareId, queued.id)
@@ -118,7 +123,9 @@ export function WindowsDeviceServicesTab({ hardwareId }: WindowsDeviceServicesTa
         return
       }
       toast.success(t('deviceDetail.services.restartSuccess'))
-      await loadServices()
+      await queryClient.invalidateQueries({
+        queryKey: windowsDeviceDetailQueryKeys.services(hardwareId),
+      })
     } catch (err: unknown) {
       const message = extractRestartErrorMessage(err)
       toast.error(t('deviceDetail.services.restartError', { message }))
@@ -127,7 +134,7 @@ export function WindowsDeviceServicesTab({ hardwareId }: WindowsDeviceServicesTa
     }
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Card>
         <CardContent className="space-y-3 p-4">
@@ -138,6 +145,12 @@ export function WindowsDeviceServicesTab({ hardwareId }: WindowsDeviceServicesTa
       </Card>
     )
   }
+
+  const queryError = isError
+    ? error instanceof Error
+      ? error.message
+      : t('deviceDetail.services.loadFailed')
+    : null
 
   return (
     <Card>
@@ -156,8 +169,8 @@ export function WindowsDeviceServicesTab({ hardwareId }: WindowsDeviceServicesTa
           </Button>
         </div>
 
-        {error ? (
-          <div className="px-4 py-3 text-sm text-destructive">{error}</div>
+        {queryError || actionError ? (
+          <div className="px-4 py-3 text-sm text-destructive">{actionError ?? queryError}</div>
         ) : null}
 
         <div className="max-h-[32rem] overflow-auto">
