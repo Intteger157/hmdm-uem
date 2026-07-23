@@ -229,6 +229,42 @@ func (h *WindowsHandler) GetDevice(c *gin.Context) {
 	c.JSON(http.StatusOK, models.ToWindowsDeviceJSON(device))
 }
 
+// DeleteDevice removes a Windows agent record and its queued commands.
+func (h *WindowsHandler) DeleteDevice(c *gin.Context) {
+	hardwareID := strings.TrimSpace(c.Param("hardwareId"))
+	if hardwareID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing hardware id"})
+		return
+	}
+
+	var device models.WindowsDevice
+	if err := db.DB.Where("hardware_id = ?", hardwareID).First(&device).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "device not found"})
+			return
+		}
+
+		log.Printf("[delete-device] lookup failed: hardware_id=%q err=%v", hardwareID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup device"})
+		return
+	}
+
+	if err := db.DB.Where("hardware_id = ?", hardwareID).Delete(&models.WindowsDeviceCommand{}).Error; err != nil {
+		log.Printf("[delete-device] delete commands failed: hardware_id=%q err=%v", hardwareID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete device commands"})
+		return
+	}
+
+	if err := db.DB.Delete(&device).Error; err != nil {
+		log.Printf("[delete-device] delete failed: hardware_id=%q err=%v", hardwareID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete device"})
+		return
+	}
+
+	log.Printf("[delete-device] removed hardware_id=%q id=%d", hardwareID, device.ID)
+	c.Status(http.StatusNoContent)
+}
+
 func parsePositiveInt(raw string, fallback int) int {
 	value, err := strconv.Atoi(raw)
 	if err != nil || value < 1 {

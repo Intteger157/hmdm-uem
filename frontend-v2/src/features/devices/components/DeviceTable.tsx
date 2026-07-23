@@ -83,7 +83,8 @@ export function DeviceTable({
   const { t } = useTranslation()
   const now = usePeriodicNow()
   const devices = data.devices.items
-  const showActions = platform === 'android' && onEditDevice != null
+  const showAndroidActions = platform === 'android' && onEditDevice != null
+  const showWindowsActions = platform === 'windows' && onDeleteDevice != null
 
   if (isLoading && devices.length === 0) {
     return (
@@ -115,6 +116,9 @@ export function DeviceTable({
               <th className="px-4 py-3 font-medium">{t('devices.columns.bitlocker')}</th>
               <th className="px-4 py-3 font-medium">{t('devices.columns.powershell')}</th>
               <th className="px-4 py-3 font-medium">{t('devices.columns.lastUpdate')}</th>
+              {showWindowsActions && (
+                <th className="px-4 py-3 font-medium text-right">{t('devices.columns.actions')}</th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -124,6 +128,8 @@ export function DeviceTable({
                 device={device}
                 configurations={data.configurations}
                 now={now}
+                showActions={showWindowsActions}
+                onDeleteDevice={onDeleteDevice}
               />
             ))}
           </tbody>
@@ -148,7 +154,7 @@ export function DeviceTable({
             <th className="px-4 py-3 font-medium">{t('devices.columns.battery')}</th>
             <th className="px-4 py-3 font-medium">{t('devices.columns.androidVersion')}</th>
             <th className="px-4 py-3 font-medium">{t('devices.columns.publicIp')}</th>
-            {showActions && (
+            {showAndroidActions && (
               <th className="px-4 py-3 font-medium text-right">{t('devices.columns.actions')}</th>
             )}
           </tr>
@@ -159,7 +165,7 @@ export function DeviceTable({
               key={device.id}
               device={device}
               configurations={data.configurations}
-              showActions={showActions}
+              showActions={showAndroidActions}
               now={now}
               onEditDevice={onEditDevice}
               onQrDevice={onQrDevice}
@@ -393,10 +399,14 @@ function WindowsDeviceRow({
   device,
   configurations,
   now,
+  showActions,
+  onDeleteDevice,
 }: {
   device: DeviceView
   configurations: DeviceListView['configurations']
   now: number
+  showActions?: boolean
+  onDeleteDevice?: (device: DeviceView) => void
 }) {
   const { t } = useTranslation()
   const onlineStatus = resolveDeviceOnlineStatusCode(device, now)
@@ -431,6 +441,22 @@ function WindowsDeviceRow({
         {PS_LABELS[device.powershellExecStatus ?? 'idle'] ?? '—'}
       </td>
       <td className="px-4 py-3 whitespace-nowrap">{formatTimestamp(device.lastUpdate)}</td>
+      {showActions && (
+        <td className="px-4 py-3">
+          <div className="flex items-center justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              title={t('devices.actions.delete')}
+              className="text-destructive hover:text-destructive"
+              onClick={() => onDeleteDevice?.(device)}
+            >
+              <Trash2 className="size-3.5" />
+            </Button>
+          </div>
+        </td>
+      )}
     </tr>
   )
 }

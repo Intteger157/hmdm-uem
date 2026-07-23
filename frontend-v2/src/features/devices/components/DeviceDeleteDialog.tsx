@@ -28,7 +28,7 @@ export function DeviceDeleteDialog({ open, onOpenChange, device }: DeviceDeleteD
     }
 
     try {
-      await deleteMutation.mutateAsync(device.id)
+      await deleteMutation.mutateAsync(device)
       toast.success(t('devices.delete.success'))
       onOpenChange(false)
     } catch {
@@ -42,7 +42,9 @@ export function DeviceDeleteDialog({ open, onOpenChange, device }: DeviceDeleteD
         <DialogHeader>
           <DialogTitle>{t('devices.delete.title')}</DialogTitle>
           <DialogDescription>
-            {t('devices.delete.confirm', { number: device?.number ?? '' })}
+            {t('devices.delete.confirm', {
+              number: device?.hostname ?? device?.number ?? '',
+            })}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

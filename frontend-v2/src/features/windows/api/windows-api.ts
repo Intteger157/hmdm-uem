@@ -130,6 +130,16 @@ export async function getWindowsDeviceByHardwareId(hardwareId: string): Promise<
   return mapWindowsDeviceToView(response.data)
 }
 
+/** Deletes a Windows agent by hardware ID. */
+export async function deleteWindowsDevice(hardwareId: string): Promise<void> {
+  if (isMockApiEnabled()) {
+    return
+  }
+
+  const encoded = encodeURIComponent(hardwareId)
+  await windowsApi.delete(`/devices/${encoded}`)
+}
+
 export type WindowsCommandAction =
   | 'sync'
   | 'restart'

@@ -177,7 +177,7 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
             isLoading={isLoading || isFetching}
             onEditDevice={platform === 'android' ? openEdit : undefined}
             onQrDevice={platform === 'android' ? setQrDevice : undefined}
-            onDeleteDevice={platform === 'android' ? setDeleteDevice : undefined}
+            onDeleteDevice={setDeleteDevice}
             onMenuAction={platform === 'android' ? handleMenuAction : undefined}
           />
 
