@@ -10,6 +10,14 @@ export interface DeviceDiskVolume {
 
 export type WindowsEncryptionStatus = 'all' | 'partial' | 'none' | 'unknown'
 
+export type WindowsServiceStatus = 'running' | 'stopped'
+
+export interface WindowsService {
+  name: string
+  displayName: string
+  status: WindowsServiceStatus
+}
+
 export interface InstalledSoftware {
   name: string
   version: string

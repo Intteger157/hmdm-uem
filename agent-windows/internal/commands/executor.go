@@ -46,6 +46,10 @@ func Execute(action string, payload json.RawMessage) Result {
 		return installSoftware(payload)
 	case "wipe":
 		return Result{Success: false, Message: "factory wipe is not implemented yet"}
+	case "get_services":
+		return getServices()
+	case "restart_service":
+		return restartService(payload)
 	default:
 		return Result{Success: false, Message: fmt.Sprintf("unsupported action: %s", action)}
 	}

@@ -1,11 +1,13 @@
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, ChevronRight, Lock, LockKeyhole, LockOpen } from 'lucide-react'
+import { ArrowLeft, ChevronRight, Lock, LockKeyhole, LockOpen, MapPin, Shield, ShieldOff } from 'lucide-react'
 import { DeviceActionsPanel } from '@/features/devices/components/DeviceActionsPanel'
+import { WindowsDeviceServicesTab } from '@/features/devices/components/WindowsDeviceServicesTab'
 import { useDeviceByNumber } from '@/features/devices/hooks/use-device-by-number-query'
 import {
   formatDeviceEnrollTime,
   formatDeviceTimestamp,
+  formatUptime,
   formatWindowsCurrentUser,
   resolveEnrollTime,
   resolveLauncherVersion,
@@ -156,6 +158,12 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
             />
             <WindowsDiskMetrics device={device} na={NA} t={t} />
             <MetricCard
+              label={t('deviceDetail.metrics.uptime')}
+              value={formatUptime(device.uptimeSeconds)}
+            />
+            <AntivirusMetricCard device={device} na={NA} t={t} />
+            <LocationMetricCard device={device} na={NA} t={t} />
+            <MetricCard
               label={t('deviceDetail.metrics.currentUser')}
               value={formatWindowsCurrentUser(device.currentUser, NA, device.localUsers)}
               mono
@@ -205,6 +213,9 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
           <TabsTrigger value="software">{t('deviceDetail.tabs.software')}</TabsTrigger>
           {showLocalUsers ? (
             <TabsTrigger value="users">{t('deviceDetail.tabs.users')}</TabsTrigger>
+          ) : null}
+          {device.platform === 'windows' ? (
+            <TabsTrigger value="services">{t('deviceDetail.tabs.services')}</TabsTrigger>
           ) : null}
           <TabsTrigger value="actions">{t('deviceDetail.tabs.actions')}</TabsTrigger>
         </TabsList>
@@ -293,6 +304,12 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
           </TabsContent>
         ) : null}
 
+        {device.platform === 'windows' ? (
+          <TabsContent value="services" className="mt-4">
+            <WindowsDeviceServicesTab hardwareId={device.number} />
+          </TabsContent>
+        ) : null}
+
         <TabsContent value="actions" className="mt-4">
           <DeviceActionsPanel device={device} platform={device.platform} />
         </TabsContent>
@@ -310,6 +327,109 @@ function formatDriveEncryptStatus(status: DeviceDiskVolume['encryptStatus'], t: 
     default:
       return t('deviceDetail.encryptionUnknown')
   }
+}
+
+function AntivirusMetricCard({
+  device,
+  na,
+  t,
+}: {
+  device: DeviceView
+  na: string
+  t: TFunction
+}) {
+  const name = device.antivirusName?.trim() || t('deviceDetail.antivirus.unknown')
+  const active = device.antivirusActive === true
+  const Icon = active ? Shield : ShieldOff
+
+  return (
+    <Card>
+      <CardHeader className="px-4 py-3 pb-1">
+        <CardTitle className="text-xs font-medium text-muted-foreground">
+          {t('deviceDetail.metrics.antivirus')}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-4 pb-3 pt-0">
+        <div className="flex items-center gap-3 text-sm font-medium">
+          <Icon
+            className={cn(
+              'size-5 shrink-0',
+              active ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive',
+            )}
+            strokeWidth={2.25}
+          />
+          <div className="min-w-0">
+            <p className="truncate">{name}</p>
+            <p className="text-xs font-normal text-muted-foreground">
+              {active ? t('deviceDetail.antivirus.active') : t('deviceDetail.antivirus.inactive')}
+            </p>
+          </div>
+        </div>
+        {!device.antivirusName ? <span className="sr-only">{na}</span> : null}
+      </CardContent>
+    </Card>
+  )
+}
+
+function LocationMetricCard({
+  device,
+  na,
+  t,
+}: {
+  device: DeviceView
+  na: string
+  t: TFunction
+}) {
+  const hasCoordinates =
+    device.latitude != null &&
+    device.longitude != null &&
+    (device.latitude !== 0 || device.longitude !== 0)
+  const mapsUrl = hasCoordinates
+    ? `https://www.google.com/maps?q=${device.latitude},${device.longitude}`
+    : undefined
+
+  return (
+    <Card>
+      <CardHeader className="px-4 py-3 pb-1">
+        <CardTitle className="text-xs font-medium text-muted-foreground">
+          {t('deviceDetail.metrics.location')}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-4 pb-3 pt-0">
+        <div className="flex items-start gap-3 text-sm font-medium">
+          <MapPin className="mt-0.5 size-5 shrink-0 text-primary" strokeWidth={2.25} />
+          <div className="min-w-0 space-y-1">
+            {hasCoordinates ? (
+              <>
+                <p className="font-mono text-xs">
+                  {device.latitude!.toFixed(6)}, {device.longitude!.toFixed(6)}
+                </p>
+                {mapsUrl ? (
+                  <a
+                    href={mapsUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-block text-xs font-normal text-primary hover:underline"
+                  >
+                    {t('deviceDetail.location.openMap')}
+                  </a>
+                ) : null}
+              </>
+            ) : device.publicIp ? (
+              <p className="font-mono text-xs">{device.publicIp}</p>
+            ) : (
+              <p>{na}</p>
+            )}
+            {device.wifiBssid ? (
+              <p className="text-xs font-normal text-muted-foreground">
+                {t('deviceDetail.location.wifiBssid', { bssid: device.wifiBssid })}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
 }
 
 function DriveEncryptionIcon({

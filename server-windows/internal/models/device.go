@@ -33,6 +33,13 @@ type InventoryRequest struct {
 	Disks             []InventoryDiskVolume `json:"disks"`
 	LocalUsers        []InventoryLocalUser  `json:"local_users"`
 	InstalledSoftware []InventorySoftware  `json:"installed_software"`
+	UptimeSeconds     int64                `json:"uptime_seconds"`
+	AntivirusName     string               `json:"antivirus_name"`
+	AntivirusActive   bool                 `json:"antivirus_active"`
+	Latitude          float64              `json:"latitude"`
+	Longitude         float64              `json:"longitude"`
+	PublicIP          string               `json:"public_ip"`
+	WifiBSSID         string               `json:"wifi_bssid"`
 }
 
 // WindowsDevice is the persisted Windows agent record in PostgreSQL.
@@ -55,6 +62,15 @@ type WindowsDevice struct {
 	Disks             json.RawMessage `gorm:"type:jsonb"`
 	LocalUsers        json.RawMessage `gorm:"type:jsonb"`
 	InstalledSoftware json.RawMessage `gorm:"type:jsonb"`
+	Services          json.RawMessage `gorm:"type:jsonb"`
+	UptimeSeconds     int64
+	AntivirusName     string
+	AntivirusActive   bool
+	Latitude          float64
+	Longitude         float64
+	PublicIP          string
+	WifiBSSID         string
+	ServicesUpdatedAt *time.Time
 	LastCheckin       time.Time
 	AgentStatus       string     `gorm:"not null;default:active"`
 	UninstalledAt     *time.Time
@@ -89,6 +105,14 @@ type WindowsDeviceJSON struct {
 	Disks             []DiskVolumeRecord        `json:"disks,omitempty"`
 	LocalUsers        []LocalUserRecord         `json:"localUsers,omitempty"`
 	InstalledSoftware []InstalledSoftwareRecord `json:"installedSoftware,omitempty"`
+	UptimeSeconds     int64                     `json:"uptimeSeconds,omitempty"`
+	AntivirusName     string                    `json:"antivirusName,omitempty"`
+	AntivirusActive   bool                      `json:"antivirusActive"`
+	Latitude          float64                   `json:"latitude,omitempty"`
+	Longitude         float64                   `json:"longitude,omitempty"`
+	PublicIP          string                    `json:"publicIp,omitempty"`
+	WifiBSSID         string                    `json:"wifiBssid,omitempty"`
+	ServicesUpdatedAt *time.Time                `json:"servicesUpdatedAt,omitempty"`
 	LastCheckin       time.Time                 `json:"lastCheckin"`
 	AgentStatus       string                    `json:"agentStatus"`
 	UninstalledAt     *time.Time                `json:"uninstalledAt,omitempty"`
@@ -119,6 +143,14 @@ func ToWindowsDeviceJSON(device WindowsDevice) WindowsDeviceJSON {
 		Disks:             decodeDisks(device.Disks),
 		LocalUsers:        decodeLocalUsers(device.LocalUsers),
 		InstalledSoftware: decodeInstalledSoftware(device.InstalledSoftware),
+		UptimeSeconds:     device.UptimeSeconds,
+		AntivirusName:     device.AntivirusName,
+		AntivirusActive:   device.AntivirusActive,
+		Latitude:          device.Latitude,
+		Longitude:         device.Longitude,
+		PublicIP:          device.PublicIP,
+		WifiBSSID:         device.WifiBSSID,
+		ServicesUpdatedAt: device.ServicesUpdatedAt,
 		LastCheckin:       device.LastCheckin,
 		AgentStatus:       normalizeAgentStatus(device.AgentStatus),
 		UninstalledAt:     device.UninstalledAt,
@@ -221,6 +253,43 @@ func EncodeInstalledSoftware(software []InventorySoftware) (json.RawMessage, err
 			Version:     app.Version,
 			Publisher:   app.Publisher,
 			InstallDate: app.InstallDate,
+		})
+	}
+
+	encoded, err := json.Marshal(records)
+	if err != nil {
+		return nil, err
+	}
+	return encoded, nil
+}
+
+// DecodeServices exposes cached service records for handlers.
+func DecodeServices(raw json.RawMessage) []ServiceRecord {
+	return decodeServices(raw)
+}
+
+func decodeServices(raw json.RawMessage) []ServiceRecord {
+	if len(raw) == 0 {
+		return nil
+	}
+	var services []ServiceRecord
+	if err := json.Unmarshal(raw, &services); err != nil {
+		return nil
+	}
+	return services
+}
+
+func EncodeServicesFromAgent(services []InventoryService) (json.RawMessage, error) {
+	if len(services) == 0 {
+		return nil, nil
+	}
+
+	records := make([]ServiceRecord, 0, len(services))
+	for _, service := range services {
+		records = append(records, ServiceRecord{
+			Name:        service.Name,
+			DisplayName: service.DisplayName,
+			Status:      service.Status,
 		})
 	}
 

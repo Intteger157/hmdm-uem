@@ -26,6 +26,13 @@ type DeviceInfo struct {
 	Model             string                  `json:"model,omitempty"`
 	SerialNumber      string                  `json:"serial_number,omitempty"`
 	CurrentUser       string                  `json:"current_user,omitempty"`
+	UptimeSeconds     int64                   `json:"uptime_seconds,omitempty"`
+	AntivirusName     string                  `json:"antivirus_name,omitempty"`
+	AntivirusActive   bool                    `json:"antivirus_active"`
+	Latitude          float64                 `json:"latitude,omitempty"`
+	Longitude         float64                 `json:"longitude,omitempty"`
+	PublicIP          string                  `json:"public_ip,omitempty"`
+	WifiBSSID         string                  `json:"wifi_bssid,omitempty"`
 	DiskEncrypted     bool                    `json:"disk_encrypted"`
 	EncryptionStatus  string                  `json:"encryption_status,omitempty"`
 	Disks             []DiskVolumeInfo        `json:"disks,omitempty"`
@@ -102,6 +109,10 @@ func CollectInfo() (*DeviceInfo, error) {
 		return nil, fmt.Errorf("extended inventory: %w", err)
 	}
 
+	uptimeSeconds := collectUptimeSeconds()
+	antivirusName, antivirusActive := collectAntivirusStatus()
+	latitude, longitude, publicIP, wifiBSSID := collectLocationInfo()
+
 	return &DeviceInfo{
 		Hostname:          hostname,
 		OSVersion:         formatOSVersion(hostInfo),
@@ -109,6 +120,13 @@ func CollectInfo() (*DeviceInfo, error) {
 		RAM_GB:            bytesToRoundedGB(memInfo.Total),
 		DiskTotal_GB:      primaryDisk.Total_GB,
 		DiskUsed_GB:       primaryDisk.Used_GB,
+		UptimeSeconds:     uptimeSeconds,
+		AntivirusName:     antivirusName,
+		AntivirusActive:   antivirusActive,
+		Latitude:          latitude,
+		Longitude:         longitude,
+		PublicIP:          publicIP,
+		WifiBSSID:         wifiBSSID,
 		DiskEncrypted:     diskEncrypted,
 		EncryptionStatus:  encryptionStatus,
 		Disks:             diskVolumes,

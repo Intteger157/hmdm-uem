@@ -51,6 +51,28 @@ export function resolvePublicIp(device: DeviceView): string | undefined {
   return ip || undefined
 }
 
+export function formatUptime(seconds?: number): string {
+  if (!seconds || seconds <= 0) {
+    return NA
+  }
+
+  const days = Math.floor(seconds / 86_400)
+  const hours = Math.floor((seconds % 86_400) / 3_600)
+  const minutes = Math.floor((seconds % 3_600) / 60)
+
+  const parts: string[] = []
+  if (days > 0) {
+    parts.push(`${days} day${days === 1 ? '' : 's'}`)
+  }
+  if (hours > 0) {
+    parts.push(`${hours} hour${hours === 1 ? '' : 's'}`)
+  }
+  if (parts.length === 0) {
+    parts.push(`${minutes} min`)
+  }
+  return parts.join(', ')
+}
+
 /** Hides machine/service accounts that the agent may report instead of a logged-in user. */
 export function formatWindowsCurrentUser(
   raw?: string,

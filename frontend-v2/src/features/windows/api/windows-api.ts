@@ -13,6 +13,7 @@ import type {
   InstalledSoftware,
   LocalUser,
   WindowsEncryptionStatus,
+  WindowsService,
 } from '@/shared/api/types/device-detail'
 
 /** Go server-windows list item (GET /rest/windows/devices). */
@@ -34,6 +35,13 @@ export interface WindowsDeviceDto {
   disks?: DeviceDiskVolume[]
   localUsers?: LocalUser[]
   installedSoftware?: InstalledSoftware[]
+  uptimeSeconds?: number
+  antivirusName?: string
+  antivirusActive?: boolean
+  latitude?: number
+  longitude?: number
+  publicIp?: string
+  wifiBssid?: string
   lastCheckin: string
   agentStatus?: string
   uninstalledAt?: string
@@ -89,6 +97,13 @@ function mapWindowsDeviceToView(raw: WindowsDeviceDto): DeviceView {
     powershellExecStatus: 'idle',
     localUsers: raw.localUsers ?? [],
     installedSoftware: raw.installedSoftware ?? [],
+    uptimeSeconds: raw.uptimeSeconds || undefined,
+    antivirusName: raw.antivirusName || undefined,
+    antivirusActive: raw.antivirusActive,
+    latitude: raw.latitude || undefined,
+    longitude: raw.longitude || undefined,
+    publicIp: raw.publicIp || undefined,
+    wifiBssid: raw.wifiBssid || undefined,
     lastUpdate: Number.isFinite(lastUpdate) ? lastUpdate : undefined,
   }
 }
@@ -158,10 +173,18 @@ export type WindowsCommandAction =
   | 'powershell'
   | 'install'
   | 'wipe'
+  | 'get_services'
+  | 'restart_service'
 
 export interface WindowsCommandPayload {
   script?: string
   url?: string
+  service_name?: string
+}
+
+export interface WindowsDeviceServicesResponse {
+  items: WindowsService[]
+  updatedAt?: string
 }
 
 interface EnqueueCommandResponse {
@@ -210,6 +233,58 @@ export async function getLatestWindowsDeviceCommand(
   const encoded = encodeURIComponent(hardwareId)
   const response = await windowsApi.get<WindowsLatestCommandResponse>(
     `/devices/${encoded}/commands/latest`,
+  )
+  return response.data
+}
+
+/** Returns cached Windows services for a device. */
+export async function getWindowsDeviceServices(
+  hardwareId: string,
+): Promise<WindowsDeviceServicesResponse> {
+  if (isMockApiEnabled()) {
+    return {
+      items: [
+        { name: 'wuauserv', displayName: 'Windows Update', status: 'running' },
+        { name: 'Spooler', displayName: 'Print Spooler', status: 'stopped' },
+      ],
+    }
+  }
+
+  const encoded = encodeURIComponent(hardwareId)
+  const response = await windowsApi.get<WindowsDeviceServicesResponse>(
+    `/devices/${encoded}/services`,
+  )
+  return response.data
+}
+
+/** Asks the agent to refresh the Windows services list. */
+export async function refreshWindowsDeviceServices(
+  hardwareId: string,
+): Promise<EnqueueCommandResponse> {
+  if (isMockApiEnabled()) {
+    return { id: Date.now(), action: 'get_services', status: 'pending' }
+  }
+
+  const encoded = encodeURIComponent(hardwareId)
+  const response = await windowsApi.post<EnqueueCommandResponse>(
+    `/devices/${encoded}/services/refresh`,
+  )
+  return response.data
+}
+
+/** Queues a restart command for one Windows service. */
+export async function restartWindowsDeviceService(
+  hardwareId: string,
+  serviceName: string,
+): Promise<EnqueueCommandResponse> {
+  if (isMockApiEnabled()) {
+    return { id: Date.now(), action: 'restart_service', status: 'pending' }
+  }
+
+  const encoded = encodeURIComponent(hardwareId)
+  const encodedService = encodeURIComponent(serviceName)
+  const response = await windowsApi.post<EnqueueCommandResponse>(
+    `/devices/${encoded}/services/${encodedService}/restart`,
   )
   return response.data
 }

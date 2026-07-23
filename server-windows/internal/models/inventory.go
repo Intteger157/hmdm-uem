@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 // InventoryDiskVolume mirrors one Windows drive in inventory payload.
 type InventoryDiskVolume struct {
 	MountPoint    string `json:"mount_point"`
@@ -45,4 +47,24 @@ type InventorySoftware struct {
 	Version     string `json:"version"`
 	Publisher   string `json:"publisher"`
 	InstallDate string `json:"install_date"`
+}
+
+// InventoryService mirrors one Windows service in agent payload.
+type InventoryService struct {
+	Name        string `json:"name"`
+	DisplayName string `json:"display_name"`
+	Status      string `json:"status"`
+}
+
+// ServiceRecord is stored in windows_devices.services JSONB.
+type ServiceRecord struct {
+	Name        string `json:"name"`
+	DisplayName string `json:"displayName"`
+	Status      string `json:"status"`
+}
+
+// DeviceServicesResponse is returned by GET /rest/windows/devices/:hardwareId/services.
+type DeviceServicesResponse struct {
+	Items     []ServiceRecord `json:"items"`
+	UpdatedAt *time.Time      `json:"updatedAt,omitempty"`
 }

@@ -107,6 +107,13 @@ export interface DeviceView {
   currentUser?: string
   installedSoftware?: InstalledSoftware[]
   localUsers?: LocalUser[]
+  /** Windows security & location metrics */
+  uptimeSeconds?: number
+  antivirusName?: string
+  antivirusActive?: boolean
+  latitude?: number
+  longitude?: number
+  wifiBssid?: string
 }
 
 export interface ConfigurationView {

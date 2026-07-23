@@ -23,6 +23,8 @@ var allowedCommandActions = map[string]struct{}{
 	"powershell":       {},
 	"install":          {},
 	"wipe":             {},
+	"get_services":     {},
+	"restart_service":  {},
 }
 
 // EnqueueCommand creates a pending remote command for a Windows device.
@@ -194,6 +196,10 @@ func (h *WindowsHandler) CompleteCommand(c *gin.Context) {
 		log.Printf("[complete-command] save failed: id=%d err=%v", commandID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save command result"})
 		return
+	}
+
+	if command.Action == "get_services" {
+		persistServicesFromCommandResult(deviceID, command.Result, req.Success)
 	}
 
 	log.Printf("[complete-command] id=%d hardware_id=%q action=%q success=%v", commandID, deviceID, command.Action, req.Success)

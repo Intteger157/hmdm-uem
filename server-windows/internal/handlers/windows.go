@@ -123,6 +123,13 @@ func (h *WindowsHandler) Inventory(c *gin.Context) {
 	device.Model = req.Model
 	device.SerialNumber = req.SerialNumber
 	device.CurrentUser = req.CurrentUser
+	device.UptimeSeconds = req.UptimeSeconds
+	device.AntivirusName = req.AntivirusName
+	device.AntivirusActive = req.AntivirusActive
+	device.Latitude = req.Latitude
+	device.Longitude = req.Longitude
+	device.PublicIP = req.PublicIP
+	device.WifiBSSID = req.WifiBSSID
 	device.DiskEncrypted = req.DiskEncrypted
 	device.EncryptionStatus = req.EncryptionStatus
 	device.LastCheckin = time.Now()
