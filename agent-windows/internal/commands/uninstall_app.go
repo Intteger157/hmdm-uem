@@ -9,8 +9,8 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
-	"syscall"
-	"time"
+
+	"github.com/hmdm/agent-windows/internal/procexec"
 )
 
 var msiInstallFlagPattern = regexp.MustCompile(`(?i)/I([^\s"]*)`)
@@ -33,11 +33,10 @@ func uninstallApp(payload string) Result {
 
 	prepared := prepareUninstallCommand(uninstallString)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), procexec.InstallTimeout)
 	defer cancel()
 
-	cmd, executionLine := buildUninstallCommand(ctx, prepared)
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	cmd, executionLine := buildUninstallCommand(prepared)
 
 	logLine := fmt.Sprintf(
 		"App: %s\nPrepared command: %s\nExecution: %s",
@@ -46,9 +45,12 @@ func uninstallApp(payload string) Result {
 		executionLine,
 	)
 
-	output, err := captureCommandOutput(cmd)
+	output, err := captureCommandOutput(ctx, cmd)
 	combined := strings.TrimSpace(logLine + "\n\n" + output)
 	if err != nil {
+		if procexec.IsTimeout(err) {
+			return Result{Success: false, Message: strings.TrimSpace(logLine + "\n\n" + procexec.InstallTimeoutMessage)}
+		}
 		if combined == logLine {
 			combined = logLine + "\n\n" + err.Error()
 		}
@@ -61,7 +63,7 @@ func uninstallApp(payload string) Result {
 	return Result{Success: true, Message: combined}
 }
 
-func buildUninstallCommand(ctx context.Context, prepared string) (*exec.Cmd, string) {
+func buildUninstallCommand(prepared string) (*exec.Cmd, string) {
 	if exe, args, ok := parseUninstallCommandLine(prepared); ok {
 		exe = strings.TrimSpace(strings.Trim(exe, `"`))
 		if exe != "" {
@@ -69,11 +71,11 @@ func buildUninstallCommand(ctx context.Context, prepared string) (*exec.Cmd, str
 			if len(args) > 0 {
 				executionLine = exe + " " + strings.Join(args, " ")
 			}
-			return exec.CommandContext(ctx, exe, args...), executionLine
+			return exec.Command(exe, args...), executionLine
 		}
 	}
 
-	return exec.CommandContext(ctx, "cmd.exe", "/S", "/C", prepared), "cmd.exe /S /C " + prepared
+	return exec.Command("cmd.exe", "/S", "/C", prepared), "cmd.exe /S /C " + prepared
 }
 
 func normalizeUninstallString(raw string) string {

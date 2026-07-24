@@ -3,19 +3,19 @@
 package apps
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
+
+	"github.com/hmdm/agent-windows/internal/procexec"
 )
 
 const (
 	exitCodeSuccessRebootRequired = 3010
-	installProcessTimeout         = 15 * time.Minute
+	installProcessTimeout         = procexec.InstallTimeout
 )
 
 var exeSilentArgSets = [][]string{
@@ -42,7 +42,7 @@ func runURLInstaller(installerPath, installArgs string) (installRunResult, error
 	if ext == ".msi" {
 		args := strings.Fields(customArgs)
 		cmd, cmdLine := buildInstallerCommandWithArgs(installerPath, args)
-		return runPreparedInstallerWithTimeout(cmd, cmdLine, installProcessTimeout)
+		return runPreparedInstaller(cmd, cmdLine, installProcessTimeout, true)
 	}
 
 	if customArgs != "" {
@@ -70,14 +70,8 @@ func runURLInstaller(installerPath, installArgs string) (installRunResult, error
 }
 
 func runEXEInstaller(installerPath string, args []string, cmdLine string) (installRunResult, error) {
-	script := buildEXEInstallPowerShell(installerPath, args)
-	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script)
-	return runPreparedInstallerWithTimeout(cmd, cmdLine, installProcessTimeout)
-}
-
-func buildInstallerCommand(installerPath, installArgs string) (*exec.Cmd, string) {
-	args := strings.Fields(strings.TrimSpace(installArgs))
-	return buildInstallerCommandWithArgs(installerPath, args)
+	cmd, _ := buildInstallerCommandWithArgs(installerPath, args)
+	return runPreparedInstaller(cmd, cmdLine, installProcessTimeout, false)
 }
 
 func buildInstallerCommandWithArgs(installerPath string, args []string) (*exec.Cmd, string) {
@@ -100,40 +94,7 @@ func buildInstallerCommandWithArgs(installerPath string, args []string) (*exec.C
 	}
 }
 
-func buildEXEInstallPowerShell(installerPath string, args []string) string {
-	escapedPath := escapePowerShellSingleQuoted(installerPath)
-	argList := formatPowerShellArgumentList(args)
-
-	// Do not redirect stdout/stderr: many GUI EXE installers hang when streams are redirected.
-	return fmt.Sprintf(`
-$ErrorActionPreference = 'Stop'
-$installerPath = '%s'
-$argList = @(%s)
-$process = Start-Process -FilePath $installerPath -ArgumentList $argList -Wait -PassThru -WindowStyle Hidden
-if ($null -eq $process) {
-  [Console]::Error.WriteLine('Start-Process returned null')
-  exit 1
-}
-exit $process.ExitCode
-`, escapedPath, argList)
-}
-
-func escapePowerShellSingleQuoted(value string) string {
-	return strings.ReplaceAll(value, "'", "''")
-}
-
-func formatPowerShellArgumentList(args []string) string {
-	if len(args) == 0 {
-		return ""
-	}
-	quoted := make([]string, len(args))
-	for i, arg := range args {
-		quoted[i] = "'" + escapePowerShellSingleQuoted(arg) + "'"
-	}
-	return strings.Join(quoted, ", ")
-}
-
-func runPreparedInstallerWithTimeout(cmd *exec.Cmd, cmdLine string, timeout time.Duration) (installRunResult, error) {
+func runPreparedInstaller(cmd *exec.Cmd, cmdLine string, timeout time.Duration, captureOutput bool) (installRunResult, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
@@ -144,34 +105,25 @@ func runPreparedInstallerWithTimeout(cmd *exec.Cmd, cmdLine string, timeout time
 	var execArgs []string
 	if len(cmd.Args) > 1 {
 		execArgs = cmd.Args[1:]
-	} else if execPath != "" && len(cmd.Args) == 1 {
-		execArgs = nil
 	}
 
-	wrapped := exec.CommandContext(ctx, execPath, execArgs...)
+	wrapped := exec.Command(execPath, execArgs...)
 	wrapped.Dir = cmd.Dir
 	wrapped.Env = cmd.Env
-	wrapped.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 
-	var stdout, stderr bytes.Buffer
-	wrapped.Stdout = &stdout
-	wrapped.Stderr = &stderr
-
-	runErr := wrapped.Run()
+	runResult, err := procexec.Run(ctx, wrapped, captureOutput)
 	result := installRunResult{
-		ExitCode:    commandExitCode(wrapped, runErr),
+		ExitCode:    runResult.ExitCode,
 		CommandLine: cmdLine,
-		Stdout:      strings.TrimSpace(stdout.String()),
-		Stderr:      strings.TrimSpace(stderr.String()),
+		Stdout:      runResult.Stdout,
+		Stderr:      runResult.Stderr,
 	}
 
-	if ctx.Err() == context.DeadlineExceeded {
-		timeoutMessage := fmt.Sprintf("Install timed out after %s", timeout)
+	if procexec.IsTimeout(err) {
 		if result.Stderr != "" {
-			result.Stderr = result.Stderr + "\n" + timeoutMessage
-		} else {
-			result.Stderr = timeoutMessage
+			result.Stderr += "\n"
 		}
+		result.Stderr += procexec.InstallTimeoutMessage
 		if result.ExitCode == 0 {
 			result.ExitCode = -1
 		}
@@ -182,6 +134,9 @@ func runPreparedInstallerWithTimeout(cmd *exec.Cmd, cmdLine string, timeout time
 		return result, nil
 	}
 
+	if err != nil {
+		return result, fmt.Errorf("installer failed: %s", formatInstallResult(result))
+	}
 	return result, fmt.Errorf("installer failed: %s", formatInstallResult(result))
 }
 
@@ -214,19 +169,6 @@ func formatInstallResult(result installRunResult) string {
 		b.WriteString(result.Stderr)
 	}
 	return strings.TrimSpace(b.String())
-}
-
-func commandExitCode(cmd *exec.Cmd, runErr error) int {
-	if cmd != nil && cmd.ProcessState != nil {
-		return cmd.ProcessState.ExitCode()
-	}
-	if runErr == nil {
-		return 0
-	}
-	if exitErr, ok := runErr.(*exec.ExitError); ok {
-		return exitErr.ExitCode()
-	}
-	return -1
 }
 
 func quoteCommandParts(parts []string) []string {

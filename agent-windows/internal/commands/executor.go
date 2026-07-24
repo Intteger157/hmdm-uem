@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hmdm/agent-windows/internal/procexec"
 	"github.com/hmdm/agent-windows/internal/session"
 )
 
@@ -155,6 +156,10 @@ func installSoftware(payload json.RawMessage) Result {
 	defer os.RemoveAll(tempDir)
 
 	installerPath := tempDir + `\installer.exe`
+
+	downloadCtx, downloadCancel := context.WithTimeout(context.Background(), procexec.InstallTimeout)
+	defer downloadCancel()
+
 	downloadCmd := exec.Command(
 		"powershell.exe",
 		"-NoProfile",
@@ -162,15 +167,22 @@ func installSoftware(payload json.RawMessage) Result {
 		"-Command",
 		fmt.Sprintf("Invoke-WebRequest -Uri '%s' -OutFile '%s'", escapePowerShellSingleQuoted(url), escapePowerShellSingleQuoted(installerPath)),
 	)
-	downloadCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	if output, err := downloadCmd.CombinedOutput(); err != nil {
-		return Result{Success: false, Message: fmt.Sprintf("download failed: %v (%s)", err, strings.TrimSpace(string(output)))}
+	downloadOutput, err := procexec.CombinedOutput(downloadCtx, downloadCmd)
+	if err != nil {
+		return Result{Success: false, Message: fmt.Sprintf("download failed: %v (%s)", err, strings.TrimSpace(downloadOutput))}
 	}
 
+	installCtx, installCancel := context.WithTimeout(context.Background(), procexec.InstallTimeout)
+	defer installCancel()
+
 	installCmd := exec.Command(installerPath, "/quiet", "/norestart")
-	installCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	if output, err := installCmd.CombinedOutput(); err != nil {
-		return Result{Success: false, Message: fmt.Sprintf("install failed: %v (%s)", err, strings.TrimSpace(string(output)))}
+	installOutput, err := procexec.CombinedOutput(installCtx, installCmd)
+	if err != nil {
+		message := strings.TrimSpace(installOutput)
+		if procexec.IsTimeout(err) {
+			return Result{Success: false, Message: procexec.InstallTimeoutMessage}
+		}
+		return Result{Success: false, Message: fmt.Sprintf("install failed: %v (%s)", err, message)}
 	}
 	return Result{Success: true, Message: "installer launched successfully"}
 }

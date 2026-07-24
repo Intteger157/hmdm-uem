@@ -5,14 +5,14 @@ package commands
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
-	"syscall"
 	"time"
+
+	"github.com/hmdm/agent-windows/internal/procexec"
 )
 
 var kbDigitsPattern = regexp.MustCompile(`[0-9]+`)
@@ -46,13 +46,12 @@ func uninstallWindowsUpdate(kb string) Result {
 		escapePowerShellSingleQuoted(kb),
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), procexec.InstallTimeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script)
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script)
 
-	output, err := captureCommandOutput(cmd)
+	output, err := captureCommandOutput(ctx, cmd)
 	if err != nil {
 		if strings.TrimSpace(output) == "" {
 			output = err.Error()
@@ -95,10 +94,9 @@ if ($Update) {
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script)
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script)
 
-	output, err := captureCommandOutput(cmd)
+	output, err := captureCommandOutput(ctx, cmd)
 	output = strings.TrimSpace(output)
 	if err != nil {
 		if output == "" {
@@ -121,36 +119,32 @@ if ($Update) {
 	return Result{Success: true, Message: output}
 }
 
-func captureCommandOutput(cmd *exec.Cmd) (string, error) {
-	stdoutPipe, err := cmd.StdoutPipe()
-	if err != nil {
-		return "", err
-	}
-	stderrPipe, err := cmd.StderrPipe()
-	if err != nil {
-		return "", err
-	}
-
-	if err := cmd.Start(); err != nil {
-		return "", err
-	}
-
-	stdoutBytes, _ := io.ReadAll(io.LimitReader(stdoutPipe, 512*1024))
-	stderrBytes, _ := io.ReadAll(io.LimitReader(stderrPipe, 512*1024))
-	runErr := cmd.Wait()
+func captureCommandOutput(ctx context.Context, cmd *exec.Cmd) (string, error) {
+	result, err := procexec.Run(ctx, cmd, true)
 
 	var parts []string
-	if len(stdoutBytes) > 0 {
-		parts = append(parts, strings.TrimSpace(string(stdoutBytes)))
+	if result.Stdout != "" {
+		parts = append(parts, result.Stdout)
 	}
-	if len(stderrBytes) > 0 {
-		parts = append(parts, strings.TrimSpace(string(stderrBytes)))
+	if result.Stderr != "" {
+		parts = append(parts, result.Stderr)
 	}
 	combined := strings.TrimSpace(strings.Join(parts, "\n"))
 	if len(combined) > 16000 {
 		combined = combined[:16000] + "..."
 	}
-	return combined, runErr
+
+	if procexec.IsTimeout(err) {
+		if combined != "" {
+			combined += "\n"
+		}
+		combined += procexec.InstallTimeoutMessage
+		return combined, fmt.Errorf("%s", procexec.InstallTimeoutMessage)
+	}
+	if err != nil {
+		return combined, err
+	}
+	return combined, nil
 }
 
 func batteryReport() Result {
@@ -160,9 +154,8 @@ func batteryReport() Result {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "cmd.exe", "/c", fmt.Sprintf("powercfg /batteryreport /output %s", outputPath))
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	if output, err := captureCommandOutput(cmd); err != nil {
+	cmd := exec.Command("cmd.exe", "/c", fmt.Sprintf("powercfg /batteryreport /output %s", outputPath))
+	if output, err := captureCommandOutput(ctx, cmd); err != nil {
 		message := strings.TrimSpace(output)
 		if message == "" {
 			message = err.Error()

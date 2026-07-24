@@ -3,6 +3,7 @@
 package apps
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -15,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hmdm/agent-windows/internal/procexec"
 	"github.com/hmdm/agent-windows/internal/system"
 )
 
@@ -32,6 +34,7 @@ const (
 var (
 	deployAppsMu      sync.Mutex
 	deployingAppIDs   = map[uint]bool{}
+	deployingAppNames = map[string]bool{}
 )
 
 // RequiredApp is one application the agent must install or update.
@@ -107,11 +110,11 @@ func deployApp(app RequiredApp, opts DeployOptions, state *AppsState, installed 
 		return false, nil
 	}
 
-	if !beginAppDeploy(app.ID) {
+	if !beginAppDeploy(app.ID, app.Name) {
 		log.Printf("app deploy: skip id=%d name=%q, install already in progress on device", app.ID, app.Name)
 		return false, nil
 	}
-	defer endAppDeploy(app.ID)
+	defer endAppDeploy(app.ID, app.Name)
 
 	appType := normalizeAppType(app.AppType)
 	switch appType {
@@ -313,10 +316,19 @@ func runWingetOutput(args ...string) (string, error) {
 		fullArgs = append(fullArgs, "--silent")
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), procexec.InstallTimeout)
+	defer cancel()
+
 	cmd := exec.Command("winget", fullArgs...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	output, err := cmd.CombinedOutput()
-	message := strings.TrimSpace(string(output))
+	result, err := procexec.Run(ctx, cmd, true)
+	message := strings.TrimSpace(strings.Join(filterCommandOutput(result.Stdout, result.Stderr), "\n"))
+	if procexec.IsTimeout(err) {
+		if message != "" {
+			message += "\n"
+		}
+		message += procexec.InstallTimeoutMessage
+		return message, fmt.Errorf("%s", procexec.InstallTimeoutMessage)
+	}
 	if err != nil {
 		if message == "" {
 			return message, err
@@ -324,6 +336,17 @@ func runWingetOutput(args ...string) (string, error) {
 		return message, fmt.Errorf("%w: %s", err, message)
 	}
 	return message, nil
+}
+
+func filterCommandOutput(parts ...string) []string {
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			out = append(out, part)
+		}
+	}
+	return out
 }
 
 func reportStatus(reporter StatusReporter, appID uint, appName, status, errMsg string) {
@@ -443,18 +466,30 @@ func unblockDownloadedFile(path string) error {
 	return nil
 }
 
-func beginAppDeploy(appID uint) bool {
+func beginAppDeploy(appID uint, appName string) bool {
 	deployAppsMu.Lock()
 	defer deployAppsMu.Unlock()
-	if deployingAppIDs[appID] {
+
+	normalizedName := normalizeDeployAppName(appName)
+	if deployingAppIDs[appID] || (normalizedName != "" && deployingAppNames[normalizedName]) {
 		return false
 	}
 	deployingAppIDs[appID] = true
+	if normalizedName != "" {
+		deployingAppNames[normalizedName] = true
+	}
 	return true
 }
 
-func endAppDeploy(appID uint) {
+func endAppDeploy(appID uint, appName string) {
 	deployAppsMu.Lock()
 	defer deployAppsMu.Unlock()
 	delete(deployingAppIDs, appID)
+	if normalizedName := normalizeDeployAppName(appName); normalizedName != "" {
+		delete(deployingAppNames, normalizedName)
+	}
+}
+
+func normalizeDeployAppName(name string) string {
+	return strings.ToLower(strings.TrimSpace(name))
 }
