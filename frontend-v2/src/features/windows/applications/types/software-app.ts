@@ -59,6 +59,7 @@ export interface UploadApplicationResponse {
   url: string
   name: string
   version: string
+  publisher?: string
   detectedArgs: string
   appId?: number
   versionId?: number

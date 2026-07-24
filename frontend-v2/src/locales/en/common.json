@@ -1243,6 +1243,7 @@
   "windowsAppCatalog.form.name": "Application name",
   "windowsAppCatalog.form.version": "Expected version",
   "windowsAppCatalog.form.versionHint": "Detected from installer metadata when possible. You can edit it before saving.",
+  "windowsAppCatalog.form.publisherHint": "Detected from installer metadata when possible. You can edit it before saving.",
   "windowsAppCatalog.form.downloadUrl": "Download URL",
   "windowsAppCatalog.form.installArgs": "Install arguments",
   "windowsAppCatalog.form.tabGeneral": "General",

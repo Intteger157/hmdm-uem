@@ -69,6 +69,7 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
   const versionUploadRef = useRef<HTMLInputElement>(null)
   const [uploadingVersion, setUploadingVersion] = useState(false)
   const [versionOverride, setVersionOverride] = useState('')
+  const [publisherOverride, setPublisherOverride] = useState('')
   const [activeTab, setActiveTab] = useState('general')
 
   const form = useForm<GeneralFormValues>({
@@ -79,6 +80,7 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
     if (!open) {
       setActiveTab('general')
       setVersionOverride('')
+      setPublisherOverride('')
       return
     }
     const app = appQuery.data
@@ -119,11 +121,14 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
     setUploadingVersion(true)
     try {
       const manualVersion = versionOverride.trim()
+      const manualPublisher = publisherOverride.trim()
       const result = await uploadSoftwareApp(file, {
         appId,
         ...(manualVersion ? { version: manualVersion } : {}),
+        ...(manualPublisher ? { publisher: manualPublisher } : {}),
       })
       setVersionOverride(result.version)
+      setPublisherOverride(result.publisher?.trim() ?? publisherOverride)
       await appQuery.refetch()
       toast.success(t('windowsAppCatalog.form.versionUploaded'))
     } catch {
@@ -229,6 +234,19 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
                   onChange={(event) => setVersionOverride(event.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">{t('windowsAppCatalog.form.versionHint')}</p>
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="edit-app-publisher" className="text-sm font-medium">
+                  {t('windowsAppCatalog.form.publisher')}
+                </label>
+                <Input
+                  id="edit-app-publisher"
+                  value={publisherOverride}
+                  autoComplete="off"
+                  disabled={uploadingVersion}
+                  onChange={(event) => setPublisherOverride(event.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">{t('windowsAppCatalog.form.publisherHint')}</p>
               </div>
               <input
                 ref={versionUploadRef}

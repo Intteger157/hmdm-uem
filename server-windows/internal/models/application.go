@@ -49,6 +49,7 @@ type UploadApplicationResponse struct {
 	URL          string `json:"url"`
 	Name         string `json:"name"`
 	Version      string `json:"version"`
+	Publisher    string `json:"publisher"`
 	DetectedArgs string `json:"detectedArgs"`
 	AppID        uint   `json:"appId"`
 	VersionID    uint   `json:"versionId"`

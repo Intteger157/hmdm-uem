@@ -59,6 +59,7 @@ const softwareAppFormSchema = z
     appType: z.enum(['upload', 'url', 'winget']),
     name: z.string().trim().min(1, 'required'),
     version: z.string().optional(),
+    publisher: z.string().optional(),
     downloadUrl: z.string().optional(),
     wingetId: z.string().optional(),
     installArgs: z.string().optional(),
@@ -112,6 +113,7 @@ function createDefaultFormValues(): SoftwareAppFormValues {
     appType: 'upload',
     name: '',
     version: DEFAULT_APP_VERSION,
+    publisher: '',
     downloadUrl: '',
     wingetId: '',
     installArgs: '',
@@ -245,12 +247,15 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
     setUploading(true)
     try {
       const manualVersion = (form.getValues('version') ?? '').trim()
+      const manualPublisher = (form.getValues('publisher') ?? '').trim()
       const result = await uploadSoftwareApp(file, {
         ...(manualVersion && manualVersion !== DEFAULT_APP_VERSION ? { version: manualVersion } : {}),
+        ...(manualPublisher ? { publisher: manualPublisher } : {}),
       })
       form.setValue('appType', 'upload', { shouldValidate: true })
       form.setValue('name', result.name, { shouldValidate: true })
       form.setValue('version', normalizeAppVersion(result.version), { shouldValidate: true })
+      form.setValue('publisher', result.publisher?.trim() ?? '', { shouldValidate: true })
       form.setValue('downloadUrl', result.url, { shouldValidate: true })
       form.setValue('silentInstallation', true)
       form.setValue('installArgs', '')
@@ -295,6 +300,7 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
     try {
       const created = await createMutation.mutateAsync({
         name: trimmedName,
+        publisher: values.publisher?.trim() || undefined,
         ...versionPayload,
       })
       toast.success(t('windowsAppCatalog.form.created'))
@@ -514,6 +520,20 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
                   <FormControl>
                     <Input {...field} autoComplete="off" />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="publisher"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('windowsAppCatalog.form.publisher')}</FormLabel>
+                  <FormControl>
+                    <Input {...field} autoComplete="off" />
+                  </FormControl>
+                  <FormDescription>{t('windowsAppCatalog.form.publisherHint')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

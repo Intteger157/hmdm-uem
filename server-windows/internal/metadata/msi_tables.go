@@ -65,8 +65,9 @@ func parseMsiMetadataFromTables(path string) (InstallerMetadata, error) {
 	}
 
 	return InstallerMetadata{
-		Name:    strings.TrimSpace(props["ProductName"]),
-		Version: NormalizeVersion(props["ProductVersion"]),
+		Name:      strings.TrimSpace(props["ProductName"]),
+		Version:   NormalizeVersion(props["ProductVersion"]),
+		Publisher: strings.TrimSpace(props["Manufacturer"]),
 	}, nil
 }
 

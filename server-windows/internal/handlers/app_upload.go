@@ -66,12 +66,16 @@ func (h *WindowsHandler) UploadApplication(c *gin.Context) {
 	parsed := metadata.ResolveInstallerMetadata(destPath, originalName)
 	name := strings.TrimSpace(parsed.Name)
 	version := strings.TrimSpace(parsed.Version)
+	publisher := strings.TrimSpace(parsed.Publisher)
 
 	if overrideVersion := strings.TrimSpace(c.PostForm("version")); overrideVersion != "" {
 		version = metadata.NormalizeVersion(overrideVersion)
 		if version == "" {
 			version = overrideVersion
 		}
+	}
+	if overridePublisher := strings.TrimSpace(c.PostForm("publisher")); overridePublisher != "" {
+		publisher = overridePublisher
 	}
 
 	detectedArgs, detectErr := metadata.DetectInstallerArgs(destPath)
@@ -84,11 +88,12 @@ func (h *WindowsHandler) UploadApplication(c *gin.Context) {
 
 	// New catalog entries stage the uploaded file only; persist happens on POST /apps.
 	if targetAppID == 0 {
-		log.Printf("[upload-application] staged path=%q name=%q version=%q detectedArgs=%q", destPath, name, version, detectedArgs)
+		log.Printf("[upload-application] staged path=%q name=%q version=%q publisher=%q detectedArgs=%q", destPath, name, version, publisher, detectedArgs)
 		c.JSON(http.StatusOK, models.UploadApplicationResponse{
 			URL:          publicURL,
 			Name:         name,
 			Version:      version,
+			Publisher:    publisher,
 			DetectedArgs: detectedArgs,
 		})
 		return
@@ -105,6 +110,13 @@ func (h *WindowsHandler) UploadApplication(c *gin.Context) {
 	}
 	name = app.Name
 
+	if publisher != "" {
+		app.Publisher = publisher
+		if err := db.DB.Model(&app).Update("publisher", publisher).Error; err != nil {
+			log.Printf("[upload-application] publisher update failed: app_id=%d err=%v", app.ID, err)
+		}
+	}
+
 	installArgs := strings.TrimSpace(c.PostForm("installArgs"))
 	if installArgs == "" {
 		installArgs = detectedArgs
@@ -117,11 +129,12 @@ func (h *WindowsHandler) UploadApplication(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[upload-application] stored path=%q app_id=%d version_id=%d name=%q version=%q detectedArgs=%q", destPath, app.ID, appVersion.ID, name, version, detectedArgs)
+	log.Printf("[upload-application] stored path=%q app_id=%d version_id=%d name=%q version=%q publisher=%q detectedArgs=%q", destPath, app.ID, appVersion.ID, name, version, publisher, detectedArgs)
 	c.JSON(http.StatusOK, models.UploadApplicationResponse{
 		URL:          publicURL,
 		Name:         name,
 		Version:      appVersion.Version,
+		Publisher:    app.Publisher,
 		DetectedArgs: detectedArgs,
 		AppID:        app.ID,
 		VersionID:    appVersion.ID,

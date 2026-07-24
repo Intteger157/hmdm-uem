@@ -58,6 +58,7 @@ export async function deleteSoftwareApp(id: number): Promise<void> {
 export interface UploadSoftwareAppOptions {
   appId?: number
   version?: string
+  publisher?: string
   installArgs?: string
 }
 
@@ -72,6 +73,9 @@ export async function uploadSoftwareApp(
   }
   if (options?.version?.trim()) {
     formData.append('version', options.version.trim())
+  }
+  if (options?.publisher?.trim()) {
+    formData.append('publisher', options.publisher.trim())
   }
   if (options?.installArgs?.trim()) {
     formData.append('installArgs', options.installArgs.trim())

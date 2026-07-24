@@ -13,8 +13,9 @@ func ResolveInstallerMetadata(path, originalFilename string) InstallerMetadata {
 	filenameMeta := ParseFilenameMetadata(originalFilename)
 
 	meta := InstallerMetadata{
-		Name:    resolveName(fileMeta.Name, filenameMeta.Name, originalFilename),
-		Version: resolveVersion(fileMeta.Version, filenameMeta.Version, originalFilename),
+		Name:      resolveName(fileMeta.Name, filenameMeta.Name, originalFilename),
+		Version:   resolveVersion(fileMeta.Version, filenameMeta.Version, originalFilename),
+		Publisher: resolvePublisher(fileMeta.Publisher),
 	}
 
 	if fileMeta.Source == metadataSourceDefault && meta.Version == DefaultInstallerVersion {
@@ -50,15 +51,21 @@ func readInstallerMetadata(path string) resolvedInstallerMetadata {
 }
 
 func resolveExeMetadata(path string) resolvedInstallerMetadata {
-	parsed, err := parseExeMetadata(path)
-	if err == nil {
+	for _, parser := range []func(string) (InstallerMetadata, error){
+		parseExeMetadata,
+		parseExeMetadataDebugPE,
+	} {
+		parsed, err := parser(path)
+		if err != nil {
+			continue
+		}
 		parsed.Version = NormalizeVersion(parsed.Version)
-		if parsed.Name != "" || parsed.Version != "" {
+		if parsed.Name != "" || parsed.Version != "" || parsed.Publisher != "" {
 			return resolvedInstallerMetadata{InstallerMetadata: parsed, Source: metadataSourceFile}
 		}
 	}
 
-	if scanned := scanMetadataFromBinary(readFileSample(path)); scanned.Name != "" || scanned.Version != "" {
+	if scanned := scanMetadataFromBinary(readFileSample(path)); scanned.Name != "" || scanned.Version != "" || scanned.Publisher != "" {
 		return resolvedInstallerMetadata{InstallerMetadata: scanned, Source: metadataSourceFile}
 	}
 
@@ -67,19 +74,19 @@ func resolveExeMetadata(path string) resolvedInstallerMetadata {
 
 func resolveMsiMetadata(path string) resolvedInstallerMetadata {
 	if parsed, err := parseMsiMetadataFromTables(path); err == nil {
-		if parsed.Name != "" || parsed.Version != "" {
+		if parsed.Name != "" || parsed.Version != "" || parsed.Publisher != "" {
 			return resolvedInstallerMetadata{InstallerMetadata: parsed, Source: metadataSourceFile}
 		}
 	}
 
 	if parsed, err := parseMsiMetadataLegacy(path); err == nil {
 		parsed.Version = NormalizeVersion(parsed.Version)
-		if parsed.Name != "" || parsed.Version != "" {
+		if parsed.Name != "" || parsed.Version != "" || parsed.Publisher != "" {
 			return resolvedInstallerMetadata{InstallerMetadata: parsed, Source: metadataSourceFile}
 		}
 	}
 
-	if scanned := scanMetadataFromBinary(readFileSample(path)); scanned.Name != "" || scanned.Version != "" {
+	if scanned := scanMetadataFromBinary(readFileSample(path)); scanned.Name != "" || scanned.Version != "" || scanned.Publisher != "" {
 		return resolvedInstallerMetadata{InstallerMetadata: scanned, Source: metadataSourceFile}
 	}
 

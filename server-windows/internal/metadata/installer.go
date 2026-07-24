@@ -17,8 +17,9 @@ import (
 
 // InstallerMetadata holds parsed installer properties.
 type InstallerMetadata struct {
-	Name    string
-	Version string
+	Name      string
+	Version   string
+	Publisher string
 }
 
 // ParseInstallerMetadata extracts product name and version from .exe or .msi files.
@@ -55,8 +56,9 @@ func parseExeMetadata(path string) (InstallerMetadata, error) {
 	}
 
 	return InstallerMetadata{
-		Name:    firstNonEmpty(resources["ProductName"], resources["FileDescription"], resources["InternalName"]),
-		Version: NormalizeVersion(firstNonEmpty(resources["ProductVersion"], resources["FileVersion"])),
+		Name:      firstNonEmpty(resources["ProductName"], resources["FileDescription"], resources["InternalName"]),
+		Version:   NormalizeVersion(firstNonEmpty(resources["ProductVersion"], resources["FileVersion"])),
+		Publisher: firstNonEmpty(resources["CompanyName"], resources["LegalCopyright"]),
 	}, nil
 }
 
@@ -82,6 +84,9 @@ func parseMsiMetadataLegacy(path string) (InstallerMetadata, error) {
 				}
 				if meta.Version == "" {
 					meta.Version = NormalizeVersion(propertyValues["ProductVersion"])
+				}
+				if meta.Publisher == "" {
+					meta.Publisher = strings.TrimSpace(propertyValues["Manufacturer"])
 				}
 			}
 		default:

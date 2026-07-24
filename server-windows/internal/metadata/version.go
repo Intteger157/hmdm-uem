@@ -57,3 +57,7 @@ func resolveName(fileName, filename, originalFilename string) string {
 	}
 	return FallbackName(originalFilename)
 }
+
+func resolvePublisher(values ...string) string {
+	return firstNonEmpty(values...)
+}

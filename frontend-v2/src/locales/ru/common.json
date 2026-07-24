@@ -1243,6 +1243,7 @@
   "windowsAppCatalog.form.name": "Имя приложения",
   "windowsAppCatalog.form.version": "Ожидаемая версия",
   "windowsAppCatalog.form.versionHint": "По возможности определяется из метаданных установщика. Можно изменить перед сохранением.",
+  "windowsAppCatalog.form.publisherHint": "По возможности определяется из метаданных установщика. Можно изменить перед сохранением.",
   "windowsAppCatalog.form.downloadUrl": "URL загрузки",
   "windowsAppCatalog.form.installArgs": "Аргументы установки",
   "windowsAppCatalog.form.tabGeneral": "Общее",

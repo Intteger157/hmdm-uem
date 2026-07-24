@@ -9,19 +9,23 @@ import (
 
 func scanMetadataFromBinary(data []byte) InstallerMetadata {
 	return InstallerMetadata{
-		Name:    scanPropertyValue(data, "ProductName"),
-		Version: NormalizeVersion(scanPropertyValue(data, "ProductVersion")),
+		Name:      scanStringProperty(data, "ProductName"),
+		Version:   NormalizeVersion(scanVersionProperty(data, "ProductVersion")),
+		Publisher: firstNonEmpty(
+			scanStringProperty(data, "CompanyName"),
+			scanStringProperty(data, "Manufacturer"),
+		),
 	}
 }
 
-func scanPropertyValue(data []byte, property string) string {
-	if value := scanUTF16Property(data, property); value != "" {
+func scanVersionProperty(data []byte, property string) string {
+	if value := scanUTF16VersionProperty(data, property); value != "" {
 		return value
 	}
-	return scanASCIIProperty(data, property)
+	return scanASCIIVersionProperty(data, property)
 }
 
-func scanUTF16Property(data []byte, property string) string {
+func scanUTF16VersionProperty(data []byte, property string) string {
 	needle := utf16.Encode([]rune(property))
 	for i := 0; i+len(needle)*2 <= len(data); i++ {
 		if !bytes.Equal(data[i:i+len(needle)*2], utf16LEBytes(needle)) {
@@ -34,7 +38,7 @@ func scanUTF16Property(data []byte, property string) string {
 	return ""
 }
 
-func scanASCIIProperty(data []byte, property string) string {
+func scanASCIIVersionProperty(data []byte, property string) string {
 	needle := []byte(property)
 	index := bytes.Index(data, needle)
 	if index < 0 {
