@@ -58,7 +58,6 @@ func main() {
 
 	// Public bootstrap endpoints (no auth — OOBE machines have no session/JWT).
 	router.GET("/api/windows/enroll", windowsHandler.GetEnrollBootstrapScript)
-	router.GET("/rest/windows/enroll", windowsHandler.GetEnrollBootstrapScript)
 	router.GET(appstorage.AgentPublicPath(), windowsHandler.DownloadAgentBinary)
 	rest := router.Group("/rest")
 	{
@@ -88,6 +87,7 @@ func main() {
 			windows.POST("/installers/default", windowsHandler.RegisterDefaultInstaller)
 			windows.POST("/installers/link", windowsHandler.LinkInstaller)
 			windows.GET("/downloads/:downloadToken", windowsHandler.DownloadInstaller)
+			windows.GET("/enroll", windowsHandler.GetEnrollBootstrapScript)
 			windows.POST("/enroll", windowsHandler.Enroll)
 			windows.POST("/checkin", windowsHandler.Checkin)
 			windows.POST("/inventory", windowsHandler.Inventory)
