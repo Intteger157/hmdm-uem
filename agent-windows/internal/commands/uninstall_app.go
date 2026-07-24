@@ -26,19 +26,25 @@ func uninstallApp(payload string) Result {
 		return Result{Success: false, Message: fmt.Sprintf("invalid payload: %v", err)}
 	}
 
-	uninstallString := strings.TrimSpace(req.UninstallString)
+	uninstallString := normalizeUninstallString(req.UninstallString)
 	if uninstallString == "" {
 		return Result{Success: false, Message: "No uninstall string available"}
 	}
 
 	prepared := prepareUninstallCommand(uninstallString)
-	logLine := fmt.Sprintf("App: %s\nPrepared command: %s", strings.TrimSpace(req.AppName), prepared)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "cmd.exe", "/c", prepared)
+	cmd, executionLine := buildUninstallCommand(ctx, prepared)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+
+	logLine := fmt.Sprintf(
+		"App: %s\nPrepared command: %s\nExecution: %s",
+		strings.TrimSpace(req.AppName),
+		prepared,
+		executionLine,
+	)
 
 	output, err := captureCommandOutput(cmd)
 	combined := strings.TrimSpace(logLine + "\n\n" + output)
@@ -55,8 +61,39 @@ func uninstallApp(payload string) Result {
 	return Result{Success: true, Message: combined}
 }
 
+func buildUninstallCommand(ctx context.Context, prepared string) (*exec.Cmd, string) {
+	if exe, args, ok := parseUninstallCommandLine(prepared); ok {
+		exe = strings.TrimSpace(strings.Trim(exe, `"`))
+		if exe != "" {
+			executionLine := exe
+			if len(args) > 0 {
+				executionLine = exe + " " + strings.Join(args, " ")
+			}
+			return exec.CommandContext(ctx, exe, args...), executionLine
+		}
+	}
+
+	return exec.CommandContext(ctx, "cmd.exe", "/S", "/C", prepared), "cmd.exe /S /C " + prepared
+}
+
+func normalizeUninstallString(raw string) string {
+	s := strings.TrimSpace(raw)
+	if s == "" {
+		return ""
+	}
+
+	s = strings.ReplaceAll(s, `\"`, `"`)
+	s = strings.ReplaceAll(s, `\\`, `\`)
+
+	if len(s) >= 2 && s[0] == '\'' && s[len(s)-1] == '\'' {
+		s = strings.TrimSpace(s[1 : len(s)-1])
+	}
+
+	return strings.TrimSpace(s)
+}
+
 func prepareUninstallCommand(raw string) string {
-	line := strings.TrimSpace(raw)
+	line := normalizeUninstallString(raw)
 	if line == "" {
 		return line
 	}
@@ -71,6 +108,63 @@ func prepareUninstallCommand(raw string) string {
 		line = appendSilentUninstallFlags(line)
 	}
 	return line
+}
+
+func parseUninstallCommandLine(line string) (exe string, args []string, ok bool) {
+	line = strings.TrimSpace(line)
+	if line == "" {
+		return "", nil, false
+	}
+
+	if strings.HasPrefix(line, `"`) {
+		closeQuote := strings.Index(line[1:], `"`)
+		if closeQuote >= 0 {
+			exe = line[1 : closeQuote+1]
+			rest := strings.TrimSpace(line[closeQuote+2:])
+			if rest == "" {
+				return exe, nil, true
+			}
+			return exe, splitCommandArgs(rest), true
+		}
+	}
+
+	parts := splitCommandArgs(line)
+	if len(parts) == 0 {
+		return "", nil, false
+	}
+	if len(parts) == 1 {
+		return parts[0], nil, true
+	}
+	return parts[0], parts[1:], true
+}
+
+func splitCommandArgs(s string) []string {
+	var args []string
+	var current strings.Builder
+	inQuotes := false
+
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
+		case '"':
+			inQuotes = !inQuotes
+		case ' ':
+			if inQuotes {
+				current.WriteByte(s[i])
+				continue
+			}
+			if current.Len() > 0 {
+				args = append(args, strings.Trim(current.String(), `"`))
+				current.Reset()
+			}
+		default:
+			current.WriteByte(s[i])
+		}
+	}
+
+	if current.Len() > 0 {
+		args = append(args, strings.Trim(current.String(), `"`))
+	}
+	return args
 }
 
 func isMsiExecCommand(line string) bool {
