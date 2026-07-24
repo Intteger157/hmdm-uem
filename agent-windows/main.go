@@ -6,19 +6,28 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
+	_ "embed"
+
+	"github.com/hmdm/agent-windows/internal/agentstate"
 	"github.com/hmdm/agent-windows/internal/api"
 	"github.com/hmdm/agent-windows/internal/apps"
 	"github.com/hmdm/agent-windows/internal/commands"
 	"github.com/hmdm/agent-windows/internal/config"
 	"github.com/hmdm/agent-windows/internal/policies"
 	"github.com/hmdm/agent-windows/internal/service"
+	"github.com/hmdm/agent-windows/internal/session"
 	"github.com/hmdm/agent-windows/internal/system"
+	"github.com/hmdm/agent-windows/internal/tray"
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/debug"
 )
+
+//go:embed icon.ico
+var iconData []byte
 
 const (
 	serviceName              = "HMDMAgent"
@@ -31,6 +40,7 @@ var inflightInventoryCommands sync.Map
 
 var (
 	debugMode       = flag.Bool("debug", false, "run in console mode for debugging")
+	trayMode        = flag.Bool("tray", false, "run system tray helper in the interactive user session")
 	uninstallMode   = flag.Bool("uninstall", false, "notify MDM server that the agent is being removed")
 	serverURL       = flag.String("server", "", "MDM server URL for debug when registry value is empty (e.g. https://mdm.example.com)")
 	enrollmentToken = flag.String("token", "", "enrollment token for debug when registry value is empty")
@@ -49,6 +59,13 @@ func run() error {
 		ServerURL:       *serverURL,
 		EnrollmentToken: *enrollmentToken,
 	})
+
+	if *trayMode {
+		log.Printf("starting Singularity MDM tray helper")
+		tray.Run(cfg, iconData)
+		return nil
+	}
+
 	log.Printf("using server URL: %s", cfg.ServerURL)
 	apiClient := api.NewAPIClient(cfg)
 
@@ -71,6 +88,7 @@ func run() error {
 		return svc.Run(serviceName, handler)
 	case *debugMode:
 		log.Printf("%s starting in debug (console) mode", serviceName)
+		go startTrayHelper()
 		return debug.Run(serviceName, handler)
 	default:
 		fmt.Fprintf(os.Stderr, "use -debug to run %s in console mode\n", serviceName)
@@ -106,6 +124,10 @@ func performHandshake(cfg *config.Config, apiClient *api.APIClient, stop <-chan 
 	}
 
 	cfg.HardwareID = hardwareID
+
+	if err := agentstate.SaveDeviceID(hardwareID); err != nil {
+		log.Printf("failed to persist agent state: %v", err)
+	}
 
 	if cfg.AuthToken != "" {
 		log.Printf("AuthToken found. Agent is authenticated.")
@@ -192,6 +214,7 @@ func (s *agentService) Execute(_ []string, requests <-chan svc.ChangeRequest, st
 
 	status <- svc.Status{State: svc.Running, Accepts: accepts}
 	log.Printf("%s service started", serviceName)
+	go startTrayHelper()
 
 	for req := range requests {
 		switch req.Cmd {
@@ -219,6 +242,22 @@ func (s *agentService) Execute(_ []string, requests <-chan svc.ChangeRequest, st
 	}
 
 	return false, 0
+}
+
+func startTrayHelper() {
+	exePath, err := os.Executable()
+	if err != nil {
+		log.Printf("tray helper: resolve executable path: %v", err)
+		return
+	}
+
+	commandLine := fmt.Sprintf(`"%s" -tray`, filepath.Clean(exePath))
+	if err := session.RunInteractive(commandLine); err != nil {
+		log.Printf("tray helper launch failed: %v", err)
+		return
+	}
+
+	log.Printf("tray helper launched in interactive session")
 }
 
 func runAgentLoop(stop <-chan struct{}, syncNow <-chan struct{}, cfg *config.Config, apiClient *api.APIClient) {
