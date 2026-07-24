@@ -6,7 +6,8 @@ GATEWAY_URL="${1:-http://127.0.0.1:${GATEWAY_PORT:-8080}}"
 check_path() {
   local path="$1"
   echo "==> GET ${GATEWAY_URL}${path}"
-  headers="$(curl -fsSI "${GATEWAY_URL}${path}")"
+  # Use GET (not HEAD): bootstrap routes are registered as GET only.
+  headers="$(curl -fsS -D - -o /dev/null "${GATEWAY_URL}${path}")"
   echo "$headers" | head -n 5
   body="$(curl -fsS "${GATEWAY_URL}${path}" | head -n 3)"
   echo "$body"
@@ -26,7 +27,7 @@ check_path() {
 check_path /api/windows/enroll
 
 # Optional alias — should also work after gateway + server-windows redeploy
-if curl -fsSI "${GATEWAY_URL}/rest/windows/enroll" >/dev/null 2>&1; then
+if curl -fsS -D - -o /dev/null "${GATEWAY_URL}/rest/windows/enroll" >/dev/null 2>&1; then
   check_path /rest/windows/enroll
 else
   echo "WARN: /rest/windows/enroll unavailable (optional alias). Primary /api/windows/enroll is OK."
