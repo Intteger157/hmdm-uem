@@ -11,11 +11,12 @@ import (
 )
 
 const (
-	usbPolicyKeyPath = `SOFTWARE\Policies\Microsoft\Windows\RemovableStorageDevices`
-	usbDenyAllValue  = "Deny_All"
-	usbStorKeyPath   = `SYSTEM\CurrentControlSet\Services\USBSTOR`
-	usbStorStartValue = "Start"
-	usbStorStartDefault = uint32(3)
+	usbPolicyKeyPath      = `SOFTWARE\Policies\Microsoft\Windows\RemovableStorageDevices`
+	usbDenyAllValue       = "Deny_All"
+	usbStorKeyPath        = `SYSTEM\CurrentControlSet\Services\USBSTOR`
+	usbStorStartValue     = "Start"
+	usbStorStartManual   = uint32(3)
+	usbStorStartDisabled = uint32(4)
 )
 
 func enforceUSBBlock(block bool) Result {
@@ -36,6 +37,11 @@ func enableUSBBlock(name string) Result {
 	if err := key.SetDWordValue(usbDenyAllValue, 1); err != nil {
 		return Result{Name: name, Success: false, Message: fmt.Sprintf("set Deny_All: %v", err)}
 	}
+
+	if err := disableUSBStorDriver(); err != nil {
+		return Result{Name: name, Success: false, Message: fmt.Sprintf("set USBSTOR Start: %v", err)}
+	}
+
 	return Result{Name: name, Success: true, Message: "removable storage blocked"}
 }
 
@@ -65,51 +71,79 @@ func removeUSBBlock(name string) Result {
 	return Result{Name: name, Success: true, Message: output}
 }
 
+func disableUSBStorDriver() error {
+	return setUSBStorStart(usbStorStartDisabled)
+}
+
 func restoreUSBStorStart() error {
+	current, found, err := readUSBStorStart()
+	if err != nil {
+		return err
+	}
+	if found && current == usbStorStartManual {
+		return nil
+	}
+	return setUSBStorStart(usbStorStartManual)
+}
+
+func setUSBStorStart(value uint32) error {
 	key, err := registry.OpenKey(registry.LOCAL_MACHINE, usbStorKeyPath, registry.SET_VALUE)
 	if err != nil {
-		if err == registry.ErrNotExist {
-			return nil
-		}
 		return err
 	}
 	defer key.Close()
 
-	current, _, err := key.GetIntegerValue(usbStorStartValue)
+	return key.SetDWordValue(usbStorStartValue, value)
+}
+
+func readUSBStorStart() (uint32, bool, error) {
+	key, err := registry.OpenKey(registry.LOCAL_MACHINE, usbStorKeyPath, registry.QUERY_VALUE)
 	if err != nil {
 		if err == registry.ErrNotExist {
-			return key.SetDWordValue(usbStorStartValue, usbStorStartDefault)
+			return 0, false, nil
 		}
-		return err
+		return 0, false, err
 	}
-	if uint32(current) == usbStorStartDefault {
-		return nil
+	defer key.Close()
+
+	value, _, err := key.GetIntegerValue(usbStorStartValue)
+	if err != nil {
+		if err == registry.ErrNotExist {
+			return 0, false, nil
+		}
+		return 0, false, err
 	}
-	return key.SetDWordValue(usbStorStartValue, usbStorStartDefault)
+	return uint32(value), true, nil
 }
 
 func readUSBBlocked() (bool, error) {
-	if !usbPolicyKeysPresent() {
-		return false, nil
+	policyBlocked := false
+	if usbPolicyKeysPresent() {
+		key, err := registry.OpenKey(registry.LOCAL_MACHINE, usbPolicyKeyPath, registry.QUERY_VALUE)
+		if err != nil {
+			if err == registry.ErrNotExist {
+				return false, nil
+			}
+			return false, err
+		}
+		defer key.Close()
+
+		value, _, err := key.GetIntegerValue(usbDenyAllValue)
+		if err != nil {
+			if err == registry.ErrNotExist {
+				return false, nil
+			}
+			return false, err
+		}
+		policyBlocked = value == 1
 	}
 
-	key, err := registry.OpenKey(registry.LOCAL_MACHINE, usbPolicyKeyPath, registry.QUERY_VALUE)
+	startValue, found, err := readUSBStorStart()
 	if err != nil {
-		if err == registry.ErrNotExist {
-			return false, nil
-		}
 		return false, err
 	}
-	defer key.Close()
-
-	value, _, err := key.GetIntegerValue(usbDenyAllValue)
-	if err != nil {
-		if err == registry.ErrNotExist {
-			return false, nil
-		}
-		return false, err
-	}
-	return value == 1, nil
+	driverBlocked := found && startValue == usbStorStartDisabled
+	return policyBlocked || driverBlocked, nil
 }
 
 func usbPolicyKeysPresent() bool {
