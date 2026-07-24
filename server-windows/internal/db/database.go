@@ -39,8 +39,8 @@ func InitDB(dsn string) (*gorm.DB, error) {
 		return nil, fmt.Errorf("migrate database: %w", err)
 	}
 
-	if err := migrateSoftwareAppsToApplications(database); err != nil {
-		return nil, fmt.Errorf("migrate software apps: %w", err)
+	if err := migrateWindowsApplicationData(database); err != nil {
+		return nil, fmt.Errorf("migrate windows applications: %w", err)
 	}
 
 	normalizeEnrollmentDownloadTokens(database)

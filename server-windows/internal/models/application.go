@@ -21,7 +21,7 @@ type Application struct {
 }
 
 func (Application) TableName() string {
-	return "applications"
+	return "windows_applications"
 }
 
 // ApplicationVersion is one deployable package revision for an application.
@@ -41,7 +41,7 @@ type ApplicationVersion struct {
 }
 
 func (ApplicationVersion) TableName() string {
-	return "application_versions"
+	return "windows_application_versions"
 }
 
 // UploadApplicationResponse is returned by POST /applications/upload.

@@ -21,6 +21,8 @@ const windowsApi = axios.create({
   },
 })
 
+// Windows App Catalog uses server-windows (Go) only. Do not call Java /private/applications APIs here.
+
 export async function fetchSoftwareApps(): Promise<SoftwareApp[]> {
   const response = await windowsApi.get<SoftwareAppListResponse>('/apps')
   return response.data.items
