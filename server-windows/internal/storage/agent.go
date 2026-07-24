@@ -93,6 +93,12 @@ func AgentBinaryStat() (os.FileInfo, bool) {
 	return info, true
 }
 
+// AgentBinaryConfigured reports whether the bootstrap agent binary is present.
+func AgentBinaryConfigured() bool {
+	_, ok := AgentBinaryStat()
+	return ok
+}
+
 // ReplaceAgentBinary atomically replaces the published autopilot agent binary.
 func ReplaceAgentBinary(sourcePath string) error {
 	if err := EnsureAgentDirectory(); err != nil {
