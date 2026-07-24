@@ -207,6 +207,7 @@ func (h *WindowsHandler) CreateSoftwareApp(c *gin.Context) {
 		Name:        name,
 		Publisher:   strings.TrimSpace(req.Publisher),
 		Description: strings.TrimSpace(req.Description),
+		CreatedAt:   time.Now(),
 	}
 	version := models.ApplicationVersion{IsActive: true}
 	if err := applyVersionUpsertRequest(&version, req.CreateApplicationVersionRequest); err != nil {

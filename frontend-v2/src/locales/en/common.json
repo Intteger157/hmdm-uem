@@ -1210,6 +1210,7 @@
   "windowsAppCatalog.form.created": "Application created",
   "windowsAppCatalog.form.updated": "Application updated",
   "windowsAppCatalog.form.error": "Failed to save application",
+  "windowsAppCatalog.form.duplicateName": "An application with this name already exists. Open it from the catalog or choose another name.",
   "windowsAppCatalog.delete.title": "Delete application",
   "windowsAppCatalog.delete.description": "Remove \"{{name}}\" from the catalog? Profile assignments will also be cleared.",
   "windowsAppCatalog.delete.success": "Application deleted",

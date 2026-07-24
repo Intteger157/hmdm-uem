@@ -6,6 +6,10 @@ import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 import { uploadSoftwareApp } from '@/features/windows/applications/api/windows-applications-api'
 import { useCreateSoftwareAppMutation } from '@/features/windows/applications/hooks/use-windows-software-apps'
+import {
+  getWindowsApiErrorMessage,
+  isDuplicateApplicationNameError,
+} from '@/features/windows/applications/utils/app-catalog-errors'
 import type { SoftwareAppType, UpdateFrequency } from '@/features/windows/applications/types/software-app'
 import { BoolField } from '@/shared/components/BoolField'
 import { Button } from '@/components/ui/button'
@@ -210,8 +214,13 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
       toast.success(t('windowsAppCatalog.form.created'))
       onOpenChange(false)
       onCreated?.(created.id)
-    } catch {
-      toast.error(t('windowsAppCatalog.form.error'))
+    } catch (error) {
+      const apiMessage = getWindowsApiErrorMessage(error, t('windowsAppCatalog.form.error'))
+      toast.error(
+        isDuplicateApplicationNameError(apiMessage)
+          ? t('windowsAppCatalog.form.duplicateName')
+          : apiMessage,
+      )
     }
   })
 
