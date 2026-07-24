@@ -75,6 +75,14 @@ const windowsApi = axios.create({
   },
 })
 
+windowsApi.interceptors.request.use((config) => {
+  const jwt = useAuthStore.getState().jwt
+  if (jwt) {
+    config.headers.Authorization = `Bearer ${jwt}`
+  }
+  return config
+})
+
 function mapWindowsAgentStatus(raw?: string): 'active' | 'uninstalled' {
   return raw === 'uninstalled' ? 'uninstalled' : 'active'
 }
@@ -449,22 +457,36 @@ export async function getWindowsEnrollmentSetup(): Promise<WindowsEnrollmentSetu
 }
 
 export interface WindowsEnrollmentProvisioningSettings {
-  createLocalAdmin: boolean
+  provisioningEnabled: boolean
   adminUsername: string
   adminPassword: string
+}
+
+type WindowsEnrollmentProvisioningDto = WindowsEnrollmentProvisioningSettings & {
+  createLocalAdmin?: boolean
+}
+
+function normalizeEnrollmentProvisioningSettings(
+  data: WindowsEnrollmentProvisioningDto,
+): WindowsEnrollmentProvisioningSettings {
+  return {
+    provisioningEnabled: data.provisioningEnabled ?? data.createLocalAdmin ?? false,
+    adminUsername: data.adminUsername ?? '',
+    adminPassword: data.adminPassword ?? '',
+  }
 }
 
 export async function getWindowsEnrollmentProvisioning(): Promise<WindowsEnrollmentProvisioningSettings> {
   if (isMockApiEnabled()) {
     return {
-      createLocalAdmin: false,
+      provisioningEnabled: false,
       adminUsername: 'Admin',
       adminPassword: '',
     }
   }
 
-  const response = await windowsApi.get<WindowsEnrollmentProvisioningSettings>('/enrollment-provisioning')
-  return response.data
+  const response = await windowsApi.get<WindowsEnrollmentProvisioningDto>('/enrollment-provisioning')
+  return normalizeEnrollmentProvisioningSettings(response.data)
 }
 
 export async function updateWindowsEnrollmentProvisioning(
@@ -474,11 +496,12 @@ export async function updateWindowsEnrollmentProvisioning(
     return settings
   }
 
-  const response = await windowsApi.put<WindowsEnrollmentProvisioningSettings>(
-    '/enrollment-provisioning',
-    settings,
-  )
-  return response.data
+  const response = await windowsApi.put<WindowsEnrollmentProvisioningDto>('/enrollment-provisioning', {
+    provisioningEnabled: settings.provisioningEnabled,
+    adminUsername: settings.adminUsername,
+    adminPassword: settings.adminPassword,
+  })
+  return normalizeEnrollmentProvisioningSettings(response.data)
 }
 
 export type WindowsEnrollmentMode = 'token' | 'password'

@@ -551,7 +551,7 @@
   "windows.enrollmentPage.provisioningPassword": "Admin Password",
   "windows.enrollmentPage.provisioningSave": "Save",
   "windows.enrollmentPage.provisioningSaving": "Saving…",
-  "windows.enrollmentPage.provisioningSaveSuccess": "Provisioning settings saved",
+  "windows.enrollmentPage.provisioningSaveSuccess": "Provisioning settings saved successfully",
   "windows.enrollmentPage.provisioningSaveError": "Failed to save provisioning settings",
   "windows.enrollmentPage.provisioningUsernameRequired": "Admin username is required",
   "windows.enrollmentPage.provisioningPasswordRequired": "Admin password is required",

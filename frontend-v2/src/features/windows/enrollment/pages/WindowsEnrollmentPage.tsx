@@ -69,7 +69,7 @@ export function WindowsEnrollmentPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [provisioningDraft, setProvisioningDraft] = useState<WindowsEnrollmentProvisioningSettings>({
-    createLocalAdmin: false,
+    provisioningEnabled: false,
     adminUsername: 'Admin',
     adminPassword: '',
   })
@@ -188,7 +188,7 @@ export function WindowsEnrollmentPage() {
   }
 
   const handleSaveProvisioning = () => {
-    if (provisioningDraft.createLocalAdmin) {
+    if (provisioningDraft.provisioningEnabled) {
       if (!provisioningDraft.adminUsername.trim()) {
         toast.error(t('windows.enrollmentPage.provisioningUsernameRequired'))
         return
@@ -200,7 +200,7 @@ export function WindowsEnrollmentPage() {
     }
 
     provisioningMutation.mutate({
-      createLocalAdmin: provisioningDraft.createLocalAdmin,
+      provisioningEnabled: provisioningDraft.provisioningEnabled,
       adminUsername: provisioningDraft.adminUsername.trim(),
       adminPassword: provisioningDraft.adminPassword,
     })
@@ -428,13 +428,13 @@ export function WindowsEnrollmentPage() {
                 id="windows-enrollment-create-local-admin"
                 label={t('windows.enrollmentPage.provisioningEnabled')}
                 hint={t('windows.enrollmentPage.provisioningEnabledHint')}
-                checked={provisioningDraft.createLocalAdmin}
+                checked={provisioningDraft.provisioningEnabled}
                 onCheckedChange={(checked) =>
-                  setProvisioningDraft((current) => ({ ...current, createLocalAdmin: checked }))
+                  setProvisioningDraft((current) => ({ ...current, provisioningEnabled: checked }))
                 }
               />
 
-              {provisioningDraft.createLocalAdmin ? (
+              {provisioningDraft.provisioningEnabled ? (
                 <div className="grid gap-4 rounded-lg border bg-muted/20 p-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="windows-enrollment-admin-username">
@@ -487,7 +487,7 @@ export function WindowsEnrollmentPage() {
                     t('windows.enrollmentPage.provisioningSave')
                   )}
                 </Button>
-                {provisioningDraft.createLocalAdmin ? (
+                {provisioningDraft.provisioningEnabled ? (
                   <p className="text-xs text-muted-foreground">
                     {t('windows.enrollmentPage.provisioningRebootHint')}
                   </p>

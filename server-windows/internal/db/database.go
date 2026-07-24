@@ -40,6 +40,8 @@ func InitDB(dsn string) (*gorm.DB, error) {
 		return nil, fmt.Errorf("migrate database: %w", err)
 	}
 
+	ensureEnrollmentSettingsSchema(database)
+
 	if err := migrateWindowsApplicationData(database); err != nil {
 		return nil, fmt.Errorf("migrate windows applications: %w", err)
 	}

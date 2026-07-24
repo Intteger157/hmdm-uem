@@ -27,14 +27,16 @@ func (h *WindowsHandler) GetEnrollmentProvisioning(c *gin.Context) {
 func (h *WindowsHandler) UpdateEnrollmentProvisioning(c *gin.Context) {
 	var req models.UpdateEnrollmentProvisioningRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("[enrollment-provisioning] invalid body: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
 
+	provisioningEnabled := req.ResolvedProvisioningEnabled()
 	req.AdminUsername = strings.TrimSpace(req.AdminUsername)
 	req.AdminPassword = strings.TrimSpace(req.AdminPassword)
 
-	if req.CreateLocalAdmin {
+	if provisioningEnabled {
 		if req.AdminUsername == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "admin username is required when local admin provisioning is enabled"})
 			return
@@ -45,33 +47,46 @@ func (h *WindowsHandler) UpdateEnrollmentProvisioning(c *gin.Context) {
 		}
 	}
 
-	settings, err := getOrCreateEnrollmentSettings()
-	if err != nil {
+	if _, err := getOrCreateEnrollmentSettings(); err != nil {
 		log.Printf("[enrollment-provisioning] load failed: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load enrollment provisioning settings"})
 		return
 	}
 
-	settings.CreateLocalAdmin = req.CreateLocalAdmin
-	settings.AdminUsername = req.AdminUsername
-	settings.AdminPassword = req.AdminPassword
-	settings.UpdatedAt = time.Now().UTC()
-
-	if err := db.DB.Save(settings).Error; err != nil {
+	if err := saveEnrollmentProvisioningFields(provisioningEnabled, req.AdminUsername, req.AdminPassword); err != nil {
 		log.Printf("[enrollment-provisioning] save failed: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save enrollment provisioning settings"})
 		return
 	}
 
-	log.Printf("[enrollment-provisioning] updated create_local_admin=%t admin_user=%q", settings.CreateLocalAdmin, settings.AdminUsername)
+	settings, err := getOrCreateEnrollmentSettings()
+	if err != nil {
+		log.Printf("[enrollment-provisioning] reload failed: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load enrollment provisioning settings"})
+		return
+	}
+
+	log.Printf("[enrollment-provisioning] updated provisioning_enabled=%t admin_user=%q", settings.CreateLocalAdmin, settings.AdminUsername)
 	c.JSON(http.StatusOK, toEnrollmentProvisioningResponse(settings))
+}
+
+func saveEnrollmentProvisioningFields(enabled bool, username, password string) error {
+	return db.DB.Model(&models.WindowsEnrollmentProvisioningSettings{}).
+		Where("id = ?", enrollmentSettingsID).
+		Updates(map[string]interface{}{
+			"create_local_admin": enabled,
+			"admin_username":     username,
+			"admin_password":     password,
+			"updated_at":         time.Now().UTC(),
+		}).Error
 }
 
 func toEnrollmentProvisioningResponse(settings *models.WindowsEnrollmentProvisioningSettings) models.EnrollmentProvisioningResponse {
 	return models.EnrollmentProvisioningResponse{
-		CreateLocalAdmin: settings.CreateLocalAdmin,
-		AdminUsername:    settings.AdminUsername,
-		AdminPassword:    settings.AdminPassword,
+		CreateLocalAdmin:    settings.CreateLocalAdmin,
+		ProvisioningEnabled: settings.CreateLocalAdmin,
+		AdminUsername:       settings.AdminUsername,
+		AdminPassword:       settings.AdminPassword,
 	}
 }
 

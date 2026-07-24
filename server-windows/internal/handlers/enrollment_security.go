@@ -55,7 +55,13 @@ func (h *WindowsHandler) UpdateEnrollmentSecurity(c *gin.Context) {
 	settings.EnrollmentSecret = req.EnrollmentSecret
 	settings.UpdatedAt = time.Now().UTC()
 
-	if err := db.DB.Save(settings).Error; err != nil {
+	if err := db.DB.Model(&models.WindowsEnrollmentProvisioningSettings{}).
+		Where("id = ?", settings.ID).
+		Updates(map[string]interface{}{
+			"enrollment_mode":   settings.EnrollmentMode,
+			"enrollment_secret": settings.EnrollmentSecret,
+			"updated_at":        settings.UpdatedAt,
+		}).Error; err != nil {
 		log.Printf("[enrollment-security] save failed: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save enrollment security settings"})
 		return
@@ -95,7 +101,13 @@ func getOrCreateEnrollmentSettings() (*models.WindowsEnrollmentProvisioningSetti
 		}
 		if updated {
 			settings.UpdatedAt = time.Now().UTC()
-			if saveErr := db.DB.Save(&settings).Error; saveErr != nil {
+			if saveErr := db.DB.Model(&models.WindowsEnrollmentProvisioningSettings{}).
+				Where("id = ?", settings.ID).
+				Updates(map[string]interface{}{
+					"enrollment_mode":   settings.EnrollmentMode,
+					"enrollment_secret": settings.EnrollmentSecret,
+					"updated_at":        settings.UpdatedAt,
+				}).Error; saveErr != nil {
 				return nil, fmt.Errorf("update enrollment settings defaults: %w", saveErr)
 			}
 		}
