@@ -112,7 +112,7 @@ function createDefaultFormValues(): SoftwareAppFormValues {
   return {
     appType: 'upload',
     name: '',
-    version: DEFAULT_APP_VERSION,
+    version: '',
     publisher: '',
     downloadUrl: '',
     wingetId: '',
@@ -249,12 +249,12 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
       const manualVersion = (form.getValues('version') ?? '').trim()
       const manualPublisher = (form.getValues('publisher') ?? '').trim()
       const result = await uploadSoftwareApp(file, {
-        ...(manualVersion && manualVersion !== DEFAULT_APP_VERSION ? { version: manualVersion } : {}),
+        ...(manualVersion ? { version: manualVersion } : {}),
         ...(manualPublisher ? { publisher: manualPublisher } : {}),
       })
       form.setValue('appType', 'upload', { shouldValidate: true })
       form.setValue('name', result.name, { shouldValidate: true })
-      form.setValue('version', normalizeAppVersion(result.version), { shouldValidate: true })
+      form.setValue('version', result.version?.trim() ?? '', { shouldValidate: true })
       form.setValue('publisher', result.publisher?.trim() ?? '', { shouldValidate: true })
       form.setValue('downloadUrl', result.url, { shouldValidate: true })
       form.setValue('silentInstallation', true)
@@ -531,7 +531,7 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
                 <FormItem>
                   <FormLabel>{t('windowsAppCatalog.form.publisher')}</FormLabel>
                   <FormControl>
-                    <Input {...field} autoComplete="off" />
+                    <Input {...field} autoComplete="off" placeholder={t('windowsAppCatalog.form.autoDetectPlaceholder')} />
                   </FormControl>
                   <FormDescription>{t('windowsAppCatalog.form.publisherHint')}</FormDescription>
                   <FormMessage />
@@ -545,7 +545,7 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
                 <FormItem>
                   <FormLabel>{t('windowsAppCatalog.form.version')}</FormLabel>
                   <FormControl>
-                    <Input {...field} autoComplete="off" />
+                    <Input {...field} autoComplete="off" placeholder={t('windowsAppCatalog.form.autoDetectPlaceholder')} />
                   </FormControl>
                   <FormDescription>{t('windowsAppCatalog.form.versionHint')}</FormDescription>
                   <FormMessage />

@@ -26,7 +26,7 @@ func TestNormalizeVersion(t *testing.T) {
 	}
 }
 
-func TestResolveInstallerMetadataUsesFilenameThenDefault(t *testing.T) {
+func TestResolveInstallerMetadataUsesFilenameWithoutEmbeddedVersion(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "SlothClash-windows-amd64-installer.exe")
 	if err := os.WriteFile(path, []byte("not-a-real-pe"), 0o644); err != nil {
@@ -37,8 +37,8 @@ func TestResolveInstallerMetadataUsesFilenameThenDefault(t *testing.T) {
 	if meta.Name != "SlothClash" {
 		t.Fatalf("Name = %q, want SlothClash", meta.Name)
 	}
-	if meta.Version != DefaultInstallerVersion {
-		t.Fatalf("Version = %q, want %q", meta.Version, DefaultInstallerVersion)
+	if meta.Version != "" {
+		t.Fatalf("Version = %q, want empty", meta.Version)
 	}
 }
 

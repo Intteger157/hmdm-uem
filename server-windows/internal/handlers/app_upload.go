@@ -63,20 +63,12 @@ func (h *WindowsHandler) UploadApplication(c *gin.Context) {
 		return
 	}
 
-	parsed := metadata.ResolveInstallerMetadata(destPath, originalName)
+	overrideVersion := strings.TrimSpace(c.PostForm("version"))
+	overridePublisher := strings.TrimSpace(c.PostForm("publisher"))
+	parsed := resolveUploadMetadata(destPath, originalName, overrideVersion, overridePublisher)
 	name := strings.TrimSpace(parsed.Name)
 	version := strings.TrimSpace(parsed.Version)
 	publisher := strings.TrimSpace(parsed.Publisher)
-
-	if overrideVersion := strings.TrimSpace(c.PostForm("version")); overrideVersion != "" {
-		version = metadata.NormalizeVersion(overrideVersion)
-		if version == "" {
-			version = overrideVersion
-		}
-	}
-	if overridePublisher := strings.TrimSpace(c.PostForm("publisher")); overridePublisher != "" {
-		publisher = overridePublisher
-	}
 
 	detectedArgs, detectErr := metadata.DetectInstallerArgs(destPath)
 	if detectErr != nil {

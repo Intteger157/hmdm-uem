@@ -18,8 +18,8 @@ func ResolveInstallerMetadata(path, originalFilename string) InstallerMetadata {
 		Publisher: resolvePublisher(fileMeta.Publisher),
 	}
 
-	if fileMeta.Source == metadataSourceDefault && meta.Version == DefaultInstallerVersion {
-		log.Printf("[metadata] using fallback version for %q: version=%q", filepath.Base(originalFilename), meta.Version)
+	if fileMeta.Source == metadataSourceDefault && meta.Version == "" {
+		log.Printf("[metadata] no embedded version metadata for %q", filepath.Base(originalFilename))
 	}
 
 	return meta
@@ -52,6 +52,7 @@ func readInstallerMetadata(path string) resolvedInstallerMetadata {
 
 func resolveExeMetadata(path string) resolvedInstallerMetadata {
 	for _, parser := range []func(string) (InstallerMetadata, error){
+		parseExeMetadataFileVersion,
 		parseExeMetadata,
 		parseExeMetadataDebugPE,
 	} {

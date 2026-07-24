@@ -60,8 +60,6 @@ function isSupportedInstaller(file: File): boolean {
   return name.endsWith('.exe') || name.endsWith('.msi')
 }
 
-const DEFAULT_APP_VERSION = '1.0.0'
-
 export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationEditSheetProps) {
   const { t } = useTranslation()
   const appQuery = useSoftwareAppQuery(appId, open && appId != null)
@@ -228,7 +226,7 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
                 <Input
                   id="edit-app-version"
                   value={versionOverride}
-                  placeholder={DEFAULT_APP_VERSION}
+                  placeholder={t('windowsAppCatalog.form.autoDetectPlaceholder')}
                   autoComplete="off"
                   disabled={uploadingVersion}
                   onChange={(event) => setVersionOverride(event.target.value)}
@@ -242,6 +240,7 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
                 <Input
                   id="edit-app-publisher"
                   value={publisherOverride}
+                  placeholder={t('windowsAppCatalog.form.autoDetectPlaceholder')}
                   autoComplete="off"
                   disabled={uploadingVersion}
                   onChange={(event) => setPublisherOverride(event.target.value)}

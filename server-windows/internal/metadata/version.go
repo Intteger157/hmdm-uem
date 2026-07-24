@@ -43,7 +43,7 @@ func resolveVersion(fileVersion, filename, originalFilename string) string {
 	if normalized := NormalizeVersion(ParseFilenameMetadata(originalFilename).Version); normalized != "" {
 		return normalized
 	}
-	return DefaultInstallerVersion
+	return ""
 }
 
 func resolveName(fileName, filename, originalFilename string) string {
