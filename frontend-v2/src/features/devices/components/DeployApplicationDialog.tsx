@@ -4,6 +4,7 @@ import {
   useAssignDeviceAppMutation,
   useSoftwareAppsQuery,
 } from '@/features/windows/applications/hooks/use-windows-software-apps'
+import { formatLatestVersionLabel } from '@/features/windows/applications/types/software-app'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -34,6 +35,7 @@ export function DeployApplicationDialog({
   const softwareAppsQuery = useSoftwareAppsQuery(open)
   const assignMutation = useAssignDeviceAppMutation()
   const [selectedAppId, setSelectedAppId] = useState('')
+  const [selectedVersionId, setSelectedVersionId] = useState('')
 
   const statusByAppId = useMemo(() => {
     const map = new Map<number, DeviceAppStatusItem['status']>()
@@ -44,19 +46,12 @@ export function DeployApplicationDialog({
   }, [deviceAppStatuses])
 
   const catalogApps = softwareAppsQuery.data ?? []
-
-  const formatAppLabel = (app: (typeof catalogApps)[number]) => {
-    const base = app.version ? `${app.name} (${app.version})` : app.name
-    const status = statusByAppId.get(app.id)
-    if (!status) {
-      return base
-    }
-    return `${base} — ${status}`
-  }
+  const selectedApp = catalogApps.find((app) => String(app.id) === selectedAppId)
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
       setSelectedAppId('')
+      setSelectedVersionId('')
     }
     onOpenChange(nextOpen)
   }
@@ -67,8 +62,17 @@ export function DeployApplicationDialog({
       return
     }
 
+    const versionId =
+      selectedVersionId === '' || selectedVersionId === 'latest'
+        ? undefined
+        : Number.parseInt(selectedVersionId, 10)
+
     try {
-      await assignMutation.mutateAsync({ hardwareId, appId })
+      await assignMutation.mutateAsync({
+        hardwareId,
+        appId,
+        payload: versionId && versionId > 0 ? { versionId } : undefined,
+      })
       toast.success(t('deviceDetail.appDeployments.deploySuccess'))
       handleOpenChange(false)
     } catch {
@@ -84,22 +88,57 @@ export function DeployApplicationDialog({
           <DialogDescription>{t('deviceDetail.actions.installDescription')}</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-2">
-          <Label htmlFor="deploy-app-select">{t('deviceDetail.appDeployments.deployAppLabel')}</Label>
-          <select
-            id="deploy-app-select"
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-            value={selectedAppId}
-            disabled={softwareAppsQuery.isLoading || assignMutation.isPending}
-            onChange={(event) => setSelectedAppId(event.target.value)}
-          >
-            <option value="">{t('deviceDetail.appDeployments.deployAppPlaceholder')}</option>
-            {catalogApps.map((app) => (
-              <option key={app.id} value={String(app.id)}>
-                {formatAppLabel(app)}
-              </option>
-            ))}
-          </select>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="deploy-app-select">{t('deviceDetail.appDeployments.deployAppLabel')}</Label>
+            <select
+              id="deploy-app-select"
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              value={selectedAppId}
+              disabled={softwareAppsQuery.isLoading || assignMutation.isPending}
+              onChange={(event) => {
+                setSelectedAppId(event.target.value)
+                setSelectedVersionId('latest')
+              }}
+            >
+              <option value="">{t('deviceDetail.appDeployments.deployAppPlaceholder')}</option>
+              {catalogApps.map((app) => {
+                const status = statusByAppId.get(app.id)
+                const label = status ? `${app.name} — ${status}` : app.name
+                return (
+                  <option key={app.id} value={String(app.id)}>
+                    {label}
+                  </option>
+                )
+              })}
+            </select>
+          </div>
+
+          {selectedApp ? (
+            <div className="space-y-2">
+              <Label htmlFor="deploy-version-select">{t('deviceDetail.appDeployments.deployVersionLabel')}</Label>
+              <select
+                id="deploy-version-select"
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                value={selectedVersionId || 'latest'}
+                disabled={assignMutation.isPending}
+                onChange={(event) => setSelectedVersionId(event.target.value)}
+              >
+                <option value="latest">
+                  {t('deviceDetail.appDeployments.deployVersionLatest', {
+                    version: selectedApp.latestVersion || '—',
+                  })}
+                </option>
+                {selectedApp.versions.map((version) => (
+                  <option key={version.id} value={String(version.id)}>
+                    {version.version || `#${version.id}`}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">{formatLatestVersionLabel(selectedApp)}</p>
+            </div>
+          ) : null}
+
           {softwareAppsQuery.isError ? (
             <p className="text-xs text-destructive">{t('deviceDetail.appDeployments.deployLoadError')}</p>
           ) : null}

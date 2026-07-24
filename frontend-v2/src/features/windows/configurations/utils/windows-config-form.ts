@@ -1,8 +1,14 @@
 import { z } from 'zod'
+import type { ProfileAppAssignment } from '@/features/windows/applications/types/software-app'
 import {
   DEFAULT_WINDOWS_CONFIG_PROFILE_PAYLOAD,
   type WindowsConfigProfile,
 } from '@/features/windows/configurations/types/config-profile'
+
+const profileAppAssignmentSchema = z.object({
+  appId: z.number().int().positive(),
+  versionId: z.number().int().positive().optional().nullable(),
+})
 
 export const configProfileFormSchema = z.object({
   name: z.string().trim().min(1, 'required'),
@@ -16,7 +22,7 @@ export const configProfileFormSchema = z.object({
   }),
   groupIds: z.array(z.number().int().positive()),
   deviceIds: z.array(z.number().int().positive()),
-  appIds: z.array(z.number().int().positive()),
+  appAssignments: z.array(profileAppAssignmentSchema),
 })
 
 export type ConfigProfileFormValues = z.infer<typeof configProfileFormSchema>
@@ -29,18 +35,22 @@ export function createEmptyConfigProfileFormValues(): ConfigProfileFormValues {
     payload: { ...DEFAULT_WINDOWS_CONFIG_PROFILE_PAYLOAD },
     groupIds: [],
     deviceIds: [],
-    appIds: [],
+    appAssignments: [],
   }
 }
 
 export function toConfigProfileFormValues(
   profile: WindowsConfigProfile | null,
   assignments?: { groupIds: number[]; deviceIds: number[] },
-  profileApps?: { appIds: number[] },
+  profileApps?: { appIds: number[]; assignments?: ProfileAppAssignment[] },
 ): ConfigProfileFormValues {
   if (!profile) {
     return createEmptyConfigProfileFormValues()
   }
+
+  const appAssignments =
+    profileApps?.assignments ??
+    (profileApps?.appIds ?? []).map((appId) => ({ appId }))
 
   return {
     name: profile.name,
@@ -54,6 +64,6 @@ export function toConfigProfileFormValues(
     },
     groupIds: assignments?.groupIds ?? [],
     deviceIds: assignments?.deviceIds ?? [],
-    appIds: profileApps?.appIds ?? [],
+    appAssignments,
   }
 }

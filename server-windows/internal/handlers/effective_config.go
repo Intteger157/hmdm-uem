@@ -210,22 +210,7 @@ func loadRequiredAppsForProfiles(profileIDs []uint) ([]models.RequiredApp, error
 		return nil, nil
 	}
 
-	appIDs := make([]uint, 0, len(links))
-	seen := make(map[uint]struct{}, len(links))
-	for _, link := range links {
-		if _, ok := seen[link.AppID]; ok {
-			continue
-		}
-		seen[link.AppID] = struct{}{}
-		appIDs = append(appIDs, link.AppID)
-	}
-
-	var apps []models.SoftwareApp
-	if err := db.DB.Where("id IN ?", appIDs).Order("id ASC").Find(&apps).Error; err != nil {
-		return nil, err
-	}
-
-	return softwareAppsToRequiredApps(apps), nil
+	return profileAppLinksToRequiredApps(links)
 }
 
 func loadDirectAssignedApps(deviceID uint) ([]models.RequiredApp, error) {
@@ -237,40 +222,39 @@ func loadDirectAssignedApps(deviceID uint) ([]models.RequiredApp, error) {
 		return nil, nil
 	}
 
-	appIDs := make([]uint, 0, len(links))
+	required := make([]models.RequiredApp, 0, len(links))
 	for _, link := range links {
-		appIDs = append(appIDs, link.AppID)
+		version, app, err := resolveApplicationVersion(link.AppID, link.VersionID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				continue
+			}
+			return nil, err
+		}
+		required = append(required, applicationVersionToRequiredApp(app, version))
 	}
-
-	var apps []models.SoftwareApp
-	if err := db.DB.Where("id IN ?", appIDs).Order("id ASC").Find(&apps).Error; err != nil {
-		return nil, err
-	}
-
-	return softwareAppsToRequiredApps(apps), nil
+	return required, nil
 }
 
-func softwareAppsToRequiredApps(apps []models.SoftwareApp) []models.RequiredApp {
-	required := make([]models.RequiredApp, 0, len(apps))
-	for _, app := range apps {
-		appType := app.AppType
-		if appType == "" {
-			appType = models.AppTypeURL
+func profileAppLinksToRequiredApps(links []models.ProfileApp) ([]models.RequiredApp, error) {
+	seen := make(map[uint]struct{})
+	required := make([]models.RequiredApp, 0, len(links))
+	for _, link := range links {
+		if _, ok := seen[link.AppID]; ok {
+			continue
 		}
-		required = append(required, models.RequiredApp{
-			ID:              app.ID,
-			Name:            app.Name,
-			Version:         app.Version,
-			UpdatedAt:       app.UpdatedAt,
-			DownloadURL:     normalizeDownloadURL(app.DownloadURL),
-			InstallArgs:     app.InstallArgs,
-			AppType:         appType,
-			WingetID:        app.WingetID,
-			AutoUpdate:      app.AutoUpdate,
-			UpdateFrequency: app.UpdateFrequency,
-		})
+		seen[link.AppID] = struct{}{}
+
+		version, app, err := resolveApplicationVersion(link.AppID, link.VersionID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				continue
+			}
+			return nil, err
+		}
+		required = append(required, applicationVersionToRequiredApp(app, version))
 	}
-	return required
+	return required, nil
 }
 
 func mergeRequiredApps(lists ...[]models.RequiredApp) []models.RequiredApp {

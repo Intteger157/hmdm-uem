@@ -17,6 +17,7 @@ type AppliedProfileSource struct {
 // RequiredApp is one app the agent must install for a device.
 type RequiredApp struct {
 	ID              uint      `json:"id"`
+	VersionID       uint      `json:"versionId,omitempty"`
 	Name            string    `json:"name"`
 	Version         string    `json:"version"`
 	UpdatedAt       time.Time `json:"updatedAt"`

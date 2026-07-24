@@ -36,21 +36,41 @@ func (h *WindowsHandler) AssignDeviceApp(c *gin.Context) {
 		return
 	}
 
-	if err := db.DB.First(&models.SoftwareApp{}, appID).Error; err != nil {
+	if err := db.DB.First(&models.Application{}, appID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "software app not found"})
+			c.JSON(http.StatusNotFound, gin.H{"error": "application not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup software app"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup application"})
 		return
 	}
 
-	link := models.WindowsDeviceApp{DeviceID: device.ID, AppID: appID}
-	result := db.DB.FirstOrCreate(&link, models.WindowsDeviceApp{DeviceID: device.ID, AppID: appID})
-	if result.Error != nil {
-		log.Printf("[assign-device-app] save failed: device_id=%d app_id=%d err=%v", device.ID, appID, result.Error)
+	var req models.AssignDeviceAppRequest
+	_ = c.ShouldBindJSON(&req)
+
+	var link models.WindowsDeviceApp
+	lookupErr := db.DB.Where("device_id = ? AND app_id = ?", device.ID, appID).First(&link).Error
+	created := false
+	switch {
+	case errors.Is(lookupErr, gorm.ErrRecordNotFound):
+		link = models.WindowsDeviceApp{DeviceID: device.ID, AppID: appID, VersionID: req.VersionID}
+		if err := db.DB.Create(&link).Error; err != nil {
+			log.Printf("[assign-device-app] save failed: device_id=%d app_id=%d err=%v", device.ID, appID, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to assign app to device"})
+			return
+		}
+		created = true
+	case lookupErr != nil:
+		log.Printf("[assign-device-app] lookup failed: device_id=%d app_id=%d err=%v", device.ID, appID, lookupErr)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to assign app to device"})
 		return
+	default:
+		link.VersionID = req.VersionID
+		if err := db.DB.Save(&link).Error; err != nil {
+			log.Printf("[assign-device-app] update failed: device_id=%d app_id=%d err=%v", device.ID, appID, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to assign app to device"})
+			return
+		}
 	}
 
 	if err := upsertDeviceAppStatusPending(device.ID, appID); err != nil {
@@ -60,7 +80,7 @@ func (h *WindowsHandler) AssignDeviceApp(c *gin.Context) {
 	}
 
 	statusCode := http.StatusOK
-	if result.RowsAffected > 0 {
+	if created {
 		statusCode = http.StatusCreated
 	}
 

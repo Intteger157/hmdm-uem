@@ -35,7 +35,16 @@ func (h *WindowsHandler) GetConfigProfileApps(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.ProfileAppsResponse{AppIDs: appIDs})
+	assignments, err := listAssignedProfileApps(profileID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load profile apps"})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.ProfileAppsResponse{
+		AppIDs:      appIDs,
+		Assignments: assignments,
+	})
 }
 
 // AssignConfigProfileApps replaces required apps for a profile.
@@ -61,21 +70,28 @@ func (h *WindowsHandler) AssignConfigProfileApps(c *gin.Context) {
 		return
 	}
 
-	if err := validateAppIDs(req.AppIDs); err != nil {
+	if err := validateApplicationAssignments(normalizeProfileAssignments(req)); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "one or more apps were not found"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "one or more apps or versions were not found"})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to validate apps"})
 		return
 	}
 
+	assignments := normalizeProfileAssignments(req)
+
 	if err := db.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("profile_id = ?", profileID).Delete(&models.ProfileApp{}).Error; err != nil {
 			return err
 		}
-		for _, appID := range uniqueUints(req.AppIDs) {
-			if err := tx.Create(&models.ProfileApp{ProfileID: profileID, AppID: appID}).Error; err != nil {
+		for _, assignment := range assignments {
+			row := models.ProfileApp{
+				ProfileID: profileID,
+				AppID:     assignment.AppID,
+				VersionID: assignment.VersionID,
+			}
+			if err := tx.Create(&row).Error; err != nil {
 				return err
 			}
 		}
@@ -86,8 +102,11 @@ func (h *WindowsHandler) AssignConfigProfileApps(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[assign-profile-apps] profile_id=%d apps=%d", profileID, len(req.AppIDs))
-	c.JSON(http.StatusOK, models.ProfileAppsResponse{AppIDs: uniqueUints(req.AppIDs)})
+	log.Printf("[assign-profile-apps] profile_id=%d apps=%d", profileID, len(assignments))
+	c.JSON(http.StatusOK, models.ProfileAppsResponse{
+		AppIDs:      assignmentAppIDs(assignments),
+		Assignments: assignments,
+	})
 }
 
 func listAssignedAppIDs(profileID uint) ([]uint, error) {
@@ -102,20 +121,27 @@ func listAssignedAppIDs(profileID uint) ([]uint, error) {
 	return ids, nil
 }
 
-func validateAppIDs(appIDs []uint) error {
-	unique := uniqueUints(appIDs)
-	if len(unique) == 0 {
-		return nil
+func listAssignedProfileApps(profileID uint) ([]models.ProfileAppAssignment, error) {
+	var rows []models.ProfileApp
+	if err := db.DB.Where("profile_id = ?", profileID).Order("app_id ASC").Find(&rows).Error; err != nil {
+		return nil, err
 	}
+	assignments := make([]models.ProfileAppAssignment, 0, len(rows))
+	for _, row := range rows {
+		assignments = append(assignments, models.ProfileAppAssignment{
+			AppID:     row.AppID,
+			VersionID: row.VersionID,
+		})
+	}
+	return assignments, nil
+}
 
-	var count int64
-	if err := db.DB.Model(&models.SoftwareApp{}).Where("id IN ?", unique).Count(&count).Error; err != nil {
-		return err
+func assignmentAppIDs(assignments []models.ProfileAppAssignment) []uint {
+	ids := make([]uint, 0, len(assignments))
+	for _, assignment := range assignments {
+		ids = append(ids, assignment.AppID)
 	}
-	if int(count) != len(unique) {
-		return gorm.ErrRecordNotFound
-	}
-	return nil
+	return uniqueUints(ids)
 }
 
 func deleteConfigProfileApps(profileID uint) error {
@@ -199,13 +225,13 @@ func (h *WindowsHandler) ReportDeviceAppStatus(c *gin.Context) {
 		return
 	}
 
-	var app models.SoftwareApp
+	var app models.Application
 	if err := db.DB.First(&app, req.AppID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "software app not found"})
+			c.JSON(http.StatusNotFound, gin.H{"error": "application not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup software app"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup application"})
 		return
 	}
 

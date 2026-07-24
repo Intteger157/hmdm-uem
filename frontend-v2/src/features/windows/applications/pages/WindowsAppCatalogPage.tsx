@@ -1,12 +1,14 @@
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { ApplicationEditSheet } from '@/features/windows/applications/components/ApplicationEditSheet'
 import { SoftwareAppFormSheet } from '@/features/windows/applications/components/SoftwareAppFormSheet'
 import {
   useDeleteSoftwareAppMutation,
   useSoftwareAppsQuery,
 } from '@/features/windows/applications/hooks/use-windows-software-apps'
 import type { SoftwareApp } from '@/features/windows/applications/types/software-app'
+import { formatLatestVersionLabel, getLatestVersion } from '@/features/windows/applications/types/software-app'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -16,15 +18,20 @@ import { usePaginatedList } from '@/shared/hooks/use-paginated-list'
 import { toast } from 'sonner'
 
 function matchApp(app: SoftwareApp, query: string): boolean {
+  const latest = getLatestVersion(app)
   return (
     app.name.toLowerCase().includes(query) ||
-    (app.version ?? '').toLowerCase().includes(query) ||
-    (app.downloadUrl ?? '').toLowerCase().includes(query) ||
-    (app.wingetId ?? '').toLowerCase().includes(query)
+    (app.latestVersion ?? '').toLowerCase().includes(query) ||
+    (app.publisher ?? '').toLowerCase().includes(query) ||
+    (latest?.downloadUrl ?? '').toLowerCase().includes(query) ||
+    (latest?.wingetId ?? '').toLowerCase().includes(query)
   )
 }
 
-function formatTimestamp(value: string): string {
+function formatTimestamp(value?: string): string {
+  if (!value) {
+    return '—'
+  }
   const parsed = Date.parse(value)
   if (Number.isNaN(parsed)) {
     return '—'
@@ -42,8 +49,8 @@ export function WindowsAppCatalogPage() {
 
   const [searchInput, setSearchInput] = useState('')
   const [searchValue, setSearchValue] = useState('')
-  const [sheetOpen, setSheetOpen] = useState(false)
-  const [editTarget, setEditTarget] = useState<SoftwareApp | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [editAppId, setEditAppId] = useState<number | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<SoftwareApp | null>(null)
 
   const matcher = useCallback(matchApp, [])
@@ -79,13 +86,7 @@ export function WindowsAppCatalogPage() {
           <h1 className="text-2xl font-semibold tracking-tight">{t('windowsAppCatalog.title')}</h1>
           <p className="text-sm text-muted-foreground">{t('windowsAppCatalog.subtitle')}</p>
         </div>
-        <Button
-          type="button"
-          onClick={() => {
-            setEditTarget(null)
-            setSheetOpen(true)
-          }}
-        >
+        <Button type="button" onClick={() => setCreateOpen(true)}>
           <Plus className="size-4" />
           {t('windowsAppCatalog.createApp')}
         </Button>
@@ -126,47 +127,48 @@ export function WindowsAppCatalogPage() {
                   <tr className="text-muted-foreground">
                     <th className="px-4 py-3 font-medium">{t('windowsAppCatalog.columns.name')}</th>
                     <th className="px-4 py-3 font-medium">{t('windowsAppCatalog.columns.version')}</th>
-                    <th className="px-4 py-3 font-medium">{t('windowsAppCatalog.columns.installArgs')}</th>
+                    <th className="px-4 py-3 font-medium">{t('windowsAppCatalog.columns.versionsCount')}</th>
                     <th className="px-4 py-3 font-medium">{t('windowsAppCatalog.columns.updated')}</th>
                     <th className="px-4 py-3 font-medium">{t('windowsAppCatalog.columns.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {pageItems.map((app) => (
-                    <tr key={app.id} className="border-b last:border-0">
-                      <td className="px-4 py-3">
-                        <div className="font-medium">{app.name}</div>
-                        <div className="mt-0.5 max-w-md truncate text-xs text-muted-foreground">
-                          {app.appType === 'winget'
-                            ? app.wingetId || '—'
-                            : app.downloadUrl || '—'}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">{app.version || '—'}</td>
-                      <td className="px-4 py-3 font-mono text-xs">{app.installArgs || '—'}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">{formatTimestamp(app.updatedAt)}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setEditTarget(app)
-                              setSheetOpen(true)
-                            }}
-                          >
-                            <Pencil className="mr-1.5 size-3.5" />
-                            {t('common.edit')}
-                          </Button>
-                          <Button type="button" size="sm" variant="outline" onClick={() => setDeleteTarget(app)}>
-                            <Trash2 className="mr-1.5 size-3.5" />
-                            {t('common.delete')}
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {pageItems.map((app) => {
+                    const latest = getLatestVersion(app)
+                    return (
+                      <tr
+                        key={app.id}
+                        className="cursor-pointer border-b last:border-0 hover:bg-muted/30"
+                        onClick={() => setEditAppId(app.id)}
+                      >
+                        <td className="px-4 py-3">
+                          <div className="font-medium">{app.name}</div>
+                          <div className="mt-0.5 text-xs text-muted-foreground">
+                            {app.publisher || latest?.appType === 'winget'
+                              ? app.publisher || latest?.wingetId || '—'
+                              : '—'}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">{formatLatestVersionLabel(app)}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">{app.versions.length}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {formatTimestamp(latest?.uploadedAt ?? app.createdAt)}
+                        </td>
+                        <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
+                          <div className="flex flex-wrap gap-2">
+                            <Button type="button" size="sm" variant="outline" onClick={() => setEditAppId(app.id)}>
+                              <Pencil className="mr-1.5 size-3.5" />
+                              {t('common.edit')}
+                            </Button>
+                            <Button type="button" size="sm" variant="outline" onClick={() => setDeleteTarget(app)}>
+                              <Trash2 className="mr-1.5 size-3.5" />
+                              {t('common.delete')}
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
                   {pageItems.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
@@ -192,7 +194,12 @@ export function WindowsAppCatalogPage() {
         />
       ) : null}
 
-      <SoftwareAppFormSheet open={sheetOpen} onOpenChange={setSheetOpen} app={editTarget} />
+      <SoftwareAppFormSheet
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={(appId) => setEditAppId(appId)}
+      />
+      <ApplicationEditSheet open={editAppId != null} onOpenChange={(open) => !open && setEditAppId(null)} appId={editAppId} />
 
       <ConfirmDeleteDialog
         open={deleteTarget != null}

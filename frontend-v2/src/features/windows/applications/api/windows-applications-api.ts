@@ -2,12 +2,16 @@ import axios from 'axios'
 import { API_BASE } from '@/shared/api/config'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import type {
+  AssignDeviceAppPayload,
+  CreateApplicationPayload,
+  CreateApplicationVersionPayload,
   DeviceAppStatusListResponse,
+  ProfileAppsPayload,
   ProfileAppsResponse,
   SoftwareApp,
   SoftwareAppListResponse,
+  UpdateApplicationPayload,
   UploadApplicationResponse,
-  UpsertSoftwareAppPayload,
 } from '@/features/windows/applications/types/software-app'
 
 const windowsApi = axios.create({
@@ -17,28 +21,44 @@ const windowsApi = axios.create({
   },
 })
 
-export async function fetchSoftwareApps(): Promise<SoftwareAppListResponse> {
+export async function fetchSoftwareApps(): Promise<SoftwareApp[]> {
   const response = await windowsApi.get<SoftwareAppListResponse>('/apps')
+  return response.data.items
+}
+
+export async function fetchSoftwareApp(id: number): Promise<SoftwareApp> {
+  const response = await windowsApi.get<SoftwareApp>(`/apps/${id}`)
   return response.data
 }
 
-export async function createSoftwareApp(payload: UpsertSoftwareAppPayload): Promise<SoftwareApp> {
+export async function createSoftwareApp(payload: CreateApplicationPayload): Promise<SoftwareApp> {
   const response = await windowsApi.post<SoftwareApp>('/apps', payload)
   return response.data
 }
 
-export async function updateSoftwareApp(id: number, payload: UpsertSoftwareAppPayload): Promise<SoftwareApp> {
+export async function updateSoftwareApp(id: number, payload: UpdateApplicationPayload): Promise<SoftwareApp> {
   const response = await windowsApi.put<SoftwareApp>(`/apps/${id}`, payload)
   return response.data
+}
+
+export async function createApplicationVersion(
+  appId: number,
+  payload: CreateApplicationVersionPayload,
+): Promise<SoftwareApp> {
+  await windowsApi.post(`/apps/${appId}/versions`, payload)
+  return fetchSoftwareApp(appId)
 }
 
 export async function deleteSoftwareApp(id: number): Promise<void> {
   await windowsApi.delete(`/apps/${id}`)
 }
 
-export async function uploadSoftwareApp(file: File): Promise<UploadApplicationResponse> {
+export async function uploadSoftwareApp(file: File, appId?: number): Promise<UploadApplicationResponse> {
   const formData = new FormData()
   formData.append('file', file)
+  if (appId != null) {
+    formData.append('appId', String(appId))
+  }
 
   const jwt = useAuthStore.getState().jwt
   const response = await axios.post<UploadApplicationResponse>(
@@ -60,11 +80,9 @@ export async function fetchConfigProfileApps(profileId: number): Promise<Profile
 
 export async function assignConfigProfileApps(
   profileId: number,
-  appIds: number[],
+  payload: ProfileAppsPayload,
 ): Promise<ProfileAppsResponse> {
-  const response = await windowsApi.post<ProfileAppsResponse>(`/configurations/${profileId}/apps`, {
-    appIds,
-  })
+  const response = await windowsApi.post<ProfileAppsResponse>(`/configurations/${profileId}/apps`, payload)
   return response.data
 }
 
@@ -74,9 +92,13 @@ export async function fetchDeviceAppStatuses(hardwareId: string): Promise<Device
   return response.data
 }
 
-export async function assignDeviceApp(hardwareId: string, appId: number): Promise<void> {
+export async function assignDeviceApp(
+  hardwareId: string,
+  appId: number,
+  payload?: AssignDeviceAppPayload,
+): Promise<void> {
   const encodedDevice = encodeURIComponent(hardwareId)
-  await windowsApi.post(`/devices/${encodedDevice}/apps/${appId}/assign`)
+  await windowsApi.post(`/devices/${encodedDevice}/apps/${appId}/assign`, payload ?? {})
 }
 
 export async function unassignDeviceApp(hardwareId: string, appId: number): Promise<void> {

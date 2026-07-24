@@ -30,12 +30,17 @@ func InitDB(dsn string) (*gorm.DB, error) {
 		&models.WindowsDeviceGroup{},
 		&models.WindowsProfileDevice{},
 		&models.WindowsProfileGroup{},
-		&models.SoftwareApp{},
+		&models.Application{},
+		&models.ApplicationVersion{},
 		&models.ProfileApp{},
 		&models.WindowsDeviceApp{},
 		&models.DeviceAppStatus{},
 	); err != nil {
 		return nil, fmt.Errorf("migrate database: %w", err)
+	}
+
+	if err := migrateSoftwareAppsToApplications(database); err != nil {
+		return nil, fmt.Errorf("migrate software apps: %w", err)
 	}
 
 	normalizeEnrollmentDownloadTokens(database)

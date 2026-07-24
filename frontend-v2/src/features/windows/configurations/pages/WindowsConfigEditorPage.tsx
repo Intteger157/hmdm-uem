@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react'
 import { fetchWindowsDeviceOptions } from '@/features/windows/configurations/api/windows-configurations-api'
 import { WindowsAssignmentMultiSelect } from '@/features/windows/configurations/components/WindowsAssignmentMultiSelect'
+import { WindowsProfileAppsSelector } from '@/features/windows/configurations/components/WindowsProfileAppsSelector'
 import {
   useAssignConfigProfileAppsMutation,
   useConfigProfileAppsQuery,
@@ -121,7 +122,10 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
 
       await assignAppsMutation.mutateAsync({
         profileId: saved.id,
-        appIds: values.appIds,
+        payload: {
+          appIds: values.appAssignments.map((item) => item.appId),
+          assignments: values.appAssignments,
+        },
       })
 
       toast.success(isEdit ? t('windowsConfigurations.form.updated') : t('windowsConfigurations.form.created'))
@@ -148,10 +152,6 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
   const deviceOptions = (devicesQuery.data ?? []).map((device) => ({
     value: device.id,
     label: device.label,
-  }))
-  const appOptions = (softwareAppsQuery.data ?? []).map((app) => ({
-    value: app.id,
-    label: app.version ? `${app.name} (${app.version})` : app.name,
   }))
 
   if (isLoading) {
@@ -356,18 +356,15 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
                 <CardContent>
                   <FormField
                     control={form.control}
-                    name="appIds"
+                    name="appAssignments"
                     render={({ field }) => (
                       <FormItem>
                         <FormControl>
-                          <WindowsAssignmentMultiSelect
-                            id="windows-config-apps"
-                            label={t('windowsConfigurations.requiredApps.apps')}
-                            options={appOptions}
-                            selectedIds={field.value}
+                          <WindowsProfileAppsSelector
+                            apps={softwareAppsQuery.data ?? []}
+                            assignments={field.value}
                             onChange={field.onChange}
                             disabled={isPending || softwareAppsQuery.isLoading}
-                            emptyLabel={t('windowsConfigurations.requiredApps.noApps')}
                           />
                         </FormControl>
                       </FormItem>
