@@ -19,6 +19,8 @@ type AppsState struct {
 	LastCheckTimes map[string]string `json:"lastCheckTimes"`
 	// DeployedApps maps catalog app ID to the server UpdatedAt timestamp last deployed successfully.
 	DeployedApps map[string]string `json:"deployedApps,omitempty"`
+	// FailedApps maps catalog app ID to the last failed deployment timestamp.
+	FailedApps map[string]string `json:"failedApps,omitempty"`
 }
 
 func LoadAppsState() (AppsState, error) {
@@ -58,6 +60,7 @@ func newEmptyAppsState() AppsState {
 	return AppsState{
 		LastCheckTimes: map[string]string{},
 		DeployedApps:   map[string]string{},
+		FailedApps:     map[string]string{},
 	}
 }
 
@@ -67,6 +70,9 @@ func normalizeAppsState(state *AppsState) {
 	}
 	if state.DeployedApps == nil {
 		state.DeployedApps = map[string]string{}
+	}
+	if state.FailedApps == nil {
+		state.FailedApps = map[string]string{}
 	}
 }
 
@@ -113,12 +119,40 @@ func (state *AppsState) MarkDeployed(appID uint, updatedAt string) {
 	if state.DeployedApps == nil {
 		state.DeployedApps = map[string]string{}
 	}
+	if state.FailedApps != nil {
+		delete(state.FailedApps, appKey(appID))
+	}
 	normalized := normalizeAppTimestamp(updatedAt)
 	if normalized == "" {
 		normalized = time.Now().UTC().Format(time.RFC3339)
 	}
 	state.DeployedApps[appKey(appID)] = normalized
 	state.MarkChecked(appID, time.Now().UTC())
+}
+
+// MarkDeployFailed records a failed deployment for this catalog revision.
+func (state *AppsState) MarkDeployFailed(appID uint, updatedAt string) {
+	if state.FailedApps == nil {
+		state.FailedApps = map[string]string{}
+	}
+	normalized := normalizeAppTimestamp(updatedAt)
+	if normalized == "" {
+		normalized = time.Now().UTC().Format(time.RFC3339)
+	}
+	state.FailedApps[appKey(appID)] = normalized
+	state.MarkChecked(appID, time.Now().UTC())
+}
+
+// ShouldSkipFailed skips redeploying until the catalog UpdatedAt changes or admin retries on server.
+func (state AppsState) ShouldSkipFailed(appID uint, serverUpdatedAt string) bool {
+	if state.FailedApps == nil {
+		return false
+	}
+	failedRevision, ok := state.FailedApps[appKey(appID)]
+	if !ok || strings.TrimSpace(failedRevision) == "" {
+		return false
+	}
+	return normalizeAppTimestamp(failedRevision) == normalizeAppTimestamp(serverUpdatedAt)
 }
 
 func parseAppTimestamp(raw string) time.Time {

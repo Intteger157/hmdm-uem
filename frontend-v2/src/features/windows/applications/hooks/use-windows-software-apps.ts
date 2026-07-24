@@ -9,6 +9,7 @@ import {
   fetchDeviceAppStatuses,
   fetchSoftwareApp,
   fetchSoftwareApps,
+  retryDeviceApp,
   updateSoftwareApp,
 } from '@/features/windows/applications/api/windows-applications-api'
 import type {
@@ -130,6 +131,19 @@ export function useAssignDeviceAppMutation() {
       appId: number
       payload?: AssignDeviceAppPayload
     }) => assignDeviceApp(hardwareId, appId, payload),
+    onSuccess: async (_data, variables) => {
+      await queryClient.invalidateQueries({
+        queryKey: windowsSoftwareAppQueryKeys.deviceStatuses(variables.hardwareId),
+      })
+    },
+  })
+}
+
+export function useRetryDeviceAppMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ hardwareId, appId }: { hardwareId: string; appId: number }) =>
+      retryDeviceApp(hardwareId, appId),
     onSuccess: async (_data, variables) => {
       await queryClient.invalidateQueries({
         queryKey: windowsSoftwareAppQueryKeys.deviceStatuses(variables.hardwareId),

@@ -116,6 +116,10 @@ func deployApp(app RequiredApp, opts DeployOptions, state *AppsState, installed 
 	}
 	defer endAppDeploy(app.ID, app.Name)
 
+	if state.FailedApps != nil {
+		delete(state.FailedApps, appKey(app.ID))
+	}
+
 	appType := normalizeAppType(app.AppType)
 	switch appType {
 	case AppTypeWinget:
@@ -125,13 +129,16 @@ func deployApp(app RequiredApp, opts DeployOptions, state *AppsState, installed 
 	}
 }
 
-func reportDeployFailure(opts DeployOptions, progress *InstallProgressReporter, app RequiredApp, message string, err error) (bool, error) {
+func reportDeployFailure(opts DeployOptions, progress *InstallProgressReporter, app RequiredApp, state *AppsState, message string, err error) (bool, error) {
 	if progress != nil {
 		progress.Report(InstallStatusFailed, message)
 	} else {
 		reportInstallProgress(opts.StepLogger, app.ID, app.Name, InstallStatusFailed, message)
 	}
 	reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusFailed, message)
+	if state != nil {
+		state.MarkDeployFailed(app.ID, app.UpdatedAt)
+	}
 	if err != nil {
 		return false, err
 	}
@@ -143,14 +150,14 @@ func deployWingetApp(app RequiredApp, opts DeployOptions, state *AppsState) (boo
 	progress := newInstallProgressReporter(opts.StepLogger, app.ID, app.Name)
 
 	if wingetID == "" {
-		return reportDeployFailure(opts, progress, app, "missing wingetId", fmt.Errorf("missing wingetId"))
+		return reportDeployFailure(opts, progress, app, state, "missing wingetId", fmt.Errorf("missing wingetId"))
 	}
 
 	progress.Report(InstallStatusInstalling, fmt.Sprintf("Checking winget package %q", wingetID))
 
 	installed, err := isWingetInstalled(wingetID)
 	if err != nil {
-		return reportDeployFailure(opts, progress, app, fmt.Sprintf("winget list failed: %v", err), fmt.Errorf("winget list: %w", err))
+		return reportDeployFailure(opts, progress, app, state, fmt.Sprintf("winget list failed: %v", err), fmt.Errorf("winget list: %w", err))
 	}
 
 	if !installed {
@@ -158,7 +165,7 @@ func deployWingetApp(app RequiredApp, opts DeployOptions, state *AppsState) (boo
 		reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusInstalling, "")
 		output, err := runWingetOutput("install", "--id", wingetID)
 		if err != nil {
-			return reportDeployFailure(opts, progress, app, formatCommandFailure("winget install", output, err), err)
+			return reportDeployFailure(opts, progress, app, state, formatCommandFailure("winget install", output, err), err)
 		}
 		progress.Report(InstallStatusSuccess, output)
 		reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusSuccess, "")
@@ -177,7 +184,7 @@ func deployWingetApp(app RequiredApp, opts DeployOptions, state *AppsState) (boo
 	reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusInstalling, "")
 	output, err := runWingetOutput("upgrade", "--id", wingetID)
 	if err != nil {
-		return reportDeployFailure(opts, progress, app, formatCommandFailure("winget upgrade", output, err), err)
+		return reportDeployFailure(opts, progress, app, state, formatCommandFailure("winget upgrade", output, err), err)
 	}
 	progress.Report(InstallStatusSuccess, output)
 	reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusSuccess, "")
@@ -190,7 +197,7 @@ func deployURLApp(app RequiredApp, opts DeployOptions, state *AppsState, install
 	progress := newInstallProgressReporter(opts.StepLogger, app.ID, app.Name)
 
 	if rawURL == "" {
-		return reportDeployFailure(opts, progress, app, "missing downloadUrl", fmt.Errorf("missing downloadUrl"))
+		return reportDeployFailure(opts, progress, app, state, "missing downloadUrl", fmt.Errorf("missing downloadUrl"))
 	}
 
 	alreadyInstalled := isAppInstalled(app.Name, app.Version, installed)
@@ -214,7 +221,7 @@ func deployURLApp(app RequiredApp, opts DeployOptions, state *AppsState, install
 
 	resolvedURL, err := resolveDownloadURL(opts.BaseURL, rawURL)
 	if err != nil {
-		return reportDeployFailure(opts, progress, app, fmt.Sprintf("resolve download URL: %v", err), fmt.Errorf("resolve download URL: %w", err))
+		return reportDeployFailure(opts, progress, app, state, fmt.Sprintf("resolve download URL: %v", err), fmt.Errorf("resolve download URL: %w", err))
 	}
 
 	progress.Report(InstallStatusDownloading, fmt.Sprintf("Download URL: %s", resolvedURL))
@@ -222,14 +229,14 @@ func deployURLApp(app RequiredApp, opts DeployOptions, state *AppsState, install
 
 	localPath, err := downloadInstaller(resolvedURL)
 	if err != nil {
-		return reportDeployFailure(opts, progress, app, fmt.Sprintf("download failed: %v", err), fmt.Errorf("download: %w", err))
+		return reportDeployFailure(opts, progress, app, state, fmt.Sprintf("download failed: %v", err), fmt.Errorf("download: %w", err))
 	}
 	defer os.Remove(localPath)
 
 	progress.note(fmt.Sprintf("Downloaded to %s", localPath))
 
 	if err := unblockDownloadedFile(localPath); err != nil {
-		return reportDeployFailure(opts, progress, app, fmt.Sprintf("Unblock-File failed: %v", err), fmt.Errorf("unblock file: %w", err))
+		return reportDeployFailure(opts, progress, app, state, fmt.Sprintf("Unblock-File failed: %v", err), fmt.Errorf("unblock file: %w", err))
 	}
 	progress.note("Unblock-File completed")
 
@@ -244,7 +251,7 @@ func deployURLApp(app RequiredApp, opts DeployOptions, state *AppsState, install
 		if resultMessage == "" {
 			resultMessage = err.Error()
 		}
-		return reportDeployFailure(opts, progress, app, resultMessage, fmt.Errorf("install: %w", err))
+		return reportDeployFailure(opts, progress, app, state, resultMessage, fmt.Errorf("install: %w", err))
 	}
 
 	resultMessage := formatInstallResult(result)

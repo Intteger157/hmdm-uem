@@ -130,18 +130,66 @@ func (h *WindowsHandler) UnassignDeviceApp(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-func upsertDeviceAppStatusPending(deviceID, appID uint) error {
-	return upsertDeviceAppStatus(deviceID, appID, models.AppStatusPending, "")
+// RetryDeviceApp resets a failed app deployment so the agent can install it again.
+func (h *WindowsHandler) RetryDeviceApp(c *gin.Context) {
+	hardwareID := stringsTrimHardwareID(c)
+	if hardwareID == "" {
+		return
+	}
+
+	appID, ok := parseUintParam(c.Param("appId"))
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid app id"})
+		return
+	}
+
+	var device models.WindowsDevice
+	if err := db.DB.Where("hardware_id = ?", hardwareID).First(&device).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "device not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup device"})
+		return
+	}
+
+	var status models.DeviceAppStatus
+	err := db.DB.Where("device_id = ? AND app_id = ?", device.ID, appID).First(&status).Error
+	switch {
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"error": "app deployment status not found"})
+		return
+	case err != nil:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup app deployment status"})
+		return
+	case status.Status != models.AppStatusFailed:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "only failed app deployments can be retried"})
+		return
+	}
+
+	if err := upsertDeviceAppStatusPending(device.ID, appID); err != nil {
+		log.Printf("[retry-device-app] status reset failed: device_id=%d app_id=%d err=%v", device.ID, appID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to reset app deployment status"})
+		return
+	}
+
+	log.Printf("[retry-device-app] device_id=%d app_id=%d hardware_id=%q", device.ID, appID, hardwareID)
+	c.Status(http.StatusNoContent)
 }
 
-func upsertDeviceAppStatus(deviceID, appID uint, status, errorMessage string) error {
+func upsertDeviceAppStatusPending(deviceID, appID uint) error {
+	return upsertDeviceAppStatus(deviceID, appID, models.AppStatusPending, "", nil)
+}
+
+func upsertDeviceAppStatus(deviceID, appID uint, status, errorMessage string, attemptedCatalogUpdatedAt *time.Time) error {
 	now := time.Now()
 	record := models.DeviceAppStatus{
-		DeviceID:     deviceID,
-		AppID:        appID,
-		Status:       status,
-		ErrorMessage: strings.TrimSpace(errorMessage),
-		UpdatedAt:    now,
+		DeviceID:                  deviceID,
+		AppID:                     appID,
+		Status:                    status,
+		ErrorMessage:              strings.TrimSpace(errorMessage),
+		AttemptedCatalogUpdatedAt: attemptedCatalogUpdatedAt,
+		UpdatedAt:                 now,
 	}
 
 	var existing models.DeviceAppStatus
@@ -154,9 +202,33 @@ func upsertDeviceAppStatus(deviceID, appID uint, status, errorMessage string) er
 	default:
 		existing.Status = status
 		existing.ErrorMessage = record.ErrorMessage
+		if attemptedCatalogUpdatedAt != nil {
+			existing.AttemptedCatalogUpdatedAt = attemptedCatalogUpdatedAt
+		}
 		existing.UpdatedAt = now
 		return db.DB.Save(&existing).Error
 	}
+}
+
+func catalogUpdatedAtForDeviceApp(device models.WindowsDevice, appID uint) *time.Time {
+	requiredApps, err := loadMergedRequiredApps(device)
+	if err != nil {
+		return nil
+	}
+	for _, app := range requiredApps {
+		if app.ID == appID {
+			updatedAt := app.UpdatedAt.UTC()
+			return &updatedAt
+		}
+	}
+
+	version, _, err := resolveApplicationVersion(appID, nil)
+	if err != nil {
+		return nil
+	}
+	requiredApp := applicationVersionToRequiredApp(models.Application{ID: appID}, version)
+	updatedAt := requiredApp.UpdatedAt.UTC()
+	return &updatedAt
 }
 
 func syncDirectAppStatusFromInstallLog(hardwareID string, appID uint, installStatus, output string) {
@@ -182,7 +254,7 @@ func syncDirectAppStatusFromInstallLog(hardwareID string, appID uint, installSta
 		errorMessage = output
 	}
 
-	if err := upsertDeviceAppStatus(device.ID, appID, appStatus, errorMessage); err != nil {
+	if err := upsertDeviceAppStatus(device.ID, appID, appStatus, errorMessage, catalogUpdatedAtForDeviceApp(device, appID)); err != nil {
 		log.Printf("[app-install-log] direct status sync failed: device_id=%d app_id=%d status=%q err=%v", device.ID, appID, appStatus, err)
 		return
 	}

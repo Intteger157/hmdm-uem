@@ -17,6 +17,8 @@ type DeviceAppStatus struct {
 	AppID        uint      `gorm:"not null;uniqueIndex:idx_device_app_status"`
 	Status       string    `gorm:"not null"`
 	ErrorMessage string
+	// AttemptedCatalogUpdatedAt stores the catalog revision the agent last attempted.
+	AttemptedCatalogUpdatedAt *time.Time
 	UpdatedAt    time.Time
 }
 

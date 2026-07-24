@@ -35,6 +35,7 @@ import { Input } from '@/components/ui/input'
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -243,7 +244,10 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
 
     setUploading(true)
     try {
-      const result = await uploadSoftwareApp(file)
+      const manualVersion = (form.getValues('version') ?? '').trim()
+      const result = await uploadSoftwareApp(file, {
+        ...(manualVersion && manualVersion !== DEFAULT_APP_VERSION ? { version: manualVersion } : {}),
+      })
       form.setValue('appType', 'upload', { shouldValidate: true })
       form.setValue('name', result.name, { shouldValidate: true })
       form.setValue('version', normalizeAppVersion(result.version), { shouldValidate: true })
@@ -523,6 +527,7 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
                   <FormControl>
                     <Input {...field} autoComplete="off" />
                   </FormControl>
+                  <FormDescription>{t('windowsAppCatalog.form.versionHint')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

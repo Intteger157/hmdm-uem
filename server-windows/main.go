@@ -120,6 +120,7 @@ func main() {
 			windows.POST("/devices/:hardwareId/apps/status", windowsHandler.ReportDeviceAppStatus)
 			windows.POST("/devices/:hardwareId/apps/:appId/assign", windowsHandler.AssignDeviceApp)
 			windows.DELETE("/devices/:hardwareId/apps/:appId/assign", windowsHandler.UnassignDeviceApp)
+			windows.POST("/devices/:hardwareId/apps/:appId/retry", windowsHandler.RetryDeviceApp)
 			windows.GET("/groups", windowsHandler.ListDeviceGroups)
 			windows.POST("/groups", windowsHandler.CreateDeviceGroup)
 		}

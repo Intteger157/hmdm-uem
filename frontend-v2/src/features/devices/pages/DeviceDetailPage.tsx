@@ -263,10 +263,13 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
 
         <TabsContent value="installed-software" className={TAB_CONTENT_CLASS}>
           {isWindows ? (
-            <WindowsDeviceInstalledSoftwareTab
-              hardwareId={device.number}
-              software={device.installedSoftware ?? []}
-            />
+            <div className="space-y-4">
+              <WindowsAppDeploymentsCard hardwareId={device.number} />
+              <WindowsDeviceInstalledSoftwareTab
+                hardwareId={device.number}
+                software={device.installedSoftware ?? []}
+              />
+            </div>
           ) : (
             <Card className="w-full">
               <CardContent className="p-0">

@@ -1,11 +1,17 @@
+import { Loader2, Package, RefreshCw } from 'lucide-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Package } from 'lucide-react'
-import { useDeviceAppStatusesQuery } from '@/features/windows/applications/hooks/use-windows-software-apps'
+import {
+  useDeviceAppStatusesQuery,
+  useRetryDeviceAppMutation,
+} from '@/features/windows/applications/hooks/use-windows-software-apps'
 import type { AppDeploymentStatus } from '@/features/windows/applications/types/software-app'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 interface WindowsAppDeploymentsCardProps {
   hardwareId: string
@@ -48,8 +54,22 @@ function statusBadgeClassName(status: AppDeploymentStatus) {
 export function WindowsAppDeploymentsCard({ hardwareId, className }: WindowsAppDeploymentsCardProps) {
   const { t } = useTranslation()
   const { data, isLoading, isError } = useDeviceAppStatusesQuery(hardwareId)
+  const retryMutation = useRetryDeviceAppMutation()
+  const [retryingAppId, setRetryingAppId] = useState<number | null>(null)
   const items = data?.items ?? []
   const successCount = items.filter((item) => item.status === 'Success').length
+
+  const handleRetry = async (appId: number, appName: string) => {
+    setRetryingAppId(appId)
+    try {
+      await retryMutation.mutateAsync({ hardwareId, appId })
+      toast.success(t('deviceDetail.appDeployments.retrySuccess', { appName }))
+    } catch {
+      toast.error(t('deviceDetail.appDeployments.retryError', { appName }))
+    } finally {
+      setRetryingAppId(null)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -112,12 +132,31 @@ export function WindowsAppDeploymentsCard({ hardwareId, className }: WindowsAppD
                 <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-destructive">{item.errorMessage}</p>
               ) : null}
             </div>
-            <Badge
-              variant={statusBadgeVariant(item.status)}
-              className={cn('shrink-0 text-[10px]', statusBadgeClassName(item.status))}
-            >
-              {t(`deviceDetail.appDeployments.status.${item.status}`)}
-            </Badge>
+            <div className="flex shrink-0 items-center gap-1.5">
+              {item.status === 'Failed' ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 gap-1 px-2 text-[11px]"
+                  disabled={retryingAppId === item.appId}
+                  onClick={() => void handleRetry(item.appId, item.appName)}
+                >
+                  {retryingAppId === item.appId ? (
+                    <Loader2 className="size-3 animate-spin" />
+                  ) : (
+                    <RefreshCw className="size-3" />
+                  )}
+                  {t('deviceDetail.appDeployments.retry')}
+                </Button>
+              ) : null}
+              <Badge
+                variant={statusBadgeVariant(item.status)}
+                className={cn('text-[10px]', statusBadgeClassName(item.status))}
+              >
+                {t(`deviceDetail.appDeployments.status.${item.status}`)}
+              </Badge>
+            </div>
           </div>
         ))}
       </CardContent>

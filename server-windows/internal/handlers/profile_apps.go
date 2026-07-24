@@ -165,13 +165,13 @@ func (h *WindowsHandler) GetDeviceAppStatuses(c *gin.Context) {
 		return
 	}
 
-	effective, err := buildEffectiveConfig(device)
+	mergedApps, err := loadMergedRequiredApps(device)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to build effective configuration"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load assigned apps"})
 		return
 	}
 
-	items, err := buildDeviceAppStatusList(device.ID, effective.RequiredApps)
+	items, err := buildDeviceAppStatusList(device.ID, mergedApps)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load app statuses"})
 		return
@@ -179,7 +179,7 @@ func (h *WindowsHandler) GetDeviceAppStatuses(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.DeviceAppStatusListResponse{
 		Items:         items,
-		RequiredTotal: len(effective.RequiredApps),
+		RequiredTotal: len(mergedApps),
 	})
 }
 
@@ -235,7 +235,7 @@ func (h *WindowsHandler) ReportDeviceAppStatus(c *gin.Context) {
 		return
 	}
 
-	if err := upsertDeviceAppStatus(device.ID, req.AppID, status, req.Error); err != nil {
+	if err := upsertDeviceAppStatus(device.ID, req.AppID, status, req.Error, catalogUpdatedAtForDeviceApp(device, req.AppID)); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save app status"})
 		return
 	}

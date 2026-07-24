@@ -60,12 +60,20 @@ function isSupportedInstaller(file: File): boolean {
   return name.endsWith('.exe') || name.endsWith('.msi')
 }
 
+const DEFAULT_APP_VERSION = '1.0.0'
+
+function normalizeAppVersion(version?: string | null): string {
+  const trimmed = version?.trim() ?? ''
+  return trimmed || DEFAULT_APP_VERSION
+}
+
 export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationEditSheetProps) {
   const { t } = useTranslation()
   const appQuery = useSoftwareAppQuery(appId, open && appId != null)
   const updateMutation = useUpdateSoftwareAppMutation()
   const versionUploadRef = useRef<HTMLInputElement>(null)
   const [uploadingVersion, setUploadingVersion] = useState(false)
+  const [versionOverride, setVersionOverride] = useState('')
   const [activeTab, setActiveTab] = useState('general')
 
   const form = useForm<GeneralFormValues>({
@@ -75,6 +83,7 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
   useEffect(() => {
     if (!open) {
       setActiveTab('general')
+      setVersionOverride('')
       return
     }
     const app = appQuery.data
@@ -114,7 +123,12 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
 
     setUploadingVersion(true)
     try {
-      await uploadSoftwareApp(file, appId)
+      const manualVersion = versionOverride.trim()
+      const result = await uploadSoftwareApp(file, {
+        appId,
+        ...(manualVersion ? { version: manualVersion } : {}),
+      })
+      setVersionOverride(result.version)
       await appQuery.refetch()
       toast.success(t('windowsAppCatalog.form.versionUploaded'))
     } catch {
@@ -207,6 +221,20 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
             </TabsContent>
 
             <TabsContent value="versions" className="mt-4 space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="edit-app-version" className="text-sm font-medium">
+                  {t('windowsAppCatalog.form.version')}
+                </label>
+                <Input
+                  id="edit-app-version"
+                  value={versionOverride}
+                  placeholder={DEFAULT_APP_VERSION}
+                  autoComplete="off"
+                  disabled={uploadingVersion}
+                  onChange={(event) => setVersionOverride(event.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">{t('windowsAppCatalog.form.versionHint')}</p>
+              </div>
               <input
                 ref={versionUploadRef}
                 type="file"

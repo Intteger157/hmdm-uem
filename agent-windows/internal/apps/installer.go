@@ -59,6 +59,9 @@ func runURLInstaller(installerPath, installArgs string) (installRunResult, error
 		if err == nil {
 			return result, nil
 		}
+		if procexec.IsTimeout(err) || strings.Contains(err.Error(), procexec.InstallTimeoutMessage) {
+			break
+		}
 	}
 
 	combined := formatInstallAttempts(attemptResults)

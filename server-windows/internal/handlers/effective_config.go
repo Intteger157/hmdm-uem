@@ -109,7 +109,7 @@ func buildEffectiveConfig(device models.WindowsDevice) (models.EffectiveConfigRe
 	}
 
 	mergedApps := mergeRequiredApps(requiredApps, directApps)
-	filteredApps, err := excludeSuccessfulDirectApps(device.ID, mergedApps)
+	filteredApps, err := excludeTerminalAppStatuses(device.ID, mergedApps)
 	if err != nil {
 		return models.EffectiveConfigResponse{}, err
 	}
@@ -272,65 +272,99 @@ func mergeRequiredApps(lists ...[]models.RequiredApp) []models.RequiredApp {
 	return merged
 }
 
-func excludeSuccessfulDirectApps(deviceID uint, apps []models.RequiredApp) ([]models.RequiredApp, error) {
-	directAppIDs, err := loadDirectAssignedAppIDSet(deviceID)
-	if err != nil || len(directAppIDs) == 0 {
-		return apps, err
+func excludeTerminalAppStatuses(deviceID uint, apps []models.RequiredApp) ([]models.RequiredApp, error) {
+	if len(apps) == 0 {
+		return apps, nil
 	}
 
-	directIDs := make([]uint, 0, len(directAppIDs))
-	for appID := range directAppIDs {
-		directIDs = append(directIDs, appID)
+	appIDs := make([]uint, 0, len(apps))
+	appByID := make(map[uint]models.RequiredApp, len(apps))
+	for _, app := range apps {
+		appIDs = append(appIDs, app.ID)
+		appByID[app.ID] = app
 	}
 
-	successfulDirectIDs, err := loadSuccessfulAppIDSet(deviceID, directIDs)
-	if err != nil || len(successfulDirectIDs) == 0 {
-		return apps, err
+	var statuses []models.DeviceAppStatus
+	if err := db.DB.
+		Where(
+			"device_id = ? AND app_id IN ? AND status IN ?",
+			deviceID,
+			appIDs,
+			[]string{models.AppStatusSuccess, models.AppStatusFailed},
+		).
+		Find(&statuses).Error; err != nil {
+		return nil, err
+	}
+	if len(statuses) == 0 {
+		return apps, nil
+	}
+
+	terminal := make(map[uint]struct{}, len(statuses))
+	for _, status := range statuses {
+		if shouldExcludeRequiredApp(appByID[status.AppID], status) {
+			terminal[status.AppID] = struct{}{}
+		}
 	}
 
 	filtered := make([]models.RequiredApp, 0, len(apps))
 	for _, app := range apps {
-		if _, isDirect := directAppIDs[app.ID]; isDirect {
-			if _, isSuccessful := successfulDirectIDs[app.ID]; isSuccessful {
-				continue
-			}
+		if _, skip := terminal[app.ID]; skip {
+			continue
 		}
 		filtered = append(filtered, app)
 	}
 	return filtered, nil
 }
 
-func loadDirectAssignedAppIDSet(deviceID uint) (map[uint]struct{}, error) {
-	var links []models.WindowsDeviceApp
-	if err := db.DB.Where("device_id = ?", deviceID).Find(&links).Error; err != nil {
-		return nil, err
+func shouldExcludeRequiredApp(app models.RequiredApp, status models.DeviceAppStatus) bool {
+	switch status.Status {
+	case models.AppStatusSuccess:
+		return true
+	case models.AppStatusFailed:
+		if status.AttemptedCatalogUpdatedAt == nil {
+			return true
+		}
+		if app.ID == 0 {
+			return true
+		}
+		return !app.UpdatedAt.After(status.AttemptedCatalogUpdatedAt.UTC())
+	default:
+		return false
 	}
-	if len(links) == 0 {
-		return map[uint]struct{}{}, nil
-	}
-
-	appIDs := make(map[uint]struct{}, len(links))
-	for _, link := range links {
-		appIDs[link.AppID] = struct{}{}
-	}
-	return appIDs, nil
 }
 
-func loadSuccessfulAppIDSet(deviceID uint, appIDs []uint) (map[uint]struct{}, error) {
-	if len(appIDs) == 0 {
-		return map[uint]struct{}{}, nil
-	}
-
-	var statuses []models.DeviceAppStatus
-	if err := db.DB.
-		Where("device_id = ? AND app_id IN ? AND status = ?", deviceID, appIDs, models.AppStatusSuccess).
-		Find(&statuses).Error; err != nil {
+func loadMergedRequiredApps(device models.WindowsDevice) ([]models.RequiredApp, error) {
+	groupEntries, err := loadGroupAssignedProfiles(device.GroupID)
+	if err != nil {
 		return nil, err
 	}
 
-	successful := make(map[uint]struct{}, len(statuses))
-	for _, status := range statuses {
-		successful[status.AppID] = struct{}{}
+	directEntries, err := loadDirectAssignedProfiles(device.ID)
+	if err != nil {
+		return nil, err
 	}
-	return successful, nil
+
+	profileIDs := make([]uint, 0, len(groupEntries)+len(directEntries))
+	for _, entry := range groupEntries {
+		profileIDs = append(profileIDs, entry.Profile.ID)
+	}
+	for _, entry := range directEntries {
+		profileIDs = append(profileIDs, entry.Profile.ID)
+	}
+
+	requiredApps, err := loadRequiredAppsForProfiles(profileIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	directApps, err := loadDirectAssignedApps(device.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return mergeRequiredApps(requiredApps, directApps), nil
+}
+
+func excludeSuccessfulDirectApps(deviceID uint, apps []models.RequiredApp) ([]models.RequiredApp, error) {
+	return excludeTerminalAppStatuses(deviceID, apps)
 }

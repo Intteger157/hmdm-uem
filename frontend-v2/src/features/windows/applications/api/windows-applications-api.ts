@@ -55,11 +55,26 @@ export async function deleteSoftwareApp(id: number): Promise<void> {
   await windowsApi.delete(`/apps/${id}`)
 }
 
-export async function uploadSoftwareApp(file: File, appId?: number): Promise<UploadApplicationResponse> {
+export interface UploadSoftwareAppOptions {
+  appId?: number
+  version?: string
+  installArgs?: string
+}
+
+export async function uploadSoftwareApp(
+  file: File,
+  options?: UploadSoftwareAppOptions,
+): Promise<UploadApplicationResponse> {
   const formData = new FormData()
   formData.append('file', file)
-  if (appId != null) {
-    formData.append('appId', String(appId))
+  if (options?.appId != null) {
+    formData.append('appId', String(options.appId))
+  }
+  if (options?.version?.trim()) {
+    formData.append('version', options.version.trim())
+  }
+  if (options?.installArgs?.trim()) {
+    formData.append('installArgs', options.installArgs.trim())
   }
 
   const jwt = useAuthStore.getState().jwt
@@ -106,4 +121,9 @@ export async function assignDeviceApp(
 export async function unassignDeviceApp(hardwareId: string, appId: number): Promise<void> {
   const encodedDevice = encodeURIComponent(hardwareId)
   await windowsApi.delete(`/devices/${encodedDevice}/apps/${appId}/assign`)
+}
+
+export async function retryDeviceApp(hardwareId: string, appId: number): Promise<void> {
+  const encodedDevice = encodeURIComponent(hardwareId)
+  await windowsApi.post(`/devices/${encodedDevice}/apps/${appId}/retry`)
 }

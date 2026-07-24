@@ -28,7 +28,11 @@ func ParseInstallerMetadata(path string) (InstallerMetadata, error) {
 	case ".exe":
 		return parseExeMetadata(path)
 	case ".msi":
-		return parseMsiMetadata(path)
+		meta, err := parseMsiMetadataFromTables(path)
+		if err == nil && (meta.Name != "" || meta.Version != "") {
+			return meta, nil
+		}
+		return parseMsiMetadataLegacy(path)
 	default:
 		return InstallerMetadata{}, fmt.Errorf("unsupported file extension %q", ext)
 	}
@@ -52,11 +56,11 @@ func parseExeMetadata(path string) (InstallerMetadata, error) {
 
 	return InstallerMetadata{
 		Name:    firstNonEmpty(resources["ProductName"], resources["FileDescription"], resources["InternalName"]),
-		Version: firstNonEmpty(resources["ProductVersion"], resources["FileVersion"]),
+		Version: NormalizeVersion(firstNonEmpty(resources["ProductVersion"], resources["FileVersion"])),
 	}, nil
 }
 
-func parseMsiMetadata(path string) (InstallerMetadata, error) {
+func parseMsiMetadataLegacy(path string) (InstallerMetadata, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return InstallerMetadata{}, err
@@ -77,7 +81,7 @@ func parseMsiMetadata(path string) (InstallerMetadata, error) {
 					meta.Name = propertyValues["ProductName"]
 				}
 				if meta.Version == "" {
-					meta.Version = propertyValues["ProductVersion"]
+					meta.Version = NormalizeVersion(propertyValues["ProductVersion"])
 				}
 			}
 		default:
