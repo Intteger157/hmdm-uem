@@ -39,7 +39,7 @@ function buildBootstrapCommand(
     mode === 'token' && secret.trim()
       ? `${baseUrl}?token=${encodeURIComponent(secret.trim())}`
       : baseUrl
-  return `powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod -Uri '${enrollUrl}' | Invoke-Expression"`
+  return `powershell -NoProfile -ExecutionPolicy Bypass -Command "irm '${enrollUrl}' | iex"`
 }
 
 function formatFileSize(bytes?: number): string {
