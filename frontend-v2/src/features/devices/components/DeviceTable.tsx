@@ -21,13 +21,12 @@ import {
   type DeviceOnlineStatusCode,
 } from '@/features/devices/utils/device-online-status'
 import { formatWindowsOsLabel } from '@/features/devices/utils/format-windows-os'
+import { useWindowsDeviceListSyncToasts } from '@/features/devices/hooks/use-windows-device-list-sync-toasts'
 import { usePeriodicNow } from '@/shared/hooks/use-periodic-now'
 import { useWindowsDeviceCommandMutation } from '@/features/windows/hooks/use-windows-device-command'
-import { waitForWindowsCommandResult } from '@/features/windows/lib/wait-for-command-result'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { toast } from 'sonner'
 import type { DeviceListView, DeviceView } from '@/shared/api/types/device'
 import type { Platform } from '@/shared/api/types/platform'
 import { cn } from '@/lib/utils'
@@ -89,6 +88,7 @@ export function DeviceTable({
   const { t } = useTranslation()
   const now = usePeriodicNow()
   const devices = data.devices.items
+  const windowsSyncToasts = useWindowsDeviceListSyncToasts(platform === 'windows' ? devices : [])
   const showAndroidActions = platform === 'android' && onEditDevice != null
   const showWindowsActions = platform === 'windows'
 
@@ -135,6 +135,8 @@ export function DeviceTable({
                 now={now}
                 showActions={showWindowsActions}
                 onDeleteDevice={onDeleteDevice}
+                onSyncStart={windowsSyncToasts.startSync}
+                onSyncFail={windowsSyncToasts.failSync}
               />
             ))}
           </tbody>
@@ -429,11 +431,15 @@ function WindowsDeviceRow({
   now,
   showActions,
   onDeleteDevice,
+  onSyncStart,
+  onSyncFail,
 }: {
   device: DeviceView
   now: number
   showActions?: boolean
   onDeleteDevice?: (device: DeviceView) => void
+  onSyncStart: (device: DeviceView) => void
+  onSyncFail: (deviceId: number, message: string) => void
 }) {
   const { t } = useTranslation()
   const onlineStatus = resolveDeviceOnlineStatusCode(device, now)
@@ -484,7 +490,12 @@ function WindowsDeviceRow({
       <td className="px-4 py-3 whitespace-nowrap">{formatTimestamp(device.lastUpdate)}</td>
       {showActions && (
         <td className="px-4 py-3">
-          <WindowsDeviceRowActions device={device} onDeleteDevice={onDeleteDevice} />
+          <WindowsDeviceRowActions
+            device={device}
+            onDeleteDevice={onDeleteDevice}
+            onSyncStart={onSyncStart}
+            onSyncFail={onSyncFail}
+          />
         </td>
       )}
     </tr>
@@ -494,30 +505,24 @@ function WindowsDeviceRow({
 function WindowsDeviceRowActions({
   device,
   onDeleteDevice,
+  onSyncStart,
+  onSyncFail,
 }: {
   device: DeviceView
   onDeleteDevice?: (device: DeviceView) => void
+  onSyncStart: (device: DeviceView) => void
+  onSyncFail: (deviceId: number, message: string) => void
 }) {
   const { t } = useTranslation()
   const syncMutation = useWindowsDeviceCommandMutation(device.number)
   const isUninstalled = device.windowsAgentStatus === 'uninstalled'
 
   const handleSync = async () => {
+    onSyncStart(device)
     try {
-      const response = await syncMutation.mutateAsync({ action: 'sync' })
-      toast.success(t('deviceDetail.actions.commandQueued'))
-      void waitForWindowsCommandResult(device.number, response.id).then((result) => {
-        if (!result) {
-          return
-        }
-        if (result.success) {
-          toast.success(result.message)
-        } else {
-          toast.error(result.message)
-        }
-      })
+      await syncMutation.mutateAsync({ action: 'sync' })
     } catch {
-      toast.error(t('deviceDetail.actions.error'))
+      onSyncFail(device.id, t('deviceDetail.actions.error'))
     }
   }
 
