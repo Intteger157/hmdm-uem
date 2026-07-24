@@ -32,9 +32,10 @@ func (SoftwareApp) TableName() string {
 
 // UploadApplicationResponse is returned by POST /applications/upload.
 type UploadApplicationResponse struct {
-	URL     string `json:"url"`
-	Name    string `json:"name"`
-	Version string `json:"version"`
+	URL           string `json:"url"`
+	Name          string `json:"name"`
+	Version       string `json:"version"`
+	DetectedArgs  string `json:"detectedArgs"`
 }
 
 // UpsertSoftwareAppRequest is sent by the admin UI to create or update an app.

@@ -39,6 +39,7 @@ const softwareAppFormSchema = z
     downloadUrl: z.string().optional(),
     wingetId: z.string().optional(),
     installArgs: z.string().optional(),
+    silentInstallation: z.boolean(),
     autoUpdate: z.boolean(),
     updateFrequency: z.enum(['daily', 'weekly']).optional(),
   })
@@ -92,18 +93,21 @@ function toFormValues(app: SoftwareApp | null): SoftwareAppFormValues {
       downloadUrl: '',
       wingetId: '',
       installArgs: '',
+      silentInstallation: true,
       autoUpdate: false,
       updateFrequency: 'daily',
     }
   }
 
+  const installArgs = app.installArgs ?? ''
   return {
     appType: app.appType || 'url',
     name: app.name,
     version: normalizeAppVersion(app.version),
     downloadUrl: app.downloadUrl ?? '',
     wingetId: app.wingetId ?? '',
-    installArgs: app.installArgs ?? '',
+    installArgs,
+    silentInstallation: installArgs.trim() === '',
     autoUpdate: app.autoUpdate ?? false,
     updateFrequency: (app.updateFrequency || 'daily') as UpdateFrequency,
   }
@@ -126,6 +130,7 @@ export function SoftwareAppFormSheet({ open, onOpenChange, app }: SoftwareAppFor
   const [uploading, setUploading] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [downloadUrlLocked, setDownloadUrlLocked] = useState(false)
+  const [detectedInstallArgs, setDetectedInstallArgs] = useState('')
 
   const form = useForm<SoftwareAppFormValues>({
     resolver: zodResolver(softwareAppFormSchema),
@@ -134,6 +139,7 @@ export function SoftwareAppFormSheet({ open, onOpenChange, app }: SoftwareAppFor
 
   const appType = form.watch('appType')
   const autoUpdate = form.watch('autoUpdate')
+  const silentInstallation = form.watch('silentInstallation')
   const downloadUrl = form.watch('downloadUrl') ?? ''
   const installerIsMsi = downloadUrl.toLowerCase().includes('.msi')
   const installArgsPlaceholder = installerIsMsi ? '/quiet /norestart' : '/S'
@@ -143,6 +149,7 @@ export function SoftwareAppFormSheet({ open, onOpenChange, app }: SoftwareAppFor
       form.reset(toFormValues(app))
       setUploading(false)
       setIsDragging(false)
+      setDetectedInstallArgs('')
       setDownloadUrlLocked((app?.appType ?? 'url') === 'upload' && Boolean(app?.downloadUrl))
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
@@ -163,6 +170,9 @@ export function SoftwareAppFormSheet({ open, onOpenChange, app }: SoftwareAppFor
       form.setValue('name', result.name, { shouldValidate: true })
       form.setValue('version', normalizeAppVersion(result.version), { shouldValidate: true })
       form.setValue('downloadUrl', result.url, { shouldValidate: true })
+      form.setValue('silentInstallation', true)
+      form.setValue('installArgs', '')
+      setDetectedInstallArgs(result.detectedArgs ?? '')
       form.setValue('autoUpdate', false)
       setDownloadUrlLocked(true)
     } catch {
@@ -191,6 +201,13 @@ export function SoftwareAppFormSheet({ open, onOpenChange, app }: SoftwareAppFor
   }
 
   const handleSubmit = form.handleSubmit(async (values) => {
+    const resolvedInstallArgs =
+      values.appType === 'winget'
+        ? undefined
+        : values.silentInstallation
+          ? detectedInstallArgs.trim() || undefined
+          : values.installArgs?.trim() || undefined
+
     try {
       await upsertMutation.mutateAsync({
         id: app?.id,
@@ -200,7 +217,7 @@ export function SoftwareAppFormSheet({ open, onOpenChange, app }: SoftwareAppFor
           appType: values.appType,
           downloadUrl: values.appType !== 'winget' ? values.downloadUrl?.trim() : undefined,
           wingetId: values.appType === 'winget' ? values.wingetId?.trim() : undefined,
-          installArgs: values.appType === 'winget' ? undefined : values.installArgs?.trim() || undefined,
+          installArgs: resolvedInstallArgs,
           autoUpdate: supportsUpdatePolicy(values.appType) ? values.autoUpdate : false,
           updateFrequency:
             supportsUpdatePolicy(values.appType) && values.autoUpdate
@@ -429,24 +446,49 @@ export function SoftwareAppFormSheet({ open, onOpenChange, app }: SoftwareAppFor
               )}
             />
             {appType !== 'winget' ? (
-              <FormField
-                control={form.control}
-                name="installArgs"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('windowsAppCatalog.form.installArgs')}</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} rows={3} placeholder={installArgsPlaceholder} />
-                    </FormControl>
-                    <div className="space-y-1 text-xs text-muted-foreground">
-                      <p>{t('windowsAppCatalog.form.installArgsHintMsi')}</p>
-                      <p>{t('windowsAppCatalog.form.installArgsHintExeNsis')}</p>
-                      <p>{t('windowsAppCatalog.form.installArgsHintExeInno')}</p>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="space-y-3">
+                <FormField
+                  control={form.control}
+                  name="silentInstallation"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <BoolField
+                          id="app-silent-installation"
+                          label={t('windowsAppCatalog.form.silentInstallation')}
+                          checked={field.value}
+                          onCheckedChange={(checked) => {
+                            field.onChange(checked)
+                            if (!checked && !form.getValues('installArgs')?.trim() && detectedInstallArgs.trim()) {
+                              form.setValue('installArgs', detectedInstallArgs.trim())
+                            }
+                          }}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                {!silentInstallation ? (
+                  <FormField
+                    control={form.control}
+                    name="installArgs"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('windowsAppCatalog.form.installArgs')}</FormLabel>
+                        <FormControl>
+                          <Textarea {...field} rows={3} placeholder={installArgsPlaceholder} />
+                        </FormControl>
+                        <div className="space-y-1 text-xs text-muted-foreground">
+                          <p>{t('windowsAppCatalog.form.installArgsHintMsi')}</p>
+                          <p>{t('windowsAppCatalog.form.installArgsHintExeNsis')}</p>
+                          <p>{t('windowsAppCatalog.form.installArgsHintExeInno')}</p>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ) : null}
+              </div>
             ) : null}
 
             <SheetFooter className="px-0">

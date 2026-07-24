@@ -35,6 +35,7 @@ export interface UploadApplicationResponse {
   url: string
   name: string
   version: string
+  detectedArgs: string
 }
 
 export type AppDeploymentStatus =

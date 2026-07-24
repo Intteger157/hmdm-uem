@@ -1175,6 +1175,7 @@
   "windowsAppCatalog.form.version": "Expected version",
   "windowsAppCatalog.form.downloadUrl": "Download URL",
   "windowsAppCatalog.form.installArgs": "Install arguments",
+  "windowsAppCatalog.form.silentInstallation": "Silent Installation",
   "windowsAppCatalog.form.installArgsHint": "Example: /quiet /norestart",
   "windowsAppCatalog.form.installArgsHintMsi": "MSI: leave empty (agent uses /quiet /norestart) or set /quiet /norestart",
   "windowsAppCatalog.form.installArgsHintExeNsis": "EXE (NSIS): /S — case-sensitive",

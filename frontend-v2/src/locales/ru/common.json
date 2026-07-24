@@ -1175,6 +1175,7 @@
   "windowsAppCatalog.form.version": "Ожидаемая версия",
   "windowsAppCatalog.form.downloadUrl": "URL загрузки",
   "windowsAppCatalog.form.installArgs": "Аргументы установки",
+  "windowsAppCatalog.form.silentInstallation": "Тихая установка",
   "windowsAppCatalog.form.installArgsHint": "Пример: /quiet /norestart",
   "windowsAppCatalog.form.installArgsHintMsi": "MSI: оставьте пустым (агент использует /quiet /norestart) или укажите /quiet /norestart",
   "windowsAppCatalog.form.installArgsHintExeNsis": "EXE (NSIS): /S — регистр важен",

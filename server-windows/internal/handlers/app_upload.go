@@ -72,13 +72,19 @@ func (h *WindowsHandler) UploadApplication(c *gin.Context) {
 		log.Printf("[upload-application] metadata parse fallback to filename: name=%q err=%v", originalName, parseErr)
 	}
 
+	detectedArgs, detectErr := metadata.DetectInstallerArgs(destPath)
+	if detectErr != nil {
+		log.Printf("[upload-application] installer detection failed: name=%q err=%v", originalName, detectErr)
+	}
+
 	publicPath := fmt.Sprintf("/storage/apps/%s", storedName)
 	publicURL := normalizeDownloadURL(buildPublicURL(c, publicPath))
 
-	log.Printf("[upload-application] stored path=%q url=%q name=%q version=%q", destPath, publicURL, name, version)
+	log.Printf("[upload-application] stored path=%q url=%q name=%q version=%q detectedArgs=%q", destPath, publicURL, name, version, detectedArgs)
 	c.JSON(http.StatusOK, models.UploadApplicationResponse{
-		URL:     publicURL,
-		Name:    name,
-		Version: version,
+		URL:          publicURL,
+		Name:         name,
+		Version:      version,
+		DetectedArgs: detectedArgs,
 	})
 }
