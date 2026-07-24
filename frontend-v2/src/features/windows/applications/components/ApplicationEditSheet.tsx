@@ -62,11 +62,6 @@ function isSupportedInstaller(file: File): boolean {
 
 const DEFAULT_APP_VERSION = '1.0.0'
 
-function normalizeAppVersion(version?: string | null): string {
-  const trimmed = version?.trim() ?? ''
-  return trimmed || DEFAULT_APP_VERSION
-}
-
 export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationEditSheetProps) {
   const { t } = useTranslation()
   const appQuery = useSoftwareAppQuery(appId, open && appId != null)
