@@ -5,7 +5,8 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$Token,
 
-    [string]$OutDir = "dist"
+    [string]$OutDir = "dist",
+    [switch]$SkipBuild
 )
 
 $ErrorActionPreference = "Stop"
@@ -14,21 +15,25 @@ $installerDir = $PSScriptRoot
 $agentRoot = Split-Path -Parent $installerDir
 $stagingDir = Join-Path $installerDir "staging"
 $outputDir = Join-Path $installerDir $OutDir
-$stagingExe = Join-Path $stagingDir "HMDMAgent.exe"
-$outputMsi = Join-Path $outputDir "HMDMAgent.msi"
+$stagingExe = Join-Path $stagingDir "singularity-agent.exe"
+$outputMsi = Join-Path $outputDir "singularity-agent.msi"
 
 New-Item -ItemType Directory -Force -Path $stagingDir, $outputDir | Out-Null
 
-Write-Host "Building HMDMAgent.exe ..."
-Push-Location $agentRoot
-try {
-    $env:GOOS = "windows"
-    $env:GOARCH = "amd64"
-    $env:CGO_ENABLED = "0"
-    go build -ldflags="-s -w" -o $stagingExe .
-}
-finally {
-    Pop-Location
+if (-not $SkipBuild) {
+    Write-Host "Building singularity-agent.exe ..."
+    Push-Location $agentRoot
+    try {
+        $env:GOOS = "windows"
+        $env:GOARCH = "amd64"
+        $env:CGO_ENABLED = "0"
+        go build -ldflags="-s -w" -o $stagingExe .
+    }
+    finally {
+        Pop-Location
+    }
+} elseif (-not (Test-Path $stagingExe)) {
+    throw "Staging binary not found: $stagingExe. Run build-agent.ps1 first or omit -SkipBuild."
 }
 
 if (-not (Get-Command wix -ErrorAction SilentlyContinue)) {
@@ -44,15 +49,15 @@ Note: WiX cannot build MSI inside a Linux Docker container.
 "@
 }
 
-Write-Host "Building MSI with WiX ..."
+Write-Host "Building singularity-agent.msi with WiX ..."
 Push-Location $installerDir
 try {
     wix build Package.wxs `
         -arch x64 `
         -d "ServerUrl=$ServerUrl" `
         -d "EnrollmentToken=$Token" `
-        -d "AgentBinary=staging/HMDMAgent.exe" `
-        -o "$OutDir/HMDMAgent.msi"
+        -d "AgentBinary=staging/singularity-agent.exe" `
+        -o "$OutDir/singularity-agent.msi"
 
     if ($LASTEXITCODE -ne 0) {
         throw "wix build failed with exit code $LASTEXITCODE"

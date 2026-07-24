@@ -165,7 +165,7 @@ func buildMsiCommand(c *gin.Context, orgToken string) string {
 
 	serverURL := fmt.Sprintf("%s://%s", scheme, host)
 	return fmt.Sprintf(
-		`.\\agent-windows\\installer\\build-msi.ps1 -ServerUrl "%s" -Token "%s"`,
+		`.\\agent-windows\\build-agent.ps1 -ServerUrl "%s" -Token "%s" -Msi`,
 		serverURL,
 		orgToken,
 	)

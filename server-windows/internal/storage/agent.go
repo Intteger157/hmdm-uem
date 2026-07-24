@@ -8,25 +8,30 @@ import (
 )
 
 const (
-	agentSubdir      = "agent"
-	AgentBinaryName  = "singularity-agent.exe"
+	AutopilotSubdir = "singularity-autopilot"
+	AgentBinaryName = "singularity-agent.exe"
 )
 
-// AgentDirectory returns the on-disk directory for the Windows agent binary.
+// AutopilotDirectory returns the on-disk directory for the bootstrap/autopilot agent binary.
+func AutopilotDirectory() string {
+	return filepath.Join(filesDirectory(), AutopilotSubdir)
+}
+
+// AgentDirectory is an alias for AutopilotDirectory (bootstrap agent storage).
 func AgentDirectory() string {
-	return filepath.Join(filesDirectory(), agentSubdir)
+	return AutopilotDirectory()
 }
 
-// AgentBinaryPath returns the full path to the published agent executable.
+// AgentBinaryPath returns the full path to the published autopilot agent executable.
 func AgentBinaryPath() string {
-	return filepath.Join(AgentDirectory(), AgentBinaryName)
+	return filepath.Join(AutopilotDirectory(), AgentBinaryName)
 }
 
-// EnsureAgentDirectory creates the agent binary directory if missing.
+// EnsureAgentDirectory creates the autopilot agent binary directory if missing.
 func EnsureAgentDirectory() error {
-	dir := AgentDirectory()
+	dir := AutopilotDirectory()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return fmt.Errorf("create agent directory: %w", err)
+		return fmt.Errorf("create autopilot agent directory: %w", err)
 	}
 	return nil
 }
@@ -40,9 +45,9 @@ func AgentBinaryConfigured() bool {
 	return info.Size() > 0
 }
 
-// AgentPublicPath is the HTTP path served by the gateway for the agent binary.
+// AgentPublicPath is the HTTP path served by the gateway for the autopilot agent binary.
 func AgentPublicPath() string {
-	return "/storage/agent/" + AgentBinaryName
+	return "/storage/singularity-autopilot/" + AgentBinaryName
 }
 
 // NormalizeAgentPublicPath trims user input to the canonical public path.

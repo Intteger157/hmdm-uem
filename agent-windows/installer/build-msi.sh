@@ -15,17 +15,17 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 INSTALLER_DIR="$ROOT/installer"
 STAGING_DIR="$INSTALLER_DIR/staging"
 OUTPUT_DIR="$INSTALLER_DIR/$OUT_DIR"
-OUTPUT_MSI="$OUTPUT_DIR/HMDMAgent.msi"
+OUTPUT_MSI="$OUTPUT_DIR/singularity-agent.msi"
 
 mkdir -p "$STAGING_DIR" "$OUTPUT_DIR"
 
-echo "Building HMDMAgent.exe ..."
-GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o "$STAGING_DIR/HMDMAgent.exe" "$ROOT"
+echo "Building singularity-agent.exe ..."
+GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o "$STAGING_DIR/singularity-agent.exe" "$ROOT"
 
 cd "$INSTALLER_DIR"
 
 if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
-  echo "Building MSI with WiX in Docker ..."
+  echo "Building singularity-agent.msi with WiX in Docker ..."
   docker build -f Dockerfile.wix -t "$WIX_IMAGE" "$INSTALLER_DIR"
   docker run --rm \
     -v "$ROOT:/src" \
@@ -35,16 +35,16 @@ if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
       -arch x64 \
       -d "ServerUrl=$SERVER_URL" \
       -d "EnrollmentToken=$TOKEN" \
-      -d "AgentBinary=staging/HMDMAgent.exe" \
-      -o "$OUT_DIR/HMDMAgent.msi"
+      -d "AgentBinary=staging/singularity-agent.exe" \
+      -o "$OUT_DIR/singularity-agent.msi"
 elif command -v wix >/dev/null 2>&1; then
-  echo "Building MSI with local WiX ..."
+  echo "Building singularity-agent.msi with local WiX ..."
   wix build Package.wxs \
     -arch x64 \
     -d "ServerUrl=$SERVER_URL" \
     -d "EnrollmentToken=$TOKEN" \
-    -d "AgentBinary=staging/HMDMAgent.exe" \
-    -o "$OUT_DIR/HMDMAgent.msi"
+    -d "AgentBinary=staging/singularity-agent.exe" \
+    -o "$OUT_DIR/singularity-agent.msi"
 else
   echo "Start Docker Desktop or install WiX (dotnet tool install --global wix)." >&2
   exit 1

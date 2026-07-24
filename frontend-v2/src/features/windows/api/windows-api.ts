@@ -406,8 +406,8 @@ export interface WindowsDefaultInstallerResponse {
   permanentFileUrl?: string
 }
 
-export const DEFAULT_AGENT_MSI_NAME = 'HMDMAgent.msi'
-export const DEFAULT_AGENT_MSI_PATH = 'windows/agents/HMDMAgent.msi'
+export const DEFAULT_AGENT_MSI_NAME = 'singularity-agent.msi'
+export const DEFAULT_AGENT_MSI_PATH = 'windows/agents/singularity-agent.msi'
 
 /** @deprecated Use getWindowsEnrollmentSetup — kept for compatibility. */
 export async function createWindowsEnrollmentToken(): Promise<WindowsEnrollmentSetupResponse> {

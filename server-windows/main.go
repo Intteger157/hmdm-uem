@@ -51,7 +51,7 @@ func main() {
 	if appstorage.AgentBinaryConfigured() {
 		log.Printf("agent binary %q served at %s", agentBinaryPath, appstorage.AgentPublicPath())
 	} else {
-		log.Printf("agent binary missing at %q — publish singularity-agent.exe for bootstrap enrollment", agentBinaryPath)
+		log.Printf("autopilot agent binary missing at %q — publish files/singularity-autopilot/singularity-agent.exe for bootstrap enrollment", agentBinaryPath)
 	}
 
 	windowsHandler := handlers.NewWindowsHandler()

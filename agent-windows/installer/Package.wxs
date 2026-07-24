@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Package
-    Name="HMDM Windows Agent"
-    Manufacturer="HMDM"
+    Name="Singularity MDM Agent"
+    Manufacturer="Singularity MDM"
     Version="1.0.25.0"
     UpgradeCode="a1b2c3d4-e5f6-7890-abcd-ef1234567890"
     Scope="perMachine">
 
     <MajorUpgrade
       AllowSameVersionUpgrades="yes"
-      DowngradeErrorMessage="A newer version of HMDM Agent is already installed." />
+      DowngradeErrorMessage="A newer version of Singularity MDM Agent is already installed." />
     <MediaTemplate EmbedCab="yes" />
 
     <InstallExecuteSequence>
@@ -17,7 +17,7 @@
       <Custom Action="NotifyServerUninstall" Before="RemoveFiles" Condition="REMOVE=&quot;ALL&quot;" />
     </InstallExecuteSequence>
 
-    <Feature Id="MainFeature" Title="HMDM Agent" Level="1">
+    <Feature Id="MainFeature" Title="Singularity MDM Agent" Level="1">
       <ComponentRef Id="AgentComponent" />
     </Feature>
   </Package>
@@ -32,13 +32,13 @@
 
   <Fragment>
     <Component Id="AgentComponent" Directory="AGENTDIR" Guid="b2c3d4e5-f6a7-8901-bcde-f12345678901">
-      <File Id="HMDMAgentExe" Source="$(var.AgentBinary)" KeyPath="yes" />
+      <File Id="SingularityAgentExe" Source="$(var.AgentBinary)" KeyPath="yes" />
 
       <ServiceInstall
-        Id="HMDMAgentServiceInstall"
+        Id="SingularityAgentServiceInstall"
         Name="HMDMAgent"
-        DisplayName="HMDM Windows Agent"
-        Description="Headwind MDM agent for Windows device management"
+        DisplayName="Singularity MDM Agent"
+        Description="Singularity MDM agent for Windows device management"
         Type="ownProcess"
         Start="auto"
         ErrorControl="normal"
@@ -46,7 +46,7 @@
         Vital="yes" />
 
       <ServiceControl
-        Id="HMDMAgentServiceControl"
+        Id="SingularityAgentServiceControl"
         Name="HMDMAgent"
         Start="install"
         Stop="both"
@@ -64,14 +64,14 @@
     <CustomAction
       Id="EnsureAgentService"
       Directory="System6432Folder"
-      ExeCommand="cmd.exe /c sc create HMDMAgent binPath= &quot;[AGENTDIR]HMDMAgent.exe&quot; start= auto obj= LocalSystem DisplayName= &quot;HMDM Windows Agent&quot;"
+      ExeCommand="cmd.exe /c sc create HMDMAgent binPath= &quot;[AGENTDIR]singularity-agent.exe&quot; start= auto obj= LocalSystem DisplayName= &quot;Singularity MDM Agent&quot;"
       Execute="commit"
       Impersonate="no"
       Return="ignore" />
 
     <CustomAction
       Id="NotifyServerUninstall"
-      FileRef="HMDMAgentExe"
+      FileRef="SingularityAgentExe"
       ExeCommand="-uninstall"
       Execute="deferred"
       Impersonate="no"

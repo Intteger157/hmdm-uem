@@ -523,7 +523,7 @@
   "windows.enrollmentPage.copyCommand": "Копировать команду",
   "windows.enrollmentPage.copySuccess": "Команда регистрации скопирована",
   "windows.enrollmentPage.instructions": "На чистой Windows (экран OOBE) нажмите Shift+F10, откройте CMD, введите powershell и вставьте эту команду — агент Singularity установится и зарегистрирует устройство автоматически.",
-  "windows.enrollmentPage.agentBinaryHint": "Перед bootstrap-регистрацией администратор должен разместить бинарник агента по пути files/agent/singularity-agent.exe на сервере.",
+  "windows.enrollmentPage.agentBinaryHint": "Autopilot (bootstrap): разместите singularity-agent.exe в files/singularity-autopilot/ (сборка: .\\agent-windows\\build-agent.ps1). MSI для ручной установки: installer/dist/singularity-agent.msi — тот же код, другое расширение.",
   "devices.search": "Поиск",
   "devices.searchPlaceholder": "Поиск по номеру, IMEI, описанию…",
   "devices.loading": "Загрузка устройств…",

@@ -523,7 +523,7 @@
   "windows.enrollmentPage.copyCommand": "Copy Command",
   "windows.enrollmentPage.copySuccess": "Enrollment command copied to clipboard",
   "windows.enrollmentPage.instructions": "On a fresh Windows machine (OOBE screen), press Shift+F10 to open CMD, type powershell, and paste this command to automatically install the Singularity Agent and provision the device.",
-  "windows.enrollmentPage.agentBinaryHint": "Server administrators must publish the agent binary at files/agent/singularity-agent.exe before bootstrap enrollment can succeed.",
+  "windows.enrollmentPage.agentBinaryHint": "Autopilot (bootstrap): publish singularity-agent.exe to files/singularity-autopilot/ (build with .\\agent-windows\\build-agent.ps1). Distribution MSI: installer/dist/singularity-agent.msi — same codebase, different packaging.",
   "devices.search": "Search",
   "devices.searchPlaceholder": "Search by number, IMEI, description…",
   "devices.loading": "Loading devices…",

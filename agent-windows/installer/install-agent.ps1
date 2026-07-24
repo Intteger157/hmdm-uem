@@ -1,9 +1,9 @@
 #Requires -RunAsAdministrator
 param(
-    [string]$MsiPath = (Join-Path $PSScriptRoot "dist\HMDMAgent.msi"),
+    [string]$MsiPath = (Join-Path $PSScriptRoot "dist\singularity-agent.msi"),
     [string]$ServerUrl = "https://test-dev-mdm.intteger.uk",
     [string]$ServiceName = "HMDMAgent",
-    [string]$AgentExe = "${env:ProgramFiles}\HMDM\Agent\HMDMAgent.exe"
+    [string]$AgentExe = "${env:ProgramFiles}\HMDM\Agent\singularity-agent.exe"
 )
 
 $ErrorActionPreference = "Stop"
@@ -25,19 +25,19 @@ function Ensure-AgentService {
     }
 
     Write-Host "Creating Windows service $ServiceName ..."
-    sc.exe create $ServiceName binPath= "`"$ExePath`"" start= auto obj= LocalSystem DisplayName= "HMDM Windows Agent" | Out-Null
+    sc.exe create $ServiceName binPath= "`"$ExePath`"" start= auto obj= LocalSystem DisplayName= "Singularity MDM Agent" | Out-Null
     if ($LASTEXITCODE -ne 0) {
         throw "sc create failed with exit code $LASTEXITCODE"
     }
-    sc.exe description $ServiceName "Headwind MDM agent for Windows device management" | Out-Null
+    sc.exe description $ServiceName "Singularity MDM agent for Windows device management" | Out-Null
 }
 
 if (-not (Test-Path $MsiPath)) {
-    throw "MSI not found: $MsiPath. Run build-msi.ps1 first."
+    throw "MSI not found: $MsiPath. Run build-agent.ps1 -Msi first."
 }
 
 Write-Host "Installing MSI: $MsiPath"
-$logPath = Join-Path $env:TEMP "HMDMAgent-install.log"
+$logPath = Join-Path $env:TEMP "singularity-agent-install.log"
 $process = Start-Process msiexec.exe -ArgumentList @("/i", $MsiPath, "/qn", "/l*v", $logPath) -Wait -PassThru
 if ($process.ExitCode -ne 0) {
     throw "msiexec failed with exit code $($process.ExitCode). Log: $logPath"
