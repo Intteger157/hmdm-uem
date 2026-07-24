@@ -448,6 +448,39 @@ export async function getWindowsEnrollmentSetup(): Promise<WindowsEnrollmentSetu
   return response.data
 }
 
+export interface WindowsEnrollmentProvisioningSettings {
+  createLocalAdmin: boolean
+  adminUsername: string
+  adminPassword: string
+}
+
+export async function getWindowsEnrollmentProvisioning(): Promise<WindowsEnrollmentProvisioningSettings> {
+  if (isMockApiEnabled()) {
+    return {
+      createLocalAdmin: false,
+      adminUsername: 'Admin',
+      adminPassword: '',
+    }
+  }
+
+  const response = await windowsApi.get<WindowsEnrollmentProvisioningSettings>('/enrollment-provisioning')
+  return response.data
+}
+
+export async function updateWindowsEnrollmentProvisioning(
+  settings: WindowsEnrollmentProvisioningSettings,
+): Promise<WindowsEnrollmentProvisioningSettings> {
+  if (isMockApiEnabled()) {
+    return settings
+  }
+
+  const response = await windowsApi.put<WindowsEnrollmentProvisioningSettings>(
+    '/enrollment-provisioning',
+    settings,
+  )
+  return response.data
+}
+
 export interface WindowsDefaultInstallerResponse {
   configured: boolean
   filesRelativePath?: string

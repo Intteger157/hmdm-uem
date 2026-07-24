@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hmdm/server-windows/internal/models"
 	appstorage "github.com/hmdm/server-windows/internal/storage"
 )
 
@@ -22,9 +23,16 @@ func (h *WindowsHandler) GetEnrollBootstrapScript(c *gin.Context) {
 		return
 	}
 
+	provisioning, err := loadActiveEnrollmentProvisioning()
+	if err != nil {
+		log.Printf("[enroll-bootstrap] provisioning settings failed: %v", err)
+		c.String(http.StatusInternalServerError, "Failed to prepare enrollment bootstrap script.")
+		return
+	}
+
 	serverURL := strings.TrimRight(buildPublicURL(c, ""), "/")
 	agentURL := buildPublicURL(c, appstorage.AgentPublicPath())
-	script := buildBootstrapScript(serverURL, orgToken, agentURL)
+	script := buildBootstrapScript(serverURL, orgToken, agentURL, provisioning)
 
 	c.Header("Content-Type", "text/plain; charset=utf-8")
 	c.Header("Cache-Control", "no-store")
@@ -45,11 +53,13 @@ func (h *WindowsHandler) DownloadAgentBinary(c *gin.Context) {
 	c.FileAttachment(binaryPath, appstorage.AgentBinaryName)
 }
 
-func buildBootstrapScript(serverURL, enrollmentToken, agentDownloadURL string) string {
+func buildBootstrapScript(serverURL, enrollmentToken, agentDownloadURL string, provisioning *models.WindowsEnrollmentProvisioningSettings) string {
 	installDir := `C:\Program Files\SingularityMDM`
 	stateDir := `C:\ProgramData\HMDM\Agent`
 	stateFile := stateDir + `\state.json`
 	agentExe := installDir + `\singularity-agent.exe`
+
+	provisioningBlock := buildProvisioningBlock(provisioning)
 
 	return fmt.Sprintf(`# Singularity MDM — Windows agent bootstrap
 #Requires -RunAsAdministrator
@@ -99,5 +109,40 @@ Write-Host 'Singularity MDM: starting agent service...'
 Start-Service -Name $ServiceName
 
 Write-Host 'Singularity MDM Agent installed and started successfully.'
-`, installDir, agentExe, bootstrapServiceName, serverURL, enrollmentToken, agentDownloadURL, stateDir, stateFile)
+%s`, installDir, agentExe, bootstrapServiceName, serverURL, enrollmentToken, agentDownloadURL, stateDir, stateFile, provisioningBlock)
+}
+
+func buildProvisioningBlock(provisioning *models.WindowsEnrollmentProvisioningSettings) string {
+	if provisioning == nil {
+		return ""
+	}
+
+	adminUser := escapePowerShellDoubleQuoted(provisioning.AdminUsername)
+	adminPass := escapePowerShellDoubleQuoted(provisioning.AdminPassword)
+	wmicUser := escapeWMIStringLiteral(provisioning.AdminUsername)
+
+	return fmt.Sprintf(`
+Write-Host 'Singularity MDM: creating local administrator account...'
+net user "%s" "%s" /add
+net localgroup Administrators "%s" /add
+wmic USERACCOUNT WHERE Name='%s' SET PasswordExpires=FALSE
+
+Write-Host 'Singularity MDM: skipping Windows OOBE setup screens...'
+reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE" /v SkipMachineOOBE /t REG_DWORD /d 1 /f
+reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE" /v SkipUserOOBE /t REG_DWORD /d 1 /f
+
+Write-Host 'Singularity MDM: rebooting in 5 seconds to complete provisioning...'
+shutdown /r /t 5
+`, adminUser, adminPass, adminUser, wmicUser)
+}
+
+func escapePowerShellDoubleQuoted(value string) string {
+	value = strings.ReplaceAll(value, "`", "``")
+	value = strings.ReplaceAll(value, "$", "`$")
+	value = strings.ReplaceAll(value, "\"", "`\"")
+	return value
+}
+
+func escapeWMIStringLiteral(value string) string {
+	return strings.ReplaceAll(value, "'", "''")
 }

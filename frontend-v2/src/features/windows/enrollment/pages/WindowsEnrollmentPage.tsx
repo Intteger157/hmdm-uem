@@ -1,8 +1,9 @@
 import { Copy, Loader2, Upload } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { copyTextToClipboard } from '@/shared/lib/copy-to-clipboard'
+import { BoolField } from '@/shared/components/BoolField'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -12,9 +13,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   getWindowsAutopilotAgent,
+  getWindowsEnrollmentProvisioning,
+  updateWindowsEnrollmentProvisioning,
   uploadWindowsAutopilotAgent,
+  type WindowsEnrollmentProvisioningSettings,
 } from '@/features/windows/api/windows-api'
 import { toast } from 'sonner'
 
@@ -49,6 +55,11 @@ export function WindowsEnrollmentPage() {
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
+  const [provisioningDraft, setProvisioningDraft] = useState<WindowsEnrollmentProvisioningSettings>({
+    createLocalAdmin: false,
+    adminUsername: 'Admin',
+    adminPassword: '',
+  })
 
   const bootstrapCommand = buildBootstrapCommand(
     typeof window !== 'undefined' ? window.location.origin : '',
@@ -58,6 +69,17 @@ export function WindowsEnrollmentPage() {
     queryKey: ['windows', 'autopilot-agent'],
     queryFn: getWindowsAutopilotAgent,
   })
+
+  const provisioningQuery = useQuery({
+    queryKey: ['windows', 'enrollment-provisioning'],
+    queryFn: getWindowsEnrollmentProvisioning,
+  })
+
+  useEffect(() => {
+    if (provisioningQuery.data) {
+      setProvisioningDraft(provisioningQuery.data)
+    }
+  }, [provisioningQuery.data])
 
   const uploadMutation = useMutation({
     mutationFn: uploadWindowsAutopilotAgent,
@@ -70,6 +92,18 @@ export function WindowsEnrollmentPage() {
     },
     onSettled: () => {
       setUploading(false)
+    },
+  })
+
+  const provisioningMutation = useMutation({
+    mutationFn: updateWindowsEnrollmentProvisioning,
+    onSuccess: (settings) => {
+      queryClient.setQueryData(['windows', 'enrollment-provisioning'], settings)
+      setProvisioningDraft(settings)
+      toast.success(t('windows.enrollmentPage.provisioningSaveSuccess'))
+    },
+    onError: () => {
+      toast.error(t('windows.enrollmentPage.provisioningSaveError'))
     },
   })
 
@@ -92,6 +126,25 @@ export function WindowsEnrollmentPage() {
     }
     setUploading(true)
     uploadMutation.mutate(file)
+  }
+
+  const handleSaveProvisioning = () => {
+    if (provisioningDraft.createLocalAdmin) {
+      if (!provisioningDraft.adminUsername.trim()) {
+        toast.error(t('windows.enrollmentPage.provisioningUsernameRequired'))
+        return
+      }
+      if (!provisioningDraft.adminPassword.trim()) {
+        toast.error(t('windows.enrollmentPage.provisioningPasswordRequired'))
+        return
+      }
+    }
+
+    provisioningMutation.mutate({
+      createLocalAdmin: provisioningDraft.createLocalAdmin,
+      adminUsername: provisioningDraft.adminUsername.trim(),
+      adminPassword: provisioningDraft.adminPassword,
+    })
   }
 
   const agent = agentQuery.data
@@ -176,6 +229,93 @@ export function WindowsEnrollmentPage() {
               <p className="text-xs text-muted-foreground break-all">{agent.publicUrl}</p>
             ) : null}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('windows.enrollmentPage.provisioningCardTitle')}</CardTitle>
+          <CardDescription>{t('windows.enrollmentPage.provisioningCardDescription')}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {provisioningQuery.isLoading ? (
+            <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              {t('windows.enrollmentPage.provisioningLoading')}
+            </div>
+          ) : (
+            <>
+              <BoolField
+                id="windows-enrollment-create-local-admin"
+                label={t('windows.enrollmentPage.provisioningEnabled')}
+                hint={t('windows.enrollmentPage.provisioningEnabledHint')}
+                checked={provisioningDraft.createLocalAdmin}
+                onCheckedChange={(checked) =>
+                  setProvisioningDraft((current) => ({ ...current, createLocalAdmin: checked }))
+                }
+              />
+
+              {provisioningDraft.createLocalAdmin ? (
+                <div className="grid gap-4 rounded-lg border bg-muted/20 p-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="windows-enrollment-admin-username">
+                      {t('windows.enrollmentPage.provisioningUsername')}
+                    </Label>
+                    <Input
+                      id="windows-enrollment-admin-username"
+                      value={provisioningDraft.adminUsername}
+                      onChange={(event) =>
+                        setProvisioningDraft((current) => ({
+                          ...current,
+                          adminUsername: event.target.value,
+                        }))
+                      }
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="windows-enrollment-admin-password">
+                      {t('windows.enrollmentPage.provisioningPassword')}
+                    </Label>
+                    <Input
+                      id="windows-enrollment-admin-password"
+                      type="password"
+                      value={provisioningDraft.adminPassword}
+                      onChange={(event) =>
+                        setProvisioningDraft((current) => ({
+                          ...current,
+                          adminPassword: event.target.value,
+                        }))
+                      }
+                      autoComplete="new-password"
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  type="button"
+                  disabled={provisioningMutation.isPending || provisioningQuery.isLoading}
+                  onClick={handleSaveProvisioning}
+                >
+                  {provisioningMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 size-4 animate-spin" />
+                      {t('windows.enrollmentPage.provisioningSaving')}
+                    </>
+                  ) : (
+                    t('windows.enrollmentPage.provisioningSave')
+                  )}
+                </Button>
+                {provisioningDraft.createLocalAdmin ? (
+                  <p className="text-xs text-muted-foreground">
+                    {t('windows.enrollmentPage.provisioningRebootHint')}
+                  </p>
+                ) : null}
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 

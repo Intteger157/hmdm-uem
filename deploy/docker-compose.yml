@@ -72,6 +72,8 @@ services:
       APPS_UPLOAD_DIR: /opt/hmdm/files/apps
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
       PUBLIC_PROTOCOL: ${PUBLIC_PROTOCOL:-https}
+      AUTOPILOT_ADMIN_USER: ${AUTOPILOT_ADMIN_USER:-Admin}
+      AUTOPILOT_ADMIN_PASS: ${AUTOPILOT_ADMIN_PASS:-}
     volumes:
       - ./volumes/files:/opt/hmdm/files
     healthcheck:

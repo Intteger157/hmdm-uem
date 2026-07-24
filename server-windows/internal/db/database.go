@@ -25,6 +25,7 @@ func InitDB(dsn string) (*gorm.DB, error) {
 		&models.WindowsDeviceCommand{},
 		&models.DeviceCommandLog{},
 		&models.WindowsEnrollmentToken{},
+		&models.WindowsEnrollmentProvisioningSettings{},
 		&models.WindowsAgentInstaller{},
 		&models.WindowsConfigProfile{},
 		&models.WindowsDeviceGroup{},
