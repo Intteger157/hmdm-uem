@@ -13,7 +13,12 @@ export function AppTopBar({ userLabel, onLogout }: AppTopBarProps) {
 
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4 sm:px-6">
-      <div className="min-w-0">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <img
+          src="/Singularity.png"
+          alt=""
+          className="h-8 w-8 shrink-0 object-contain"
+        />
         <p className="truncate text-lg font-semibold">{t('app.title')}</p>
       </div>
 
