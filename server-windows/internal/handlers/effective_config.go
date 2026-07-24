@@ -261,6 +261,7 @@ func softwareAppsToRequiredApps(apps []models.SoftwareApp) []models.RequiredApp 
 			ID:              app.ID,
 			Name:            app.Name,
 			Version:         app.Version,
+			UpdatedAt:       app.UpdatedAt,
 			DownloadURL:     normalizeDownloadURL(app.DownloadURL),
 			InstallArgs:     app.InstallArgs,
 			AppType:         appType,

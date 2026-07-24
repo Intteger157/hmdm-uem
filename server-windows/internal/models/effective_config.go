@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 const (
 	AssignmentSourceGroup  = "group"
 	AssignmentSourceDirect = "direct"
@@ -14,15 +16,16 @@ type AppliedProfileSource struct {
 
 // RequiredApp is one app the agent must install for a device.
 type RequiredApp struct {
-	ID              uint   `json:"id"`
-	Name            string `json:"name"`
-	Version         string `json:"version"`
-	DownloadURL     string `json:"downloadUrl"`
-	InstallArgs     string `json:"installArgs"`
-	AppType         string `json:"appType"`
-	WingetID        string `json:"wingetId"`
-	AutoUpdate      bool   `json:"autoUpdate"`
-	UpdateFrequency string `json:"updateFrequency"`
+	ID              uint      `json:"id"`
+	Name            string    `json:"name"`
+	Version         string    `json:"version"`
+	UpdatedAt       time.Time `json:"updatedAt"`
+	DownloadURL     string    `json:"downloadUrl"`
+	InstallArgs     string    `json:"installArgs"`
+	AppType         string    `json:"appType"`
+	WingetID        string    `json:"wingetId"`
+	AutoUpdate      bool      `json:"autoUpdate"`
+	UpdateFrequency string    `json:"updateFrequency"`
 }
 
 // EffectiveConfigResponse is the merged policy payload for one device.

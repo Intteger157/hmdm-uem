@@ -39,6 +39,7 @@ type RequiredApp struct {
 	ID              uint   `json:"id"`
 	Name            string `json:"name"`
 	Version         string `json:"version"`
+	UpdatedAt       string `json:"updatedAt"`
 	DownloadURL     string `json:"downloadUrl"`
 	InstallArgs     string `json:"installArgs"`
 	AppType         string `json:"appType"`
@@ -70,10 +71,7 @@ func DeployRequired(required []RequiredApp, opts DeployOptions) {
 	state, err := LoadAppsState()
 	if err != nil {
 		log.Printf("app state load failed: %v", err)
-		state = AppsState{
-			LastCheckTimes: map[string]string{},
-			InstalledApps:  map[string]InstalledAppEntry{},
-		}
+		state = newEmptyAppsState()
 	}
 
 	installed := system.CollectInstalledSoftware()
@@ -98,12 +96,12 @@ func DeployRequired(required []RequiredApp, opts DeployOptions) {
 }
 
 func deployApp(app RequiredApp, opts DeployOptions, state *AppsState, installed []system.InstalledSoftwareInfo) (checked bool, err error) {
-	if state.HasInstalledVersion(app.ID, app.Version) {
+	if state.ShouldSkipDeploy(app.ID, app.UpdatedAt) {
 		log.Printf(
-			"app deploy: skip id=%d name=%q version=%q (already installed per local cache)",
+			"app deploy: skip id=%d name=%q updatedAt=%q (already deployed per local cache)",
 			app.ID,
 			app.Name,
-			app.Version,
+			app.UpdatedAt,
 		)
 		reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusSuccess, "")
 		return false, nil
@@ -161,14 +159,14 @@ func deployWingetApp(app RequiredApp, opts DeployOptions, state *AppsState) (boo
 		}
 		progress.Report(InstallStatusSuccess, output)
 		reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusSuccess, "")
-		state.MarkInstalled(app.ID, app.Version)
+		state.MarkDeployed(app.ID, app.UpdatedAt)
 		return true, nil
 	}
 
 	if !shouldCheckUpdate(app, state) {
 		progress.Report(InstallStatusSuccess, fmt.Sprintf("Package %q already installed; update check skipped", wingetID))
 		reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusSuccess, "Already installed")
-		state.MarkInstalled(app.ID, app.Version)
+		state.MarkDeployed(app.ID, app.UpdatedAt)
 		return true, nil
 	}
 
@@ -180,7 +178,7 @@ func deployWingetApp(app RequiredApp, opts DeployOptions, state *AppsState) (boo
 	}
 	progress.Report(InstallStatusSuccess, output)
 	reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusSuccess, "")
-	state.MarkInstalled(app.ID, app.Version)
+	state.MarkDeployed(app.ID, app.UpdatedAt)
 	return true, nil
 }
 
@@ -205,7 +203,7 @@ func deployURLApp(app RequiredApp, opts DeployOptions, state *AppsState, install
 	)
 
 	if alreadyInstalled && !shouldCheckUpdate(app, state) {
-		state.MarkInstalled(app.ID, app.Version)
+		state.MarkDeployed(app.ID, app.UpdatedAt)
 		progress.Report(InstallStatusSuccess, "App already installed; skipping deployment")
 		reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusSuccess, "Already installed")
 		return true, nil
@@ -251,7 +249,7 @@ func deployURLApp(app RequiredApp, opts DeployOptions, state *AppsState, install
 	progress.Report(InstallStatusSuccess, resultMessage)
 	reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusSuccess, resultMessage)
 
-	state.MarkInstalled(app.ID, app.Version)
+	state.MarkDeployed(app.ID, app.UpdatedAt)
 	return true, nil
 }
 

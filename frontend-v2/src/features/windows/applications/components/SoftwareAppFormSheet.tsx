@@ -76,12 +76,19 @@ interface SoftwareAppFormSheetProps {
   app: SoftwareApp | null
 }
 
+const DEFAULT_APP_VERSION = '1.0.0'
+
+function normalizeAppVersion(version?: string | null): string {
+  const trimmed = version?.trim() ?? ''
+  return trimmed || DEFAULT_APP_VERSION
+}
+
 function toFormValues(app: SoftwareApp | null): SoftwareAppFormValues {
   if (!app) {
     return {
       appType: 'url',
       name: '',
-      version: '',
+      version: DEFAULT_APP_VERSION,
       downloadUrl: '',
       wingetId: '',
       installArgs: '',
@@ -93,7 +100,7 @@ function toFormValues(app: SoftwareApp | null): SoftwareAppFormValues {
   return {
     appType: app.appType || 'url',
     name: app.name,
-    version: app.version ?? '',
+    version: normalizeAppVersion(app.version),
     downloadUrl: app.downloadUrl ?? '',
     wingetId: app.wingetId ?? '',
     installArgs: app.installArgs ?? '',
@@ -154,7 +161,7 @@ export function SoftwareAppFormSheet({ open, onOpenChange, app }: SoftwareAppFor
       const result = await uploadSoftwareApp(file)
       form.setValue('appType', 'upload', { shouldValidate: true })
       form.setValue('name', result.name, { shouldValidate: true })
-      form.setValue('version', result.version ?? '', { shouldValidate: true })
+      form.setValue('version', normalizeAppVersion(result.version), { shouldValidate: true })
       form.setValue('downloadUrl', result.url, { shouldValidate: true })
       form.setValue('autoUpdate', false)
       setDownloadUrlLocked(true)
@@ -189,7 +196,7 @@ export function SoftwareAppFormSheet({ open, onOpenChange, app }: SoftwareAppFor
         id: app?.id,
         payload: {
           name: values.name.trim(),
-          version: values.version?.trim() || undefined,
+          version: normalizeAppVersion(values.version),
           appType: values.appType,
           downloadUrl: values.appType !== 'winget' ? values.downloadUrl?.trim() : undefined,
           wingetId: values.appType === 'winget' ? values.wingetId?.trim() : undefined,
