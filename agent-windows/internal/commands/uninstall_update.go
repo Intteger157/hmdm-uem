@@ -28,6 +28,8 @@ func ExecuteDeviceCommand(commandName, payload string) Result {
 		return batteryReport()
 	case "install_windows_update":
 		return installWindowsUpdate(payload)
+	case "UninstallApp":
+		return uninstallApp(payload)
 	default:
 		return Result{Success: false, Message: fmt.Sprintf("unsupported command: %s", commandName)}
 	}

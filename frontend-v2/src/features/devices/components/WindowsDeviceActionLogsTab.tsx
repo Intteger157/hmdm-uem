@@ -72,20 +72,18 @@ function truncatePayload(payload: string, maxLen = 120): string {
 }
 
 function formatLogPayload(entry: DeviceCommandLogEntry): string {
-  if (entry.commandName !== 'AppInstall') {
-    return truncatePayload(entry.payload)
-  }
-
-  try {
-    const parsed = JSON.parse(entry.payload) as { appName?: string; appId?: number }
-    if (parsed.appName) {
-      return parsed.appName
+  if (entry.commandName === 'AppInstall' || entry.commandName === 'UninstallApp') {
+    try {
+      const parsed = JSON.parse(entry.payload) as { appName?: string; appId?: number }
+      if (parsed.appName) {
+        return parsed.appName
+      }
+      if (entry.commandName === 'AppInstall' && parsed.appId != null) {
+        return `appId=${parsed.appId}`
+      }
+    } catch {
+      // fall through
     }
-    if (parsed.appId != null) {
-      return `appId=${parsed.appId}`
-    }
-  } catch {
-    // fall through
   }
 
   return truncatePayload(entry.payload)
@@ -94,6 +92,9 @@ function formatLogPayload(entry: DeviceCommandLogEntry): string {
 function formatLogCommandName(entry: DeviceCommandLogEntry, t: (key: string) => string): string {
   if (entry.commandName === 'AppInstall') {
     return t('deviceDetail.actionLogs.appInstall')
+  }
+  if (entry.commandName === 'UninstallApp') {
+    return t('deviceDetail.actionLogs.uninstallApp')
   }
   return entry.commandName
 }

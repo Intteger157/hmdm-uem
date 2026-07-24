@@ -32,6 +32,7 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import { DeviceActionsPanel } from '@/features/devices/components/DeviceActionsPanel'
 import { WindowsAppDeploymentsCard } from '@/features/devices/components/WindowsAppDeploymentsCard'
+import { WindowsDeviceInstalledSoftwareTab } from '@/features/devices/components/WindowsDeviceInstalledSoftwareTab'
 import { WindowsDeviceServicesTab } from '@/features/devices/components/WindowsDeviceServicesTab'
 import { WindowsDeviceActionLogsTab } from '@/features/devices/components/WindowsDeviceActionLogsTab'
 import { WindowsAppliedConfigurationCard } from '@/features/windows/configurations/components/WindowsAppliedConfigurationCard'
@@ -258,39 +259,46 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
         </TabsContent>
 
         <TabsContent value="installed-software" className={TAB_CONTENT_CLASS}>
-          <Card className="w-full">
-            <CardContent className="p-0">
-              <div className="w-full overflow-x-auto">
-                <table className="w-full min-w-full text-left text-sm">
-                  <thead className="sticky top-0 border-b bg-muted/80 backdrop-blur">
-                    <tr className="text-muted-foreground">
-                      <th className="px-4 py-2.5 font-medium">{t('deviceDetail.software.name')}</th>
-                      <th className="px-4 py-2.5 font-medium">{t('deviceDetail.software.version')}</th>
-                      <th className="px-4 py-2.5 font-medium">{t('deviceDetail.software.publisher')}</th>
-                      <th className="px-4 py-2.5 font-medium">{t('deviceDetail.software.installed')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(device.installedSoftware ?? []).map((app) => (
-                      <tr key={`${app.name}-${app.version}`} className="border-b last:border-0">
-                        <td className="px-4 py-2.5 font-medium">{app.name}</td>
-                        <td className="px-4 py-2.5 font-mono text-xs">{app.version}</td>
-                        <td className="px-4 py-2.5 text-muted-foreground">{app.publisher}</td>
-                        <td className="px-4 py-2.5 whitespace-nowrap">{app.installDate}</td>
+          {isWindows ? (
+            <WindowsDeviceInstalledSoftwareTab
+              hardwareId={device.number}
+              software={device.installedSoftware ?? []}
+            />
+          ) : (
+            <Card className="w-full">
+              <CardContent className="p-0">
+                <div className="w-full overflow-x-auto">
+                  <table className="w-full min-w-full text-left text-sm">
+                    <thead className="sticky top-0 border-b bg-muted/80 backdrop-blur">
+                      <tr className="text-muted-foreground">
+                        <th className="px-4 py-2.5 font-medium">{t('deviceDetail.software.name')}</th>
+                        <th className="px-4 py-2.5 font-medium">{t('deviceDetail.software.version')}</th>
+                        <th className="px-4 py-2.5 font-medium">{t('deviceDetail.software.publisher')}</th>
+                        <th className="px-4 py-2.5 font-medium">{t('deviceDetail.software.installed')}</th>
                       </tr>
-                    ))}
-                    {(device.installedSoftware ?? []).length === 0 && (
-                      <tr>
-                        <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
-                          {t('deviceDetail.software.empty')}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
+                    </thead>
+                    <tbody>
+                      {(device.installedSoftware ?? []).map((app) => (
+                        <tr key={`${app.name}-${app.version}`} className="border-b last:border-0">
+                          <td className="px-4 py-2.5 font-medium">{app.name}</td>
+                          <td className="px-4 py-2.5 font-mono text-xs">{app.version}</td>
+                          <td className="px-4 py-2.5 text-muted-foreground">{app.publisher}</td>
+                          <td className="px-4 py-2.5 whitespace-nowrap">{app.installDate}</td>
+                        </tr>
+                      ))}
+                      {(device.installedSoftware ?? []).length === 0 && (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
+                            {t('deviceDetail.software.empty')}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {isWindows ? (

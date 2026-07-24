@@ -333,10 +333,11 @@ func EncodeInstalledSoftware(software []InventorySoftware) (json.RawMessage, err
 	records := make([]InstalledSoftwareRecord, 0, len(software))
 	for _, app := range software {
 		records = append(records, InstalledSoftwareRecord{
-			Name:        app.Name,
-			Version:     app.Version,
-			Publisher:   app.Publisher,
-			InstallDate: app.InstallDate,
+			Name:            app.Name,
+			Version:         app.Version,
+			Publisher:       app.Publisher,
+			InstallDate:     app.InstallDate,
+			UninstallString: app.UninstallString,
 		})
 	}
 

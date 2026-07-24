@@ -28,10 +28,11 @@ type LocalUserRecord struct {
 
 // InstalledSoftwareRecord is stored in windows_devices.installed_software JSONB.
 type InstalledSoftwareRecord struct {
-	Name        string `json:"name"`
-	Version     string `json:"version"`
-	Publisher   string `json:"publisher"`
-	InstallDate string `json:"installDate"`
+	Name            string `json:"name"`
+	Version         string `json:"version"`
+	Publisher       string `json:"publisher"`
+	InstallDate     string `json:"installDate"`
+	UninstallString string `json:"uninstallString,omitempty"`
 }
 
 // InventoryLocalUser mirrors the Windows agent inventory payload.
@@ -43,10 +44,11 @@ type InventoryLocalUser struct {
 
 // InventorySoftware mirrors the Windows agent inventory payload.
 type InventorySoftware struct {
-	Name        string `json:"name"`
-	Version     string `json:"version"`
-	Publisher   string `json:"publisher"`
-	InstallDate string `json:"install_date"`
+	Name            string `json:"name"`
+	Version         string `json:"version"`
+	Publisher       string `json:"publisher"`
+	InstallDate     string `json:"install_date"`
+	UninstallString string `json:"uninstall_string"`
 }
 
 // InventoryService mirrors one Windows service in agent payload.

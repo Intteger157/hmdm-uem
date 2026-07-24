@@ -23,6 +23,7 @@ export interface InstalledSoftware {
   version: string
   publisher: string
   installDate: string
+  uninstallString?: string
 }
 
 export type LocalUserStatus = 'active' | 'disabled' | 'locked'

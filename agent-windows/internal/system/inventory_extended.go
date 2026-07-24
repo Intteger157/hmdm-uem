@@ -21,10 +21,11 @@ type LocalUserInfo struct {
 }
 
 type InstalledSoftwareInfo struct {
-	Name        string `json:"name"`
-	Version     string `json:"version"`
-	Publisher   string `json:"publisher"`
-	InstallDate string `json:"install_date"`
+	Name            string `json:"name"`
+	Version         string `json:"version"`
+	Publisher       string `json:"publisher"`
+	InstallDate     string `json:"install_date"`
+	UninstallString string `json:"uninstall_string,omitempty"`
 }
 
 type win32ComputerSystemIdentity struct {
@@ -391,6 +392,7 @@ func appendSoftwareFromRegistry(root registry.Key, path string, seen map[string]
 		version, _, _ := subKey.GetStringValue("DisplayVersion")
 		publisher, _, _ := subKey.GetStringValue("Publisher")
 		installDate := formatInstallDate(subKey)
+		uninstallString := readUninstallString(subKey)
 
 		dedupeKey := strings.ToLower(strings.TrimSpace(displayName) + "|" + strings.TrimSpace(version))
 		if _, exists := seen[dedupeKey]; exists {
@@ -400,13 +402,26 @@ func appendSoftwareFromRegistry(root registry.Key, path string, seen map[string]
 		seen[dedupeKey] = struct{}{}
 
 		*items = append(*items, InstalledSoftwareInfo{
-			Name:        strings.TrimSpace(displayName),
-			Version:     strings.TrimSpace(version),
-			Publisher:   strings.TrimSpace(publisher),
-			InstallDate: installDate,
+			Name:            strings.TrimSpace(displayName),
+			Version:         strings.TrimSpace(version),
+			Publisher:       strings.TrimSpace(publisher),
+			InstallDate:     installDate,
+			UninstallString: uninstallString,
 		})
 		subKey.Close()
 	}
+}
+
+func readUninstallString(key registry.Key) string {
+	if value, _, err := key.GetStringValue("QuietUninstallString"); err == nil {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			return trimmed
+		}
+	}
+	if value, _, err := key.GetStringValue("UninstallString"); err == nil {
+		return strings.TrimSpace(value)
+	}
+	return ""
 }
 
 func formatInstallDate(key registry.Key) string {

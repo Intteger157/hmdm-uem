@@ -53,6 +53,11 @@ func (h *WindowsHandler) enqueueDeviceCommandLog(c *gin.Context, hardwareID, com
 		if payload == "" {
 			payload = "{}"
 		}
+	case models.CommandNameUninstallApp:
+		if !isValidUninstallAppPayload(payload) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "payload must include appName and uninstallString"})
+			return
+		}
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported commandName"})
 		return
@@ -278,4 +283,15 @@ func parseUninstallUpdatePayload(raw json.RawMessage) (string, bool) {
 	}
 
 	return "", false
+}
+
+func isValidUninstallAppPayload(payload string) bool {
+	var parsed struct {
+		AppName         string `json:"appName"`
+		UninstallString string `json:"uninstallString"`
+	}
+	if err := json.Unmarshal([]byte(strings.TrimSpace(payload)), &parsed); err != nil {
+		return false
+	}
+	return strings.TrimSpace(parsed.UninstallString) != ""
 }
