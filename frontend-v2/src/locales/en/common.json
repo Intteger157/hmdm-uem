@@ -522,7 +522,7 @@
   "windows.enrollmentPage.cardDescription": "Run this one-liner on a clean Windows machine to install the Singularity agent automatically.",
   "windows.enrollmentPage.copyCommand": "Copy Command",
   "windows.enrollmentPage.copySuccess": "Enrollment command copied to clipboard",
-  "windows.enrollmentPage.instructions": "On a fresh Windows machine (OOBE screen), press Shift+F10 to open CMD, type powershell, and paste this command to automatically install the Singularity Agent and provision the device.",
+  "windows.enrollmentPage.instructions": "On a fresh Windows machine (OOBE screen), press Shift+F10 to open CMD and paste this command to automatically install the Singularity Agent and provision the device.",
   "windows.enrollmentPage.agentBinaryHint": "App Catalog is for deploying apps to enrolled devices. Autopilot requires singularity-agent.exe here. MSI for manual install: installer/dist/singularity-agent.msi.",
   "windows.enrollmentPage.agentCardTitle": "Autopilot Agent Binary",
   "windows.enrollmentPage.agentCardDescription": "Upload singularity-agent.exe so bootstrap enrollment can download and install the agent automatically.",

@@ -20,7 +20,7 @@ import { toast } from 'sonner'
 
 function buildBootstrapCommand(origin: string): string {
   const enrollUrl = `${origin.replace(/\/+$/, '')}/api/windows/enroll`
-  return `Invoke-RestMethod -Uri "${enrollUrl}" | Invoke-Expression`
+  return `powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod -Uri '${enrollUrl}' | Invoke-Expression"`
 }
 
 function formatFileSize(bytes?: number): string {

@@ -522,7 +522,7 @@
   "windows.enrollmentPage.cardDescription": "Выполните эту команду на чистой Windows-машине для автоматической установки агента Singularity.",
   "windows.enrollmentPage.copyCommand": "Копировать команду",
   "windows.enrollmentPage.copySuccess": "Команда регистрации скопирована",
-  "windows.enrollmentPage.instructions": "На чистой Windows (экран OOBE) нажмите Shift+F10, откройте CMD, введите powershell и вставьте эту команду — агент Singularity установится и зарегистрирует устройство автоматически.",
+  "windows.enrollmentPage.instructions": "На чистой Windows (экран OOBE) нажмите Shift+F10, откройте CMD и вставьте эту команду — агент Singularity установится и зарегистрирует устройство автоматически.",
   "windows.enrollmentPage.agentBinaryHint": "App Catalog — для развёртывания приложений на уже зарегистрированных устройствах. Для Autopilot нужен singularity-agent.exe здесь. MSI для ручной установки: installer/dist/singularity-agent.msi.",
   "windows.enrollmentPage.agentCardTitle": "Бинарник агента Autopilot",
   "windows.enrollmentPage.agentCardDescription": "Загрузите singularity-agent.exe — bootstrap-скрипт скачает и установит агент автоматически.",
