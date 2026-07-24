@@ -27,6 +27,8 @@ func (h *WindowsHandler) GetEnrollBootstrapScript(c *gin.Context) {
 	script := buildBootstrapScript(serverURL, orgToken, agentURL)
 
 	c.Header("Content-Type", "text/plain; charset=utf-8")
+	c.Header("Cache-Control", "no-store")
+	c.Header("X-Content-Type-Options", "nosniff")
 	c.String(http.StatusOK, script)
 }
 
