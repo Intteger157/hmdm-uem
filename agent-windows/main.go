@@ -14,6 +14,7 @@ import (
 	"github.com/hmdm/agent-windows/internal/commands"
 	"github.com/hmdm/agent-windows/internal/config"
 	"github.com/hmdm/agent-windows/internal/policies"
+	"github.com/hmdm/agent-windows/internal/service"
 	"github.com/hmdm/agent-windows/internal/system"
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/debug"
@@ -159,21 +160,34 @@ func waitOrStop(stop <-chan struct{}, duration time.Duration) bool {
 type agentService struct {
 	cfg       config.Config
 	apiClient *api.APIClient
+	syncNow   chan struct{}
+}
+
+func (s *agentService) triggerSync(reason string) {
+	if s.syncNow == nil {
+		return
+	}
+	log.Printf("scheduling immediate sync: %s", reason)
+	select {
+	case s.syncNow <- struct{}{}:
+	default:
+	}
 }
 
 func (s *agentService) Execute(_ []string, requests <-chan svc.ChangeRequest, status chan<- svc.Status) (bool, uint32) {
-	const accepts = svc.AcceptStop | svc.AcceptShutdown
+	const accepts = svc.AcceptStop | svc.AcceptShutdown | svc.AcceptPowerEvent | svc.AcceptSessionChange
 
 	status <- svc.Status{State: svc.StartPending}
 
 	stopCh := make(chan struct{})
+	s.syncNow = make(chan struct{}, 1)
 
 	// Report RUNNING before network enrollment so MSI/service manager does not hang.
 	go func() {
 		if err := performHandshake(&s.cfg, s.apiClient, stopCh); err != nil {
 			log.Printf("handshake failed: %v", err)
 		}
-		runAgentLoop(stopCh, &s.cfg, s.apiClient)
+		runAgentLoop(stopCh, s.syncNow, &s.cfg, s.apiClient)
 	}()
 
 	status <- svc.Status{State: svc.Running, Accepts: accepts}
@@ -183,6 +197,16 @@ func (s *agentService) Execute(_ []string, requests <-chan svc.ChangeRequest, st
 		switch req.Cmd {
 		case svc.Interrogate:
 			status <- req.CurrentStatus
+		case svc.PowerEvent:
+			if service.ShouldSyncOnPowerEvent(req.EventType) {
+				s.triggerSync(fmt.Sprintf("power event %d", req.EventType))
+			}
+			status <- svc.Status{State: svc.Running, Accepts: accepts}
+		case svc.SessionChange:
+			if service.ShouldSyncOnSessionEvent(req.EventType) {
+				s.triggerSync(fmt.Sprintf("session event %d", req.EventType))
+			}
+			status <- svc.Status{State: svc.Running, Accepts: accepts}
 		case svc.Stop, svc.Shutdown:
 			log.Printf("%s service stopping", serviceName)
 			status <- svc.Status{State: svc.StopPending}
@@ -197,50 +221,69 @@ func (s *agentService) Execute(_ []string, requests <-chan svc.ChangeRequest, st
 	return false, 0
 }
 
-func runAgentLoop(stop <-chan struct{}, cfg *config.Config, apiClient *api.APIClient) {
+func runAgentLoop(stop <-chan struct{}, syncNow <-chan struct{}, cfg *config.Config, apiClient *api.APIClient) {
 	ticker := time.NewTicker(inventoryInterval)
 	defer ticker.Stop()
 
 	go runPolicyComplianceLoop(stop, cfg, apiClient)
 
+	log.Printf("running immediate sync on agent start")
+	runAgentCycle(stop, cfg, apiClient)
+
 	for {
 		select {
 		case <-stop:
 			return
+		case <-syncNow:
+			log.Printf("running immediate sync after resume")
+			runAgentCycle(stop, cfg, apiClient)
 		case <-ticker.C:
-			if cfg.AuthToken == "" {
-				if err := enrollUntilSuccess(cfg, apiClient, stop); err != nil {
-					log.Printf("re-enrollment interrupted: %v", err)
-					continue
-				}
-			}
-
-			pendingCommands, err := uploadInventory(cfg, apiClient)
-			if err != nil {
-				if handleReenrollNeeded(cfg, err) {
-					continue
-				}
-				log.Printf("inventory upload failed: %v", err)
-			} else {
-				log.Printf("inventory upload succeeded")
-				if err := processInventoryCommands(cfg, apiClient, pendingCommands); err != nil {
-					if handleReenrollNeeded(cfg, err) {
-						continue
-					}
-					log.Printf("inventory command processing failed: %v", err)
-				}
-			}
-
-			// App deployment must not depend on inventory succeeding.
-			syncPolicyFromServer(cfg, apiClient)
-
-			if err := processPendingCommands(stop, cfg, apiClient); err != nil {
-				if handleReenrollNeeded(cfg, err) {
-					continue
-				}
-				log.Printf("command processing failed: %v", err)
-			}
+			runAgentCycle(stop, cfg, apiClient)
 		}
+	}
+}
+
+func runAgentCycle(stop <-chan struct{}, cfg *config.Config, apiClient *api.APIClient) {
+	if cfg.AuthToken == "" {
+		if err := enrollUntilSuccess(cfg, apiClient, stop); err != nil {
+			log.Printf("re-enrollment interrupted: %v", err)
+			return
+		}
+	}
+
+	if err := apiClient.SendCheckin(cfg.AuthToken, cfg.HardwareID); err != nil {
+		if handleReenrollNeeded(cfg, err) {
+			return
+		}
+		log.Printf("checkin failed: %v", err)
+	} else {
+		log.Printf("checkin succeeded")
+	}
+
+	pendingCommands, err := uploadInventory(cfg, apiClient)
+	if err != nil {
+		if handleReenrollNeeded(cfg, err) {
+			return
+		}
+		log.Printf("inventory upload failed: %v", err)
+	} else {
+		log.Printf("inventory upload succeeded")
+		if err := processInventoryCommands(cfg, apiClient, pendingCommands); err != nil {
+			if handleReenrollNeeded(cfg, err) {
+				return
+			}
+			log.Printf("inventory command processing failed: %v", err)
+		}
+	}
+
+	// App deployment must not depend on inventory succeeding.
+	syncPolicyFromServer(cfg, apiClient)
+
+	if err := processPendingCommands(stop, cfg, apiClient); err != nil {
+		if handleReenrollNeeded(cfg, err) {
+			return
+		}
+		log.Printf("command processing failed: %v", err)
 	}
 }
 
@@ -290,6 +333,7 @@ func syncPolicyFromServer(cfg *config.Config, apiClient *api.APIClient) {
 				ID:              app.ID,
 				Name:            app.Name,
 				Version:         app.Version,
+				UpdatedAt:       app.UpdatedAt,
 				DownloadURL:     app.DownloadURL,
 				InstallArgs:     app.InstallArgs,
 				AppType:         app.AppType,

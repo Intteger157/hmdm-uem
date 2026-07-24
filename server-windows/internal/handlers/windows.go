@@ -81,6 +81,40 @@ func (h *WindowsHandler) Enroll(c *gin.Context) {
 	})
 }
 
+// Checkin records lightweight agent presence without a full inventory upload.
+func (h *WindowsHandler) Checkin(c *gin.Context) {
+	if !validateAgentAuth(c) {
+		return
+	}
+
+	deviceID := strings.TrimSpace(c.GetHeader("X-Device-Id"))
+	if deviceID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing X-Device-Id header"})
+		return
+	}
+
+	var device models.WindowsDevice
+	if err := db.DB.Where("hardware_id = ?", deviceID).First(&device).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "device not found"})
+			return
+		}
+		log.Printf("[checkin] lookup failed: hardware_id=%q err=%v", deviceID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup device"})
+		return
+	}
+
+	device.LastCheckin = time.Now()
+	markDeviceAgentActive(&device)
+	if err := db.DB.Save(&device).Error; err != nil {
+		log.Printf("[checkin] save failed: hardware_id=%q err=%v", deviceID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update device checkin"})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
 // Inventory accepts authenticated inventory uploads from enrolled agents.
 func (h *WindowsHandler) Inventory(c *gin.Context) {
 	authHeader := c.GetHeader("Authorization")

@@ -17,6 +17,7 @@ import (
 )
 
 const (
+	checkinPath               = "/rest/windows/checkin"
 	enrollPath                = "/rest/windows/enroll"
 	inventoryPath             = "/rest/windows/inventory"
 	uninstallPath             = "/rest/windows/uninstall"
@@ -106,6 +107,7 @@ type RequiredAppPayload struct {
 	ID              uint   `json:"id"`
 	Name            string `json:"name"`
 	Version         string `json:"version"`
+	UpdatedAt       string `json:"updatedAt"`
 	DownloadURL     string `json:"downloadUrl"`
 	InstallArgs     string `json:"installArgs"`
 	AppType         string `json:"appType"`
@@ -194,6 +196,38 @@ func (c *APIClient) Enroll(enrollToken, hwid string) (string, error) {
 	}
 
 	return parsed.AuthToken, nil
+}
+
+// SendCheckin updates server-side presence without uploading full inventory.
+func (c *APIClient) SendCheckin(authToken, hwid string) error {
+	req, err := http.NewRequest(http.MethodPost, c.baseURL+checkinPath, http.NoBody)
+	if err != nil {
+		return fmt.Errorf("create checkin request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+authToken)
+	req.Header.Set("X-Device-Id", hwid)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("send checkin request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if _, err := io.Copy(io.Discard, resp.Body); err != nil {
+		return fmt.Errorf("read checkin response: %w", err)
+	}
+
+	switch resp.StatusCode {
+	case http.StatusUnauthorized:
+		return ErrUnauthorized
+	case http.StatusNotFound:
+		return ErrDeviceNotFound
+	case http.StatusOK, http.StatusNoContent:
+		return nil
+	default:
+		return fmt.Errorf("checkin failed with HTTP %d", resp.StatusCode)
+	}
 }
 
 // SendInventory posts device inventory to the MDM server and returns pending commands.
