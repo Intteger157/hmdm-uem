@@ -1165,6 +1165,7 @@
   "windowsAppCatalog.form.uploadDropzone": "Drop .exe or .msi here, or click to browse",
   "windowsAppCatalog.form.uploadHint": "Product name and version are extracted automatically when possible.",
   "windowsAppCatalog.form.uploading": "Uploading & Parsing...",
+  "windowsAppCatalog.form.uploadParsed": "Installer uploaded. Review the fields and click Create.",
   "windowsAppCatalog.form.uploadError": "Failed to upload or parse installer",
   "windowsAppCatalog.form.uploadInvalidType": "Only .exe and .msi files are supported",
   "windowsAppCatalog.form.wingetId": "Winget Package ID",

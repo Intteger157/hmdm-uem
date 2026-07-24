@@ -1165,6 +1165,7 @@
   "windowsAppCatalog.form.uploadDropzone": "Перетащите .exe или .msi сюда или нажмите для выбора",
   "windowsAppCatalog.form.uploadHint": "Имя продукта и версия извлекаются автоматически, если это возможно.",
   "windowsAppCatalog.form.uploading": "Загрузка и разбор...",
+  "windowsAppCatalog.form.uploadParsed": "Файл загружен. Проверьте поля и нажмите «Создать».",
   "windowsAppCatalog.form.uploadError": "Не удалось загрузить или разобрать установщик",
   "windowsAppCatalog.form.uploadInvalidType": "Поддерживаются только файлы .exe и .msi",
   "windowsAppCatalog.form.wingetId": "ID пакета Winget",

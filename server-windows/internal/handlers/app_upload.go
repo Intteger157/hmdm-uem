@@ -89,34 +89,35 @@ func (h *WindowsHandler) UploadApplication(c *gin.Context) {
 	publicPath := fmt.Sprintf("/storage/apps/%s", storedName)
 	publicURL := normalizeDownloadURL(buildPublicURL(c, publicPath))
 
-	var app models.Application
-	isNewApp := false
-	if targetAppID > 0 {
-		if err := db.DB.First(&app, targetAppID).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				c.JSON(http.StatusNotFound, gin.H{"error": "application not found"})
-				return
-			}
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup application"})
-			return
-		}
-		name = app.Name
-	} else {
-		var findErr error
-		app, isNewApp, findErr = findOrCreateApplicationByName(name)
-		if findErr != nil {
-			log.Printf("[upload-application] app lookup/create failed: name=%q err=%v", name, findErr)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create application record"})
-			return
-		}
+	// New catalog entries stage the uploaded file only; persist happens on POST /apps.
+	if targetAppID == 0 {
+		log.Printf("[upload-application] staged path=%q name=%q version=%q detectedArgs=%q", destPath, name, version, detectedArgs)
+		c.JSON(http.StatusOK, models.UploadApplicationResponse{
+			URL:          publicURL,
+			Name:         name,
+			Version:      version,
+			DetectedArgs: detectedArgs,
+		})
+		return
 	}
+
+	var app models.Application
+	if err := db.DB.First(&app, targetAppID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "application not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup application"})
+		return
+	}
+	name = app.Name
 
 	installArgs := strings.TrimSpace(c.PostForm("installArgs"))
 	if installArgs == "" {
 		installArgs = detectedArgs
 	}
 
-	appVersion, err := createUploadedApplicationVersion(app, isNewApp, version, publicURL, installArgs)
+	appVersion, err := createUploadedApplicationVersion(app, false, version, publicURL, installArgs)
 	if err != nil {
 		log.Printf("[upload-application] version create failed: app_id=%d err=%v", app.ID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save application version"})
@@ -131,6 +132,6 @@ func (h *WindowsHandler) UploadApplication(c *gin.Context) {
 		DetectedArgs: detectedArgs,
 		AppID:        app.ID,
 		VersionID:    appVersion.ID,
-		IsNewApp:     isNewApp,
+		IsNewApp:     false,
 	})
 }

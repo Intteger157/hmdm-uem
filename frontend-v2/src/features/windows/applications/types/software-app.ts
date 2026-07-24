@@ -60,9 +60,9 @@ export interface UploadApplicationResponse {
   name: string
   version: string
   detectedArgs: string
-  appId: number
-  versionId: number
-  isNewApp: boolean
+  appId?: number
+  versionId?: number
+  isNewApp?: boolean
 }
 
 export type AppDeploymentStatus =
