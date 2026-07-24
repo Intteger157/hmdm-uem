@@ -481,6 +481,39 @@ export async function updateWindowsEnrollmentProvisioning(
   return response.data
 }
 
+export type WindowsEnrollmentMode = 'token' | 'password'
+
+export interface WindowsEnrollmentSecuritySettings {
+  enrollmentMode: WindowsEnrollmentMode
+  enrollmentSecret: string
+}
+
+export async function getWindowsEnrollmentSecurity(): Promise<WindowsEnrollmentSecuritySettings> {
+  if (isMockApiEnabled()) {
+    return {
+      enrollmentMode: 'token',
+      enrollmentSecret: 'win-bootstrap-mock-secret',
+    }
+  }
+
+  const response = await windowsApi.get<WindowsEnrollmentSecuritySettings>('/enrollment-security')
+  return response.data
+}
+
+export async function updateWindowsEnrollmentSecurity(
+  settings: WindowsEnrollmentSecuritySettings,
+): Promise<WindowsEnrollmentSecuritySettings> {
+  if (isMockApiEnabled()) {
+    return settings
+  }
+
+  const response = await windowsApi.put<WindowsEnrollmentSecuritySettings>(
+    '/enrollment-security',
+    settings,
+  )
+  return response.data
+}
+
 export interface WindowsDefaultInstallerResponse {
   configured: boolean
   filesRelativePath?: string

@@ -16,11 +16,21 @@ const bootstrapServiceName = "HMDMAgent"
 
 // GetEnrollBootstrapScript returns a PowerShell bootstrap script for zero-touch agent install.
 func (h *WindowsHandler) GetEnrollBootstrapScript(c *gin.Context) {
-	orgToken, err := getOrCreateOrgEnrollmentToken()
+	security, err := loadEnrollmentSecurityForBootstrap()
 	if err != nil {
-		log.Printf("[enroll-bootstrap] org token failed: %v", err)
-		c.String(http.StatusInternalServerError, "Failed to prepare enrollment bootstrap script.")
+		log.Printf("[enroll-bootstrap] security settings failed: %v", err)
+		c.String(http.StatusServiceUnavailable, "Enrollment security is not configured.")
 		return
+	}
+
+	embeddedSecret := ""
+	if security.EnrollmentMode == models.EnrollmentModeToken {
+		urlToken := strings.TrimSpace(c.Query("token"))
+		if urlToken == "" || enrollmentSecretsMismatch(urlToken, security.EnrollmentSecret) {
+			c.String(http.StatusForbidden, "Invalid or missing enrollment token.")
+			return
+		}
+		embeddedSecret = urlToken
 	}
 
 	provisioning, err := loadActiveEnrollmentProvisioning()
@@ -32,7 +42,7 @@ func (h *WindowsHandler) GetEnrollBootstrapScript(c *gin.Context) {
 
 	serverURL := strings.TrimRight(buildPublicURL(c, ""), "/")
 	agentURL := buildPublicURL(c, appstorage.AgentPublicPath())
-	script := buildBootstrapScript(serverURL, orgToken, agentURL, provisioning)
+	script := buildBootstrapScript(serverURL, agentURL, security.EnrollmentMode, embeddedSecret, provisioning)
 
 	c.Header("Content-Type", "text/plain; charset=utf-8")
 	c.Header("Cache-Control", "no-store")
@@ -53,12 +63,16 @@ func (h *WindowsHandler) DownloadAgentBinary(c *gin.Context) {
 	c.FileAttachment(binaryPath, appstorage.AgentBinaryName)
 }
 
-func buildBootstrapScript(serverURL, enrollmentToken, agentDownloadURL string, provisioning *models.WindowsEnrollmentProvisioningSettings) string {
+func buildBootstrapScript(
+	serverURL, agentDownloadURL, enrollmentMode, embeddedSecret string,
+	provisioning *models.WindowsEnrollmentProvisioningSettings,
+) string {
 	installDir := `C:\Program Files\SingularityMDM`
 	stateDir := `C:\ProgramData\HMDM\Agent`
 	stateFile := stateDir + `\state.json`
 	agentExe := installDir + `\singularity-agent.exe`
 
+	securityBlock := buildEnrollmentSecurityBlock(enrollmentMode, embeddedSecret)
 	provisioningBlock := buildProvisioningBlock(provisioning)
 
 	return fmt.Sprintf(`# Singularity MDM — Windows agent bootstrap
@@ -69,10 +83,18 @@ $InstallDir = '%s'
 $AgentExe = '%s'
 $ServiceName = '%s'
 $ServerUrl = '%s'
-$EnrollmentToken = '%s'
 $AgentDownloadUrl = '%s'
 $StateDir = '%s'
 $StateFile = '%s'
+$RegisterUrl = ($ServerUrl.TrimEnd('/') + '/api/windows/register')
+
+%s
+Write-Host 'Singularity MDM: validating enrollment credentials...'
+$RegisterResponse = Invoke-RestMethod -Uri $RegisterUrl -Method Post -Body (@{ enrollment_secret = $EnrollmentSecret } | ConvertTo-Json) -ContentType 'application/json; charset=utf-8'
+$EnrollmentToken = $RegisterResponse.enrollment_token
+if ([string]::IsNullOrWhiteSpace($EnrollmentToken)) {
+    throw 'Enrollment registration failed: missing enrollment token.'
+}
 
 Write-Host 'Singularity MDM: preparing install directory...'
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
@@ -109,7 +131,15 @@ Write-Host 'Singularity MDM: starting agent service...'
 Start-Service -Name $ServiceName
 
 Write-Host 'Singularity MDM Agent installed and started successfully.'
-%s`, installDir, agentExe, bootstrapServiceName, serverURL, enrollmentToken, agentDownloadURL, stateDir, stateFile, provisioningBlock)
+%s`, installDir, agentExe, bootstrapServiceName, serverURL, agentDownloadURL, stateDir, stateFile, securityBlock, provisioningBlock)
+}
+
+func buildEnrollmentSecurityBlock(enrollmentMode, embeddedSecret string) string {
+	if enrollmentMode == models.EnrollmentModePassword {
+		return `$EnrollmentSecret = Read-Host "Enter MDM Enrollment Password"`
+	}
+
+	return fmt.Sprintf(`$EnrollmentSecret = '%s'`, escapePowerShellSingleQuoted(embeddedSecret))
 }
 
 func buildProvisioningBlock(provisioning *models.WindowsEnrollmentProvisioningSettings) string {
@@ -141,6 +171,10 @@ func escapePowerShellDoubleQuoted(value string) string {
 	value = strings.ReplaceAll(value, "$", "`$")
 	value = strings.ReplaceAll(value, "\"", "`\"")
 	return value
+}
+
+func escapePowerShellSingleQuoted(value string) string {
+	return strings.ReplaceAll(value, "'", "''")
 }
 
 func escapeWMIStringLiteral(value string) string {

@@ -1,5 +1,5 @@
 import { Copy, Loader2, Upload } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { copyTextToClipboard } from '@/shared/lib/copy-to-clipboard'
@@ -18,14 +18,26 @@ import { Label } from '@/components/ui/label'
 import {
   getWindowsAutopilotAgent,
   getWindowsEnrollmentProvisioning,
+  getWindowsEnrollmentSecurity,
   updateWindowsEnrollmentProvisioning,
+  updateWindowsEnrollmentSecurity,
   uploadWindowsAutopilotAgent,
+  type WindowsEnrollmentMode,
   type WindowsEnrollmentProvisioningSettings,
+  type WindowsEnrollmentSecuritySettings,
 } from '@/features/windows/api/windows-api'
 import { toast } from 'sonner'
 
-function buildBootstrapCommand(origin: string): string {
-  const enrollUrl = `${origin.replace(/\/+$/, '')}/api/windows/enroll`
+function buildBootstrapCommand(
+  origin: string,
+  mode: WindowsEnrollmentMode,
+  secret: string,
+): string {
+  const baseUrl = `${origin.replace(/\/+$/, '')}/api/windows/enroll`
+  const enrollUrl =
+    mode === 'token' && secret.trim()
+      ? `${baseUrl}?token=${encodeURIComponent(secret.trim())}`
+      : baseUrl
   return `powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod -Uri '${enrollUrl}' | Invoke-Expression"`
 }
 
@@ -60,9 +72,15 @@ export function WindowsEnrollmentPage() {
     adminUsername: 'Admin',
     adminPassword: '',
   })
+  const [securityDraft, setSecurityDraft] = useState<WindowsEnrollmentSecuritySettings>({
+    enrollmentMode: 'token',
+    enrollmentSecret: '',
+  })
 
-  const bootstrapCommand = buildBootstrapCommand(
-    typeof window !== 'undefined' ? window.location.origin : '',
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const bootstrapCommand = useMemo(
+    () => buildBootstrapCommand(origin, securityDraft.enrollmentMode, securityDraft.enrollmentSecret),
+    [origin, securityDraft.enrollmentMode, securityDraft.enrollmentSecret],
   )
 
   const agentQuery = useQuery({
@@ -75,11 +93,22 @@ export function WindowsEnrollmentPage() {
     queryFn: getWindowsEnrollmentProvisioning,
   })
 
+  const securityQuery = useQuery({
+    queryKey: ['windows', 'enrollment-security'],
+    queryFn: getWindowsEnrollmentSecurity,
+  })
+
   useEffect(() => {
     if (provisioningQuery.data) {
       setProvisioningDraft(provisioningQuery.data)
     }
   }, [provisioningQuery.data])
+
+  useEffect(() => {
+    if (securityQuery.data) {
+      setSecurityDraft(securityQuery.data)
+    }
+  }, [securityQuery.data])
 
   const uploadMutation = useMutation({
     mutationFn: uploadWindowsAutopilotAgent,
@@ -104,6 +133,18 @@ export function WindowsEnrollmentPage() {
     },
     onError: () => {
       toast.error(t('windows.enrollmentPage.provisioningSaveError'))
+    },
+  })
+
+  const securityMutation = useMutation({
+    mutationFn: updateWindowsEnrollmentSecurity,
+    onSuccess: (settings) => {
+      queryClient.setQueryData(['windows', 'enrollment-security'], settings)
+      setSecurityDraft(settings)
+      toast.success(t('windows.enrollmentPage.securitySaveSuccess'))
+    },
+    onError: () => {
+      toast.error(t('windows.enrollmentPage.securitySaveError'))
     },
   })
 
@@ -147,7 +188,23 @@ export function WindowsEnrollmentPage() {
     })
   }
 
+  const handleSaveSecurity = () => {
+    if (!securityDraft.enrollmentSecret.trim()) {
+      toast.error(t('windows.enrollmentPage.securitySecretRequired'))
+      return
+    }
+
+    securityMutation.mutate({
+      enrollmentMode: securityDraft.enrollmentMode,
+      enrollmentSecret: securityDraft.enrollmentSecret.trim(),
+    })
+  }
+
   const agent = agentQuery.data
+  const enrollmentInstructions =
+    securityDraft.enrollmentMode === 'password'
+      ? t('windows.enrollmentPage.instructionsPassword')
+      : t('windows.enrollmentPage.instructionsToken')
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
@@ -229,6 +286,90 @@ export function WindowsEnrollmentPage() {
               <p className="text-xs text-muted-foreground break-all">{agent.publicUrl}</p>
             ) : null}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('windows.enrollmentPage.securityCardTitle')}</CardTitle>
+          <CardDescription>{t('windows.enrollmentPage.securityCardDescription')}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {securityQuery.isLoading ? (
+            <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              {t('windows.enrollmentPage.securityLoading')}
+            </div>
+          ) : (
+            <>
+              <fieldset className="space-y-3">
+                <legend className="text-sm font-medium">{t('windows.enrollmentPage.securityModeLabel')}</legend>
+                <label className="flex cursor-pointer items-start gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="windows-enrollment-security-mode"
+                    checked={securityDraft.enrollmentMode === 'token'}
+                    onChange={() =>
+                      setSecurityDraft((current) => ({ ...current, enrollmentMode: 'token' }))
+                    }
+                  />
+                  <span>
+                    <span className="font-medium">{t('windows.enrollmentPage.securityModeToken')}</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      {t('windows.enrollmentPage.securityModeTokenHint')}
+                    </span>
+                  </span>
+                </label>
+                <label className="flex cursor-pointer items-start gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="windows-enrollment-security-mode"
+                    checked={securityDraft.enrollmentMode === 'password'}
+                    onChange={() =>
+                      setSecurityDraft((current) => ({ ...current, enrollmentMode: 'password' }))
+                    }
+                  />
+                  <span>
+                    <span className="font-medium">{t('windows.enrollmentPage.securityModePassword')}</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      {t('windows.enrollmentPage.securityModePasswordHint')}
+                    </span>
+                  </span>
+                </label>
+              </fieldset>
+
+              <div className="space-y-2">
+                <Label htmlFor="windows-enrollment-secret">{t('windows.enrollmentPage.securitySecret')}</Label>
+                <Input
+                  id="windows-enrollment-secret"
+                  type="password"
+                  value={securityDraft.enrollmentSecret}
+                  onChange={(event) =>
+                    setSecurityDraft((current) => ({
+                      ...current,
+                      enrollmentSecret: event.target.value,
+                    }))
+                  }
+                  autoComplete="new-password"
+                />
+              </div>
+
+              <Button
+                type="button"
+                disabled={securityMutation.isPending || securityQuery.isLoading}
+                onClick={handleSaveSecurity}
+              >
+                {securityMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    {t('windows.enrollmentPage.securitySaving')}
+                  </>
+                ) : (
+                  t('windows.enrollmentPage.securitySave')
+                )}
+              </Button>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -342,7 +483,7 @@ export function WindowsEnrollmentPage() {
           </pre>
 
           <div className="rounded-lg border border-dashed bg-muted/20 p-4 text-sm leading-relaxed text-muted-foreground">
-            {t('windows.enrollmentPage.instructions')}
+            {enrollmentInstructions}
           </div>
 
           <p className="text-xs text-muted-foreground">{t('windows.enrollmentPage.agentBinaryHint')}</p>

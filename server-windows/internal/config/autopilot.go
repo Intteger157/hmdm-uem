@@ -13,3 +13,8 @@ func AutopilotAdminDefaults() (username, password string) {
 	password = os.Getenv("AUTOPILOT_ADMIN_PASS")
 	return username, password
 }
+
+// EnrollmentSecretDefault returns the env-based default bootstrap enrollment secret.
+func EnrollmentSecretDefault() string {
+	return os.Getenv("ENROLLMENT_SECRET")
+}
