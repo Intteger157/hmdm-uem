@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   MessageSquare,
   Monitor,
+  MonitorSmartphone,
   Package,
   Radio,
   Settings2,
@@ -64,6 +65,7 @@ function useNavState() {
     isRoles: pathname.startsWith('/roles'),
     isSettings: pathname.startsWith('/settings'),
     isWindowsConfigurations: pathname.startsWith('/windows/configurations'),
+    isWindowsEnrollment: pathname.startsWith('/windows/enrollment'),
     isWindowsScripts: pathname.startsWith('/windows/scripts'),
     isWindowsApplications: pathname.startsWith('/windows/applications'),
   }
@@ -244,6 +246,15 @@ export function AppSidebar() {
               >
                 <Settings2 />
                 <span>{t('nav.windowsConfigurations')}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={nav.isWindowsEnrollment}
+                render={<Link to="/windows/enrollment" />}
+              >
+                <MonitorSmartphone />
+                <span>{t('nav.windowsEnrollment')}</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>

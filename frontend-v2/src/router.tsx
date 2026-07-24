@@ -28,6 +28,7 @@ import { WindowsConfigurationsPage } from '@/features/windows/configurations/pag
 import { WindowsConfigEditorPage } from '@/features/windows/configurations/pages/WindowsConfigEditorPage'
 import { WindowsAppCatalogPage } from '@/features/windows/applications/pages/WindowsAppCatalogPage'
 import { WindowsWorkInProgressPage } from '@/features/windows/pages/WindowsWorkInProgressPage'
+import { WindowsEnrollmentPage } from '@/features/windows/enrollment/pages/WindowsEnrollmentPage'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { isPlatform } from '@/shared/api/types/platform'
 
@@ -207,6 +208,12 @@ const windowsConfigurationEditorRoute = createRoute({
   },
 })
 
+const windowsEnrollmentRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/windows/enrollment',
+  component: WindowsEnrollmentPage,
+})
+
 const windowsScriptsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/windows/scripts',
@@ -276,6 +283,7 @@ const routeTree = rootRoute.addChildren([
     windowsConfigurationsRoute,
     windowsConfigurationCreateRoute,
     windowsConfigurationEditorRoute,
+    windowsEnrollmentRoute,
     windowsScriptsRoute,
     windowsApplicationsRoute,
   ]),

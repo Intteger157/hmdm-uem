@@ -44,7 +44,19 @@ func main() {
 	}
 	router.StaticFS("/storage/apps", gin.Dir(appsDir, false))
 
+	if err := appstorage.EnsureAgentDirectory(); err != nil {
+		log.Printf("agent storage directory init failed: %v", err)
+	}
+	agentBinaryPath := appstorage.AgentBinaryPath()
+	if appstorage.AgentBinaryConfigured() {
+		log.Printf("agent binary %q served at %s", agentBinaryPath, appstorage.AgentPublicPath())
+	} else {
+		log.Printf("agent binary missing at %q — publish singularity-agent.exe for bootstrap enrollment", agentBinaryPath)
+	}
+
 	windowsHandler := handlers.NewWindowsHandler()
+	router.GET("/api/windows/enroll", windowsHandler.GetEnrollBootstrapScript)
+	router.GET(appstorage.AgentPublicPath(), windowsHandler.DownloadAgentBinary)
 	rest := router.Group("/rest")
 	{
 		windows := rest.Group("/windows")
@@ -71,6 +83,7 @@ func main() {
 			windows.POST("/installers/default", windowsHandler.RegisterDefaultInstaller)
 			windows.POST("/installers/link", windowsHandler.LinkInstaller)
 			windows.GET("/downloads/:downloadToken", windowsHandler.DownloadInstaller)
+			windows.GET("/enroll", windowsHandler.GetEnrollBootstrapScript)
 			windows.POST("/enroll", windowsHandler.Enroll)
 			windows.POST("/checkin", windowsHandler.Checkin)
 			windows.POST("/inventory", windowsHandler.Inventory)
