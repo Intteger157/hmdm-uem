@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { Pencil, Plus, Star, Trash2 } from 'lucide-react'
 import {
   useDeleteWindowsConfigProfileMutation,
   useWindowsConfigProfilesQuery,
@@ -127,7 +127,15 @@ export function WindowsConfigurationsPage() {
                   {pageItems.map((profile) => (
                     <tr key={profile.id} className="border-b last:border-0">
                       <td className="px-4 py-3">
-                        <div className="font-medium">{profile.name}</div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-medium">{profile.name}</span>
+                          {profile.isDefault ? (
+                            <Badge className="border-violet-500/30 bg-violet-600/90 text-white hover:bg-violet-600/90">
+                              <Star className="mr-1 size-3 fill-current" />
+                              {t('windowsConfigurations.badge.default')}
+                            </Badge>
+                          ) : null}
+                        </div>
                         {profile.description ? (
                           <div className="mt-0.5 text-xs text-muted-foreground">{profile.description}</div>
                         ) : null}

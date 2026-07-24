@@ -50,6 +50,9 @@ func (h *WindowsHandler) Enroll(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create device"})
 			return
 		}
+		if err := assignDefaultProfileToDevice(device.ID); err != nil {
+			log.Printf("[enroll] default profile assignment failed: device_id=%d err=%v", device.ID, err)
+		}
 		log.Printf("[enroll] created device hardware_id=%q token=%q", req.HardwareID, req.EnrollmentToken)
 	} else if err != nil {
 		log.Printf("[enroll] lookup failed: hardware_id=%q err=%v", req.HardwareID, err)

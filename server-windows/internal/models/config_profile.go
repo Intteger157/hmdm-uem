@@ -21,6 +21,7 @@ type WindowsConfigProfile struct {
 	Description string
 	Payload     json.RawMessage `gorm:"type:jsonb"`
 	IsActive    bool            `gorm:"default:false"`
+	IsDefault   bool            `gorm:"column:is_default;default:false"`
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
@@ -35,6 +36,7 @@ type UpsertConfigProfileRequest struct {
 	Description string                      `json:"description"`
 	Payload     WindowsConfigProfilePayload `json:"payload" binding:"required"`
 	IsActive    bool                        `json:"isActive"`
+	IsDefault   bool                        `json:"isDefault"`
 }
 
 // ConfigProfileJSON is one configuration profile for the admin UI.
@@ -44,6 +46,7 @@ type ConfigProfileJSON struct {
 	Description string                      `json:"description"`
 	Payload     WindowsConfigProfilePayload `json:"payload"`
 	IsActive    bool                        `json:"isActive"`
+	IsDefault   bool                        `json:"isDefault"`
 	CreatedAt   time.Time                   `json:"createdAt"`
 	UpdatedAt   time.Time                   `json:"updatedAt"`
 }
@@ -87,6 +90,7 @@ func ToConfigProfileJSON(profile WindowsConfigProfile) (ConfigProfileJSON, error
 		Description: profile.Description,
 		Payload:     payload,
 		IsActive:    profile.IsActive,
+		IsDefault:   profile.IsDefault,
 		CreatedAt:   profile.CreatedAt,
 		UpdatedAt:   profile.UpdatedAt,
 	}, nil

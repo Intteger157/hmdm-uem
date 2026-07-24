@@ -107,7 +107,8 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
         payload: {
           name: values.name.trim(),
           description: values.description?.trim() || undefined,
-          isActive: values.isActive,
+          isActive: values.isActive || values.isDefault,
+          isDefault: values.isDefault,
           payload: values.payload,
         },
       })
@@ -254,6 +255,28 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
                             label={t('windowsConfigurations.form.isActive')}
                             checked={field.value}
                             onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="isDefault"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <BoolField
+                            id="windows-config-is-default"
+                            label={t('windowsConfigurations.form.isDefault')}
+                            hint={t('windowsConfigurations.form.isDefaultHint')}
+                            checked={field.value}
+                            onCheckedChange={(checked) => {
+                              field.onChange(checked)
+                              if (checked) {
+                                form.setValue('isActive', true)
+                              }
+                            }}
                           />
                         </FormControl>
                       </FormItem>

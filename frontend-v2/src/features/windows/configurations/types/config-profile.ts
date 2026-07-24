@@ -11,6 +11,7 @@ export interface WindowsConfigProfile {
   description: string
   payload: WindowsConfigProfilePayload
   isActive: boolean
+  isDefault: boolean
   createdAt: string
   updatedAt: string
 }
@@ -25,6 +26,7 @@ export interface UpsertWindowsConfigProfilePayload {
   description?: string
   payload: WindowsConfigProfilePayload
   isActive: boolean
+  isDefault: boolean
 }
 
 export interface WindowsDeviceGroup {

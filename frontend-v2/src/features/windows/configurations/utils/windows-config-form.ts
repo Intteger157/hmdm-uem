@@ -14,6 +14,7 @@ export const configProfileFormSchema = z.object({
   name: z.string().trim().min(1, 'required'),
   description: z.string().optional(),
   isActive: z.boolean(),
+  isDefault: z.boolean(),
   payload: z.object({
     defenderEnabled: z.boolean(),
     blockUsbStorage: z.boolean(),
@@ -32,6 +33,7 @@ export function createEmptyConfigProfileFormValues(): ConfigProfileFormValues {
     name: '',
     description: '',
     isActive: false,
+    isDefault: false,
     payload: { ...DEFAULT_WINDOWS_CONFIG_PROFILE_PAYLOAD },
     groupIds: [],
     deviceIds: [],
@@ -56,6 +58,7 @@ export function toConfigProfileFormValues(
     name: profile.name,
     description: profile.description ?? '',
     isActive: profile.isActive,
+    isDefault: profile.isDefault,
     payload: {
       defenderEnabled: profile.payload.defenderEnabled,
       blockUsbStorage: profile.payload.blockUsbStorage,

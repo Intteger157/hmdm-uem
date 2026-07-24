@@ -96,13 +96,23 @@ func (h *WindowsHandler) CreateConfigProfile(c *gin.Context) {
 		Name:        name,
 		Description: strings.TrimSpace(req.Description),
 		Payload:     payload,
-		IsActive:    req.IsActive,
+		IsActive:    req.IsActive || req.IsDefault,
+		IsDefault:   req.IsDefault,
 	}
 
 	if err := db.DB.Create(&profile).Error; err != nil {
 		log.Printf("[create-config-profile] save failed: name=%q err=%v", name, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create configuration profile"})
 		return
+	}
+
+	if profile.IsDefault {
+		if err := applyExclusiveDefaultProfile(profile.ID, true); err != nil {
+			log.Printf("[create-config-profile] default flag failed: id=%d err=%v", profile.ID, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to set default configuration profile"})
+			return
+		}
+		profile.IsDefault = true
 	}
 
 	item, err := models.ToConfigProfileJSON(profile)
@@ -155,11 +165,18 @@ func (h *WindowsHandler) UpdateConfigProfile(c *gin.Context) {
 	profile.Name = name
 	profile.Description = strings.TrimSpace(req.Description)
 	profile.Payload = payload
-	profile.IsActive = req.IsActive
+	profile.IsActive = req.IsActive || req.IsDefault
+	profile.IsDefault = req.IsDefault
 
 	if err := db.DB.Save(&profile).Error; err != nil {
 		log.Printf("[update-config-profile] save failed: id=%d err=%v", profileID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update configuration profile"})
+		return
+	}
+
+	if err := applyExclusiveDefaultProfile(profile.ID, profile.IsDefault); err != nil {
+		log.Printf("[update-config-profile] default flag failed: id=%d err=%v", profileID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update default configuration profile"})
 		return
 	}
 
