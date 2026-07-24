@@ -112,32 +112,31 @@ func (h *WindowsHandler) UpdateDeviceGroupMembership(c *gin.Context) {
 		return
 	}
 
-	item := models.ToWindowsDeviceJSON(device)
-	if device.GroupID != nil {
-		var group models.WindowsDeviceGroup
-		if err := db.DB.First(&group, *device.GroupID).Error; err == nil {
-			item.GroupName = group.Name
-		}
-	}
+	item := enrichDeviceJSON(device)
 
 	c.JSON(http.StatusOK, item)
 }
 
 func enrichDeviceJSONList(devices []models.WindowsDevice) []models.WindowsDeviceJSON {
 	groupIDs := make([]uint, 0)
+	deviceIDs := make([]uint, 0, len(devices))
 	for _, device := range devices {
+		deviceIDs = append(deviceIDs, device.ID)
 		if device.GroupID != nil && *device.GroupID > 0 {
 			groupIDs = append(groupIDs, *device.GroupID)
 		}
 	}
-	names := lookupGroupNames(uniqueUints(groupIDs))
+	groupNames := lookupGroupNames(uniqueUints(groupIDs))
+	directProfiles := lookupDirectDeviceProfiles(deviceIDs)
+	groupProfiles := lookupGroupProfiles(uniqueUints(groupIDs))
 
 	items := make([]models.WindowsDeviceJSON, 0, len(devices))
 	for _, device := range devices {
 		item := models.ToWindowsDeviceJSON(device)
 		if device.GroupID != nil {
-			item.GroupName = names[*device.GroupID]
+			item.GroupName = groupNames[*device.GroupID]
 		}
+		applyDeviceConfiguration(&item, device.ID, device.GroupID, directProfiles, groupProfiles)
 		items = append(items, item)
 	}
 	return items
@@ -161,10 +160,92 @@ func lookupGroupNames(groupIDs []uint) map[uint]string {
 
 func enrichDeviceJSON(device models.WindowsDevice) models.WindowsDeviceJSON {
 	item := models.ToWindowsDeviceJSON(device)
-	if device.GroupID == nil {
-		return item
+	if device.GroupID != nil {
+		names := lookupGroupNames([]uint{*device.GroupID})
+		item.GroupName = names[*device.GroupID]
 	}
-	names := lookupGroupNames([]uint{*device.GroupID})
-	item.GroupName = names[*device.GroupID]
+	directProfiles := lookupDirectDeviceProfiles([]uint{device.ID})
+	var groupProfiles map[uint]resolvedProfile
+	if device.GroupID != nil && *device.GroupID > 0 {
+		groupProfiles = lookupGroupProfiles([]uint{*device.GroupID})
+	}
+	applyDeviceConfiguration(&item, device.ID, device.GroupID, directProfiles, groupProfiles)
 	return item
+}
+
+type resolvedProfile struct {
+	ID   uint
+	Name string
+}
+
+func applyDeviceConfiguration(
+	item *models.WindowsDeviceJSON,
+	deviceID uint,
+	groupID *uint,
+	directProfiles map[uint]resolvedProfile,
+	groupProfiles map[uint]resolvedProfile,
+) {
+	if profile, ok := directProfiles[deviceID]; ok {
+		item.ConfigurationID = profile.ID
+		item.ConfigurationName = profile.Name
+		return
+	}
+	if groupID != nil {
+		if profile, ok := groupProfiles[*groupID]; ok {
+			item.ConfigurationID = profile.ID
+			item.ConfigurationName = profile.Name
+		}
+	}
+}
+
+func lookupDirectDeviceProfiles(deviceIDs []uint) map[uint]resolvedProfile {
+	profiles := make(map[uint]resolvedProfile)
+	if len(deviceIDs) == 0 {
+		return profiles
+	}
+
+	var rows []struct {
+		DeviceID  uint
+		ProfileID uint
+		Name      string
+	}
+	if err := db.DB.Table("windows_profile_devices wpd").
+		Select("wpd.device_id, wcp.id AS profile_id, wcp.name").
+		Joins("JOIN windows_config_profiles wcp ON wcp.id = wpd.profile_id AND wcp.is_active = ?", true).
+		Where("wpd.device_id IN ?", deviceIDs).
+		Order("wpd.device_id ASC, wcp.id ASC").
+		Scan(&rows).Error; err != nil {
+		return profiles
+	}
+
+	for _, row := range rows {
+		profiles[row.DeviceID] = resolvedProfile{ID: row.ProfileID, Name: row.Name}
+	}
+	return profiles
+}
+
+func lookupGroupProfiles(groupIDs []uint) map[uint]resolvedProfile {
+	profiles := make(map[uint]resolvedProfile)
+	if len(groupIDs) == 0 {
+		return profiles
+	}
+
+	var rows []struct {
+		GroupID   uint
+		ProfileID uint
+		Name      string
+	}
+	if err := db.DB.Table("windows_profile_groups wpg").
+		Select("wpg.group_id, wcp.id AS profile_id, wcp.name").
+		Joins("JOIN windows_config_profiles wcp ON wcp.id = wpg.profile_id AND wcp.is_active = ?", true).
+		Where("wpg.group_id IN ?", groupIDs).
+		Order("wpg.group_id ASC, wcp.id ASC").
+		Scan(&rows).Error; err != nil {
+		return profiles
+	}
+
+	for _, row := range rows {
+		profiles[row.GroupID] = resolvedProfile{ID: row.ProfileID, Name: row.Name}
+	}
+	return profiles
 }

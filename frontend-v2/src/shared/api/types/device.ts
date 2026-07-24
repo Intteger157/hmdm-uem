@@ -66,6 +66,7 @@ export interface ConfigurationFileView {
 export interface DeviceView {
   id: number
   configurationId: number
+  configurationName?: string
   number: string
   description?: string
   lastUpdate?: number

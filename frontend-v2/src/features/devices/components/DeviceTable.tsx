@@ -20,11 +20,13 @@ import {
   resolveDeviceOnlineStatusCode,
   type DeviceOnlineStatusCode,
 } from '@/features/devices/utils/device-online-status'
+import { formatWindowsOsLabel } from '@/features/devices/utils/format-windows-os'
 import { usePeriodicNow } from '@/shared/hooks/use-periodic-now'
 import { useWindowsDeviceCommandMutation } from '@/features/windows/hooks/use-windows-device-command'
 import { waitForWindowsCommandResult } from '@/features/windows/lib/wait-for-command-result'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import type { DeviceListView, DeviceView } from '@/shared/api/types/device'
 import type { Platform } from '@/shared/api/types/platform'
@@ -43,12 +45,6 @@ const INDICATOR_COLORS: Record<DeviceStatusIndicator, string> = {
   yellow: 'bg-amber-400',
   red: 'bg-red-500',
   grey: 'bg-slate-400',
-}
-
-const PS_LABELS: Record<string, string> = {
-  idle: 'Idle',
-  running: 'Running',
-  failed: 'Failed',
 }
 
 function formatBitLockerStatus(status: DeviceView['bitlockerStatus'], t: (key: string) => string): string {
@@ -122,9 +118,9 @@ export function DeviceTable({
               <th className="px-4 py-3 font-medium">{t('devices.columns.hostname')}</th>
               <th className="px-4 py-3 font-medium">{t('devices.columns.description')}</th>
               <th className="px-4 py-3 font-medium">{t('devices.columns.configuration')}</th>
-              <th className="px-4 py-3 font-medium">{t('devices.columns.windowsBuild')}</th>
+              <th className="px-4 py-3 font-medium">{t('devices.columns.os')}</th>
               <th className="px-4 py-3 font-medium">{t('devices.columns.bitlocker')}</th>
-              <th className="px-4 py-3 font-medium">{t('devices.columns.powershell')}</th>
+              <th className="px-4 py-3 font-medium">{t('devices.columns.currentUser')}</th>
               <th className="px-4 py-3 font-medium">{t('devices.columns.lastUpdate')}</th>
               {showWindowsActions && (
                 <th className="px-4 py-3 font-medium text-right">{t('devices.columns.actions')}</th>
@@ -136,7 +132,6 @@ export function DeviceTable({
               <WindowsDeviceRow
                 key={device.id}
                 device={device}
-                configurations={data.configurations}
                 now={now}
                 showActions={showWindowsActions}
                 onDeleteDevice={onDeleteDevice}
@@ -245,6 +240,30 @@ function ConfigurationCell({
   }
 
   return <span>{name}</span>
+}
+
+function WindowsConfigurationCell({ device }: { device: DeviceView }) {
+  const { t } = useTranslation()
+  const configId = device.configurationId ?? 0
+  const configName = device.configurationName?.trim()
+
+  if (configId <= 0 || !configName) {
+    return (
+      <Badge variant="secondary" className="font-normal text-muted-foreground">
+        {t('devices.configuration.unassigned')}
+      </Badge>
+    )
+  }
+
+  return (
+    <Link
+      to="/windows/configurations/$profileId"
+      params={{ profileId: String(configId) }}
+      className="text-primary hover:underline"
+    >
+      {configName}
+    </Link>
+  )
 }
 
 function DeviceRowActions({
@@ -407,13 +426,11 @@ function AndroidDeviceRow({
 
 function WindowsDeviceRow({
   device,
-  configurations,
   now,
   showActions,
   onDeleteDevice,
 }: {
   device: DeviceView
-  configurations: DeviceListView['configurations']
   now: number
   showActions?: boolean
   onDeleteDevice?: (device: DeviceView) => void
@@ -457,15 +474,13 @@ function WindowsDeviceRow({
       </td>
       <td className="px-4 py-3 text-muted-foreground">{device.description || '—'}</td>
       <td className="px-4 py-3">
-        <ConfigurationCell device={device} configurations={configurations} />
+        <WindowsConfigurationCell device={device} />
       </td>
-      <td className="px-4 py-3 font-mono text-xs">{device.windowsBuild ?? '—'}</td>
+      <td className="px-4 py-3 text-xs">{formatWindowsOsLabel(device.windowsBuild)}</td>
       <td className="px-4 py-3">
         {formatBitLockerStatus(device.bitlockerStatus, t)}
       </td>
-      <td className="px-4 py-3">
-        {PS_LABELS[device.powershellExecStatus ?? 'idle'] ?? '—'}
-      </td>
+      <td className="px-4 py-3 font-mono text-xs">{device.currentUser?.trim() || '—'}</td>
       <td className="px-4 py-3 whitespace-nowrap">{formatTimestamp(device.lastUpdate)}</td>
       {showActions && (
         <td className="px-4 py-3">

@@ -155,6 +155,8 @@ type WindowsDeviceJSON struct {
 	UninstalledAt     *time.Time                `json:"uninstalledAt,omitempty"`
 	GroupID           *uint                     `json:"groupId,omitempty"`
 	GroupName         string                    `json:"groupName,omitempty"`
+	ConfigurationID   uint                      `json:"configurationId,omitempty"`
+	ConfigurationName string                    `json:"configurationName,omitempty"`
 }
 
 // WindowsDeviceListResponse is returned by GET /rest/windows/devices.

@@ -58,6 +58,8 @@ export interface WindowsDeviceDto {
   lastCheckin: string
   agentStatus?: string
   uninstalledAt?: string
+  configurationId?: number
+  configurationName?: string
 }
 
 export interface WindowsDeviceListDto {
@@ -87,7 +89,8 @@ function mapWindowsDeviceToView(raw: WindowsDeviceDto): DeviceView {
   return {
     id: raw.id,
     platform: 'windows',
-    configurationId: 0,
+    configurationId: raw.configurationId ?? 0,
+    configurationName: raw.configurationName || undefined,
     number: raw.hardwareId,
     hostname: raw.hostname || raw.hardwareId,
     description: modelLabel,
