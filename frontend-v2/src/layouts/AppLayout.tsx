@@ -17,18 +17,18 @@ export function AppLayout() {
 
   return (
     <TooltipProvider>
-      <SidebarProvider defaultOpen className="flex min-h-svh w-full flex-col">
+      <SidebarProvider defaultOpen className="flex h-screen w-full flex-col overflow-hidden">
         <AppTopBar
           userLabel={user?.name ?? user?.login}
           onLogout={handleLogout}
         />
 
-        <div className="flex min-h-0 min-w-0 flex-1 bg-background text-foreground">
-          <aside className="flex w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+        <div className="flex min-h-0 w-full flex-1 overflow-hidden bg-background text-foreground">
+          <aside className="flex h-full w-64 shrink-0 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
             <AppSidebar />
           </aside>
 
-          <main className="min-w-0 flex-1 overflow-auto p-6">
+          <main className="h-full min-w-0 flex-1 overflow-y-auto p-6">
             <Outlet />
           </main>
         </div>
