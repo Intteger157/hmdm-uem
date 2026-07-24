@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { useQueueWindowsDeviceCommandMutation } from '@/features/windows/hooks/use-queue-windows-device-command'
+import { useDeviceDetailCommandToast } from '@/features/devices/context/device-detail-command-toast-context'
+import { queueWindowsDeviceCommand } from '@/features/windows/api/windows-api'
 import type { InstalledSoftware } from '@/shared/api/types/device-detail'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -26,8 +27,9 @@ export function WindowsDeviceInstalledSoftwareTab({
   software,
 }: WindowsDeviceInstalledSoftwareTabProps) {
   const { t } = useTranslation()
-  const queueCommand = useQueueWindowsDeviceCommandMutation(hardwareId)
+  const { trackActionLogCommand } = useDeviceDetailCommandToast()
   const [pendingApp, setPendingApp] = useState<InstalledSoftware | null>(null)
+  const [isQueueing, setIsQueueing] = useState(false)
 
   const handleConfirmUninstall = async () => {
     if (!pendingApp) {
@@ -41,17 +43,17 @@ export function WindowsDeviceInstalledSoftwareTab({
     }
 
     try {
-      await queueCommand.mutateAsync({
-        commandName: 'UninstallApp',
-        payload: JSON.stringify({
-          appName: pendingApp.name,
-          uninstallString,
-        }),
-      })
-      toast.success(t('deviceDetail.software.uninstallQueued'))
+      setIsQueueing(true)
+      const response = await queueWindowsDeviceCommand(hardwareId, 'UninstallApp', JSON.stringify({
+        appName: pendingApp.name,
+        uninstallString,
+      }))
+      trackActionLogCommand(hardwareId, response.id)
       setPendingApp(null)
     } catch {
       toast.error(t('deviceDetail.software.uninstallFailed'))
+    } finally {
+      setIsQueueing(false)
     }
   }
 
@@ -84,7 +86,7 @@ export function WindowsDeviceInstalledSoftwareTab({
                           type="button"
                           size="icon-sm"
                           variant="ghost"
-                          disabled={!canUninstall || queueCommand.isPending}
+                          disabled={!canUninstall || isQueueing}
                           title={
                             canUninstall
                               ? t('deviceDetail.software.uninstall')
@@ -117,7 +119,7 @@ export function WindowsDeviceInstalledSoftwareTab({
       </Card>
 
       <Dialog open={pendingApp != null} onOpenChange={(open) => !open && setPendingApp(null)}>
-        <DialogContent className="sm:max-w-md" showCloseButton={!queueCommand.isPending}>
+        <DialogContent className="sm:max-w-md" showCloseButton={!isQueueing}>
           <DialogHeader>
             <DialogTitle>{t('deviceDetail.software.uninstallConfirmTitle')}</DialogTitle>
             <DialogDescription>
@@ -133,7 +135,7 @@ export function WindowsDeviceInstalledSoftwareTab({
             <Button
               type="button"
               variant="outline"
-              disabled={queueCommand.isPending}
+              disabled={isQueueing}
               onClick={() => setPendingApp(null)}
             >
               {t('common.cancel')}
@@ -141,7 +143,7 @@ export function WindowsDeviceInstalledSoftwareTab({
             <Button
               type="button"
               variant="destructive"
-              disabled={queueCommand.isPending}
+              disabled={isQueueing}
               onClick={() => void handleConfirmUninstall()}
             >
               {t('deviceDetail.software.uninstallConfirmAction')}

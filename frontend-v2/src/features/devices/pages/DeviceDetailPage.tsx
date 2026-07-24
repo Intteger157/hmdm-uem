@@ -31,12 +31,14 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { DeviceActionsPanel } from '@/features/devices/components/DeviceActionsPanel'
+import { DeviceDetailCommandToastProvider } from '@/features/devices/context/device-detail-command-toast-context'
 import { WindowsAppDeploymentsCard } from '@/features/devices/components/WindowsAppDeploymentsCard'
 import { WindowsDeviceInstalledSoftwareTab } from '@/features/devices/components/WindowsDeviceInstalledSoftwareTab'
 import { WindowsDeviceServicesTab } from '@/features/devices/components/WindowsDeviceServicesTab'
 import { WindowsDeviceActionLogsTab } from '@/features/devices/components/WindowsDeviceActionLogsTab'
 import { WindowsAppliedConfigurationCard } from '@/features/windows/configurations/components/WindowsAppliedConfigurationCard'
-import { useQueueWindowsDeviceCommandMutation } from '@/features/windows/hooks/use-queue-windows-device-command'
+import { useDeviceDetailCommandToast } from '@/features/devices/context/device-detail-command-toast-context'
+import { queueWindowsDeviceCommand } from '@/features/windows/api/windows-api'
 import { useDeviceByNumber } from '@/features/devices/hooks/use-device-by-number-query'
 import {
   formatDeviceEnrollTime,
@@ -70,7 +72,6 @@ import type { DeviceDiskVolume, WindowsUpdateItem } from '@/shared/api/types/dev
 import type { TFunction } from 'i18next'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
-import { queueWindowsDeviceCommand } from '@/features/windows/api/windows-api'
 import { useState, type ReactNode } from 'react'
 
 const STATUS_BADGE: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -111,6 +112,7 @@ interface DeviceDetailPageProps {
 export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceDetailPageProps) {
   const { t } = useTranslation()
   const now = usePeriodicNow()
+  const [activeTab, setActiveTab] = useState('overview')
   const { data: device, isLoading, error } = useDeviceByNumber(deviceNumber, platform)
 
   if (isLoading) {
@@ -149,7 +151,8 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
   const showIdentifierSubtitle = identifier !== title
 
   return (
-    <div className="space-y-3">
+    <DeviceDetailCommandToastProvider onGoToActionLogs={() => setActiveTab('action-logs')}>
+      <div className="space-y-3">
       <div className="flex items-center gap-1 text-sm text-muted-foreground">
         <Link to="/devices" search={{ platform: device.platform }} className="hover:text-foreground">
           {t('nav.devices')}
@@ -175,7 +178,7 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
         </div>
       </div>
 
-      <Tabs defaultValue="overview" className="w-full space-y-3">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-3">
         <TabsList
           variant="line"
           className="h-auto w-full flex-wrap justify-start gap-1 [&_[data-slot=tabs-trigger]]:flex-none"
@@ -367,7 +370,8 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
           <DeviceActionsPanel device={device} platform={device.platform} />
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </DeviceDetailCommandToastProvider>
   )
 }
 
@@ -579,14 +583,22 @@ function BatteryMetricCard({
   const status = device.batteryStatus?.trim()
   const hasBattery = level != null
   const HeaderIcon = resolveBatteryHeaderIcon(level, status)
-  const queueMutation = useQueueWindowsDeviceCommandMutation(hardwareId)
+  const { trackActionLogCommand } = useDeviceDetailCommandToast()
+  const [isQueueingReport, setIsQueueingReport] = useState(false)
 
   const handleBatteryReport = (event: React.MouseEvent) => {
     event.stopPropagation()
-    void queueMutation
-      .mutateAsync({ commandName: 'battery_report', payload: '{}' })
-      .then(() => toast.success(t('deviceDetail.battery.reportQueued')))
-      .catch(() => toast.error(t('deviceDetail.battery.reportFailed')))
+    void (async () => {
+      setIsQueueingReport(true)
+      try {
+        const response = await queueWindowsDeviceCommand(hardwareId, 'battery_report', '{}')
+        trackActionLogCommand(hardwareId, response.id)
+      } catch {
+        toast.error(t('deviceDetail.battery.reportFailed'))
+      } finally {
+        setIsQueueingReport(false)
+      }
+    })()
   }
 
   return (
@@ -601,7 +613,7 @@ function BatteryMetricCard({
             variant="ghost"
             size="icon"
             className="size-6"
-            disabled={queueMutation.isPending}
+            disabled={isQueueingReport}
             title={t('deviceDetail.battery.downloadReport')}
             onClick={handleBatteryReport}
           >
@@ -786,6 +798,7 @@ function WindowsUpdateMetricCard({
   const lastChecked = formatWindowsUpdateCheck(device.lastUpdateCheck, na)
   const pendingList = device.pendingUpdatesList ?? []
   const installedList = device.installedUpdatesList ?? []
+  const { trackActionLogCommand } = useDeviceDetailCommandToast()
 
   const handleInstall = async (update: WindowsUpdateItem) => {
     const kb = update.kb?.trim()
@@ -796,8 +809,8 @@ function WindowsUpdateMetricCard({
 
     setInstallingKb(kb)
     try {
-      await queueWindowsDeviceCommand(hardwareId, 'install_windows_update', kb)
-      toast.success(t('deviceDetail.windowsUpdateDialog.installQueued'))
+      const response = await queueWindowsDeviceCommand(hardwareId, 'install_windows_update', kb)
+      trackActionLogCommand(hardwareId, response.id)
       setOpen(false)
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : t('deviceDetail.windowsUpdateDialog.installFailed'))
@@ -815,8 +828,8 @@ function WindowsUpdateMetricCard({
 
     setRollingBackKb(kb)
     try {
-      await queueWindowsDeviceCommand(hardwareId, 'UninstallUpdate', kb)
-      toast.success(t('deviceDetail.windowsUpdateDialog.rollbackQueued'))
+      const response = await queueWindowsDeviceCommand(hardwareId, 'UninstallUpdate', kb)
+      trackActionLogCommand(hardwareId, response.id)
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : t('deviceDetail.windowsUpdateDialog.rollbackFailed'))
     } finally {

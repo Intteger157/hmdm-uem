@@ -46,8 +46,8 @@ import {
   useSoftwareAppsQuery,
 } from '@/features/windows/applications/hooks/use-windows-software-apps'
 import { WindowsPowerShellDialog } from '@/features/windows/components/WindowsCommandDialogs'
+import { useDeviceDetailCommandToast } from '@/features/devices/context/device-detail-command-toast-context'
 import type { WindowsCommandAction } from '@/features/windows/api/windows-api'
-import { waitForWindowsCommandResult } from '@/features/windows/lib/wait-for-command-result'
 
 type AndroidDialogAction =
   | 'appSettings'
@@ -139,6 +139,7 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
 
   const windowsCommandMutation = useWindowsDeviceCommandMutation(device.number)
   const queueLogMutation = useQueueWindowsDeviceCommandMutation(device.number)
+  const { trackPollCommand, trackActionLogCommand } = useDeviceDetailCommandToast()
   const deviceAppStatusesQuery = useDeviceAppStatusesQuery(device.number, platform === 'windows')
   const deviceAppStatuses = deviceAppStatusesQuery.data?.items ?? []
   useSoftwareAppsQuery(platform === 'windows')
@@ -186,27 +187,13 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
   const isPending =
     syncMutation.isPending || rebootMutation.isPending || resetMutation.isPending
 
-  const notifyCommandResult = (commandId: number) => {
-    void waitForWindowsCommandResult(device.number, commandId).then((result) => {
-      if (!result) {
-        return
-      }
-      if (result.success) {
-        toast.success(result.message)
-      } else {
-        toast.error(result.message)
-      }
-    })
-  }
-
   const queueWindowsCommand = async (
     action: WindowsCommandAction,
     payload?: { script?: string; url?: string },
   ): Promise<boolean> => {
     try {
       const response = await windowsCommandMutation.mutateAsync({ action, payload })
-      toast.success(t('deviceDetail.actions.commandQueued'))
-      notifyCommandResult(response.id)
+      trackPollCommand(device.number, response.id)
       return true
     } catch {
       toast.error(t('deviceDetail.actions.error'))
@@ -407,9 +394,9 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
         onSubmit={(script) => {
           void queueLogMutation
             .mutateAsync({ commandName: 'powershell', payload: script })
-            .then(() => {
+            .then((response) => {
               setPowershellOpen(false)
-              toast.success(t('deviceDetail.actions.powershellQueued'))
+              trackActionLogCommand(device.number, response.id)
             })
             .catch(() => {
               toast.error(t('deviceDetail.actions.error'))
