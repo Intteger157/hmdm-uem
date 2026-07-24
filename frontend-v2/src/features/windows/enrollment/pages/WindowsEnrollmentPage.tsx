@@ -19,7 +19,7 @@ import {
 import { toast } from 'sonner'
 
 function buildBootstrapCommand(origin: string): string {
-  const enrollUrl = `${origin.replace(/\/+$/, '')}/api/windows/enroll`
+  const enrollUrl = `${origin.replace(/\/+$/, '')}/rest/windows/enroll`
   return `powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod -Uri '${enrollUrl}' | Invoke-Expression"`
 }
 
