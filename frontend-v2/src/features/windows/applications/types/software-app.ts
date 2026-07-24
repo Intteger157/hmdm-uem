@@ -113,3 +113,11 @@ export function getLatestVersion(app: SoftwareApp): ApplicationVersion | undefin
   }
   return app.versions[0]
 }
+
+export function findSoftwareAppByName(apps: SoftwareApp[], name: string): SoftwareApp | undefined {
+  const normalized = name.trim().toLowerCase()
+  if (!normalized) {
+    return undefined
+  }
+  return apps.find((app) => app.name.trim().toLowerCase() === normalized)
+}

@@ -1,18 +1,37 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Loader2, Upload } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
-import { uploadSoftwareApp } from '@/features/windows/applications/api/windows-applications-api'
-import { useCreateSoftwareAppMutation } from '@/features/windows/applications/hooks/use-windows-software-apps'
+import { fetchSoftwareApps, uploadSoftwareApp } from '@/features/windows/applications/api/windows-applications-api'
+import {
+  useCreateApplicationVersionMutation,
+  useCreateSoftwareAppMutation,
+  useSoftwareAppsQuery,
+} from '@/features/windows/applications/hooks/use-windows-software-apps'
 import {
   getWindowsApiErrorMessage,
   isDuplicateApplicationNameError,
 } from '@/features/windows/applications/utils/app-catalog-errors'
-import type { SoftwareAppType, UpdateFrequency } from '@/features/windows/applications/types/software-app'
+import type {
+  CreateApplicationVersionPayload,
+  SoftwareApp,
+  SoftwareAppType,
+  UpdateFrequency,
+} from '@/features/windows/applications/types/software-app'
+import { findSoftwareAppByName } from '@/features/windows/applications/types/software-app'
 import { BoolField } from '@/shared/components/BoolField'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import {
   Form,
   FormControl,
@@ -21,7 +40,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
 import {
   Sheet,
   SheetContent,
@@ -114,11 +132,16 @@ function supportsUpdatePolicy(appType: SoftwareAppType): boolean {
 export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: SoftwareAppFormSheetProps) {
   const { t } = useTranslation()
   const createMutation = useCreateSoftwareAppMutation()
+  const versionMutation = useCreateApplicationVersionMutation()
+  const appsQuery = useSoftwareAppsQuery(open)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const pendingVersionPayloadRef = useRef<CreateApplicationVersionPayload | null>(null)
   const [uploading, setUploading] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [downloadUrlLocked, setDownloadUrlLocked] = useState(false)
   const [detectedInstallArgs, setDetectedInstallArgs] = useState('')
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false)
+  const [duplicateApp, setDuplicateApp] = useState<SoftwareApp | null>(null)
 
   const form = useForm<SoftwareAppFormValues>({
     resolver: zodResolver(softwareAppFormSchema),
@@ -128,9 +151,18 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
   const appType = form.watch('appType')
   const autoUpdate = form.watch('autoUpdate')
   const silentInstallation = form.watch('silentInstallation')
+  const appName = form.watch('name') ?? ''
+  const appVersion = form.watch('version') ?? ''
   const downloadUrl = form.watch('downloadUrl') ?? ''
   const installerIsMsi = downloadUrl.toLowerCase().includes('.msi')
   const installArgsPlaceholder = installerIsMsi ? '/quiet /norestart' : '/S'
+
+  const existingApp = useMemo(
+    () => findSoftwareAppByName(appsQuery.data ?? [], appName),
+    [appsQuery.data, appName],
+  )
+
+  const isSaving = createMutation.isPending || versionMutation.isPending
 
   useEffect(() => {
     if (open) {
@@ -139,11 +171,69 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
       setIsDragging(false)
       setDownloadUrlLocked(false)
       setDetectedInstallArgs('')
+      setDuplicateDialogOpen(false)
+      setDuplicateApp(null)
+      pendingVersionPayloadRef.current = null
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
     }
   }, [open, form])
+
+  function buildVersionPayload(values: SoftwareAppFormValues): CreateApplicationVersionPayload {
+    const resolvedInstallArgs =
+      values.appType === 'winget'
+        ? undefined
+        : values.silentInstallation
+          ? detectedInstallArgs.trim() || undefined
+          : values.installArgs?.trim() || undefined
+
+    return {
+      version: normalizeAppVersion(values.version),
+      appType: values.appType,
+      downloadUrl: values.appType !== 'winget' ? values.downloadUrl?.trim() : undefined,
+      wingetId: values.appType === 'winget' ? values.wingetId?.trim() : undefined,
+      installArgs: resolvedInstallArgs,
+      autoUpdate: supportsUpdatePolicy(values.appType) ? values.autoUpdate : false,
+      updateFrequency:
+        supportsUpdatePolicy(values.appType) && values.autoUpdate
+          ? values.updateFrequency
+          : undefined,
+    }
+  }
+
+  const addVersionToApp = async (app: SoftwareApp, payload: CreateApplicationVersionPayload) => {
+    await versionMutation.mutateAsync({ appId: app.id, payload })
+    toast.success(
+      t('windowsAppCatalog.form.versionAdded', {
+        name: app.name,
+        version: payload.version ?? DEFAULT_APP_VERSION,
+      }),
+    )
+    onOpenChange(false)
+    onCreated?.(app.id)
+  }
+
+  const openDuplicateVersionDialog = (app: SoftwareApp, payload: CreateApplicationVersionPayload) => {
+    pendingVersionPayloadRef.current = payload
+    setDuplicateApp(app)
+    setDuplicateDialogOpen(true)
+  }
+
+  const handleConfirmAddVersion = async () => {
+    if (!duplicateApp || !pendingVersionPayloadRef.current) {
+      return
+    }
+
+    try {
+      await addVersionToApp(duplicateApp, pendingVersionPayloadRef.current)
+      setDuplicateDialogOpen(false)
+      setDuplicateApp(null)
+      pendingVersionPayloadRef.current = null
+    } catch (error) {
+      toast.error(getWindowsApiErrorMessage(error, t('windowsAppCatalog.form.error')))
+    }
+  }
 
   const handleUploadFile = async (file: File) => {
     if (!isSupportedInstaller(file)) {
@@ -190,32 +280,36 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
   }
 
   const handleSubmit = form.handleSubmit(async (values) => {
-    const resolvedInstallArgs =
-      values.appType === 'winget'
-        ? undefined
-        : values.silentInstallation
-          ? detectedInstallArgs.trim() || undefined
-          : values.installArgs?.trim() || undefined
+    const versionPayload = buildVersionPayload(values)
+    const trimmedName = values.name.trim()
+
+    if (existingApp) {
+      openDuplicateVersionDialog(existingApp, versionPayload)
+      return
+    }
 
     try {
       const created = await createMutation.mutateAsync({
-        name: values.name.trim(),
-        version: normalizeAppVersion(values.version),
-        appType: values.appType,
-        downloadUrl: values.appType !== 'winget' ? values.downloadUrl?.trim() : undefined,
-        wingetId: values.appType === 'winget' ? values.wingetId?.trim() : undefined,
-        installArgs: resolvedInstallArgs,
-        autoUpdate: supportsUpdatePolicy(values.appType) ? values.autoUpdate : false,
-        updateFrequency:
-          supportsUpdatePolicy(values.appType) && values.autoUpdate
-            ? values.updateFrequency
-            : undefined,
+        name: trimmedName,
+        ...versionPayload,
       })
       toast.success(t('windowsAppCatalog.form.created'))
       onOpenChange(false)
       onCreated?.(created.id)
     } catch (error) {
       const apiMessage = getWindowsApiErrorMessage(error, t('windowsAppCatalog.form.error'))
+      if (isDuplicateApplicationNameError(apiMessage)) {
+        try {
+          const apps = await fetchSoftwareApps()
+          const matchedApp = findSoftwareAppByName(apps, trimmedName)
+          if (matchedApp) {
+            openDuplicateVersionDialog(matchedApp, versionPayload)
+            return
+          }
+        } catch {
+          // fall through to generic error toast
+        }
+      }
       toast.error(
         isDuplicateApplicationNameError(apiMessage)
           ? t('windowsAppCatalog.form.duplicateName')
@@ -479,22 +573,60 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
               </div>
             ) : null}
 
+            {existingApp ? (
+              <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
+                {t('windowsAppCatalog.form.existingAppHint', {
+                  name: existingApp.name,
+                  version: normalizeAppVersion(appVersion),
+                })}
+              </div>
+            ) : null}
+
             <SheetFooter className="px-0">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
-                disabled={createMutation.isPending || uploading}
+                disabled={isSaving || uploading}
               >
                 {t('common.cancel')}
               </Button>
-              <Button type="submit" disabled={createMutation.isPending || uploading}>
-                {t('windowsAppCatalog.form.create')}
+              <Button type="submit" disabled={isSaving || uploading}>
+                {existingApp
+                  ? t('windowsAppCatalog.form.addVersion')
+                  : t('windowsAppCatalog.form.create')}
               </Button>
             </SheetFooter>
           </form>
         </Form>
       </SheetContent>
+
+      <Dialog open={duplicateDialogOpen} onOpenChange={setDuplicateDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('windowsAppCatalog.form.existingAppTitle')}</DialogTitle>
+            <DialogDescription>
+              {t('windowsAppCatalog.form.existingAppDescription', {
+                name: duplicateApp?.name ?? appName.trim(),
+                version: normalizeAppVersion(appVersion),
+              })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDuplicateDialogOpen(false)}
+              disabled={versionMutation.isPending}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button type="button" onClick={() => void handleConfirmAddVersion()} disabled={versionMutation.isPending}>
+              {t('windowsAppCatalog.form.addVersionConfirm')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Sheet>
   )
 }
