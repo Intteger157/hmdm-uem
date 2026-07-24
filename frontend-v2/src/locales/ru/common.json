@@ -570,6 +570,7 @@
   "windows.enrollmentPage.securitySaveSuccess": "Настройки безопасности сохранены",
   "windows.enrollmentPage.securitySaveError": "Не удалось сохранить настройки безопасности",
   "windows.enrollmentPage.securitySecretRequired": "Укажите секрет регистрации",
+  "windows.enrollmentPage.securityGenerate": "Сгенерировать",
   "devices.search": "Поиск",
   "devices.searchPlaceholder": "Поиск по номеру, IMEI, описанию…",
   "devices.loading": "Загрузка устройств…",

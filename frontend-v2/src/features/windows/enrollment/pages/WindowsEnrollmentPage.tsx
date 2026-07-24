@@ -1,8 +1,9 @@
-import { Copy, Loader2, Upload } from 'lucide-react'
+import { Copy, Loader2, RefreshCw, Upload } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { copyTextToClipboard } from '@/shared/lib/copy-to-clipboard'
+import { generateEnrollmentSecret } from '@/shared/lib/generate-enrollment-secret'
 import { BoolField } from '@/shared/components/BoolField'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -77,12 +78,6 @@ export function WindowsEnrollmentPage() {
     enrollmentSecret: '',
   })
 
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const bootstrapCommand = useMemo(
-    () => buildBootstrapCommand(origin, securityDraft.enrollmentMode, securityDraft.enrollmentSecret),
-    [origin, securityDraft.enrollmentMode, securityDraft.enrollmentSecret],
-  )
-
   const agentQuery = useQuery({
     queryKey: ['windows', 'autopilot-agent'],
     queryFn: getWindowsAutopilotAgent,
@@ -97,6 +92,29 @@ export function WindowsEnrollmentPage() {
     queryKey: ['windows', 'enrollment-security'],
     queryFn: getWindowsEnrollmentSecurity,
   })
+
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const savedSecurity = securityQuery.data ?? securityDraft
+  const bootstrapCommand = useMemo(
+    () =>
+      buildBootstrapCommand(
+        origin,
+        savedSecurity.enrollmentMode,
+        savedSecurity.enrollmentSecret,
+      ),
+    [origin, savedSecurity.enrollmentMode, savedSecurity.enrollmentSecret],
+  )
+
+  const securityIsDirty = useMemo(() => {
+    if (!securityQuery.data) {
+      return securityDraft.enrollmentSecret.trim() !== ''
+    }
+
+    return (
+      securityDraft.enrollmentMode !== securityQuery.data.enrollmentMode ||
+      securityDraft.enrollmentSecret !== securityQuery.data.enrollmentSecret
+    )
+  }, [securityDraft, securityQuery.data])
 
   useEffect(() => {
     if (provisioningQuery.data) {
@@ -198,6 +216,13 @@ export function WindowsEnrollmentPage() {
       enrollmentMode: securityDraft.enrollmentMode,
       enrollmentSecret: securityDraft.enrollmentSecret.trim(),
     })
+  }
+
+  const handleGenerateSecuritySecret = () => {
+    setSecurityDraft((current) => ({
+      ...current,
+      enrollmentSecret: generateEnrollmentSecret(),
+    }))
   }
 
   const agent = agentQuery.data
@@ -340,23 +365,36 @@ export function WindowsEnrollmentPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="windows-enrollment-secret">{t('windows.enrollmentPage.securitySecret')}</Label>
-                <Input
-                  id="windows-enrollment-secret"
-                  type="password"
-                  value={securityDraft.enrollmentSecret}
-                  onChange={(event) =>
-                    setSecurityDraft((current) => ({
-                      ...current,
-                      enrollmentSecret: event.target.value,
-                    }))
-                  }
-                  autoComplete="new-password"
-                />
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Input
+                    id="windows-enrollment-secret"
+                    type="text"
+                    className="font-mono"
+                    value={securityDraft.enrollmentSecret}
+                    onChange={(event) =>
+                      setSecurityDraft((current) => ({
+                        ...current,
+                        enrollmentSecret: event.target.value,
+                      }))
+                    }
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="shrink-0 gap-2 sm:w-auto"
+                    onClick={handleGenerateSecuritySecret}
+                  >
+                    <RefreshCw className="size-4" />
+                    {t('windows.enrollmentPage.securityGenerate')}
+                  </Button>
+                </div>
               </div>
 
               <Button
                 type="button"
-                disabled={securityMutation.isPending || securityQuery.isLoading}
+                disabled={!securityIsDirty || securityMutation.isPending || securityQuery.isLoading}
                 onClick={handleSaveSecurity}
               >
                 {securityMutation.isPending ? (

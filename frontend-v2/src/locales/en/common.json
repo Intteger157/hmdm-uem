@@ -570,6 +570,7 @@
   "windows.enrollmentPage.securitySaveSuccess": "Security settings saved",
   "windows.enrollmentPage.securitySaveError": "Failed to save security settings",
   "windows.enrollmentPage.securitySecretRequired": "Enrollment secret is required",
+  "windows.enrollmentPage.securityGenerate": "Generate",
   "devices.search": "Search",
   "devices.searchPlaceholder": "Search by number, IMEI, description…",
   "devices.loading": "Loading devices…",
