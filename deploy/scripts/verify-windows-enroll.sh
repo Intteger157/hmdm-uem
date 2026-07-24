@@ -3,7 +3,8 @@ set -euo pipefail
 
 GATEWAY_URL="${1:-http://127.0.0.1:${GATEWAY_PORT:-8080}}"
 
-for path in /rest/windows/enroll /api/windows/enroll; do
+check_path() {
+  local path="$1"
   echo "==> GET ${GATEWAY_URL}${path}"
   headers="$(curl -fsSI "${GATEWAY_URL}${path}")"
   echo "$headers" | head -n 5
@@ -19,6 +20,17 @@ for path in /rest/windows/enroll /api/windows/enroll; do
   fi
   echo "OK: ${path}"
   echo
-done
+}
 
-echo "Bootstrap enroll endpoints are reachable through the gateway."
+# Primary URL used by the Enrollment page command
+check_path /api/windows/enroll
+
+# Optional alias — should also work after gateway + server-windows redeploy
+if curl -fsSI "${GATEWAY_URL}/rest/windows/enroll" >/dev/null 2>&1; then
+  check_path /rest/windows/enroll
+else
+  echo "WARN: /rest/windows/enroll unavailable (optional alias). Primary /api/windows/enroll is OK."
+  echo
+fi
+
+echo "Bootstrap enroll endpoint is reachable through the gateway."
