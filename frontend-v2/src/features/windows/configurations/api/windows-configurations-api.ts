@@ -5,6 +5,8 @@ import type {
   WindowsConfigProfile,
   WindowsConfigProfileListResponse,
   WindowsConfigProfileAssignments,
+  WindowsConfigurationPolicy,
+  WindowsConfigurationPolicyListResponse,
   WindowsDeviceGroup,
   WindowsDeviceGroupListResponse,
   WindowsEffectiveConfig,
@@ -94,5 +96,25 @@ export async function fetchWindowsDeviceEffectiveConfig(
 ): Promise<WindowsEffectiveConfig> {
   const encoded = encodeURIComponent(hardwareId)
   const response = await windowsApi.get<WindowsEffectiveConfig>(`/devices/${encoded}/effective-config`)
+  return response.data
+}
+
+export async function fetchWindowsConfigProfilePolicies(
+  profileId: number,
+): Promise<WindowsConfigurationPolicyListResponse> {
+  const response = await windowsApi.get<WindowsConfigurationPolicyListResponse>(
+    `/configurations/${profileId}/policies`,
+  )
+  return response.data
+}
+
+export async function replaceWindowsConfigProfilePolicies(
+  profileId: number,
+  items: WindowsConfigurationPolicy[],
+): Promise<WindowsConfigurationPolicyListResponse> {
+  const response = await windowsApi.put<WindowsConfigurationPolicyListResponse>(
+    `/configurations/${profileId}/policies`,
+    { items },
+  )
   return response.data
 }

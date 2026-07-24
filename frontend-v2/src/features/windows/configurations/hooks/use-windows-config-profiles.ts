@@ -5,18 +5,21 @@ import {
   deleteWindowsConfigProfile,
   fetchWindowsConfigProfileAssignments,
   fetchWindowsConfigProfileById,
+  fetchWindowsConfigProfilePolicies,
   fetchWindowsConfigProfiles,
   fetchWindowsDeviceEffectiveConfig,
   fetchWindowsDeviceGroups,
+  replaceWindowsConfigProfilePolicies,
   updateWindowsConfigProfile,
 } from '@/features/windows/configurations/api/windows-configurations-api'
-import type { UpsertWindowsConfigProfilePayload, WindowsConfigProfileAssignments } from '@/features/windows/configurations/types/config-profile'
+import type { UpsertWindowsConfigProfilePayload, WindowsConfigProfileAssignments, WindowsConfigurationPolicy } from '@/features/windows/configurations/types/config-profile'
 
 export const windowsConfigProfileQueryKeys = {
   all: ['windows-config-profiles'] as const,
   list: () => [...windowsConfigProfileQueryKeys.all, 'list'] as const,
   detail: (id: number) => [...windowsConfigProfileQueryKeys.all, 'detail', id] as const,
   assignments: (id: number) => [...windowsConfigProfileQueryKeys.all, 'assignments', id] as const,
+  policies: (id: number) => [...windowsConfigProfileQueryKeys.all, 'policies', id] as const,
 }
 
 export const windowsDeviceGroupQueryKeys = {
@@ -52,6 +55,34 @@ export function useWindowsConfigProfileAssignmentsQuery(profileId: number | null
     queryKey: windowsConfigProfileQueryKeys.assignments(profileId ?? 0),
     queryFn: () => fetchWindowsConfigProfileAssignments(profileId!),
     enabled: profileId != null && profileId > 0 && enabled,
+  })
+}
+
+export function useWindowsConfigProfilePoliciesQuery(profileId: number | null, enabled = true) {
+  return useQuery({
+    queryKey: windowsConfigProfileQueryKeys.policies(profileId ?? 0),
+    queryFn: () => fetchWindowsConfigProfilePolicies(profileId!),
+    enabled: profileId != null && profileId > 0 && enabled,
+  })
+}
+
+export function useReplaceWindowsConfigProfilePoliciesMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      profileId,
+      items,
+    }: {
+      profileId: number
+      items: WindowsConfigurationPolicy[]
+    }) => replaceWindowsConfigProfilePolicies(profileId, items),
+    onSuccess: async (_data, variables) => {
+      await queryClient.invalidateQueries({
+        queryKey: windowsConfigProfileQueryKeys.policies(variables.profileId),
+      })
+      await queryClient.invalidateQueries({ queryKey: windowsEffectiveConfigQueryKeys.all })
+    },
   })
 }
 

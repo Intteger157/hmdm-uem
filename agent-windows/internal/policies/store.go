@@ -13,14 +13,18 @@ import (
 const policyDirectory = `C:\ProgramData\HMDM\Agent`
 
 var (
-	configFilePath        = filepath.Join(policyDirectory, "config.json")
-	appliedFilePath       = filepath.Join(policyDirectory, "applied-policy.json")
-	syncStateFilePath     = filepath.Join(policyDirectory, "config-sync-state.json")
+	configFilePath           = filepath.Join(policyDirectory, "config.json")
+	appliedFilePath          = filepath.Join(policyDirectory, "applied-policy.json")
+	syncStateFilePath        = filepath.Join(policyDirectory, "config-sync-state.json")
+	registryPoliciesFilePath = filepath.Join(policyDirectory, "registry-policies.json")
+	appliedRegistryFilePath  = filepath.Join(policyDirectory, "applied-registry-policies.json")
 )
 
 type syncState struct {
-	LastSyncedHash   string `json:"lastSyncedHash,omitempty"`
-	LastReportedHash string `json:"lastReportedHash,omitempty"`
+	LastSyncedHash           string `json:"lastSyncedHash,omitempty"`
+	LastReportedHash         string `json:"lastReportedHash,omitempty"`
+	LastSyncedRegistryHash   string `json:"lastSyncedRegistryHash,omitempty"`
+	LastReportedRegistryHash string `json:"lastReportedRegistryHash,omitempty"`
 }
 
 func SaveDesiredConfig(config EffectiveConfig) error {
@@ -153,6 +157,93 @@ func SaveLastReportedConfigHash(hash string) error {
 		return err
 	}
 	state.LastReportedHash = hash
+	return SaveSyncState(state)
+}
+
+type AppliedRegistryPolicies struct {
+	Policies   []RegistryPolicy `json:"policies"`
+	EnforcedAt string           `json:"enforcedAt,omitempty"`
+}
+
+func SaveDesiredRegistryPolicies(config RegistryPoliciesConfig) error {
+	if err := ensurePolicyDirectory(); err != nil {
+		return err
+	}
+
+	config.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+	payload, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal registry policies: %w", err)
+	}
+
+	if err := os.WriteFile(registryPoliciesFilePath, payload, 0o644); err != nil {
+		return fmt.Errorf("write registry-policies.json: %w", err)
+	}
+	return nil
+}
+
+func LoadDesiredRegistryPolicies() (RegistryPoliciesConfig, error) {
+	data, err := os.ReadFile(registryPoliciesFilePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return RegistryPoliciesConfig{}, nil
+		}
+		return RegistryPoliciesConfig{}, fmt.Errorf("read registry-policies.json: %w", err)
+	}
+
+	var config RegistryPoliciesConfig
+	if err := json.Unmarshal(data, &config); err != nil {
+		return RegistryPoliciesConfig{}, fmt.Errorf("decode registry-policies.json: %w", err)
+	}
+	return config, nil
+}
+
+func SaveAppliedRegistryPolicies(applied AppliedRegistryPolicies) error {
+	if err := ensurePolicyDirectory(); err != nil {
+		return err
+	}
+
+	data, err := json.MarshalIndent(applied, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal applied registry policies: %w", err)
+	}
+	if err := os.WriteFile(appliedRegistryFilePath, data, 0o644); err != nil {
+		return fmt.Errorf("write applied-registry-policies.json: %w", err)
+	}
+	return nil
+}
+
+func LoadLastSyncedRegistryHash() string {
+	state, err := LoadSyncState()
+	if err != nil {
+		return ""
+	}
+	return state.LastSyncedRegistryHash
+}
+
+func LoadLastReportedRegistryHash() string {
+	state, err := LoadSyncState()
+	if err != nil {
+		return ""
+	}
+	return state.LastReportedRegistryHash
+}
+
+func SaveLastSyncedRegistryHash(hash string) error {
+	state, err := LoadSyncState()
+	if err != nil {
+		return err
+	}
+	state.LastSyncedRegistryHash = hash
+	return SaveSyncState(state)
+}
+
+func SaveLastReportedRegistryHash(hash string) error {
+	state, err := LoadSyncState()
+	if err != nil {
+		return err
+	}
+	state.LastReportedRegistryHash = hash
 	return SaveSyncState(state)
 }
 

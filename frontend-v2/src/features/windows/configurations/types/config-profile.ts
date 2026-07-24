@@ -69,6 +69,17 @@ export interface WindowsDeviceOption {
   label: string
 }
 
+export interface WindowsConfigurationPolicy {
+  id?: number
+  policyPath: string
+  valueType: string
+  value: string
+}
+
+export interface WindowsConfigurationPolicyListResponse {
+  items: WindowsConfigurationPolicy[]
+}
+
 export const DEFAULT_WINDOWS_CONFIG_PROFILE_PAYLOAD: WindowsConfigProfilePayload = {
   defenderEnabled: false,
   blockUsbStorage: false,

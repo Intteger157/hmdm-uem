@@ -13,13 +13,17 @@ import {
   useConfigProfileAppsQuery,
   useSoftwareAppsQuery,
 } from '@/features/windows/applications/hooks/use-windows-software-apps'
+import { WindowsRegistryPoliciesEditor } from '@/features/windows/configurations/components/WindowsRegistryPoliciesEditor'
 import {
   useAssignWindowsConfigProfileMutation,
+  useReplaceWindowsConfigProfilePoliciesMutation,
   useUpsertWindowsConfigProfileMutation,
   useWindowsConfigProfileAssignmentsQuery,
+  useWindowsConfigProfilePoliciesQuery,
   useWindowsConfigProfileQuery,
   useWindowsDeviceGroupsQuery,
 } from '@/features/windows/configurations/hooks/use-windows-config-profiles'
+import type { WindowsConfigurationPolicy } from '@/features/windows/configurations/types/config-profile'
 import {
   configProfileFormSchema,
   createEmptyConfigProfileFormValues,
@@ -59,10 +63,14 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
     !isNew,
   )
   const profileAppsQuery = useConfigProfileAppsQuery(isNew ? null : profileId ?? null, !isNew)
+  const policiesQuery = useWindowsConfigProfilePoliciesQuery(isNew ? null : profileId ?? null, !isNew)
 
   const upsertMutation = useUpsertWindowsConfigProfileMutation()
   const assignMutation = useAssignWindowsConfigProfileMutation()
   const assignAppsMutation = useAssignConfigProfileAppsMutation()
+  const replacePoliciesMutation = useReplaceWindowsConfigProfilePoliciesMutation()
+
+  const [registryPolicies, setRegistryPolicies] = useState<WindowsConfigurationPolicy[]>([])
 
   const softwareAppsQuery = useSoftwareAppsQuery(true)
   const groupsQuery = useWindowsDeviceGroupsQuery(true)
@@ -79,13 +87,20 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
   const isEdit = !isNew && profileId != null && profileId > 0
   const isLoading =
     isEdit &&
-    (profileQuery.isLoading || assignmentsQuery.isLoading || profileAppsQuery.isLoading)
+    (profileQuery.isLoading || assignmentsQuery.isLoading || profileAppsQuery.isLoading || policiesQuery.isLoading)
   const loadError =
     isEdit &&
     (profileQuery.error != null ||
       assignmentsQuery.error != null ||
       profileAppsQuery.error != null ||
+      policiesQuery.error != null ||
       !profileQuery.data)
+
+  useEffect(() => {
+    if (policiesQuery.data?.items) {
+      setRegistryPolicies(policiesQuery.data.items)
+    }
+  }, [policiesQuery.data])
 
   useEffect(() => {
     if (isNew) {
@@ -129,6 +144,19 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
         },
       })
 
+      const normalizedPolicies = registryPolicies
+        .map((policy) => ({
+          policyPath: policy.policyPath.trim(),
+          valueType: policy.valueType.trim(),
+          value: policy.value.trim(),
+        }))
+        .filter((policy) => policy.policyPath.length > 0)
+
+      await replacePoliciesMutation.mutateAsync({
+        profileId: saved.id,
+        items: normalizedPolicies,
+      })
+
       toast.success(isEdit ? t('windowsConfigurations.form.updated') : t('windowsConfigurations.form.created'))
 
       if (isNew && saved.id) {
@@ -143,7 +171,11 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
     }
   })
 
-  const isPending = upsertMutation.isPending || assignMutation.isPending || assignAppsMutation.isPending
+  const isPending =
+    upsertMutation.isPending ||
+    assignMutation.isPending ||
+    assignAppsMutation.isPending ||
+    replacePoliciesMutation.isPending
   const profileName = form.watch('name')
 
   const groupOptions = (groupsQuery.data ?? []).map((group) => ({
@@ -207,6 +239,7 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
             <TabsList>
               <TabsTrigger value="general">{t('windowsConfigurations.form.general')}</TabsTrigger>
               <TabsTrigger value="policies">{t('windowsConfigurations.form.securityPolicies')}</TabsTrigger>
+              <TabsTrigger value="registryPolicies">{t('windowsConfigurations.form.registryPolicies')}</TabsTrigger>
               <TabsTrigger value="apps">{t('windowsConfigurations.form.requiredApps')}</TabsTrigger>
               <TabsTrigger value="assignments">{t('windowsConfigurations.form.assignments')}</TabsTrigger>
             </TabsList>
@@ -365,6 +398,22 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
                         <FormMessage />
                       </FormItem>
                     )}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="registryPolicies" className="mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>{t('windowsConfigurations.editor.registryTitle')}</CardTitle>
+                  <CardDescription>{t('windowsConfigurations.editor.registryDescription')}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <WindowsRegistryPoliciesEditor
+                    policies={registryPolicies}
+                    onChange={setRegistryPolicies}
+                    disabled={isPending}
                   />
                 </CardContent>
               </Card>

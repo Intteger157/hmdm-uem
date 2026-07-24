@@ -216,6 +216,9 @@ func (h *WindowsHandler) DeleteConfigProfile(c *gin.Context) {
 	if err := deleteConfigProfileApps(profileID); err != nil {
 		log.Printf("[delete-config-profile] cleanup profile apps failed: id=%d err=%v", profileID, err)
 	}
+	if err := deleteConfigurationPolicies(profileID); err != nil {
+		log.Printf("[delete-config-profile] cleanup registry policies failed: id=%d err=%v", profileID, err)
+	}
 
 	log.Printf("[delete-config-profile] deleted id=%d", profileID)
 	c.Status(http.StatusNoContent)

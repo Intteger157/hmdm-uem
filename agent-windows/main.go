@@ -401,6 +401,44 @@ func syncPolicyFromServer(cfg *config.Config, apiClient *api.APIClient) {
 		}
 		log.Printf("policy sync failed: %v", err)
 	}
+
+	syncRegistryPoliciesFromServer(cfg, apiClient)
+}
+
+func syncRegistryPoliciesFromServer(cfg *config.Config, apiClient *api.APIClient) {
+	if cfg.AuthToken == "" || cfg.HardwareID == "" {
+		return
+	}
+
+	reporter := policies.NewReporter(apiClient, cfg.AuthToken, cfg.HardwareID)
+	err := policies.SyncRegistryPoliciesFromServer(func() (policies.RegistryPoliciesConfig, error) {
+		response, err := apiClient.FetchDeviceConfigurations(cfg.AuthToken, cfg.HardwareID)
+		if err != nil {
+			return policies.RegistryPoliciesConfig{}, err
+		}
+
+		items := make([]policies.RegistryPolicy, 0, len(response.Policies))
+		for _, policy := range response.Policies {
+			items = append(items, policies.RegistryPolicy{
+				ID:         policy.ID,
+				PolicyPath: policy.PolicyPath,
+				ValueType:  policy.ValueType,
+				Value:      policy.Value,
+			})
+		}
+
+		return policies.RegistryPoliciesConfig{
+			ConfigurationID:   response.ConfigurationID,
+			ConfigurationName: response.ConfigurationName,
+			Policies:          items,
+		}, nil
+	}, reporter)
+	if err != nil {
+		if handleReenrollNeeded(cfg, err) {
+			return
+		}
+		log.Printf("registry policy sync failed: %v", err)
+	}
 }
 
 func uploadInventory(cfg *config.Config, apiClient *api.APIClient) ([]api.PendingDeviceCommand, error) {

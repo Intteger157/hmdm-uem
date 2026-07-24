@@ -25,6 +25,7 @@ const (
 	completeCommandPath       = "/rest/windows/commands/%d/complete"
 	submitCommandResultPath   = "/rest/windows/commands/%d/result"
 	effectiveConfigPath       = "/rest/windows/devices/%s/effective-config"
+	deviceConfigurationsPath  = "/rest/windows/devices/%s/configurations"
 	policyEnforcementLogPath  = "/rest/windows/devices/%s/policy-enforcement"
 	appStatusPath             = "/rest/windows/devices/%s/apps/status"
 	appInstallLogPath         = "/rest/windows/devices/%s/logs/app-install"
@@ -123,6 +124,21 @@ type EffectiveConfigResponse struct {
 	ProfileID    uint                   `json:"profileId,omitempty"`
 	ProfileName  string                 `json:"profileName,omitempty"`
 	Source       string                 `json:"source,omitempty"`
+}
+
+// DeviceConfigurationsResponse is returned by GET /rest/windows/devices/:id/configurations.
+type DeviceConfigurationsResponse struct {
+	ConfigurationID   uint                         `json:"configurationId,omitempty"`
+	ConfigurationName string                       `json:"configurationName,omitempty"`
+	Policies          []ConfigurationPolicyPayload `json:"policies"`
+}
+
+// ConfigurationPolicyPayload is one registry policy rule for the agent.
+type ConfigurationPolicyPayload struct {
+	ID         uint   `json:"id,omitempty"`
+	PolicyPath string `json:"policyPath"`
+	ValueType  string `json:"valueType"`
+	Value      string `json:"value"`
 }
 
 // IsEmptyEffectiveConfig reports whether the server returned no assigned profile/policy.
@@ -489,6 +505,51 @@ func (c *APIClient) FetchEffectiveConfig(authToken, hwid string) (EffectiveConfi
 		return parsed, nil
 	default:
 		return EffectiveConfigResponse{}, fmt.Errorf("effective-config failed with HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+}
+
+// FetchDeviceConfigurations returns merged registry policies assigned to this device.
+func (c *APIClient) FetchDeviceConfigurations(authToken, hwid string) (DeviceConfigurationsResponse, error) {
+	url := c.baseURL + fmt.Sprintf(deviceConfigurationsPath, url.PathEscape(hwid))
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return DeviceConfigurationsResponse{}, fmt.Errorf("create configurations request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+authToken)
+	req.Header.Set("X-Device-Id", hwid)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return DeviceConfigurationsResponse{}, fmt.Errorf("send configurations request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return DeviceConfigurationsResponse{}, fmt.Errorf("read configurations response: %w", err)
+	}
+
+	switch resp.StatusCode {
+	case http.StatusUnauthorized:
+		return DeviceConfigurationsResponse{}, ErrUnauthorized
+	case http.StatusNotFound:
+		return DeviceConfigurationsResponse{}, ErrDeviceNotFound
+	case http.StatusNoContent:
+		return DeviceConfigurationsResponse{}, nil
+	case http.StatusOK:
+		trimmedBody := strings.TrimSpace(string(body))
+		if trimmedBody == "" || trimmedBody == "{}" || trimmedBody == "null" {
+			return DeviceConfigurationsResponse{}, nil
+		}
+
+		var parsed DeviceConfigurationsResponse
+		if err := json.Unmarshal(body, &parsed); err != nil {
+			return DeviceConfigurationsResponse{}, fmt.Errorf("decode configurations response: %w", err)
+		}
+		return parsed, nil
+	default:
+		return DeviceConfigurationsResponse{}, fmt.Errorf("configurations failed with HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
 	}
 }
 
