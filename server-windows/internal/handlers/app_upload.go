@@ -55,10 +55,21 @@ func (h *WindowsHandler) UploadApplication(c *gin.Context) {
 	}
 
 	parsed, parseErr := metadata.ParseInstallerMetadata(destPath)
+	filenameMeta := metadata.ParseFilenameMetadata(originalName)
+
 	name := strings.TrimSpace(parsed.Name)
 	version := strings.TrimSpace(parsed.Version)
-	if parseErr != nil || name == "" {
+	if name == "" {
+		name = strings.TrimSpace(filenameMeta.Name)
+	}
+	if name == "" {
 		name = metadata.FallbackName(originalName)
+	}
+	if version == "" {
+		version = strings.TrimSpace(filenameMeta.Version)
+	}
+	if parseErr != nil && name == strings.TrimSpace(filenameMeta.Name) {
+		log.Printf("[upload-application] metadata parse fallback to filename: name=%q err=%v", originalName, parseErr)
 	}
 
 	publicPath := fmt.Sprintf("/storage/apps/%s", storedName)
