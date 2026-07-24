@@ -78,6 +78,8 @@ func main() {
 			windows.POST("/devices/:hardwareId/services/refresh", windowsHandler.RefreshDeviceServices)
 			windows.POST("/devices/:hardwareId/services/:serviceName/restart", windowsHandler.RestartDeviceService)
 			windows.GET("/enrollment-setup", windowsHandler.GetEnrollmentSetup)
+			windows.GET("/autopilot-agent", windowsHandler.GetAutopilotAgent)
+			windows.POST("/autopilot-agent/upload", windowsHandler.UploadAutopilotAgent)
 			windows.POST("/enrollment-token", windowsHandler.CreateEnrollmentToken)
 			windows.GET("/installers/default", windowsHandler.GetDefaultInstaller)
 			windows.POST("/installers/default", windowsHandler.RegisterDefaultInstaller)

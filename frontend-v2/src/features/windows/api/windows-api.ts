@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { API_BASE } from '@/shared/api/config'
+import { useAuthStore } from '@/features/auth/store/auth-store'
 import { isMockApiEnabled } from '@/shared/api/mock-utils'
 import { mockSearchDevices } from '@/shared/api/mocks/devices'
 import type {
@@ -382,6 +383,54 @@ export interface WindowsEnrollmentSetupResponse {
   installerConfigured: boolean
   permanentFileUrl?: string
   buildCommand?: string
+}
+
+export interface WindowsAutopilotAgentStatus {
+  configured: boolean
+  fileName?: string
+  fileSize?: number
+  version?: string
+  productName?: string
+  uploadedAt?: string
+  publicUrl?: string
+}
+
+/** Returns bootstrap agent binary status for Singularity Autopilot enrollment. */
+export async function getWindowsAutopilotAgent(): Promise<WindowsAutopilotAgentStatus> {
+  if (isMockApiEnabled()) {
+    return { configured: false, fileName: 'singularity-agent.exe' }
+  }
+
+  const response = await windowsApi.get<WindowsAutopilotAgentStatus>('/autopilot-agent')
+  return response.data
+}
+
+/** Uploads singularity-agent.exe for bootstrap enrollment. */
+export async function uploadWindowsAutopilotAgent(file: File): Promise<WindowsAutopilotAgentStatus> {
+  if (isMockApiEnabled()) {
+    return {
+      configured: true,
+      fileName: file.name,
+      fileSize: file.size,
+      version: '1.0.0',
+      uploadedAt: new Date().toISOString(),
+    }
+  }
+
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const jwt = useAuthStore.getState().jwt
+  const response = await axios.post<WindowsAutopilotAgentStatus>(
+    `${API_BASE}/windows/autopilot-agent/upload`,
+    formData,
+    {
+      headers: {
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+    },
+  )
+  return response.data
 }
 
 /** Returns the shared org enrollment secret and universal MSI status (stable across dialog opens). */
