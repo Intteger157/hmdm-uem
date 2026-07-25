@@ -262,7 +262,6 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
       setDetectedInstallArgs(result.detectedArgs ?? '')
       form.setValue('autoUpdate', false)
       setDownloadUrlLocked(true)
-      toast.success(t('windowsAppCatalog.form.uploadParsed'))
     } catch {
       toast.error(t('windowsAppCatalog.form.uploadError'))
     } finally {
@@ -475,14 +474,17 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-xl">
+      <SheetContent side="right" className="flex w-full flex-col overflow-hidden sm:max-w-xl">
         <SheetHeader>
           <SheetTitle>{t('windowsAppCatalog.form.createTitle')}</SheetTitle>
           <SheetDescription>{t('windowsAppCatalog.form.createDescription')}</SheetDescription>
         </SheetHeader>
 
         <Form {...form}>
-          <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-1 flex-col gap-4 px-4 pb-4">
+          <form
+            onSubmit={(event) => void handleSubmit(event)}
+            className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-6"
+          >
             <Tabs value={appType} onValueChange={handleAppTypeChange}>
               <TabsList className="w-full">
                 <TabsTrigger value="upload" className="flex-1">
@@ -598,6 +600,12 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
               </div>
             ) : null}
 
+            {downloadUrlLocked && appType === 'upload' ? (
+              <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-900 dark:text-emerald-200">
+                {t('windowsAppCatalog.form.uploadParsed')}
+              </div>
+            ) : null}
+
             {existingApp ? (
               <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
                 {t('windowsAppCatalog.form.existingAppHint', {
@@ -607,7 +615,7 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
               </div>
             ) : null}
 
-            <SheetFooter className="px-0">
+            <SheetFooter className="mt-auto shrink-0 px-0 pt-2">
               <Button
                 type="button"
                 variant="outline"
