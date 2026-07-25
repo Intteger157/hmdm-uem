@@ -7,7 +7,7 @@ import (
 	"github.com/hmdm/server-windows/internal/models"
 )
 
-func TestShouldExcludeRequiredApp(t *testing.T) {
+func TestShouldExcludeRequiredAppSuccessRevision(t *testing.T) {
 	t.Parallel()
 
 	baseTime := time.Date(2026, 7, 22, 12, 0, 0, 0, time.UTC)
@@ -18,12 +18,42 @@ func TestShouldExcludeRequiredApp(t *testing.T) {
 		UpdatedAt: newerCatalog,
 	}
 
-	successStatus := models.DeviceAppStatus{
+	successWithoutRevision := models.DeviceAppStatus{
 		AppID:  10,
 		Status: models.AppStatusSuccess,
 	}
-	if !shouldExcludeRequiredApp(app, successStatus) {
-		t.Fatal("expected Success to be excluded from required apps")
+	if shouldExcludeRequiredApp(app, successWithoutRevision) {
+		t.Fatal("expected Success without catalog revision to remain required")
+	}
+
+	successCurrentRevision := models.DeviceAppStatus{
+		AppID:                     10,
+		Status:                    models.AppStatusSuccess,
+		AttemptedCatalogUpdatedAt: ptrTime(newerCatalog),
+	}
+	if !shouldExcludeRequiredApp(app, successCurrentRevision) {
+		t.Fatal("expected Success at current catalog revision to be excluded")
+	}
+
+	successOldRevision := models.DeviceAppStatus{
+		AppID:                     10,
+		Status:                    models.AppStatusSuccess,
+		AttemptedCatalogUpdatedAt: ptrTime(baseTime),
+	}
+	if shouldExcludeRequiredApp(app, successOldRevision) {
+		t.Fatal("expected Success with older catalog revision to remain required")
+	}
+}
+
+func TestShouldExcludeRequiredAppFailedRevision(t *testing.T) {
+	t.Parallel()
+
+	baseTime := time.Date(2026, 7, 22, 12, 0, 0, 0, time.UTC)
+	newerCatalog := baseTime.Add(time.Hour)
+
+	app := models.RequiredApp{
+		ID:        10,
+		UpdatedAt: newerCatalog,
 	}
 
 	failedSameRevision := models.DeviceAppStatus{
@@ -43,14 +73,6 @@ func TestShouldExcludeRequiredApp(t *testing.T) {
 	}
 	if shouldExcludeRequiredApp(app, failedOldRevision) {
 		t.Fatal("expected Failed with newer catalog revision to remain required")
-	}
-
-	failedMissingRevision := models.DeviceAppStatus{
-		AppID:  10,
-		Status: models.AppStatusFailed,
-	}
-	if !shouldExcludeRequiredApp(app, failedMissingRevision) {
-		t.Fatal("expected Failed without catalog revision metadata to be excluded")
 	}
 }
 

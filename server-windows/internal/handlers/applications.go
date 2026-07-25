@@ -275,6 +275,10 @@ func (h *WindowsHandler) CreateApplicationVersion(c *gin.Context) {
 		return
 	}
 
+	if err := requeueLatestAppVersionDeployments(appID, version); err != nil {
+		log.Printf("[create-application-version] requeue failed: app_id=%d version_id=%d err=%v", appID, version.ID, err)
+	}
+
 	item := models.ToApplicationVersionJSON(version)
 	item.DownloadURL = normalizeDownloadURL(item.DownloadURL)
 	c.JSON(http.StatusCreated, item)

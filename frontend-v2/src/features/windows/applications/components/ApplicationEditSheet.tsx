@@ -145,7 +145,7 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-xl">
+      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-2xl">
         <SheetHeader>
           <SheetTitle>{app?.name ?? t('windowsAppCatalog.form.editTitle')}</SheetTitle>
           <SheetDescription>

@@ -321,7 +321,13 @@ func excludeTerminalAppStatuses(deviceID uint, apps []models.RequiredApp) ([]mod
 func shouldExcludeRequiredApp(app models.RequiredApp, status models.DeviceAppStatus) bool {
 	switch status.Status {
 	case models.AppStatusSuccess:
-		return true
+		if status.AttemptedCatalogUpdatedAt == nil {
+			return false
+		}
+		if app.ID == 0 {
+			return true
+		}
+		return !app.UpdatedAt.After(status.AttemptedCatalogUpdatedAt.UTC())
 	case models.AppStatusCanceled:
 		return true
 	case models.AppStatusFailed:

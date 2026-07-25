@@ -121,6 +121,10 @@ func (h *WindowsHandler) UploadApplication(c *gin.Context) {
 		return
 	}
 
+	if err := requeueLatestAppVersionDeployments(app.ID, appVersion); err != nil {
+		log.Printf("[upload-application] requeue failed: app_id=%d version_id=%d err=%v", app.ID, appVersion.ID, err)
+	}
+
 	log.Printf("[upload-application] stored path=%q app_id=%d version_id=%d name=%q version=%q publisher=%q detectedArgs=%q", destPath, app.ID, appVersion.ID, name, version, publisher, detectedArgs)
 	c.JSON(http.StatusOK, models.UploadApplicationResponse{
 		URL:          publicURL,
