@@ -313,6 +313,10 @@ function VersionsTable({ appId, versions }: { appId: number; versions: Applicati
   const deleteMutation = useDeleteApplicationVersionMutation()
   const [deleteTarget, setDeleteTarget] = useState<ApplicationVersion | null>(null)
 
+  const sortedVersions = [...versions].sort(
+    (left, right) => Date.parse(right.uploadedAt) - Date.parse(left.uploadedAt),
+  )
+
   const handleDeleteVersion = async () => {
     if (!deleteTarget) {
       return
@@ -341,38 +345,44 @@ function VersionsTable({ appId, versions }: { appId: number; versions: Applicati
 
   return (
     <>
-      <div className="rounded-lg border">
-        <table className="w-full table-fixed text-left text-sm">
-          <thead className="border-b bg-muted/50">
-            <tr className="text-muted-foreground">
-              <th className="w-[88px] px-3 py-2 font-medium">{t('windowsAppCatalog.columns.version')}</th>
-              <th className="w-[160px] px-3 py-2 font-medium">{t('windowsAppCatalog.columns.updated')}</th>
-              <th className="px-3 py-2 font-medium">{t('windowsAppCatalog.columns.installArgs')}</th>
-              <th className="w-[52px] px-3 py-2 font-medium">{t('windowsAppCatalog.versions.actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {versions.map((version) => (
-              <tr key={version.id} className="border-b last:border-0">
-                <td className="px-3 py-2 align-top whitespace-nowrap">{version.version || '—'}</td>
-                <td className="px-3 py-2 align-top whitespace-nowrap">{formatTimestamp(version.uploadedAt)}</td>
-                <td className="px-3 py-2 align-top font-mono text-xs break-all">{version.installArgs || '—'}</td>
-                <td className="px-3 py-2 align-top">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive"
-                    aria-label={t('windowsAppCatalog.versions.deleteTitle')}
-                    onClick={() => setDeleteTarget(version)}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-sm font-medium">
+            {t('windowsAppCatalog.form.tabVersions')}
+            <span className="ml-1.5 font-normal text-muted-foreground">({sortedVersions.length})</span>
+          </h3>
+        </div>
+
+        <ul className="divide-y divide-border overflow-hidden rounded-lg border bg-muted/20">
+          {sortedVersions.map((version) => (
+            <li key={version.id} className="flex items-start gap-2 p-3 sm:gap-3">
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <span className="font-medium tabular-nums">{version.version || '—'}</span>
+                  <span className="text-xs text-muted-foreground">{formatTimestamp(version.uploadedAt)}</span>
+                </div>
+                <div className="text-xs leading-relaxed">
+                  <span className="font-medium text-muted-foreground">
+                    {t('windowsAppCatalog.columns.installArgs')}
+                  </span>
+                  <p className="mt-1 break-all font-mono text-[11px] text-foreground/90">
+                    {version.installArgs?.trim() || '—'}
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="shrink-0 text-destructive hover:text-destructive"
+                aria-label={t('windowsAppCatalog.versions.deleteTitle')}
+                onClick={() => setDeleteTarget(version)}
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            </li>
+          ))}
+        </ul>
       </div>
 
       <ConfirmDeleteDialog
