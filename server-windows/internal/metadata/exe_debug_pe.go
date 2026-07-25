@@ -147,11 +147,11 @@ func parseVSVersionInfo(data []byte) (InstallerMetadata, error) {
 		return InstallerMetadata{}, errPEFormat
 	}
 
-	return InstallerMetadata{
+	return sanitizeInstallerMetadata(InstallerMetadata{
 		Name:      firstNonEmpty(stringsMap["ProductName"], stringsMap["FileDescription"], stringsMap["InternalName"]),
 		Version:   NormalizeVersion(firstNonEmpty(stringsMap["ProductVersion"], stringsMap["FileVersion"])),
 		Publisher: firstNonEmpty(stringsMap["CompanyName"], stringsMap["LegalCopyright"]),
-	}, nil
+	}), nil
 }
 
 func extractVersionStringMap(data []byte) map[string]string {
@@ -176,34 +176,22 @@ func extractVersionStringMap(data []byte) map[string]string {
 	return result
 }
 
-func scanStringProperty(data []byte, property string) string {
-	if value := scanUTF16PropertyString(data, property); value != "" {
-		return value
-	}
-	needle := []byte(property)
-	index := bytes.Index(data, needle)
-	if index < 0 {
-		return ""
-	}
-	return readNearbyString(data[index:])
-}
-
 func scanUTF16PropertyString(data []byte, property string) string {
 	needle := utf16LEBytes(utf16.Encode([]rune(property)))
 	for i := 0; i+len(needle) <= len(data); i++ {
 		if !bytes.Equal(data[i:i+len(needle)], needle) {
 			continue
 		}
-		if value := readNearbyString(data[i:]); value != "" && !strings.EqualFold(value, property) {
+		if value := readUTF16ValueAfterKey(data[i:], len(needle)); value != "" && !strings.EqualFold(value, property) {
 			return value
 		}
 	}
 	return ""
 }
 
-func readNearbyString(chunk []byte) string {
-	if len(chunk) > 4096 {
-		chunk = chunk[:4096]
+func scanStringProperty(data []byte, property string) string {
+	if value := scanUTF16PropertyString(data, property); value != "" {
+		return value
 	}
-	return firstUTF16StringAfter(chunk, len(chunk)/8)
+	return readASCIIPropertyValue(data, property)
 }

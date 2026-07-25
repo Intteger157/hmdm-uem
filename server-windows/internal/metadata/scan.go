@@ -2,7 +2,6 @@ package metadata
 
 import (
 	"bytes"
-	"encoding/binary"
 	"strings"
 	"unicode/utf16"
 )
@@ -26,13 +25,15 @@ func scanVersionProperty(data []byte, property string) string {
 }
 
 func scanUTF16VersionProperty(data []byte, property string) string {
-	needle := utf16.Encode([]rune(property))
-	for i := 0; i+len(needle)*2 <= len(data); i++ {
-		if !bytes.Equal(data[i:i+len(needle)*2], utf16LEBytes(needle)) {
+	needle := utf16LEBytes(utf16.Encode([]rune(property)))
+	for i := 0; i+len(needle) <= len(data); i++ {
+		if !bytes.Equal(data[i:i+len(needle)], needle) {
 			continue
 		}
-		if value := readNearbyVersion(data[i:]); value != "" {
-			return value
+		if value := readUTF16ValueAfterKey(data[i:], len(needle)); value != "" {
+			if normalized := NormalizeVersion(value); normalized != "" && !strings.EqualFold(normalized, property) {
+				return normalized
+			}
 		}
 	}
 	return ""
@@ -72,34 +73,5 @@ func firstUTF16StringAfter(data []byte, skipBytes int) string {
 	if start%2 == 1 {
 		start++
 	}
-
-	var runes []uint16
-	for i := start; i+1 < len(data); i += 2 {
-		value := binary.LittleEndian.Uint16(data[i : i+2])
-		if value == 0 {
-			if len(runes) == 0 {
-				continue
-			}
-			return strings.TrimSpace(string(utf16.Decode(runes)))
-		}
-		if value < 32 && value != 9 {
-			if len(runes) > 0 {
-				break
-			}
-			continue
-		}
-		runes = append(runes, value)
-	}
-	if len(runes) == 0 {
-		return ""
-	}
-	return strings.TrimSpace(string(utf16.Decode(runes)))
-}
-
-func utf16LEBytes(values []uint16) []byte {
-	out := make([]byte, len(values)*2)
-	for i, value := range values {
-		binary.LittleEndian.PutUint16(out[i*2:], value)
-	}
-	return out
+	return readUTF16StringAt(data, start)
 }

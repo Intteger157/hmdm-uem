@@ -60,6 +60,7 @@ func resolveExeMetadata(path string) resolvedInstallerMetadata {
 		if err != nil {
 			continue
 		}
+		parsed = sanitizeInstallerMetadata(parsed)
 		parsed.Version = NormalizeVersion(parsed.Version)
 		if parsed.Name != "" || parsed.Version != "" || parsed.Publisher != "" {
 			return resolvedInstallerMetadata{InstallerMetadata: parsed, Source: metadataSourceFile}
@@ -67,7 +68,7 @@ func resolveExeMetadata(path string) resolvedInstallerMetadata {
 	}
 
 	if scanned := scanMetadataFromBinary(readFileSample(path)); scanned.Name != "" || scanned.Version != "" || scanned.Publisher != "" {
-		return resolvedInstallerMetadata{InstallerMetadata: scanned, Source: metadataSourceFile}
+		return resolvedInstallerMetadata{InstallerMetadata: sanitizeInstallerMetadata(scanned), Source: metadataSourceFile}
 	}
 
 	return resolvedInstallerMetadata{Source: metadataSourceDefault}
@@ -88,7 +89,7 @@ func resolveMsiMetadata(path string) resolvedInstallerMetadata {
 	}
 
 	if scanned := scanMetadataFromBinary(readFileSample(path)); scanned.Name != "" || scanned.Version != "" || scanned.Publisher != "" {
-		return resolvedInstallerMetadata{InstallerMetadata: scanned, Source: metadataSourceFile}
+		return resolvedInstallerMetadata{InstallerMetadata: sanitizeInstallerMetadata(scanned), Source: metadataSourceFile}
 	}
 
 	return resolvedInstallerMetadata{Source: metadataSourceDefault}

@@ -25,6 +25,7 @@ func parseExeMetadataFileVersion(path string) (InstallerMetadata, error) {
 		Version:   version,
 		Publisher: firstNonEmpty(info.CompanyName(), info.LegalCopyright()),
 	}
+	meta = sanitizeInstallerMetadata(meta)
 	if meta.Name == "" && meta.Version == "" && meta.Publisher == "" {
 		return InstallerMetadata{}, errPEFormat
 	}

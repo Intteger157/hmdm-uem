@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"unicode/utf16"
 
 	"github.com/richardlehane/mscfb"
 	"github.com/richardlehane/msoleps"
@@ -54,12 +53,13 @@ func parseExeMetadata(path string) (InstallerMetadata, error) {
 	if err != nil {
 		return InstallerMetadata{}, err
 	}
+	resources = sanitizeVersionResourceMap(resources)
 
-	return InstallerMetadata{
+	return sanitizeInstallerMetadata(InstallerMetadata{
 		Name:      firstNonEmpty(resources["ProductName"], resources["FileDescription"], resources["InternalName"]),
 		Version:   NormalizeVersion(firstNonEmpty(resources["ProductVersion"], resources["FileVersion"])),
 		Publisher: firstNonEmpty(resources["CompanyName"], resources["LegalCopyright"]),
-	}, nil
+	}), nil
 }
 
 func parseMsiMetadataLegacy(path string) (InstallerMetadata, error) {
@@ -195,13 +195,9 @@ func parseMsiStringPool(data []byte) []string {
 
 func decodeMsiString(raw []byte) string {
 	if len(raw) >= 2 && len(raw)%2 == 0 && looksLikeUTF16LE(raw) {
-		u16 := make([]uint16, len(raw)/2)
-		for i := range u16 {
-			u16[i] = binary.LittleEndian.Uint16(raw[i*2:])
-		}
-		return strings.TrimSpace(string(utf16.Decode(u16)))
+		return decodeUTF16LEBytes(raw)
 	}
-	return strings.TrimSpace(string(raw))
+	return sanitizeMetadataString(string(raw))
 }
 
 func looksLikeUTF16LE(raw []byte) bool {
