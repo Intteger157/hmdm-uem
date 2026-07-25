@@ -158,18 +158,42 @@ func replaceProfileAppsTx(tx *gorm.DB, profileID uint, assignments []models.Prof
 }
 
 func saveProfileAppsForRequest(profileID uint, req models.UpsertConfigProfileRequest) error {
-	if req.AppIDs == nil && req.Assignments == nil {
+	if !req.RequiredAppsProvided() {
 		return nil
 	}
 
-	assignments := normalizeProfileAssignments(models.AssignProfileAppsRequest{
-		AppIDs:      req.AppIDs,
-		Assignments: req.Assignments,
-	})
+	assignments, err := req.NormalizedAssignments()
+	if err != nil {
+		return err
+	}
 	if err := validateApplicationAssignments(assignments); err != nil {
 		return err
 	}
 	return replaceProfileApps(profileID, assignments)
+}
+
+func respondSaveProfileAppsError(c *gin.Context, profileID uint, action string, err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "one or more apps or versions were not found"})
+		return true
+	}
+	if isProfileAppsValidationError(err) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return true
+	}
+	log.Printf("[%s] save apps failed: id=%d err=%v", action, profileID, err)
+	c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save profile apps"})
+	return true
+}
+
+func isProfileAppsValidationError(err error) bool {
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "invalid version_policy") ||
+		strings.Contains(message, "app id is required") ||
+		strings.Contains(message, "must be a")
 }
 
 // GetDeviceAppStatuses returns deployment statuses for a device.

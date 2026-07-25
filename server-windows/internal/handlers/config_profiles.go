@@ -107,13 +107,9 @@ func (h *WindowsHandler) CreateConfigProfile(c *gin.Context) {
 	}
 
 	if err := saveProfileAppsForRequest(profile.ID, req); err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "one or more apps or versions were not found"})
+		if respondSaveProfileAppsError(c, profile.ID, "create-config-profile", err) {
 			return
 		}
-		log.Printf("[create-config-profile] save apps failed: id=%d err=%v", profile.ID, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save profile apps"})
-		return
 	}
 
 	if profile.IsDefault {
@@ -185,13 +181,9 @@ func (h *WindowsHandler) UpdateConfigProfile(c *gin.Context) {
 	}
 
 	if err := saveProfileAppsForRequest(profileID, req); err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "one or more apps or versions were not found"})
+		if respondSaveProfileAppsError(c, profileID, "update-config-profile", err) {
 			return
 		}
-		log.Printf("[update-config-profile] save apps failed: id=%d err=%v", profileID, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save profile apps"})
-		return
 	}
 
 	if err := applyExclusiveDefaultProfile(profile.ID, profile.IsDefault); err != nil {

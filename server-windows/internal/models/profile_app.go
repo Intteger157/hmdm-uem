@@ -14,7 +14,7 @@ func (ProfileApp) TableName() string {
 // ProfileAppAssignment selects an app and optional pinned version.
 type ProfileAppAssignment struct {
 	AppID     uint  `json:"appId"`
-	VersionID *uint `json:"versionId,omitempty"`
+	VersionID *uint `json:"versionId"`
 }
 
 // AssignProfileAppsRequest replaces required apps for a profile.

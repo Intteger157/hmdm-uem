@@ -123,8 +123,11 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
           isActive: values.isActive || values.isDefault,
           isDefault: values.isDefault,
           payload: values.payload,
-          appIds: values.appAssignments.map((item) => item.appId),
-          assignments: values.appAssignments,
+          requiredApps: values.appAssignments.map((item) => ({
+            appId: item.appId,
+            versionPolicy:
+              item.versionId == null || item.versionId === 0 ? 'latest' : String(item.versionId),
+          })),
         },
       })
 

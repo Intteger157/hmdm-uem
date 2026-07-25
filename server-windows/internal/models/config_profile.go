@@ -32,13 +32,81 @@ func (WindowsConfigProfile) TableName() string {
 
 // UpsertConfigProfileRequest is sent by the admin UI to create or update a profile.
 type UpsertConfigProfileRequest struct {
-	Name        string                      `json:"name" binding:"required"`
-	Description string                      `json:"description"`
-	Payload     WindowsConfigProfilePayload `json:"payload" binding:"required"`
-	IsActive    bool                        `json:"isActive"`
-	IsDefault   bool                        `json:"isDefault"`
-	AppIDs      []uint                      `json:"appIds"`
-	Assignments []ProfileAppAssignment      `json:"assignments"`
+	Name         string                      `json:"name" binding:"required"`
+	Description  string                      `json:"description"`
+	Payload      WindowsConfigProfilePayload `json:"payload" binding:"required"`
+	IsActive     bool                        `json:"isActive"`
+	IsDefault    bool                        `json:"isDefault"`
+	RequiredApps []RequiredAppRequest        `json:"requiredApps"`
+	AppIDs       []uint                      `json:"appIds"`
+	Assignments  []ProfileAppAssignment      `json:"assignments"`
+}
+
+// RequiredAppsProvided reports whether the client sent required app selections.
+func (req UpsertConfigProfileRequest) RequiredAppsProvided() bool {
+	return req.RequiredApps != nil || req.AppIDs != nil || req.Assignments != nil
+}
+
+// NormalizedAssignments resolves required apps from requiredApps and legacy fields.
+func (req UpsertConfigProfileRequest) NormalizedAssignments() ([]ProfileAppAssignment, error) {
+	if len(req.RequiredApps) > 0 {
+		return NormalizeRequiredAppRequests(req.RequiredApps)
+	}
+
+	if req.Assignments != nil || req.AppIDs != nil {
+		return normalizeLegacyProfileAssignments(req.AppIDs, req.Assignments), nil
+	}
+
+	return nil, nil
+}
+
+func normalizeLegacyProfileAssignments(appIDs []uint, assignments []ProfileAppAssignment) []ProfileAppAssignment {
+	if len(assignments) > 0 {
+		return dedupeProfileAssignments(assignments)
+	}
+
+	result := make([]ProfileAppAssignment, 0, len(appIDs))
+	for _, appID := range uniqueUintIDs(appIDs) {
+		if appID == 0 {
+			continue
+		}
+		result = append(result, ProfileAppAssignment{AppID: appID})
+	}
+	return result
+}
+
+func uniqueUintIDs(values []uint) []uint {
+	seen := make(map[uint]struct{}, len(values))
+	result := make([]uint, 0, len(values))
+	for _, value := range values {
+		if value == 0 {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
+	}
+	return result
+}
+
+// UnmarshalJSON accepts requiredApps and legacy required_apps payloads.
+func (req *UpsertConfigProfileRequest) UnmarshalJSON(data []byte) error {
+	type alias UpsertConfigProfileRequest
+	aux := struct {
+		RequiredAppsSnake []RequiredAppRequest `json:"required_apps"`
+		*alias
+	}{
+		alias: (*alias)(req),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	if len(aux.RequiredAppsSnake) > 0 && len(req.RequiredApps) == 0 {
+		req.RequiredApps = aux.RequiredAppsSnake
+	}
+	return nil
 }
 
 // ConfigProfileJSON is one configuration profile for the admin UI.
