@@ -313,7 +313,10 @@ func deployURLApp(app RequiredApp, opts DeployOptions, state *AppsState, install
 	if err != nil {
 		return reportDeployFailure(opts, progress, app, state, fmt.Sprintf("download failed: %v", err), fmt.Errorf("download: %w", err))
 	}
-	defer os.Remove(localPath)
+	selfUpdate := isAgentSelfUpdatePackage(app.Name)
+	if !selfUpdate {
+		defer os.Remove(localPath)
+	}
 
 	progress.note(fmt.Sprintf("Downloaded to %s", localPath))
 
@@ -321,6 +324,35 @@ func deployURLApp(app RequiredApp, opts DeployOptions, state *AppsState, install
 		return reportDeployFailure(opts, progress, app, state, fmt.Sprintf("Unblock-File failed: %v", err), fmt.Errorf("unblock file: %w", err))
 	}
 	progress.note("Unblock-File completed")
+
+	if !isAppStillRequired(opts, app.ID) {
+		reportDeployCanceled(opts, app)
+		return false, nil
+	}
+
+	if selfUpdate {
+		stagedPath, err := stageInstallerForDetachedRun(localPath)
+		if err != nil {
+			return reportDeployFailure(opts, progress, app, state, fmt.Sprintf("stage installer: %v", err), fmt.Errorf("stage installer: %w", err))
+		}
+
+		progress.Report(InstallStatusInstalling, fmt.Sprintf("Launching detached self-update: %s", stagedPath))
+		log.Printf("app deploy: launching detached self-update id=%d name=%q path=%q installArgs=%q", app.ID, app.Name, stagedPath, app.InstallArgs)
+
+		result, err := runDetachedURLInstaller(stagedPath, app.InstallArgs)
+		if err != nil {
+			os.Remove(stagedPath)
+			log.Printf("app deploy: detached self-update failed id=%d name=%q: %v", app.ID, app.Name, err)
+			return reportDeployFailure(opts, progress, app, state, formatInstallFailureMessage(err, result), fmt.Errorf("detached install: %w", err))
+		}
+
+		successMessage := "Agent self-update launched; service will restart"
+		log.Printf("app deploy: detached self-update started id=%d name=%q", app.ID, app.Name)
+		progress.Report(InstallStatusSuccess, result.Stdout)
+		reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusSuccess, successMessage)
+		state.MarkDeployed(app.ID, app.UpdatedAt)
+		return true, nil
+	}
 
 	progress.Report(InstallStatusInstalling, fmt.Sprintf("Installer path: %s", localPath))
 	reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusInstalling, "")

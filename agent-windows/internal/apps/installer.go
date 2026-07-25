@@ -5,17 +5,22 @@ package apps
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
+	"github.com/hmdm/agent-windows/internal/brand"
 	"github.com/hmdm/agent-windows/internal/procexec"
 )
 
 const (
 	exitCodeSuccessRebootRequired = 3010
 	appInstallTimeout             = 20 * time.Minute
+	createNoWindow                = 0x08000000
 )
 
 var exeSilentArgSets = [][]string{
@@ -33,6 +38,82 @@ type installRunResult struct {
 
 func isInstallerSuccess(exitCode int) bool {
 	return exitCode == 0 || exitCode == exitCodeSuccessRebootRequired
+}
+
+func isAgentSelfUpdatePackage(appName string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(appName))
+	if normalized == "" {
+		return false
+	}
+	compact := strings.ReplaceAll(normalized, " ", "")
+	return strings.Contains(normalized, strings.ToLower(brand.ProductName)) ||
+		strings.Contains(compact, strings.ToLower(brand.ServiceName))
+}
+
+func stageInstallerForDetachedRun(src string) (string, error) {
+	ext := filepath.Ext(src)
+	destFile, err := os.CreateTemp("", brand.InstallTempPrefix+"*"+ext)
+	if err != nil {
+		return "", err
+	}
+	destPath := destFile.Name()
+
+	srcFile, err := os.Open(src)
+	if err != nil {
+		destFile.Close()
+		os.Remove(destPath)
+		return "", err
+	}
+
+	if _, err := io.Copy(destFile, srcFile); err != nil {
+		srcFile.Close()
+		destFile.Close()
+		os.Remove(destPath)
+		return "", err
+	}
+	if err := srcFile.Close(); err != nil {
+		destFile.Close()
+		os.Remove(destPath)
+		return "", err
+	}
+	if err := destFile.Close(); err != nil {
+		os.Remove(destPath)
+		return "", err
+	}
+	return destPath, nil
+}
+
+func runDetachedURLInstaller(installerPath, installArgs string) (installRunResult, error) {
+	ext := strings.ToLower(filepath.Ext(installerPath))
+	customArgs := strings.TrimSpace(installArgs)
+
+	var cmd *exec.Cmd
+	var cmdLine string
+
+	switch {
+	case ext == ".msi":
+		args := strings.Fields(customArgs)
+		cmd, cmdLine = buildInstallerCommandWithArgs(installerPath, args)
+	case customArgs != "":
+		args := strings.Fields(customArgs)
+		cmd, cmdLine = buildInstallerCommandWithArgs(installerPath, args)
+	default:
+		cmd, cmdLine = buildInstallerCommandWithArgs(installerPath, []string{"/S"})
+	}
+
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP | createNoWindow,
+	}
+
+	if err := cmd.Start(); err != nil {
+		return installRunResult{CommandLine: cmdLine}, fmt.Errorf("start detached installer: %w", err)
+	}
+
+	return installRunResult{
+		ExitCode:    0,
+		CommandLine: cmdLine,
+		Stdout:      "Agent self-update installer launched in detached process",
+	}, nil
 }
 
 func runURLInstaller(installerPath, installArgs string) (installRunResult, error) {

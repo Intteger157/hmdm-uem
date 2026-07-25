@@ -3,15 +3,16 @@ package models
 import "time"
 
 const (
-	CommandLogStatusPending = "Pending"
-	CommandLogStatusSuccess = "Success"
-	CommandLogStatusFailed  = "Failed"
+	CommandLogStatusPending  = "Pending"
+	CommandLogStatusSuccess  = "Success"
+	CommandLogStatusFailed   = "Failed"
+	CommandLogStatusCanceled = "Canceled"
 )
 
 const (
-	CommandNameUninstallUpdate = "UninstallUpdate"
-	CommandNamePowerShell      = "powershell"
-	CommandNameBatteryReport       = "battery_report"
+	CommandNameUninstallUpdate      = "UninstallUpdate"
+	CommandNamePowerShell           = "powershell"
+	CommandNameBatteryReport        = "battery_report"
 	CommandNameInstallWindowsUpdate = "install_windows_update"
 	CommandNameUninstallApp         = "UninstallApp"
 )
@@ -28,6 +29,8 @@ const (
 	AppInstallStepAppInstall  = "AppInstall"
 	AppInstallStepAppResult   = "AppResult"
 )
+
+const AppInstallCanceledMessage = "Application removed from configuration profile"
 
 // DeviceCommandLog stores queued and completed remote commands with raw agent output.
 type DeviceCommandLog struct {

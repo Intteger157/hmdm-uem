@@ -141,6 +141,15 @@ func replaceProfileApps(profileID uint, assignments []models.ProfileAppAssignmen
 }
 
 func replaceProfileAppsTx(tx *gorm.DB, profileID uint, assignments []models.ProfileAppAssignment) error {
+	previousAppIDs, err := listAssignedAppIDsTx(tx, profileID)
+	if err != nil {
+		return err
+	}
+	removed := removedAppIDs(previousAppIDs, assignmentAppIDs(assignments))
+	if err := cancelPendingAppInstallsForRemovedApps(tx, profileID, removed); err != nil {
+		return err
+	}
+
 	if err := tx.Where("profile_id = ?", profileID).Delete(&models.ProfileApp{}).Error; err != nil {
 		return err
 	}
