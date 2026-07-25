@@ -25,16 +25,35 @@ export interface PublicDeviceInfo {
   lastSyncTime?: string
 }
 
-function normalizePublicDeviceInfo(raw: PublicDeviceInfoDto): PublicDeviceInfo {
-  return {
-    deviceId: raw.device_id?.trim() || raw.deviceId?.trim(),
-    hostname: raw.hostname,
-    manufacturer: raw.manufacturer,
-    model: raw.model,
-    mdmServer: raw.mdm_server?.trim() || raw.mdmServer?.trim(),
-    agentVersion: raw.agent_version?.trim() || raw.agentVersion?.trim(),
-    lastSyncTime: raw.last_sync?.trim() || raw.lastSyncTime?.trim(),
+function normalizePublicDeviceInfo(raw: unknown): PublicDeviceInfo {
+  if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) {
+    throw new Error('Invalid device info response payload')
   }
+
+  const dto = raw as PublicDeviceInfoDto
+  const normalized: PublicDeviceInfo = {
+    deviceId: dto.device_id?.trim() || dto.deviceId?.trim(),
+    hostname: dto.hostname,
+    manufacturer: dto.manufacturer,
+    model: dto.model,
+    mdmServer: dto.mdm_server?.trim() || dto.mdmServer?.trim(),
+    agentVersion: dto.agent_version?.trim() || dto.agentVersion?.trim(),
+    lastSyncTime: dto.last_sync?.trim() || dto.lastSyncTime?.trim(),
+  }
+
+  const hasPayload = Boolean(
+    normalized.hostname?.trim() ||
+      normalized.manufacturer?.trim() ||
+      normalized.model?.trim() ||
+      normalized.mdmServer?.trim() ||
+      normalized.agentVersion?.trim() ||
+      normalized.lastSyncTime?.trim(),
+  )
+  if (!hasPayload) {
+    throw new Error('Device info API returned an empty payload')
+  }
+
+  return normalized
 }
 
 export async function fetchPublicDeviceInfo(deviceId: string): Promise<PublicDeviceInfo> {
