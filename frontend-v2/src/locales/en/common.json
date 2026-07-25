@@ -1331,6 +1331,7 @@
   "publicDeviceInfo.notFound": "Device not found.",
   "publicDeviceInfo.loadFailed": "Failed to load device information.",
   "publicDeviceInfo.computer": "Computer",
+  "publicDeviceInfo.manufacturerModel": "Manufacturer / Model",
   "publicDeviceInfo.mdmServer": "MDM server",
   "publicDeviceInfo.agentVersion": "Agent version",
   "publicDeviceInfo.lastSync": "Last sync",

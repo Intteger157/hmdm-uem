@@ -25,3 +25,20 @@ func TestBuildDeviceInformationURLFromRequiresValues(t *testing.T) {
 		t.Fatal("expected error for empty device id")
 	}
 }
+
+func TestBuildDeviceInformationURLFromRejectsLoopback(t *testing.T) {
+	t.Parallel()
+
+	cases := []string{
+		"http://127.0.0.1:49152",
+		"http://localhost:49152",
+		"http://127.0.0.1:8080",
+		"http://localhost:8080",
+	}
+
+	for _, serverURL := range cases {
+		if _, err := buildDeviceInformationURLFrom(serverURL, "device-1"); err == nil {
+			t.Fatalf("expected error for server URL %q", serverURL)
+		}
+	}
+}

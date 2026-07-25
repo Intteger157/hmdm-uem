@@ -80,3 +80,5 @@ Start-Service SingularityMDMAgent
 ## Device information page
 
 The tray helper menu item **Device Information** opens a public page on the MDM server at `{ServerURL}/device-info/{DeviceID}` (for example `https://test-dev-mdm.intteger.uk/device-info/<hardware-id>`). The page shows hostname, MDM server URL, agent version, and last sync time from the central server — no local HTTP listener is used on the device.
+
+If the menu still opens `127.0.0.1:49152`, an old tray helper process is still running. Restart the `SingularityMDMAgent` service (or sign out and back in) after deploying a new agent build so the updated `-tray` helper is launched.

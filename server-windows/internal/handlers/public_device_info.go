@@ -34,6 +34,8 @@ func (h *WindowsHandler) GetPublicDeviceInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, models.PublicDeviceInfoResponse{
 		DeviceID:     device.HardwareID,
 		Hostname:     strings.TrimSpace(device.Hostname),
+		Manufacturer: strings.TrimSpace(device.Manufacturer),
+		Model:        strings.TrimSpace(device.Model),
 		MDMServer:    buildPublicBaseURL(c),
 		AgentVersion: resolvePublicAgentVersion(device),
 		LastSyncTime: formatPublicLastSync(device.LastCheckin),

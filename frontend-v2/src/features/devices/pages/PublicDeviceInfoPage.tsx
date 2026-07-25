@@ -1,13 +1,15 @@
 import { useTranslation } from 'react-i18next'
-import { MonitorSmartphone } from 'lucide-react'
 import {
   formatPublicLastSync,
+  formatPublicManufacturerModel,
   usePublicDeviceInfoQuery,
 } from '@/features/devices/hooks/use-public-device-info-query'
 
 interface PublicDeviceInfoPageProps {
   deviceId: string
 }
+
+const laptopImageSrc = '/device-info-laptop.png'
 
 export function PublicDeviceInfoPage({ deviceId }: PublicDeviceInfoPageProps) {
   const { t } = useTranslation()
@@ -24,9 +26,16 @@ export function PublicDeviceInfoPage({ deviceId }: PublicDeviceInfoPageProps) {
     <div className="min-h-screen bg-[#0b0f17] px-4 py-8 text-[#f9fafb]">
       <div className="mx-auto max-w-xl">
         <div className="overflow-hidden rounded-2xl border border-[#1f2937] bg-[#111827] shadow-[0_10px_30px_rgba(15,23,42,0.35)]">
-          <div className="border-b border-[#1f2937] px-6 py-6">
-            <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.04em] text-[#60a5fa]">
-              <MonitorSmartphone className="size-4" />
+          <div className="px-6 pt-6">
+            <img
+              src={laptopImageSrc}
+              alt=""
+              className="mx-auto mb-6 max-h-52 w-full max-w-sm object-contain"
+            />
+          </div>
+
+          <div className="border-b border-[#1f2937] px-6 pb-6">
+            <div className="mb-2 text-xs font-semibold uppercase tracking-[0.04em] text-[#60a5fa]">
               {t('publicDeviceInfo.badge')}
             </div>
             <h1 className="text-2xl font-semibold tracking-tight">{t('publicDeviceInfo.title')}</h1>
@@ -40,6 +49,10 @@ export function PublicDeviceInfoPage({ deviceId }: PublicDeviceInfoPageProps) {
           ) : (
             <dl>
               <InfoRow label={t('publicDeviceInfo.computer')} value={data.hostname || '—'} />
+              <InfoRow
+                label={t('publicDeviceInfo.manufacturerModel')}
+                value={formatPublicManufacturerModel(data.manufacturer, data.model)}
+              />
               <InfoRow label={t('publicDeviceInfo.mdmServer')} value={data.mdmServer || '—'} />
               <InfoRow
                 label={t('publicDeviceInfo.agentVersion')}

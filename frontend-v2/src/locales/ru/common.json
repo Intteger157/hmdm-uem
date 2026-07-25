@@ -1331,6 +1331,7 @@
   "publicDeviceInfo.notFound": "Устройство не найдено.",
   "publicDeviceInfo.loadFailed": "Не удалось загрузить информацию об устройстве.",
   "publicDeviceInfo.computer": "Компьютер",
+  "publicDeviceInfo.manufacturerModel": "Производитель / Модель",
   "publicDeviceInfo.mdmServer": "MDM-сервер",
   "publicDeviceInfo.agentVersion": "Версия агента",
   "publicDeviceInfo.lastSync": "Последняя синхронизация",

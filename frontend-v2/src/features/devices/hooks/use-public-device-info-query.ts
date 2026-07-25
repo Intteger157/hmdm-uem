@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   fetchPublicDeviceInfo,
   formatPublicLastSync,
+  formatPublicManufacturerModel,
 } from '@/features/devices/api/public-device-info-api'
 
 export function usePublicDeviceInfoQuery(deviceId: string) {
@@ -13,4 +14,4 @@ export function usePublicDeviceInfoQuery(deviceId: string) {
   })
 }
 
-export { formatPublicLastSync }
+export { formatPublicLastSync, formatPublicManufacturerModel }

@@ -45,6 +45,7 @@ func openDeviceInformationPage() error {
 	if err != nil {
 		return err
 	}
+	log.Printf("opening public device information page: %s", pageURL)
 	if err := exec.Command("rundll32", "url.dll,FileProtocolHandler", pageURL).Start(); err != nil {
 		return fmt.Errorf("open browser: %w", err)
 	}
@@ -79,7 +80,39 @@ func buildDeviceInformationURLFrom(serverURL, deviceID string) (string, error) {
 	if deviceID == "" {
 		return "", fmt.Errorf("device id not configured")
 	}
+	if err := validatePublicServerURL(serverURL); err != nil {
+		return "", err
+	}
 
 	base := strings.TrimRight(serverURL, "/")
-	return base + "/device-info/" + url.PathEscape(deviceID), nil
+	pageURL := base + "/device-info/" + url.PathEscape(deviceID)
+	if err := validatePublicDeviceInfoPageURL(pageURL); err != nil {
+		return "", err
+	}
+	return pageURL, nil
+}
+
+func validatePublicServerURL(serverURL string) error {
+	lower := strings.ToLower(strings.TrimSpace(serverURL))
+	if lower == "" {
+		return fmt.Errorf("server URL not configured")
+	}
+	if strings.Contains(lower, ":49152") {
+		return fmt.Errorf("legacy local device info port 49152 is disabled; configure ServerURL in registry")
+	}
+	if strings.Contains(lower, "127.0.0.1") || strings.Contains(lower, "localhost") {
+		return fmt.Errorf("server URL must point to the MDM server, not localhost")
+	}
+	if !strings.HasPrefix(lower, "http://") && !strings.HasPrefix(lower, "https://") {
+		return fmt.Errorf("server URL must start with http:// or https://")
+	}
+	return nil
+}
+
+func validatePublicDeviceInfoPageURL(pageURL string) error {
+	lower := strings.ToLower(pageURL)
+	if strings.Contains(lower, "127.0.0.1:49152") || strings.Contains(lower, ":49152") {
+		return fmt.Errorf("refusing to open legacy local device info URL")
+	}
+	return nil
 }
