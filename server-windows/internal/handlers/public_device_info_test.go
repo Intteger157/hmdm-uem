@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -33,6 +34,47 @@ func TestParseUnsignedDeviceID(t *testing.T) {
 		}
 		if ok && got != tc.want {
 			t.Fatalf("parseUnsignedDeviceID(%q) = %d, want %d", tc.input, got, tc.want)
+		}
+	}
+}
+
+func TestBuildPublicDeviceResponseJSON(t *testing.T) {
+	t.Parallel()
+
+	at := time.Date(2026, 7, 25, 10, 30, 0, 0, time.UTC)
+	device := models.WindowsDevice{
+		HardwareID:   "3f77f26d-aa69-49c4-aa3c-22a882784bad",
+		Hostname:     "DESKTOP-TEST",
+		Manufacturer: "LENOVO",
+		Model:        "ThinkPad",
+		LastCheckin:  at,
+		InstalledSoftware: []byte(`[{"name":"Singularity MDM Agent","version":"1.0.25.0"}]`),
+	}
+
+	response := buildPublicDeviceResponse(device, "https://test-dev-mdm.intteger.uk")
+	payload, err := json.Marshal(response)
+	if err != nil {
+		t.Fatalf("json.Marshal() err = %v", err)
+	}
+
+	var raw map[string]string
+	if err := json.Unmarshal(payload, &raw); err != nil {
+		t.Fatalf("json.Unmarshal() err = %v", err)
+	}
+
+	checks := map[string]string{
+		"device_id":      "3f77f26d-aa69-49c4-aa3c-22a882784bad",
+		"hostname":       "DESKTOP-TEST",
+		"manufacturer":   "LENOVO",
+		"model":          "ThinkPad",
+		"agent_version":  "1.0.25.0",
+		"last_sync":      "2026-07-25T10:30:00Z",
+		"mdm_server":     "https://test-dev-mdm.intteger.uk",
+	}
+
+	for key, want := range checks {
+		if got := raw[key]; got != want {
+			t.Fatalf("response[%q] = %q, want %q (payload=%s)", key, got, want, string(payload))
 		}
 	}
 }

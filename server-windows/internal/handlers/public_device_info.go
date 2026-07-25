@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -15,12 +16,15 @@ import (
 // GetPublicDeviceInfo returns safe read-only device metadata for the public info page.
 func (h *WindowsHandler) GetPublicDeviceInfo(c *gin.Context) {
 	deviceID := strings.TrimSpace(c.Param("deviceId"))
+	log.Printf("[Public API] Requested Device ID: %s", deviceID)
+
 	if deviceID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing device id"})
 		return
 	}
 
 	device, err := findWindowsDeviceByIdentifier(deviceID)
+	logPublicDeviceLookup(deviceID, device, err)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "device not found"})
@@ -30,15 +34,19 @@ func (h *WindowsHandler) GetPublicDeviceInfo(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.PublicDeviceInfoResponse{
-		DeviceID:     device.HardwareID,
+	c.JSON(http.StatusOK, buildPublicDeviceResponse(device, buildPublicBaseURL(c)))
+}
+
+func buildPublicDeviceResponse(device models.WindowsDevice, mdmServer string) models.PublicDeviceResponse {
+	return models.PublicDeviceResponse{
+		DeviceID:     strings.TrimSpace(device.HardwareID),
 		Hostname:     strings.TrimSpace(device.Hostname),
 		Manufacturer: strings.TrimSpace(device.Manufacturer),
 		Model:        strings.TrimSpace(device.Model),
-		MDMServer:    buildPublicBaseURL(c),
+		MDMServer:    strings.TrimSpace(mdmServer),
 		AgentVersion: resolvePublicAgentVersion(device),
-		LastSyncTime: formatPublicLastSync(device.LastCheckin),
-	})
+		LastSync:     formatPublicLastSync(device.LastCheckin),
+	}
 }
 
 func resolvePublicAgentVersion(device models.WindowsDevice) string {
