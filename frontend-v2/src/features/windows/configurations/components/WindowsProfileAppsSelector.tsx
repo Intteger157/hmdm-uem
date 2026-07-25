@@ -1,5 +1,12 @@
+import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ProfileAppAssignment, SoftwareApp } from '@/features/windows/applications/types/software-app'
+import {
+  formatAppVersionLabel,
+  formatDisplayText,
+  normalizeProfileAppAssignments,
+  resolveVersionSelectValue,
+} from '@/features/windows/configurations/utils/profile-app-assignments'
 import { Label } from '@/components/ui/label'
 
 interface WindowsProfileAppsSelectorProps {
@@ -16,20 +23,32 @@ export function WindowsProfileAppsSelector({
   disabled = false,
 }: WindowsProfileAppsSelectorProps) {
   const { t } = useTranslation()
+  const normalizedAssignments = useMemo(
+    () => normalizeProfileAppAssignments(assignments),
+    [assignments],
+  )
 
-  const selectedIds = assignments.map((item) => item.appId)
+  useEffect(() => {
+    const serializedCurrent = JSON.stringify(assignments)
+    const serializedNormalized = JSON.stringify(normalizedAssignments)
+    if (serializedCurrent !== serializedNormalized) {
+      onChange(normalizedAssignments)
+    }
+  }, [assignments, normalizedAssignments, onChange])
+
+  const selectedIds = normalizedAssignments.map((item) => item.appId)
 
   const toggleApp = (appId: number) => {
     if (selectedIds.includes(appId)) {
-      onChange(assignments.filter((item) => item.appId !== appId))
+      onChange(normalizedAssignments.filter((item) => item.appId !== appId))
       return
     }
-    onChange([...assignments, { appId }])
+    onChange([...normalizedAssignments, { appId }])
   }
 
   const setVersion = (appId: number, versionId: number | null) => {
     onChange(
-      assignments.map((item) =>
+      normalizedAssignments.map((item) =>
         item.appId === appId ? { ...item, versionId: versionId ?? undefined } : item,
       ),
     )
@@ -51,29 +70,29 @@ export function WindowsProfileAppsSelector({
                   disabled={disabled}
                   onChange={() => toggleApp(app.id)}
                 />
-                <span>{app.name}</span>
-                <span className="text-xs text-muted-foreground">({app.latestVersion || '—'})</span>
+                <span>{formatDisplayText(app.name)}</span>
+                <span className="text-xs text-muted-foreground">
+                  ({formatDisplayText(app.latestVersion)})
+                </span>
               </label>
             ))
           )}
         </div>
       </div>
 
-      {assignments.length > 0 ? (
+      {normalizedAssignments.length > 0 ? (
         <div className="space-y-3">
           <Label>{t('windowsConfigurations.requiredApps.versionPolicy')}</Label>
-          {assignments.map((assignment) => {
+          {normalizedAssignments.map((assignment) => {
             const app = apps.find((item) => item.id === assignment.appId)
             if (!app) {
               return null
             }
-            const value =
-              assignment.versionId == null || assignment.versionId === 0
-                ? 'latest'
-                : String(assignment.versionId)
+            const value = resolveVersionSelectValue(assignment)
+            const latestLabel = formatAppVersionLabel(app, null)
             return (
               <div key={assignment.appId} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-                <span className="min-w-32 text-sm font-medium">{app.name}</span>
+                <span className="min-w-32 text-sm font-medium">{formatDisplayText(app.name)}</span>
                 <select
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:max-w-xs"
                   value={value}
@@ -85,12 +104,12 @@ export function WindowsProfileAppsSelector({
                 >
                   <option value="latest">
                     {t('windowsConfigurations.requiredApps.latestVersion', {
-                      version: app.latestVersion || '—',
+                      version: latestLabel,
                     })}
                   </option>
                   {app.versions.map((version) => (
                     <option key={version.id} value={String(version.id)}>
-                      {version.version || `#${version.id}`}
+                      {formatDisplayText(version.version, `#${version.id}`)}
                     </option>
                   ))}
                 </select>

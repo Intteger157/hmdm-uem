@@ -12,6 +12,7 @@ import {
   replaceWindowsConfigProfilePolicies,
   updateWindowsConfigProfile,
 } from '@/features/windows/configurations/api/windows-configurations-api'
+import { windowsSoftwareAppQueryKeys } from '@/features/windows/applications/hooks/use-windows-software-apps'
 import type { UpsertWindowsConfigProfilePayload, WindowsConfigProfileAssignments, WindowsConfigurationPolicy } from '@/features/windows/configurations/types/config-profile'
 
 export const windowsConfigProfileQueryKeys = {
@@ -113,6 +114,9 @@ export function useAssignWindowsConfigProfileMutation() {
       await queryClient.invalidateQueries({
         queryKey: windowsConfigProfileQueryKeys.assignments(variables.profileId),
       })
+      await queryClient.invalidateQueries({
+        queryKey: windowsSoftwareAppQueryKeys.profileApps(variables.profileId),
+      })
       await queryClient.invalidateQueries({ queryKey: windowsEffectiveConfigQueryKeys.all })
     },
   })
@@ -129,8 +133,14 @@ export function useUpsertWindowsConfigProfileMutation() {
       id?: number
       payload: UpsertWindowsConfigProfilePayload
     }) => (id != null ? updateWindowsConfigProfile(id, payload) : createWindowsConfigProfile(payload)),
-    onSuccess: async () => {
+    onSuccess: async (saved, variables) => {
       await queryClient.invalidateQueries({ queryKey: windowsConfigProfileQueryKeys.all })
+      const profileId = saved.id ?? variables.id
+      if (profileId != null && profileId > 0) {
+        await queryClient.invalidateQueries({
+          queryKey: windowsSoftwareAppQueryKeys.profileApps(profileId),
+        })
+      }
     },
   })
 }

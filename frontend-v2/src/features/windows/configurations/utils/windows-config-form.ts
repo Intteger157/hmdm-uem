@@ -4,6 +4,10 @@ import {
   DEFAULT_WINDOWS_CONFIG_PROFILE_PAYLOAD,
   type WindowsConfigProfile,
 } from '@/features/windows/configurations/types/config-profile'
+import {
+  normalizeConfigProfilePayload,
+  normalizeProfileAppAssignments,
+} from '@/features/windows/configurations/utils/profile-app-assignments'
 
 const profileAppAssignmentSchema = z.object({
   appId: z.number().int().positive(),
@@ -94,21 +98,17 @@ export function toConfigProfileFormValues(
     return createEmptyConfigProfileFormValues()
   }
 
-  const appAssignments =
+  const appAssignments = normalizeProfileAppAssignments(
     profileApps?.assignments ??
-    (profileApps?.appIds ?? []).map((appId) => ({ appId }))
+      (profileApps?.appIds ?? []).map((appId) => ({ appId })),
+  )
 
   return {
     name: profile.name,
     description: profile.description ?? '',
     isActive: profile.isActive,
     isDefault: profile.isDefault,
-    payload: {
-      defenderEnabled: profile.payload.defenderEnabled,
-      blockUsbStorage: profile.payload.blockUsbStorage,
-      usbReadOnly: profile.payload.usbReadOnly ?? false,
-      screenLockTimeout: profile.payload.screenLockTimeout,
-    },
+    payload: normalizeConfigProfilePayload(profile.payload),
     groupIds: sanitizeAssignmentIds(assignments?.groupIds),
     deviceIds: sanitizeAssignmentIds(assignments?.deviceIds),
     appAssignments,
