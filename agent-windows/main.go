@@ -7,7 +7,9 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	_ "embed"
@@ -38,6 +40,8 @@ const (
 )
 
 var inflightInventoryCommands sync.Map
+var inflightPollCommands sync.Map
+var policySyncRunning int32
 
 var (
 	debugMode       = flag.Bool("debug", false, "run in console mode for debugging")
@@ -330,8 +334,9 @@ func runAgentCycle(stop <-chan struct{}, cfg *config.Config, apiClient *api.APIC
 		}
 	}
 
-	// App deployment must not depend on inventory succeeding.
-	syncPolicyFromServer(cfg, apiClient)
+	// Policy sync (including app deploy) runs asynchronously so jitter/downloads
+	// never block the next heartbeat cycle.
+	schedulePolicySync(cfg, apiClient)
 
 	if err := processPendingCommands(stop, cfg, apiClient); err != nil {
 		if handleReenrollNeeded(cfg, err) {
@@ -363,6 +368,18 @@ func runPolicyComplianceLoop(stop <-chan struct{}, cfg *config.Config, apiClient
 			}
 		}
 	}
+}
+
+func schedulePolicySync(cfg *config.Config, apiClient *api.APIClient) {
+	if !atomic.CompareAndSwapInt32(&policySyncRunning, 0, 1) {
+		log.Printf("policy sync: already in progress, skipping")
+		return
+	}
+
+	go func() {
+		defer atomic.StoreInt32(&policySyncRunning, 0)
+		syncPolicyFromServer(cfg, apiClient)
+	}()
 }
 
 func syncPolicyFromServer(cfg *config.Config, apiClient *api.APIClient) {
@@ -475,7 +492,7 @@ func processInventoryCommands(cfg *config.Config, apiClient *api.APIClient, pend
 			continue
 		}
 
-		func(command api.PendingDeviceCommand) {
+		go func(command api.PendingDeviceCommand) {
 			defer inflightInventoryCommands.Delete(command.ID)
 
 			log.Printf("executing inventory command id=%d name=%s payload=%s", command.ID, command.CommandName, command.Payload)
@@ -522,12 +539,41 @@ func processPendingCommands(stop <-chan struct{}, cfg *config.Config, apiClient 
 			continue
 		}
 
+		if isLongRunningPollAction(command.Action) {
+			if _, loaded := inflightPollCommands.LoadOrStore(command.ID, true); loaded {
+				continue
+			}
+			go executePolledCommand(cfg, apiClient, command)
+			continue
+		}
+
 		result := commands.Execute(command.Action, command.Payload)
 		if err := apiClient.CompleteCommand(cfg.AuthToken, cfg.HardwareID, command.ID, result.Success, result.Message); err != nil {
 			return err
 		}
 		log.Printf("command id=%d finished success=%v message=%q", command.ID, result.Success, result.Message)
 	}
+}
+
+func isLongRunningPollAction(action string) bool {
+	switch strings.ToLower(strings.TrimSpace(action)) {
+	case "install", "powershell", "bitlocker_enable":
+		return true
+	default:
+		return false
+	}
+}
+
+func executePolledCommand(cfg *config.Config, apiClient *api.APIClient, command *api.PendingCommand) {
+	defer inflightPollCommands.Delete(command.ID)
+
+	log.Printf("executing command id=%d action=%s (async)", command.ID, command.Action)
+	result := commands.Execute(command.Action, command.Payload)
+	if err := apiClient.CompleteCommand(cfg.AuthToken, cfg.HardwareID, command.ID, result.Success, result.Message); err != nil {
+		log.Printf("command id=%d completion upload failed: %v", command.ID, err)
+		return
+	}
+	log.Printf("command id=%d finished success=%v message=%q", command.ID, result.Success, result.Message)
 }
 
 func handleReenrollNeeded(cfg *config.Config, err error) bool {

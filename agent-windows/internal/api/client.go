@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -112,8 +113,10 @@ type EffectiveConfigPayload struct {
 // RequiredAppPayload is one app required by effective configuration.
 type RequiredAppPayload struct {
 	ID              uint   `json:"id"`
+	VersionID       uint   `json:"versionId,omitempty"`
 	Name            string `json:"name"`
 	Version         string `json:"version"`
+	VersionPolicy   string `json:"versionPolicy,omitempty"`
 	UpdatedAt       string `json:"updatedAt"`
 	DownloadURL     string `json:"downloadUrl"`
 	InstallArgs     string `json:"installArgs"`
@@ -123,13 +126,22 @@ type RequiredAppPayload struct {
 	UpdateFrequency string `json:"updateFrequency"`
 }
 
+// AppliedProfilePayload describes one profile that contributed to effective policy.
+type AppliedProfilePayload struct {
+	ProfileID   uint   `json:"profileId"`
+	ProfileName string `json:"profileName"`
+	Source      string `json:"source"`
+	UpdatedAt   string `json:"updatedAt,omitempty"`
+}
+
 // EffectiveConfigResponse is returned by GET /rest/windows/devices/:id/effective-config.
 type EffectiveConfigResponse struct {
-	Payload      EffectiveConfigPayload `json:"payload"`
-	RequiredApps []RequiredAppPayload   `json:"requiredApps"`
-	ProfileID    uint                   `json:"profileId,omitempty"`
-	ProfileName  string                 `json:"profileName,omitempty"`
-	Source       string                 `json:"source,omitempty"`
+	Payload         EffectiveConfigPayload  `json:"payload"`
+	RequiredApps    []RequiredAppPayload    `json:"requiredApps"`
+	ProfileID       uint                    `json:"profileId,omitempty"`
+	ProfileName     string                  `json:"profileName,omitempty"`
+	Source          string                  `json:"source,omitempty"`
+	AppliedProfiles []AppliedProfilePayload `json:"appliedProfiles,omitempty"`
 }
 
 // DeviceConfigurationsResponse is returned by GET /rest/windows/devices/:id/configurations.
@@ -253,7 +265,12 @@ func (c *APIClient) SendCheckin(authToken, hwid, configHash string) (CheckinResp
 		var parsed CheckinResponse
 		if len(body) > 0 {
 			if err := json.Unmarshal(body, &parsed); err != nil {
-				return CheckinResponse{}, fmt.Errorf("decode checkin response: %w", err)
+				log.Printf(
+					"checkin: decode response failed (heartbeat continues): %v body=%q",
+					err,
+					truncateBodyForLog(body, 512),
+				)
+				return CheckinResponse{}, nil
 			}
 		}
 		return parsed, nil
@@ -302,7 +319,12 @@ func (c *APIClient) SendInventory(authToken, hwid string, info *system.DeviceInf
 		}
 		var parsed inventorySyncResponse
 		if err := json.Unmarshal(body, &parsed); err != nil {
-			return nil, fmt.Errorf("decode inventory response: %w", err)
+			log.Printf(
+				"inventory: decode response failed (continuing cycle): %v body=%q",
+				err,
+				truncateBodyForLog(body, 512),
+			)
+			return nil, nil
 		}
 		commands := make([]PendingDeviceCommand, 0, len(parsed.Commands))
 		for _, item := range parsed.Commands {
@@ -515,6 +537,11 @@ func (c *APIClient) FetchEffectiveConfig(authToken, hwid string) (EffectiveConfi
 
 		var parsed EffectiveConfigResponse
 		if err := json.Unmarshal(body, &parsed); err != nil {
+			log.Printf(
+				"effective-config: decode response failed: %v body=%q",
+				err,
+				truncateBodyForLog(body, 512),
+			)
 			return EffectiveConfigResponse{}, fmt.Errorf("decode effective-config response: %w", err)
 		}
 		if IsEmptyEffectiveConfig(parsed) {
@@ -563,7 +590,12 @@ func (c *APIClient) FetchDeviceConfigurations(authToken, hwid string) (DeviceCon
 
 		var parsed DeviceConfigurationsResponse
 		if err := json.Unmarshal(body, &parsed); err != nil {
-			return DeviceConfigurationsResponse{}, fmt.Errorf("decode configurations response: %w", err)
+			log.Printf(
+				"configurations: decode response failed (continuing sync): %v body=%q",
+				err,
+				truncateBodyForLog(body, 512),
+			)
+			return DeviceConfigurationsResponse{}, nil
 		}
 		return parsed, nil
 	default:
@@ -692,4 +724,15 @@ func (c *APIClient) ReportAppStatus(authToken, hwid string, appID uint, status, 
 	default:
 		return fmt.Errorf("app status report failed with HTTP %d", resp.StatusCode)
 	}
+}
+
+func truncateBodyForLog(body []byte, maxLen int) string {
+	if maxLen <= 0 {
+		maxLen = 512
+	}
+	trimmed := strings.TrimSpace(string(body))
+	if len(trimmed) <= maxLen {
+		return trimmed
+	}
+	return trimmed[:maxLen] + "..."
 }

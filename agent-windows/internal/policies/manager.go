@@ -30,8 +30,8 @@ func SyncFromServer(fetch func() (EffectiveConfig, error), report Reporter, depl
 	}
 
 	if len(config.RequiredApps) > 0 {
-		log.Printf("app deploy: processing %d required app(s)", len(config.RequiredApps))
-		apps.DeployRequired(config.RequiredApps, deploy)
+		log.Printf("app deploy: scheduling %d required app(s) for async deployment", len(config.RequiredApps))
+		apps.DeployRequiredAsync(config.RequiredApps, deploy)
 	}
 
 	configHash := ConfigHash(config)
@@ -90,7 +90,7 @@ func RunComplianceCheck(report Reporter, deploy apps.DeployOptions) error {
 	}
 
 	if len(config.RequiredApps) > 0 {
-		apps.DeployRequired(config.RequiredApps, deploy)
+		apps.DeployRequiredAsync(config.RequiredApps, deploy)
 	}
 
 	results, reconciled, err := ReconcileCompliance(config.Payload)

@@ -34,6 +34,7 @@ const (
 
 var (
 	deployAppsMu      sync.Mutex
+	deployBatchMu     sync.Mutex
 	deployingAppIDs   = map[uint]bool{}
 	deployingAppNames = map[string]bool{}
 )
@@ -41,6 +42,7 @@ var (
 // RequiredApp is one application the agent must install or update.
 type RequiredApp struct {
 	ID              uint   `json:"id"`
+	VersionID       uint   `json:"versionId,omitempty"`
 	Name            string `json:"name"`
 	Version         string `json:"version"`
 	UpdatedAt       string `json:"updatedAt"`
@@ -63,11 +65,27 @@ type DeployOptions struct {
 	StepLogger     StepLogger
 }
 
+// DeployRequiredAsync starts app deployment in a background goroutine so jitter,
+// downloads, and installs never block the agent heartbeat loop.
+func DeployRequiredAsync(required []RequiredApp, opts DeployOptions) {
+	if len(required) == 0 {
+		return
+	}
+	requiredCopy := append([]RequiredApp(nil), required...)
+	go func() {
+		log.Printf("app deploy: starting async deployment for %d app(s)", len(requiredCopy))
+		DeployRequired(requiredCopy, opts)
+	}()
+}
+
 // DeployRequired installs or updates required apps and reports progress to the server.
 func DeployRequired(required []RequiredApp, opts DeployOptions) {
 	if len(required) == 0 {
 		return
 	}
+	deployBatchMu.Lock()
+	defer deployBatchMu.Unlock()
+
 	if opts.StatusReporter == nil {
 		log.Printf("app deploy: status reporter not configured; server will keep Pending")
 	}
