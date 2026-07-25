@@ -8,14 +8,8 @@ import (
 )
 
 const (
-	ProductName = "Singularity MDM Agent"
-	ServiceName = "HMDMAgent"
-
 	RegistryKeyPath        = `SOFTWARE\Singularity MDM\Agent`
 	RegistryKeyPathWOW6432 = `SOFTWARE\WOW6432Node\Singularity MDM\Agent`
-
-	legacyRegistryKeyPath        = `SOFTWARE\HMDM\Agent`
-	legacyRegistryKeyPathWOW6432 = `SOFTWARE\WOW6432Node\HMDM\Agent`
 
 	programDataDirName = "Singularity MDM Agent"
 	installDirName     = "Singularity MDM Agent"
@@ -23,30 +17,23 @@ const (
 
 // RegistryKeyPaths returns registry locations in read priority order.
 func RegistryKeyPaths() []string {
-	return []string{
+	paths := []string{
 		RegistryKeyPath,
 		RegistryKeyPathWOW6432,
-		legacyRegistryKeyPath,
-		legacyRegistryKeyPathWOW6432,
 	}
+	return append(paths, LegacyRegistryKeyPaths()...)
 }
 
 // ProgramDataDir returns the agent data directory under ProgramData.
 func ProgramDataDir() string {
-	root := os.Getenv("PROGRAMDATA")
-	if root == "" {
-		root = `C:\ProgramData`
-	}
-	return filepath.Join(root, programDataDirName)
+	return filepath.Join(programDataRoot(), programDataDirName)
 }
 
-// LegacyProgramDataDir returns the pre-rename data directory.
-func LegacyProgramDataDir() string {
-	root := os.Getenv("PROGRAMDATA")
-	if root == "" {
-		root = `C:\ProgramData`
+func programDataRoot() string {
+	if root := os.Getenv("PROGRAMDATA"); root != "" {
+		return root
 	}
-	return filepath.Join(root, "HMDM", "Agent")
+	return `C:\ProgramData`
 }
 
 // InstallDirName is the folder under Program Files that contains singularity-agent.exe.

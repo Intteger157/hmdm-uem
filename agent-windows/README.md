@@ -53,18 +53,18 @@ MSI-only (reuse staging binary from a previous build):
 
 ## Service name
 
-The Windows service remains `HMDMAgent` for compatibility with existing deployments. The on-disk binary is always `singularity-agent.exe`.
+The Windows service is `SingularityMDMAgent`. The on-disk binary is always `singularity-agent.exe`.
 
 Install location: `C:\Program Files\Singularity MDM Agent\singularity-agent.exe`  
 Data directory: `C:\ProgramData\Singularity MDM Agent\`  
-Registry settings: `HKLM\SOFTWARE\Singularity MDM\Agent` (legacy installs may still use `HKLM\SOFTWARE\HMDM\Agent`).
+Registry settings: `HKLM\SOFTWARE\Singularity MDM\Agent`
 
 ## Debug logs (console)
 
 Run PowerShell **as Administrator**, stop the service, then start the agent in console mode:
 
 ```powershell
-Stop-Service HMDMAgent
+Stop-Service SingularityMDMAgent
 cd "C:\Program Files\Singularity MDM Agent"
 .\singularity-agent.exe -debug
 ```
@@ -74,7 +74,7 @@ If the service cannot be stopped, the debug instance will conflict on port `4915
 After debugging:
 
 ```powershell
-Start-Service HMDMAgent
+Start-Service SingularityMDMAgent
 ```
 
 ## Local device information page

@@ -40,6 +40,6 @@ func warnIfBitLockerAccessDenied() {
 	if err != nil && strings.Contains(text, "access") && strings.Contains(text, "denied") {
 		fmt.Fprintln(os.Stderr, "WARNING: manage-bde access denied — BitLocker status will be unknown.")
 		fmt.Fprintln(os.Stderr, "Re-run this command in an Administrator PowerShell for accurate results.")
-		fmt.Fprintln(os.Stderr, "The HMDMAgent Windows service runs elevated; use Sync in the panel after updating the agent.")
+		fmt.Fprintln(os.Stderr, "The Singularity MDM Agent Windows service runs elevated; use Sync in the panel after updating the agent.")
 	}
 }

@@ -13,6 +13,7 @@
     <MediaTemplate EmbedCab="yes" />
 
     <InstallExecuteSequence>
+      <Custom Action="RemoveLegacyAgentService" Before="EnsureAgentService" Condition="NOT REMOVE" />
       <Custom Action="EnsureAgentService" After="InstallServices" Condition="NOT REMOVE" />
       <Custom Action="NotifyServerUninstall" Before="RemoveFiles" Condition="REMOVE=&quot;ALL&quot;" />
     </InstallExecuteSequence>
@@ -34,7 +35,7 @@
 
       <ServiceInstall
         Id="SingularityAgentServiceInstall"
-        Name="HMDMAgent"
+        Name="SingularityMDMAgent"
         DisplayName="Singularity MDM Agent"
         Description="Singularity MDM agent for Windows device management"
         Type="ownProcess"
@@ -45,7 +46,7 @@
 
       <ServiceControl
         Id="SingularityAgentServiceControl"
-        Name="HMDMAgent"
+        Name="SingularityMDMAgent"
         Start="install"
         Stop="both"
         Remove="uninstall"
@@ -60,9 +61,17 @@
 
   <Fragment>
     <CustomAction
+      Id="RemoveLegacyAgentService"
+      Directory="System6432Folder"
+      ExeCommand="cmd.exe /c sc stop HMDMAgent 2&gt;nul &amp; sc delete HMDMAgent 2&gt;nul"
+      Execute="commit"
+      Impersonate="no"
+      Return="ignore" />
+
+    <CustomAction
       Id="EnsureAgentService"
       Directory="System6432Folder"
-      ExeCommand="cmd.exe /c sc create HMDMAgent binPath= &quot;[AGENTDIR]singularity-agent.exe&quot; start= auto obj= LocalSystem DisplayName= &quot;Singularity MDM Agent&quot;"
+      ExeCommand="cmd.exe /c sc create SingularityMDMAgent binPath= &quot;[AGENTDIR]singularity-agent.exe&quot; start= auto obj= LocalSystem DisplayName= &quot;Singularity MDM Agent&quot;"
       Execute="commit"
       Impersonate="no"
       Return="ignore" />

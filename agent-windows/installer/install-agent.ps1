@@ -2,7 +2,7 @@
 param(
     [string]$MsiPath = (Join-Path $PSScriptRoot "dist\singularity-agent.msi"),
     [string]$ServerUrl = "https://test-dev-mdm.intteger.uk",
-    [string]$ServiceName = "HMDMAgent",
+    [string]$ServiceName = "SingularityMDMAgent",
     [string]$AgentExe = "${env:ProgramFiles}\Singularity MDM Agent\singularity-agent.exe"
 )
 
@@ -10,6 +10,18 @@ $ErrorActionPreference = "Stop"
 
 function Test-ServiceExists([string]$Name) {
     return $null -ne (Get-Service -Name $Name -ErrorAction SilentlyContinue)
+}
+
+function Remove-LegacyAgentService {
+    param([string]$LegacyServiceName)
+
+    if (-not (Test-ServiceExists $LegacyServiceName)) {
+        return
+    }
+
+    Write-Host "Removing legacy service $LegacyServiceName ..."
+    Stop-Service -Name $LegacyServiceName -Force -ErrorAction SilentlyContinue
+    sc.exe delete $LegacyServiceName | Out-Null
 }
 
 function Ensure-AgentService {
@@ -43,12 +55,11 @@ if ($process.ExitCode -ne 0) {
     throw "msiexec failed with exit code $($process.ExitCode). Log: $logPath"
 }
 
+Remove-LegacyAgentService -LegacyServiceName "HMDMAgent"
 Ensure-AgentService -ExePath $AgentExe
 
 if (Test-Path "HKLM:\SOFTWARE\Singularity MDM\Agent") {
     Set-ItemProperty -Path "HKLM:\SOFTWARE\Singularity MDM\Agent" -Name "ServerURL" -Value $ServerUrl
-} elseif (Test-Path "HKLM:\SOFTWARE\HMDM\Agent") {
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\HMDM\Agent" -Name "ServerURL" -Value $ServerUrl
 }
 
 Write-Host "Starting service $ServiceName ..."

@@ -9,7 +9,7 @@ fi
 SERVER_URL="$1"
 TOKEN="$2"
 OUT_DIR="${3:-dist}"
-WIX_IMAGE="${WIX_IMAGE:-hmdm-wix-builder:local}"
+WIX_IMAGE="${WIX_IMAGE:-singularity-mdm-wix-builder:local}"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 INSTALLER_DIR="$ROOT/installer"

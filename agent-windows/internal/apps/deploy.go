@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hmdm/agent-windows/internal/brand"
 	"github.com/hmdm/agent-windows/internal/procexec"
 	"github.com/hmdm/agent-windows/internal/system"
 )
@@ -502,7 +503,7 @@ func downloadInstaller(downloadURL string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	request.Header.Set("User-Agent", "HMDM-Windows-Agent/1.0")
+	request.Header.Set("User-Agent", brand.UserAgent)
 
 	response, err := client.Do(request)
 	if err != nil {
@@ -520,7 +521,7 @@ func downloadInstaller(downloadURL string) (string, error) {
 	}
 
 	ext := installerExtension(downloadURL, response.Header.Get("Content-Type"))
-	tempFile, err := os.CreateTemp("", "hmdm-app-*"+ext)
+	tempFile, err := os.CreateTemp("", brand.DownloadTempPrefix+"*"+ext)
 	if err != nil {
 		return "", err
 	}

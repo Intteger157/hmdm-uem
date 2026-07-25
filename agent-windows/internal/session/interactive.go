@@ -9,6 +9,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/hmdm/agent-windows/internal/brand"
 	"golang.org/x/sys/windows"
 )
 
@@ -101,7 +102,7 @@ func runInActiveConsoleSession(commandLine string) error {
 }
 
 func runViaScheduledTask(commandLine string) error {
-	taskName := fmt.Sprintf("HMDMAgent_%d", time.Now().UnixNano())
+	taskName := fmt.Sprintf("%s%d", brand.InteractiveTaskPrefix, time.Now().UnixNano())
 
 	defer func() {
 		cleanup := exec.Command("schtasks.exe", "/Delete", "/TN", taskName, "/F")

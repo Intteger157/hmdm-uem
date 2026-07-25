@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	bootstrapServiceName  = "HMDMAgent"
+	bootstrapServiceName  = "SingularityMDMAgent"
+	legacyBootstrapService = "HMDMAgent"
 	bootstrapInstallDir   = `C:\Program Files\Singularity MDM Agent`
 	bootstrapStateDir     = `C:\ProgramData\Singularity MDM Agent`
 	bootstrapRegistryPath = `HKLM:\SOFTWARE\Singularity MDM\Agent`
@@ -119,6 +120,16 @@ New-Item -Path '%s' -Force | Out-Null
 Set-ItemProperty -Path '%s' -Name 'ServerURL' -Value $ServerUrl
 Set-ItemProperty -Path '%s' -Name 'EnrollmentToken' -Value $EnrollmentToken
 
+$legacyService = Get-Service -Name '%s' -ErrorAction SilentlyContinue
+if ($null -ne $legacyService) {
+    Write-Host 'Singularity MDM: removing legacy Windows service...'
+    if ($legacyService.Status -ne 'Stopped') {
+        Stop-Service -Name '%s' -Force -ErrorAction SilentlyContinue
+    }
+    sc.exe delete '%s' | Out-Null
+    Start-Sleep -Seconds 2
+}
+
 $existing = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 if ($null -ne $existing) {
     Write-Host 'Singularity MDM: replacing existing service...'
@@ -136,7 +147,7 @@ Write-Host 'Singularity MDM: starting agent service...'
 Start-Service -Name $ServiceName
 
 Write-Host 'Singularity MDM Agent installed and started successfully.'
-%s`, installDir, agentExe, bootstrapServiceName, serverURL, agentDownloadURL, stateDir, stateFile, securityBlock, bootstrapRegistryPath, bootstrapRegistryPath, bootstrapRegistryPath, provisioningBlock)
+%s`, installDir, agentExe, bootstrapServiceName, serverURL, agentDownloadURL, stateDir, stateFile, securityBlock, bootstrapRegistryPath, bootstrapRegistryPath, bootstrapRegistryPath, legacyBootstrapService, legacyBootstrapService, legacyBootstrapService, provisioningBlock)
 }
 
 func buildEnrollmentSecurityBlock(enrollmentMode, embeddedSecret string) string {

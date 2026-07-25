@@ -1,4 +1,4 @@
-// Package api provides HTTP communication with the Headwind MDM server.
+// Package api provides HTTP communication with the Singularity MDM server.
 package api
 
 import (

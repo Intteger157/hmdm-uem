@@ -2,7 +2,7 @@
 
 package service
 
-// Windows power/session notification constants used by the HMDM agent service.
+// Windows power/session notification constants used by the Singularity MDM agent service.
 const (
 	PBTAPMResumeAutomatic = 18
 	PBTAPMResumeSuspend   = 7

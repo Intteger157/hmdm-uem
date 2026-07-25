@@ -17,6 +17,7 @@ import (
 	"github.com/hmdm/agent-windows/internal/agentstate"
 	"github.com/hmdm/agent-windows/internal/api"
 	"github.com/hmdm/agent-windows/internal/apps"
+	"github.com/hmdm/agent-windows/internal/brand"
 	"github.com/hmdm/agent-windows/internal/commands"
 	"github.com/hmdm/agent-windows/internal/config"
 	"github.com/hmdm/agent-windows/internal/desktop"
@@ -33,7 +34,6 @@ import (
 var iconData []byte
 
 const (
-	serviceName              = "HMDMAgent"
 	enrollmentRetryWait      = 30 * time.Second
 	inventoryInterval        = 10 * time.Second
 	policyComplianceInterval = time.Hour
@@ -55,7 +55,7 @@ func main() {
 	flag.Parse()
 
 	if err := run(); err != nil {
-		log.Fatalf("%s: %v", serviceName, err)
+		log.Fatalf("%s: %v", brand.ServiceName, err)
 	}
 }
 
@@ -90,17 +90,17 @@ func run() error {
 
 	switch {
 	case inService:
-		return svc.Run(serviceName, handler)
+		return svc.Run(brand.ServiceName, handler)
 	case *debugMode:
-		log.Printf("%s starting in debug (console) mode", serviceName)
+		log.Printf("%s starting in debug (console) mode", brand.ServiceName)
 		stopCh := make(chan struct{})
 		go desktop.Run(stopCh, &handler.cfg)
 		go startTrayHelper()
-		err := debug.Run(serviceName, handler)
+		err := debug.Run(brand.ServiceName, handler)
 		close(stopCh)
 		return err
 	default:
-		fmt.Fprintf(os.Stderr, "use -debug to run %s in console mode\n", serviceName)
+		fmt.Fprintf(os.Stderr, "use -debug to run %s in console mode\n", brand.ServiceName)
 		os.Exit(2)
 		return nil
 	}
@@ -224,7 +224,7 @@ func (s *agentService) Execute(_ []string, requests <-chan svc.ChangeRequest, st
 	}()
 
 	status <- svc.Status{State: svc.Running, Accepts: accepts}
-	log.Printf("%s service started", serviceName)
+	log.Printf("%s service started", brand.ServiceName)
 	go startTrayHelper()
 
 	for req := range requests {
@@ -242,13 +242,13 @@ func (s *agentService) Execute(_ []string, requests <-chan svc.ChangeRequest, st
 			}
 			status <- svc.Status{State: svc.Running, Accepts: accepts}
 		case svc.Stop, svc.Shutdown:
-			log.Printf("%s service stopping", serviceName)
+			log.Printf("%s service stopping", brand.ServiceName)
 			status <- svc.Status{State: svc.StopPending}
 			close(stopCh)
 			status <- svc.Status{State: svc.Stopped}
 			return false, 0
 		default:
-			log.Printf("%s unexpected control request: %d", serviceName, req.Cmd)
+			log.Printf("%s unexpected control request: %d", brand.ServiceName, req.Cmd)
 		}
 	}
 

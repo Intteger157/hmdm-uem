@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hmdm/agent-windows/internal/brand"
 	"github.com/hmdm/agent-windows/internal/procexec"
 	"github.com/hmdm/agent-windows/internal/session"
 )
@@ -149,7 +150,7 @@ func installSoftware(payload json.RawMessage) Result {
 		return Result{Success: false, Message: "install url is required"}
 	}
 
-	tempDir, err := os.MkdirTemp("", "hmdm-install-*")
+	tempDir, err := os.MkdirTemp("", brand.InstallTempPrefix+"*")
 	if err != nil {
 		return Result{Success: false, Message: fmt.Sprintf("create temp dir failed: %v", err)}
 	}
