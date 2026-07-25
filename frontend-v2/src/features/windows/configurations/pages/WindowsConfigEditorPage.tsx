@@ -26,6 +26,7 @@ import type { WindowsConfigurationPolicy } from '@/features/windows/configuratio
 import {
   configProfileFormSchema,
   createEmptyConfigProfileFormValues,
+  buildConfigProfileAssignmentsPayload,
   toConfigProfileFormValues,
   type ConfigProfileFormValues,
 } from '@/features/windows/configurations/utils/windows-config-form'
@@ -130,6 +131,13 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
 
     console.log('Saving required apps payload:', upsertPayload)
 
+    const assignmentsPayload = buildConfigProfileAssignmentsPayload(values.groupIds, values.deviceIds, {
+      allowedGroupIds: (groupsQuery.data ?? []).map((group) => group.id),
+      allowedDeviceIds: (devicesQuery.data ?? []).map((device) => device.id),
+    })
+
+    console.log('Saving assignments payload:', assignmentsPayload)
+
     try {
       const saved = await upsertMutation.mutateAsync({
         id: profileId,
@@ -138,10 +146,7 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
 
       await assignMutation.mutateAsync({
         profileId: saved.id,
-        assignments: {
-          groupIds: values.groupIds,
-          deviceIds: values.deviceIds,
-        },
+        assignments: assignmentsPayload,
       })
 
       const normalizedPolicies = registryPolicies

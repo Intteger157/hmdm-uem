@@ -28,6 +28,50 @@ export const configProfileFormSchema = z.object({
 
 export type ConfigProfileFormValues = z.infer<typeof configProfileFormSchema>
 
+export function sanitizeAssignmentIds(ids: unknown[] | undefined | null): number[] {
+  if (!ids?.length) {
+    return []
+  }
+
+  const seen = new Set<number>()
+  const result: number[] = []
+
+  for (const value of ids) {
+    const parsed = typeof value === 'number' ? value : Number(value)
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+      continue
+    }
+    if (seen.has(parsed)) {
+      continue
+    }
+    seen.add(parsed)
+    result.push(parsed)
+  }
+
+  return result
+}
+
+export function buildConfigProfileAssignmentsPayload(
+  groupIds: unknown[] | undefined | null,
+  deviceIds: unknown[] | undefined | null,
+  options?: { allowedGroupIds?: Iterable<number>; allowedDeviceIds?: Iterable<number> },
+) {
+  const allowedGroupIds = options?.allowedGroupIds ? new Set(options.allowedGroupIds) : null
+  const allowedDeviceIds = options?.allowedDeviceIds ? new Set(options.allowedDeviceIds) : null
+
+  const normalizedGroupIds = sanitizeAssignmentIds(groupIds).filter(
+    (id) => allowedGroupIds == null || allowedGroupIds.has(id),
+  )
+  const normalizedDeviceIds = sanitizeAssignmentIds(deviceIds).filter(
+    (id) => allowedDeviceIds == null || allowedDeviceIds.has(id),
+  )
+
+  return {
+    groupIds: normalizedGroupIds,
+    deviceIds: normalizedDeviceIds,
+  }
+}
+
 export function createEmptyConfigProfileFormValues(): ConfigProfileFormValues {
   return {
     name: '',
@@ -65,8 +109,8 @@ export function toConfigProfileFormValues(
       usbReadOnly: profile.payload.usbReadOnly ?? false,
       screenLockTimeout: profile.payload.screenLockTimeout,
     },
-    groupIds: assignments?.groupIds ?? [],
-    deviceIds: assignments?.deviceIds ?? [],
+    groupIds: sanitizeAssignmentIds(assignments?.groupIds),
+    deviceIds: sanitizeAssignmentIds(assignments?.deviceIds),
     appAssignments,
   }
 }

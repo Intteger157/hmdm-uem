@@ -69,12 +69,15 @@ func (h *WindowsHandler) AssignConfigProfile(c *gin.Context) {
 		return
 	}
 
-	if err := validateAssignmentTargets(req.GroupIDs, req.DeviceIDs); err != nil {
+	groupIDs := normalizeAssignmentTargetIDs(req.GroupIDs)
+	deviceIDs := normalizeAssignmentTargetIDs(req.DeviceIDs)
+
+	if err := validateAssignmentTargets(groupIDs, deviceIDs); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "one or more assignment targets were not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to validate assignment targets"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -86,12 +89,12 @@ func (h *WindowsHandler) AssignConfigProfile(c *gin.Context) {
 			return err
 		}
 
-		for _, groupID := range req.GroupIDs {
+		for _, groupID := range groupIDs {
 			if err := tx.Create(&models.WindowsProfileGroup{ProfileID: profileID, GroupID: groupID}).Error; err != nil {
 				return err
 			}
 		}
-		for _, deviceID := range req.DeviceIDs {
+		for _, deviceID := range deviceIDs {
 			if err := tx.Create(&models.WindowsProfileDevice{ProfileID: profileID, DeviceID: deviceID}).Error; err != nil {
 				return err
 			}
@@ -99,14 +102,14 @@ func (h *WindowsHandler) AssignConfigProfile(c *gin.Context) {
 		return nil
 	}); err != nil {
 		log.Printf("[assign-config-profile] save failed: profile_id=%d err=%v", profileID, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save assignments"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	log.Printf("[assign-config-profile] profile_id=%d groups=%d devices=%d", profileID, len(req.GroupIDs), len(req.DeviceIDs))
+	log.Printf("[assign-config-profile] profile_id=%d groups=%d devices=%d", profileID, len(groupIDs), len(deviceIDs))
 	c.JSON(http.StatusOK, models.ConfigProfileAssignmentsResponse{
-		GroupIDs:  req.GroupIDs,
-		DeviceIDs: req.DeviceIDs,
+		GroupIDs:  groupIDs,
+		DeviceIDs: deviceIDs,
 	})
 }
 
@@ -140,12 +143,19 @@ func listAssignedDeviceIDs(profileID uint) ([]uint, error) {
 }
 
 func validateAssignmentTargets(groupIDs, deviceIDs []uint) error {
+	groupIDs = normalizeAssignmentTargetIDs(groupIDs)
+	deviceIDs = normalizeAssignmentTargetIDs(deviceIDs)
+
+	if len(groupIDs) == 0 && len(deviceIDs) == 0 {
+		return nil
+	}
+
 	if len(groupIDs) > 0 {
 		var count int64
 		if err := db.DB.Model(&models.WindowsDeviceGroup{}).Where("id IN ?", groupIDs).Count(&count).Error; err != nil {
 			return err
 		}
-		if int(count) != len(uniqueUints(groupIDs)) {
+		if int(count) != len(groupIDs) {
 			return gorm.ErrRecordNotFound
 		}
 	}
@@ -155,12 +165,16 @@ func validateAssignmentTargets(groupIDs, deviceIDs []uint) error {
 		if err := db.DB.Model(&models.WindowsDevice{}).Where("id IN ?", deviceIDs).Count(&count).Error; err != nil {
 			return err
 		}
-		if int(count) != len(uniqueUints(deviceIDs)) {
+		if int(count) != len(deviceIDs) {
 			return gorm.ErrRecordNotFound
 		}
 	}
 
 	return nil
+}
+
+func normalizeAssignmentTargetIDs(values []uint) []uint {
+	return uniqueUints(values)
 }
 
 func uniqueUints(values []uint) []uint {
