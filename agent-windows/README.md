@@ -7,6 +7,12 @@ One Go codebase produces two distribution formats with **identical functionality
 | **Autopilot EXE** | `deploy/volumes/files/singularity-autopilot/singularity-agent.exe` | Bootstrap / zero-touch enrollment (`GET /rest/windows/enroll`) |
 | **Distribution MSI** | `agent-windows/installer/dist/singularity-agent.msi` | Manual install (USB, GPO, file share, Java `/files/` upload) |
 
+Both artifacts use the same binary and install to the same locations:
+
+- `C:\Program Files\Singularity MDM Agent\singularity-agent.exe`
+- `C:\ProgramData\Singularity MDM Agent\` (state and config cache)
+- `HKLM\SOFTWARE\Singularity MDM\Agent` (server URL, enrollment token, auth token)
+
 When you add agent features, rebuild **both** artifacts from the same source.
 
 Icons:

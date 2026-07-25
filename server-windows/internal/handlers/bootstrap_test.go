@@ -17,7 +17,9 @@ func TestBuildBootstrapScriptTokenMode(t *testing.T) {
 	)
 
 	for _, snippet := range []string{
-		"C:\\Program Files\\SingularityMDM",
+		"C:\\Program Files\\Singularity MDM Agent",
+		"C:\\ProgramData\\Singularity MDM Agent",
+		"HKLM:\\SOFTWARE\\Singularity MDM\\Agent",
 		"singularity-agent.exe",
 		"https://test-dev-mdm.intteger.uk",
 		"/storage/singularity-autopilot/singularity-agent.exe",

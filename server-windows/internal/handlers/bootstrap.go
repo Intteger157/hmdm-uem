@@ -12,7 +12,12 @@ import (
 	appstorage "github.com/hmdm/server-windows/internal/storage"
 )
 
-const bootstrapServiceName = "HMDMAgent"
+const (
+	bootstrapServiceName  = "HMDMAgent"
+	bootstrapInstallDir   = `C:\Program Files\Singularity MDM Agent`
+	bootstrapStateDir     = `C:\ProgramData\Singularity MDM Agent`
+	bootstrapRegistryPath = `HKLM:\SOFTWARE\Singularity MDM\Agent`
+)
 
 // GetEnrollBootstrapScript returns a PowerShell bootstrap script for zero-touch agent install.
 func (h *WindowsHandler) GetEnrollBootstrapScript(c *gin.Context) {
@@ -67,8 +72,8 @@ func buildBootstrapScript(
 	serverURL, agentDownloadURL, enrollmentMode, embeddedSecret string,
 	provisioning *models.WindowsEnrollmentProvisioningSettings,
 ) string {
-	installDir := `C:\Program Files\SingularityMDM`
-	stateDir := `C:\ProgramData\HMDM\Agent`
+	installDir := bootstrapInstallDir
+	stateDir := bootstrapStateDir
 	stateFile := stateDir + `\state.json`
 	agentExe := installDir + `\singularity-agent.exe`
 
@@ -110,9 +115,9 @@ New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
 } | ConvertTo-Json | Set-Content -Path $StateFile -Encoding UTF8
 
 Write-Host 'Singularity MDM: configuring registry...'
-New-Item -Path 'HKLM:\SOFTWARE\HMDM\Agent' -Force | Out-Null
-Set-ItemProperty -Path 'HKLM:\SOFTWARE\HMDM\Agent' -Name 'ServerURL' -Value $ServerUrl
-Set-ItemProperty -Path 'HKLM:\SOFTWARE\HMDM\Agent' -Name 'EnrollmentToken' -Value $EnrollmentToken
+New-Item -Path '%s' -Force | Out-Null
+Set-ItemProperty -Path '%s' -Name 'ServerURL' -Value $ServerUrl
+Set-ItemProperty -Path '%s' -Name 'EnrollmentToken' -Value $EnrollmentToken
 
 $existing = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 if ($null -ne $existing) {
@@ -131,7 +136,7 @@ Write-Host 'Singularity MDM: starting agent service...'
 Start-Service -Name $ServiceName
 
 Write-Host 'Singularity MDM Agent installed and started successfully.'
-%s`, installDir, agentExe, bootstrapServiceName, serverURL, agentDownloadURL, stateDir, stateFile, securityBlock, provisioningBlock)
+%s`, installDir, agentExe, bootstrapServiceName, serverURL, agentDownloadURL, stateDir, stateFile, securityBlock, bootstrapRegistryPath, bootstrapRegistryPath, bootstrapRegistryPath, provisioningBlock)
 }
 
 func buildEnrollmentSecurityBlock(enrollmentMode, embeddedSecret string) string {
