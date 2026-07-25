@@ -8,17 +8,37 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/hmdm/agent-windows/internal/brand"
 )
 
-const policyDirectory = `C:\ProgramData\HMDM\Agent`
+func policyDirectory() string {
+	dir, err := brand.EnsureProgramDataDir()
+	if err != nil {
+		return brand.ProgramDataDir()
+	}
+	return dir
+}
 
-var (
-	configFilePath           = filepath.Join(policyDirectory, "config.json")
-	appliedFilePath          = filepath.Join(policyDirectory, "applied-policy.json")
-	syncStateFilePath        = filepath.Join(policyDirectory, "config-sync-state.json")
-	registryPoliciesFilePath = filepath.Join(policyDirectory, "registry-policies.json")
-	appliedRegistryFilePath  = filepath.Join(policyDirectory, "applied-registry-policies.json")
-)
+func configFilePath() string {
+	return filepath.Join(policyDirectory(), "config.json")
+}
+
+func appliedFilePath() string {
+	return filepath.Join(policyDirectory(), "applied-policy.json")
+}
+
+func syncStateFilePath() string {
+	return filepath.Join(policyDirectory(), "config-sync-state.json")
+}
+
+func registryPoliciesFilePath() string {
+	return filepath.Join(policyDirectory(), "registry-policies.json")
+}
+
+func appliedRegistryFilePath() string {
+	return filepath.Join(policyDirectory(), "applied-registry-policies.json")
+}
 
 type syncState struct {
 	LastSyncedHash           string `json:"lastSyncedHash,omitempty"`
@@ -38,14 +58,15 @@ func SaveDesiredConfig(config EffectiveConfig) error {
 		return fmt.Errorf("marshal desired config: %w", err)
 	}
 
-	if err := os.WriteFile(configFilePath, payload, 0o644); err != nil {
+	if err := os.WriteFile(configFilePath(), payload, 0o644); err != nil {
 		return fmt.Errorf("write config.json: %w", err)
 	}
 	return nil
 }
 
 func LoadDesiredConfig() (EffectiveConfig, error) {
-	data, err := os.ReadFile(configFilePath)
+	path := brand.ResolveDataPath("config.json")
+	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return EffectiveConfig{}, nil
@@ -73,14 +94,14 @@ func SaveAppliedPolicy(payload Payload) error {
 	if err != nil {
 		return fmt.Errorf("marshal applied policy: %w", err)
 	}
-	if err := os.WriteFile(appliedFilePath, data, 0o644); err != nil {
+	if err := os.WriteFile(appliedFilePath(), data, 0o644); err != nil {
 		return fmt.Errorf("write applied-policy.json: %w", err)
 	}
 	return nil
 }
 
 func LoadAppliedPolicy() (AppliedPolicy, error) {
-	data, err := os.ReadFile(appliedFilePath)
+	data, err := os.ReadFile(appliedFilePath())
 	if err != nil {
 		if os.IsNotExist(err) {
 			return AppliedPolicy{}, nil
@@ -96,7 +117,7 @@ func LoadAppliedPolicy() (AppliedPolicy, error) {
 }
 
 func LoadSyncState() (syncState, error) {
-	data, err := os.ReadFile(syncStateFilePath)
+	data, err := os.ReadFile(syncStateFilePath())
 	if err != nil {
 		if os.IsNotExist(err) {
 			return syncState{}, nil
@@ -120,7 +141,7 @@ func SaveSyncState(state syncState) error {
 	if err != nil {
 		return fmt.Errorf("marshal config-sync-state: %w", err)
 	}
-	if err := os.WriteFile(syncStateFilePath, payload, 0o644); err != nil {
+	if err := os.WriteFile(syncStateFilePath(), payload, 0o644); err != nil {
 		return fmt.Errorf("write config-sync-state.json: %w", err)
 	}
 	return nil
@@ -176,14 +197,14 @@ func SaveDesiredRegistryPolicies(config RegistryPoliciesConfig) error {
 		return fmt.Errorf("marshal registry policies: %w", err)
 	}
 
-	if err := os.WriteFile(registryPoliciesFilePath, payload, 0o644); err != nil {
+	if err := os.WriteFile(registryPoliciesFilePath(), payload, 0o644); err != nil {
 		return fmt.Errorf("write registry-policies.json: %w", err)
 	}
 	return nil
 }
 
 func LoadDesiredRegistryPolicies() (RegistryPoliciesConfig, error) {
-	data, err := os.ReadFile(registryPoliciesFilePath)
+	data, err := os.ReadFile(registryPoliciesFilePath())
 	if err != nil {
 		if os.IsNotExist(err) {
 			return RegistryPoliciesConfig{}, nil
@@ -207,7 +228,7 @@ func SaveAppliedRegistryPolicies(applied AppliedRegistryPolicies) error {
 	if err != nil {
 		return fmt.Errorf("marshal applied registry policies: %w", err)
 	}
-	if err := os.WriteFile(appliedRegistryFilePath, data, 0o644); err != nil {
+	if err := os.WriteFile(appliedRegistryFilePath(), data, 0o644); err != nil {
 		return fmt.Errorf("write applied-registry-policies.json: %w", err)
 	}
 	return nil
@@ -249,7 +270,7 @@ func SaveLastReportedRegistryHash(hash string) error {
 
 // ClearDesiredConfig removes cached desired configuration from disk.
 func ClearDesiredConfig() error {
-	if err := os.Remove(configFilePath); err != nil && !os.IsNotExist(err) {
+	if err := os.Remove(configFilePath()); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("remove config.json: %w", err)
 	}
 	return nil
@@ -264,7 +285,7 @@ func ClearPolicyCache() error {
 }
 
 func ensurePolicyDirectory() error {
-	if err := os.MkdirAll(policyDirectory, 0o755); err != nil {
+	if _, err := brand.EnsureProgramDataDir(); err != nil {
 		return fmt.Errorf("create policy directory: %w", err)
 	}
 	return nil

@@ -5,21 +5,19 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
+
+	"github.com/hmdm/agent-windows/internal/brand"
 )
 
-const defaultStatusFilePath = `C:\ProgramData\HMDM\Agent\desktop-status.json`
+const desktopStatusFileName = "desktop-status.json"
 
 type persistedStatus struct {
 	LastSyncAt string `json:"lastSyncAt,omitempty"`
 }
 
 func statusFilePath() string {
-	if root := strings.TrimSpace(os.Getenv("PROGRAMDATA")); root != "" {
-		return filepath.Join(root, "HMDM", "Agent", "desktop-status.json")
-	}
-	return defaultStatusFilePath
+	return brand.ResolveDataPath(desktopStatusFileName)
 }
 
 // RecordSuccessfulSync stores the timestamp of the last successful inventory sync.
@@ -28,7 +26,8 @@ func RecordSuccessfulSync(at time.Time) error {
 		at = time.Now().UTC()
 	}
 
-	if err := ensureDirectory(); err != nil {
+	dir, err := brand.EnsureProgramDataDir()
+	if err != nil {
 		return err
 	}
 
@@ -39,7 +38,7 @@ func RecordSuccessfulSync(at time.Time) error {
 		return fmt.Errorf("marshal desktop status: %w", err)
 	}
 
-	if err := os.WriteFile(statusFilePath(), payload, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, desktopStatusFileName), payload, 0o644); err != nil {
 		return fmt.Errorf("write desktop status: %w", err)
 	}
 	return nil
@@ -65,12 +64,4 @@ func loadLastSyncDisplay() string {
 	}
 
 	return parsed.Local().Format("Jan 2, 2006 3:04 PM")
-}
-
-func ensureDirectory() error {
-	dir := filepath.Dir(statusFilePath())
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return fmt.Errorf("create desktop status directory: %w", err)
-	}
-	return nil
 }

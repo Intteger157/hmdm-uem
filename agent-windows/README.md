@@ -26,7 +26,7 @@ Prerequisites: Go 1.25+, WiX v4 (`dotnet tool install --global wix`).
 
 ```powershell
 .\agent-windows\build-agent.ps1 `
-  -ServerUrl "httpы://test-dev-mdm.intteger.uk" `
+  -ServerUrl "https://test-dev-mdm.intteger.uk" `
   -Token "win-enroll-org-5282347fbbb415157568466115938efd" `
   -Msi
 ```
@@ -48,6 +48,28 @@ MSI-only (reuse staging binary from a previous build):
 ## Service name
 
 The Windows service remains `HMDMAgent` for compatibility with existing deployments. The on-disk binary is always `singularity-agent.exe`.
+
+Install location: `C:\Program Files\Singularity MDM Agent\singularity-agent.exe`  
+Data directory: `C:\ProgramData\Singularity MDM Agent\`  
+Registry settings: `HKLM\SOFTWARE\Singularity MDM\Agent` (legacy installs may still use `HKLM\SOFTWARE\HMDM\Agent`).
+
+## Debug logs (console)
+
+Run PowerShell **as Administrator**, stop the service, then start the agent in console mode:
+
+```powershell
+Stop-Service HMDMAgent
+cd "C:\Program Files\Singularity MDM Agent"
+.\singularity-agent.exe -debug
+```
+
+If the service cannot be stopped, the debug instance will conflict on port `49152` and cannot write `state.json` while the service (LocalSystem) is still running.
+
+After debugging:
+
+```powershell
+Start-Service HMDMAgent
+```
 
 ## Local device information page
 

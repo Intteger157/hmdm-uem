@@ -3,7 +3,7 @@ param(
     [string]$MsiPath = (Join-Path $PSScriptRoot "dist\singularity-agent.msi"),
     [string]$ServerUrl = "https://test-dev-mdm.intteger.uk",
     [string]$ServiceName = "HMDMAgent",
-    [string]$AgentExe = "${env:ProgramFiles}\HMDM\Agent\singularity-agent.exe"
+    [string]$AgentExe = "${env:ProgramFiles}\Singularity MDM Agent\singularity-agent.exe"
 )
 
 $ErrorActionPreference = "Stop"
@@ -45,7 +45,9 @@ if ($process.ExitCode -ne 0) {
 
 Ensure-AgentService -ExePath $AgentExe
 
-if (Test-Path "HKLM:\SOFTWARE\HMDM\Agent") {
+if (Test-Path "HKLM:\SOFTWARE\Singularity MDM\Agent") {
+    Set-ItemProperty -Path "HKLM:\SOFTWARE\Singularity MDM\Agent" -Name "ServerURL" -Value $ServerUrl
+} elseif (Test-Path "HKLM:\SOFTWARE\HMDM\Agent") {
     Set-ItemProperty -Path "HKLM:\SOFTWARE\HMDM\Agent" -Name "ServerURL" -Value $ServerUrl
 }
 

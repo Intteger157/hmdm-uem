@@ -24,9 +24,7 @@
 
   <Fragment>
     <StandardDirectory Id="ProgramFiles6432Folder">
-      <Directory Id="INSTALLDIR" Name="HMDM">
-        <Directory Id="AGENTDIR" Name="Agent" />
-      </Directory>
+      <Directory Id="AGENTDIR" Name="Singularity MDM Agent" />
     </StandardDirectory>
   </Fragment>
 
@@ -53,7 +51,7 @@
         Remove="uninstall"
         Wait="yes" />
 
-      <RegistryKey Root="HKLM" Key="SOFTWARE\HMDM\Agent">
+      <RegistryKey Root="HKLM" Key="SOFTWARE\Singularity MDM\Agent">
         <RegistryValue Name="ServerURL" Value="$(var.ServerUrl)" Type="string" />
         <RegistryValue Name="EnrollmentToken" Value="$(var.EnrollmentToken)" Type="string" />
       </RegistryKey>

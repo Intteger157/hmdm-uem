@@ -10,9 +10,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/hmdm/agent-windows/internal/brand"
 )
 
-const appsStateFilePath = `C:\ProgramData\HMDM\Agent\apps_state.json`
+const appsStateFileName = "apps_state.json"
 
 // AppsState tracks per-app update checks and locally confirmed deploy timestamps.
 type AppsState struct {
@@ -23,8 +25,12 @@ type AppsState struct {
 	FailedApps map[string]string `json:"failedApps,omitempty"`
 }
 
+func appsStateFilePath() string {
+	return brand.ResolveDataPath(appsStateFileName)
+}
+
 func LoadAppsState() (AppsState, error) {
-	data, err := os.ReadFile(appsStateFilePath)
+	data, err := os.ReadFile(appsStateFilePath())
 	if err != nil {
 		if os.IsNotExist(err) {
 			return newEmptyAppsState(), nil
@@ -41,8 +47,9 @@ func LoadAppsState() (AppsState, error) {
 }
 
 func SaveAppsState(state AppsState) error {
-	if err := ensureAppsStateDirectory(); err != nil {
-		return err
+	dir, err := brand.EnsureProgramDataDir()
+	if err != nil {
+		return fmt.Errorf("create apps state directory: %w", err)
 	}
 	normalizeAppsState(&state)
 
@@ -50,7 +57,8 @@ func SaveAppsState(state AppsState) error {
 	if err != nil {
 		return fmt.Errorf("marshal apps_state.json: %w", err)
 	}
-	if err := os.WriteFile(appsStateFilePath, payload, 0o644); err != nil {
+	path := filepath.Join(dir, appsStateFileName)
+	if err := os.WriteFile(path, payload, 0o644); err != nil {
 		return fmt.Errorf("write apps_state.json: %w", err)
 	}
 	return nil
@@ -178,12 +186,4 @@ func normalizeAppTimestamp(raw string) string {
 
 func appKey(appID uint) string {
 	return strconv.FormatUint(uint64(appID), 10)
-}
-
-func ensureAppsStateDirectory() error {
-	dir := filepath.Dir(appsStateFilePath)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return fmt.Errorf("create apps state directory: %w", err)
-	}
-	return nil
 }

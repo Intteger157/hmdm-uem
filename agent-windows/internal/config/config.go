@@ -3,14 +3,12 @@ package config
 
 import (
 	"fmt"
-	"strings"
 
+	"github.com/hmdm/agent-windows/internal/brand"
 	"golang.org/x/sys/windows/registry"
 )
 
 const (
-	registryKeyPath         = `SOFTWARE\HMDM\Agent`
-	registryKeyPathWOW6432  = `SOFTWARE\WOW6432Node\HMDM\Agent`
 	registryEnrollmentToken = "EnrollmentToken"
 	registryAuthToken       = "AuthToken"
 	registryServerURL       = "ServerURL"
@@ -63,28 +61,27 @@ func SaveAuthToken(token string) error {
 
 // ClearAuthToken removes the stored JWT so the agent can enroll again.
 func ClearAuthToken() error {
-	key, err := registry.OpenKey(registry.LOCAL_MACHINE, registryKeyPath, registry.SET_VALUE)
-	if err != nil {
-		return nil
-	}
-	defer key.Close()
-
-	if err := key.DeleteValue(registryAuthToken); err != nil {
-		if err == registry.ErrNotExist {
-			return nil
+	for _, keyPath := range brand.RegistryKeyPaths() {
+		key, err := registry.OpenKey(registry.LOCAL_MACHINE, keyPath, registry.SET_VALUE)
+		if err != nil {
+			continue
 		}
-		return fmt.Errorf("delete auth token: %w", err)
+		if err := key.DeleteValue(registryAuthToken); err != nil && err != registry.ErrNotExist {
+			key.Close()
+			return fmt.Errorf("delete auth token: %w", err)
+		}
+		key.Close()
 	}
-
 	return nil
 }
 
 func readRegistryString(name string) string {
-	if value := readRegistryStringAt(registryKeyPath, name); value != "" {
-		return value
+	for _, keyPath := range brand.RegistryKeyPaths() {
+		if value := readRegistryStringAt(keyPath, name); value != "" {
+			return value
+		}
 	}
-	// WiX may write settings under WOW6432Node when the package is not marked x64.
-	return readRegistryStringAt(registryKeyPathWOW6432, name)
+	return ""
 }
 
 func readRegistryStringAt(keyPath, name string) string {
@@ -103,7 +100,7 @@ func readRegistryStringAt(keyPath, name string) string {
 }
 
 func writeRegistryString(name, value string) error {
-	key, _, err := registry.CreateKey(registry.LOCAL_MACHINE, registryKeyPath, registry.SET_VALUE)
+	key, _, err := registry.CreateKey(registry.LOCAL_MACHINE, brand.RegistryKeyPath, registry.SET_VALUE)
 	if err != nil {
 		return fmt.Errorf("open registry key: %w", err)
 	}
@@ -114,20 +111,4 @@ func writeRegistryString(name, value string) error {
 	}
 
 	return nil
-}
-
-func normalizeServerURL(raw string) string {
-	trimmed := strings.TrimRight(strings.TrimSpace(raw), "/")
-	if trimmed == "" {
-		return defaultServerURL
-	}
-
-	lower := strings.ToLower(trimmed)
-	if strings.HasPrefix(lower, "http://") &&
-		!strings.Contains(lower, "localhost") &&
-		!strings.Contains(lower, "127.0.0.1") {
-		return "https://" + strings.TrimPrefix(trimmed, "http://")
-	}
-
-	return trimmed
 }
