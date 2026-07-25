@@ -9,7 +9,7 @@ export function usePublicDeviceInfoQuery(deviceId: string) {
   return useQuery({
     queryKey: ['public-device-info', deviceId],
     queryFn: () => fetchPublicDeviceInfo(deviceId),
-    enabled: deviceId.trim().length > 0,
+    enabled: deviceId?.trim().length > 0,
     retry: false,
   })
 }

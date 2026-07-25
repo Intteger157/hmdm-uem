@@ -1337,5 +1337,6 @@
   "publicDeviceInfo.lastSync": "Last sync",
   "publicDeviceInfo.deviceId": "Device ID",
   "publicDeviceInfo.unknown": "Unknown",
+  "publicDeviceInfo.unknownDevice": "Unknown device",
   "publicDeviceInfo.footer": "Device information is served by the MDM server."
 }

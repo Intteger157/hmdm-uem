@@ -1,13 +1,13 @@
 import axios from 'axios'
 
 export interface PublicDeviceInfo {
-  deviceId: string
-  hostname: string
-  manufacturer: string
-  model: string
-  mdmServer: string
-  agentVersion: string
-  lastSyncTime: string
+  deviceId?: string
+  hostname?: string
+  manufacturer?: string
+  model?: string
+  mdmServer?: string
+  agentVersion?: string
+  lastSyncTime?: string
 }
 
 export async function fetchPublicDeviceInfo(deviceId: string): Promise<PublicDeviceInfo> {
@@ -17,8 +17,8 @@ export async function fetchPublicDeviceInfo(deviceId: string): Promise<PublicDev
   return response.data
 }
 
-export function formatPublicLastSync(value: string): string {
-  const trimmed = value.trim()
+export function formatPublicLastSync(value?: string | null): string {
+  const trimmed = value?.trim() ?? ''
   if (!trimmed) {
     return '—'
   }
@@ -31,7 +31,15 @@ export function formatPublicLastSync(value: string): string {
   return parsed.toLocaleString()
 }
 
-export function formatPublicManufacturerModel(manufacturer: string, model: string): string {
-  const parts = [manufacturer.trim(), model.trim()].filter(Boolean)
-  return parts.length > 0 ? parts.join(' ') : '—'
+export function formatPublicManufacturerModel(
+  manufacturer?: string | null,
+  model?: string | null,
+  unknownLabel = '—',
+): string {
+  const hardwareInfo = [manufacturer, model]
+    .map((part) => part?.trim())
+    .filter((part): part is string => Boolean(part))
+    .join(' ')
+
+  return hardwareInfo || unknownLabel
 }

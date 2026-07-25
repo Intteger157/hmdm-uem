@@ -1337,5 +1337,6 @@
   "publicDeviceInfo.lastSync": "Последняя синхронизация",
   "publicDeviceInfo.deviceId": "ID устройства",
   "publicDeviceInfo.unknown": "Неизвестна",
+  "publicDeviceInfo.unknownDevice": "Неизвестное устройство",
   "publicDeviceInfo.footer": "Информация об устройстве предоставляется MDM-сервером."
 }

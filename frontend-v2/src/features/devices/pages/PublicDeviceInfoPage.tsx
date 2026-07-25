@@ -1,3 +1,4 @@
+import { Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   formatPublicLastSync,
@@ -11,16 +12,23 @@ interface PublicDeviceInfoPageProps {
 
 const laptopImageSrc = '/device-info-laptop.png'
 
+function isNotFoundError(error: unknown): boolean {
+  return (
+    error != null &&
+    typeof error === 'object' &&
+    'response' in error &&
+    (error as { response?: { status?: number } }).response?.status === 404
+  )
+}
+
 export function PublicDeviceInfoPage({ deviceId }: PublicDeviceInfoPageProps) {
   const { t } = useTranslation()
-  const { data, error, isLoading } = usePublicDeviceInfoQuery(deviceId)
+  const { data: device, error, isLoading, isFetching } = usePublicDeviceInfoQuery(deviceId)
 
-  const errorMessage =
-    error && typeof error === 'object' && 'response' in error
-      ? (error as { response?: { status?: number } }).response?.status === 404
-        ? t('publicDeviceInfo.notFound')
-        : t('publicDeviceInfo.loadFailed')
-      : t('publicDeviceInfo.loadFailed')
+  const showLoading = isLoading || (isFetching && !device)
+  const errorMessage = isNotFoundError(error)
+    ? t('publicDeviceInfo.notFound')
+    : t('publicDeviceInfo.loadFailed')
 
   return (
     <div className="min-h-screen bg-[#0b0f17] px-4 py-8 text-[#f9fafb]">
@@ -42,27 +50,37 @@ export function PublicDeviceInfoPage({ deviceId }: PublicDeviceInfoPageProps) {
             <p className="mt-2 text-sm text-[#9ca3af]">{t('publicDeviceInfo.subtitle')}</p>
           </div>
 
-          {isLoading ? (
-            <div className="px-6 py-10 text-sm text-[#9ca3af]">{t('publicDeviceInfo.loading')}</div>
-          ) : error || !data ? (
+          {showLoading ? (
+            <div className="flex items-center justify-center gap-2 px-6 py-10 text-sm text-[#9ca3af]">
+              <Loader2 className="size-4 animate-spin" />
+              {t('publicDeviceInfo.loading')}
+            </div>
+          ) : error != null || !device ? (
             <div className="px-6 py-10 text-sm text-[#fca5a5]">{errorMessage}</div>
           ) : (
             <dl>
-              <InfoRow label={t('publicDeviceInfo.computer')} value={data.hostname || '—'} />
+              <InfoRow label={t('publicDeviceInfo.computer')} value={device.hostname?.trim() || '—'} />
               <InfoRow
                 label={t('publicDeviceInfo.manufacturerModel')}
-                value={formatPublicManufacturerModel(data.manufacturer, data.model)}
+                value={formatPublicManufacturerModel(
+                  device.manufacturer,
+                  device.model,
+                  t('publicDeviceInfo.unknownDevice'),
+                )}
               />
-              <InfoRow label={t('publicDeviceInfo.mdmServer')} value={data.mdmServer || '—'} />
+              <InfoRow label={t('publicDeviceInfo.mdmServer')} value={device.mdmServer?.trim() || '—'} />
               <InfoRow
                 label={t('publicDeviceInfo.agentVersion')}
-                value={data.agentVersion || t('publicDeviceInfo.unknown')}
+                value={device.agentVersion?.trim() || t('publicDeviceInfo.unknown')}
               />
               <InfoRow
                 label={t('publicDeviceInfo.lastSync')}
-                value={formatPublicLastSync(data.lastSyncTime)}
+                value={formatPublicLastSync(device.lastSyncTime)}
               />
-              <InfoRow label={t('publicDeviceInfo.deviceId')} value={data.deviceId || deviceId} />
+              <InfoRow
+                label={t('publicDeviceInfo.deviceId')}
+                value={device.deviceId?.trim() || deviceId.trim() || '—'}
+              />
             </dl>
           )}
 
