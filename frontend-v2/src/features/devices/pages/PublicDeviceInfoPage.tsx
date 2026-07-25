@@ -31,9 +31,9 @@ export function PublicDeviceInfoPage({ deviceId }: PublicDeviceInfoPageProps) {
     : t('publicDeviceInfo.loadFailed')
 
   return (
-    <div className="min-h-screen bg-[#0b0f17] px-4 py-8 text-[#f9fafb]">
+    <div className="min-h-screen bg-black px-4 py-8 text-white">
       <div className="mx-auto max-w-xl">
-        <div className="overflow-hidden rounded-2xl border border-[#1f2937] bg-[#111827] shadow-[0_10px_30px_rgba(15,23,42,0.35)]">
+        <div className="overflow-hidden rounded-2xl border border-neutral-800 bg-black">
           <div className="px-6 pt-6">
             <img
               src={laptopImageSrc}
@@ -42,23 +42,25 @@ export function PublicDeviceInfoPage({ deviceId }: PublicDeviceInfoPageProps) {
             />
           </div>
 
-          <div className="border-b border-[#1f2937] px-6 pb-6">
-            <div className="mb-2 text-xs font-semibold uppercase tracking-[0.04em] text-[#60a5fa]">
+          <div className="border-b border-neutral-800 px-6 pb-6">
+            <div className="mb-2 text-xs font-semibold uppercase tracking-[0.04em] text-blue-400">
               {t('publicDeviceInfo.badge')}
             </div>
-            <h1 className="text-2xl font-semibold tracking-tight">{t('publicDeviceInfo.title')}</h1>
-            <p className="mt-2 text-sm text-[#9ca3af]">{t('publicDeviceInfo.subtitle')}</p>
+            <h1 className="text-2xl font-semibold tracking-tight text-white">
+              {t('publicDeviceInfo.title')}
+            </h1>
+            <p className="mt-2 text-sm text-neutral-400">{t('publicDeviceInfo.subtitle')}</p>
           </div>
 
           {showLoading ? (
-            <div className="flex items-center justify-center gap-2 px-6 py-10 text-sm text-[#9ca3af]">
+            <div className="flex items-center justify-center gap-2 px-6 py-10 text-sm text-neutral-400">
               <Loader2 className="size-4 animate-spin" />
               {t('publicDeviceInfo.loading')}
             </div>
           ) : error != null || !device ? (
-            <div className="px-6 py-10 text-sm text-[#fca5a5]">{errorMessage}</div>
+            <div className="px-6 py-10 text-sm text-red-400">{errorMessage}</div>
           ) : (
-            <dl>
+            <dl className="divide-y divide-neutral-800">
               <InfoRow label={t('publicDeviceInfo.computer')} value={device.hostname?.trim() || '—'} />
               <InfoRow
                 label={t('publicDeviceInfo.manufacturerModel')}
@@ -84,7 +86,7 @@ export function PublicDeviceInfoPage({ deviceId }: PublicDeviceInfoPageProps) {
             </dl>
           )}
 
-          <div className="border-t border-[#1f2937] px-6 py-4 text-xs text-[#9ca3af]">
+          <div className="border-t border-neutral-800 px-6 py-4 text-xs text-neutral-400">
             {t('publicDeviceInfo.footer')}
           </div>
         </div>
@@ -95,9 +97,9 @@ export function PublicDeviceInfoPage({ deviceId }: PublicDeviceInfoPageProps) {
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid gap-1 border-t border-[#1f2937] px-6 py-4 first:border-t-0 sm:grid-cols-[140px_1fr] sm:gap-3">
-      <dt className="text-xs font-semibold uppercase tracking-[0.03em] text-[#9ca3af]">{label}</dt>
-      <dd className="break-words text-sm leading-relaxed">{value}</dd>
+    <div className="grid gap-1 px-6 py-4 sm:grid-cols-[140px_1fr] sm:gap-3">
+      <dt className="text-xs font-semibold uppercase tracking-[0.03em] text-neutral-400">{label}</dt>
+      <dd className="break-words text-sm leading-relaxed text-neutral-200">{value}</dd>
     </div>
   )
 }
