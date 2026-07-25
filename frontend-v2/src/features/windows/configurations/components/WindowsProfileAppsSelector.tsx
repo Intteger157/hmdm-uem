@@ -2,11 +2,12 @@ import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ProfileAppAssignment, SoftwareApp } from '@/features/windows/applications/types/software-app'
 import {
-  formatAppVersionLabel,
   formatDisplayText,
+  formatLatestVersionOptionLabel,
   normalizeProfileAppAssignments,
   resolveVersionSelectValue,
 } from '@/features/windows/configurations/utils/profile-app-assignments'
+import i18n from '@/shared/lib/i18n'
 import { Label } from '@/components/ui/label'
 
 interface WindowsProfileAppsSelectorProps {
@@ -89,7 +90,7 @@ export function WindowsProfileAppsSelector({
               return null
             }
             const value = resolveVersionSelectValue(assignment)
-            const latestLabel = formatAppVersionLabel(app, null)
+            const latestOptionLabel = formatLatestVersionOptionLabel(app, i18n.language)
             return (
               <div key={assignment.appId} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
                 <span className="min-w-32 text-sm font-medium">{formatDisplayText(app.name)}</span>
@@ -102,11 +103,7 @@ export function WindowsProfileAppsSelector({
                     setVersion(assignment.appId, next === 'latest' ? null : Number.parseInt(next, 10))
                   }}
                 >
-                  <option value="latest">
-                    {t('windowsConfigurations.requiredApps.latestVersion', {
-                      version: latestLabel,
-                    })}
-                  </option>
+                  <option value="latest">{latestOptionLabel}</option>
                   {app.versions.map((version) => (
                     <option key={version.id} value={String(version.id)}>
                       {formatDisplayText(version.version, `#${version.id}`)}

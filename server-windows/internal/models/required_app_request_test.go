@@ -46,6 +46,26 @@ func TestRequiredAppRequestUnmarshalLegacyVersionIDNull(t *testing.T) {
 	}
 }
 
+func TestRequiredAppRequestUnmarshalGarbageVersionPolicy(t *testing.T) {
+	t.Parallel()
+
+	var item RequiredAppRequest
+	if err := json.Unmarshal([]byte(`{"appId":8,"versionPolicy":"Latest ({version})"}`), &item); err != nil {
+		t.Fatalf("unmarshal failed: %v", err)
+	}
+	if item.VersionPolicy != VersionPolicyLatest {
+		t.Fatalf("expected garbage policy to normalize to latest, got %q", item.VersionPolicy)
+	}
+
+	assignment, err := item.ToAssignment()
+	if err != nil {
+		t.Fatalf("to assignment failed: %v", err)
+	}
+	if assignment.VersionID != nil {
+		t.Fatalf("expected latest assignment without version id, got %+v", assignment)
+	}
+}
+
 func TestUpsertConfigProfileRequestUnmarshalRequiredAppsSnakeCase(t *testing.T) {
 	t.Parallel()
 

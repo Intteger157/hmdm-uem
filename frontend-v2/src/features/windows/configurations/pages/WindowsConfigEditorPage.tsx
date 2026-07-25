@@ -30,6 +30,7 @@ import {
   toConfigProfileFormValues,
   type ConfigProfileFormValues,
 } from '@/features/windows/configurations/utils/windows-config-form'
+import { buildRequiredAppsSubmitPayload } from '@/features/windows/configurations/utils/profile-app-assignments'
 import { BoolField } from '@/shared/components/BoolField'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -116,27 +117,26 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
   }, [isNew, profileQuery.data, assignmentsQuery.data, profileAppsQuery.data, form])
 
   const handleSubmit = form.handleSubmit(async (values) => {
+    const assignmentsPayload = buildConfigProfileAssignmentsPayload(values.groupIds, values.deviceIds, {
+      allowedGroupIds: (groupsQuery.data ?? []).map((group) => group.id),
+      allowedDeviceIds: (devicesQuery.data ?? []).map((device) => device.id),
+    })
+
     const upsertPayload = {
       name: values.name.trim(),
       description: values.description?.trim() || undefined,
       isActive: values.isActive || values.isDefault,
       isDefault: values.isDefault,
       payload: values.payload,
-      requiredApps: values.appAssignments.map((item) => ({
-        appId: item.appId,
-        versionPolicy:
-          item.versionId == null || item.versionId === 0 ? 'latest' : String(item.versionId),
-      })),
+      requiredApps: buildRequiredAppsSubmitPayload(values.appAssignments),
     }
 
-    console.log('Saving required apps payload:', upsertPayload)
+    const submitPayload = {
+      profile: upsertPayload,
+      assignments: assignmentsPayload,
+    }
 
-    const assignmentsPayload = buildConfigProfileAssignmentsPayload(values.groupIds, values.deviceIds, {
-      allowedGroupIds: (groupsQuery.data ?? []).map((group) => group.id),
-      allowedDeviceIds: (devicesQuery.data ?? []).map((device) => device.id),
-    })
-
-    console.log('Saving assignments payload:', assignmentsPayload)
+    console.log('Submit Payload:', submitPayload)
 
     try {
       const saved = await upsertMutation.mutateAsync({

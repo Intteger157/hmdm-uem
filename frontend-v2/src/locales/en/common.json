@@ -1218,7 +1218,7 @@
   "windowsConfigurations.requiredApps.apps": "Required applications",
   "windowsConfigurations.requiredApps.noApps": "No apps in catalog. Add apps in App Catalog first.",
   "windowsConfigurations.requiredApps.versionPolicy": "Version policy",
-  "windowsConfigurations.requiredApps.latestVersion": "Latest ({version})",
+  "windowsConfigurations.requiredApps.latestVersion": "Latest ({{version}})",
   "windowsAppCatalog.title": "App Catalog",
   "windowsAppCatalog.subtitle": "Manage Windows installer packages for profile-based deployment.",
   "windowsAppCatalog.createApp": "Add Application",

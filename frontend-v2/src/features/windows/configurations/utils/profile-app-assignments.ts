@@ -87,6 +87,48 @@ export function formatVersionPolicyLabel(value: unknown): string {
   return text.toLowerCase() === 'latest' ? 'Latest' : text
 }
 
+export function formatLatestVersionOptionLabel(app: SoftwareApp, language = 'en'): string {
+  const version = formatAppVersionLabel(app, null)
+  if (language.startsWith('ru')) {
+    return `Последняя (${version})`
+  }
+  return `Latest (${version})`
+}
+
+export function isGarbageVersionPolicy(value: unknown): boolean {
+  if (value == null) {
+    return false
+  }
+
+  const text = formatDisplayText(value, '').trim().toLowerCase()
+  if (!text) {
+    return false
+  }
+
+  return (
+    text.includes('{version}') ||
+    text.includes('{{version}}') ||
+    text.startsWith('latest (') ||
+    text.startsWith('последняя (')
+  )
+}
+
+export function resolveVersionPolicySubmitValue(assignment: ProfileAppAssignment): string {
+  if (assignment.versionId == null || assignment.versionId === 0) {
+    return 'latest'
+  }
+  return String(assignment.versionId)
+}
+
+export function buildRequiredAppsSubmitPayload(
+  assignments: ProfileAppAssignment[],
+): Array<{ appId: number; versionPolicy: string }> {
+  return normalizeProfileAppAssignments(assignments).map((assignment) => ({
+    appId: assignment.appId,
+    versionPolicy: resolveVersionPolicySubmitValue(assignment),
+  }))
+}
+
 function versionPolicyToVersionId(value: unknown): number | null | undefined {
   if (value == null || value === '') {
     return null
@@ -103,7 +145,7 @@ function versionPolicyToVersionId(value: unknown): number | null | undefined {
   }
 
   const policy = formatDisplayText(value, 'latest').toLowerCase()
-  if (policy === 'latest') {
+  if (policy === 'latest' || isGarbageVersionPolicy(value)) {
     return null
   }
 

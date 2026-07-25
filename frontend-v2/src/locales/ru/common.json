@@ -1218,7 +1218,7 @@
   "windowsConfigurations.requiredApps.apps": "Обязательные приложения",
   "windowsConfigurations.requiredApps.noApps": "Каталог пуст. Сначала добавьте приложения в App Catalog.",
   "windowsConfigurations.requiredApps.versionPolicy": "Политика версий",
-  "windowsConfigurations.requiredApps.latestVersion": "Последняя ({version})",
+  "windowsConfigurations.requiredApps.latestVersion": "Последняя ({{version}})",
   "windowsAppCatalog.title": "App Catalog",
   "windowsAppCatalog.subtitle": "Управление установщиками Windows для развёртывания через профили.",
   "windowsAppCatalog.createApp": "Добавить приложение",

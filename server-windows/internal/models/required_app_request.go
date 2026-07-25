@@ -9,6 +9,37 @@ import (
 
 const VersionPolicyLatest = "latest"
 
+var garbageVersionPolicyMarkers = []string{
+	"{version}",
+	"{{version}}",
+	"latest (",
+	"последняя (",
+}
+
+func normalizeVersionPolicy(raw string) string {
+	policy := strings.TrimSpace(strings.ToLower(raw))
+	if policy == "" {
+		return VersionPolicyLatest
+	}
+
+	for _, marker := range garbageVersionPolicyMarkers {
+		if strings.Contains(policy, marker) {
+			return VersionPolicyLatest
+		}
+	}
+
+	if policy == VersionPolicyLatest {
+		return VersionPolicyLatest
+	}
+
+	versionID, err := strconv.ParseUint(policy, 10, 64)
+	if err != nil || versionID == 0 {
+		return VersionPolicyLatest
+	}
+
+	return strconv.FormatUint(versionID, 10)
+}
+
 // RequiredAppRequest is one required app entry from profile upsert APIs.
 type RequiredAppRequest struct {
 	AppID         uint
@@ -33,7 +64,7 @@ func (r *RequiredAppRequest) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	if policy != "" {
-		r.VersionPolicy = policy
+		r.VersionPolicy = normalizeVersionPolicy(policy)
 		return nil
 	}
 
@@ -55,14 +86,14 @@ func (r RequiredAppRequest) ToAssignment() (ProfileAppAssignment, error) {
 		return ProfileAppAssignment{}, fmt.Errorf("app id is required")
 	}
 
-	policy := strings.TrimSpace(strings.ToLower(r.VersionPolicy))
-	if policy == "" || policy == VersionPolicyLatest {
+	policy := normalizeVersionPolicy(r.VersionPolicy)
+	if policy == VersionPolicyLatest {
 		return ProfileAppAssignment{AppID: r.AppID}, nil
 	}
 
 	versionID, err := strconv.ParseUint(policy, 10, 64)
 	if err != nil || versionID == 0 {
-		return ProfileAppAssignment{}, fmt.Errorf("invalid version_policy %q", r.VersionPolicy)
+		return ProfileAppAssignment{AppID: r.AppID}, nil
 	}
 
 	pinned := uint(versionID)
