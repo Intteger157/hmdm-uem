@@ -1,4 +1,13 @@
-import { Loader2 } from 'lucide-react'
+import {
+  Clock,
+  Fingerprint,
+  Loader2,
+  Monitor,
+  Package,
+  Server,
+  ShieldCheck,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   formatPublicLastSync,
@@ -30,64 +39,100 @@ export function PublicDeviceInfoPage({ deviceId }: PublicDeviceInfoPageProps) {
     ? t('publicDeviceInfo.notFound')
     : t('publicDeviceInfo.loadFailed')
 
-  return (
-    <div className="min-h-screen bg-slate-950 px-4 py-8 text-white">
-      <div className="mx-auto max-w-xl">
-        <div className="overflow-hidden rounded-xl border border-slate-800">
-          <div className="bg-black px-6 pt-6 pb-6">
-            <img
-              src={laptopImageSrc}
-              alt=""
-              className="mx-auto max-h-52 w-full max-w-sm object-contain"
-            />
+  const hostname = device?.hostname?.trim()
+  const manufacturerModel = device
+    ? formatPublicManufacturerModel(
+        device.manufacturer,
+        device.model,
+        t('publicDeviceInfo.unknownDevice'),
+      )
+    : '—'
 
-            <div className="mt-6">
-              <div className="mb-2 text-xs font-semibold uppercase tracking-[0.04em] text-blue-400">
+  return (
+    <div className="relative min-h-screen overflow-hidden bg-slate-950 px-4 py-10 text-white sm:py-14">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute top-0 left-1/2 h-[28rem] w-[44rem] -translate-x-1/2 rounded-full bg-blue-600/10 blur-3xl" />
+        <div className="absolute right-0 bottom-0 h-64 w-64 rounded-full bg-indigo-600/10 blur-3xl" />
+      </div>
+
+      <div className="relative mx-auto max-w-2xl">
+        <div className="overflow-hidden rounded-2xl border border-slate-800/80 shadow-2xl shadow-black/50 ring-1 ring-white/5">
+          <div className="relative bg-black px-6 pt-8 pb-8 sm:px-10 sm:pt-10">
+            <div className="relative mx-auto max-w-lg">
+              <div className="absolute inset-x-10 top-10 h-28 rounded-full bg-sky-500/25 blur-3xl" />
+              <img
+                src={laptopImageSrc}
+                alt=""
+                className="relative mx-auto w-full max-w-md object-contain drop-shadow-[0_24px_48px_rgba(0,0,0,0.65)]"
+              />
+            </div>
+
+            <div className="mt-8 space-y-3 text-center sm:text-left">
+              <div className="inline-flex items-center gap-2 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold tracking-[0.06em] text-sky-300 uppercase">
+                <ShieldCheck className="size-3.5 shrink-0" aria-hidden />
                 {t('publicDeviceInfo.badge')}
               </div>
-              <h1 className="text-2xl font-semibold tracking-tight text-white">
-                {t('publicDeviceInfo.title')}
-              </h1>
-              <p className="mt-2 text-sm text-neutral-400">{t('publicDeviceInfo.subtitle')}</p>
+
+              <div>
+                <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                  {hostname || t('publicDeviceInfo.title')}
+                </h1>
+                {hostname ? (
+                  <p className="mt-1 text-sm text-slate-400">{t('publicDeviceInfo.title')}</p>
+                ) : null}
+              </div>
+
+              <p className="max-w-prose text-sm leading-relaxed text-slate-400">
+                {t('publicDeviceInfo.subtitle')}
+              </p>
+
+              {!showLoading && device && manufacturerModel !== '—' ? (
+                <p className="text-sm font-medium text-slate-300">{manufacturerModel}</p>
+              ) : null}
             </div>
           </div>
 
-          <div className="bg-slate-900">
+          <div className="border-t border-slate-800/80 bg-slate-900/95">
             {showLoading ? (
-              <div className="flex items-center justify-center gap-2 px-6 py-10 text-sm text-neutral-400">
+              <div className="flex items-center justify-center gap-2 px-6 py-14 text-sm text-slate-400">
                 <Loader2 className="size-4 animate-spin" />
                 {t('publicDeviceInfo.loading')}
               </div>
             ) : error != null || !device ? (
-              <div className="px-6 py-10 text-sm text-red-400">{errorMessage}</div>
+              <div className="px-6 py-14 text-center text-sm text-red-400 sm:px-10">{errorMessage}</div>
             ) : (
-              <dl className="divide-y divide-slate-800">
-                <InfoRow label={t('publicDeviceInfo.computer')} value={device.hostname?.trim() || '—'} />
+              <dl className="divide-y divide-slate-800/80">
+                <InfoRow icon={Monitor} label={t('publicDeviceInfo.computer')} value={hostname || '—'} />
                 <InfoRow
+                  icon={Package}
                   label={t('publicDeviceInfo.manufacturerModel')}
-                  value={formatPublicManufacturerModel(
-                    device.manufacturer,
-                    device.model,
-                    t('publicDeviceInfo.unknownDevice'),
-                  )}
+                  value={manufacturerModel}
                 />
-                <InfoRow label={t('publicDeviceInfo.mdmServer')} value={device.mdmServer?.trim() || '—'} />
                 <InfoRow
+                  icon={Server}
+                  label={t('publicDeviceInfo.mdmServer')}
+                  value={device.mdmServer?.trim() || '—'}
+                />
+                <InfoRow
+                  icon={ShieldCheck}
                   label={t('publicDeviceInfo.agentVersion')}
                   value={device.agentVersion?.trim() || t('publicDeviceInfo.unknown')}
                 />
                 <InfoRow
+                  icon={Clock}
                   label={t('publicDeviceInfo.lastSync')}
                   value={formatPublicLastSync(device.lastSyncTime)}
                 />
                 <InfoRow
+                  icon={Fingerprint}
                   label={t('publicDeviceInfo.deviceId')}
                   value={device.deviceId?.trim() || deviceId.trim() || '—'}
+                  mono
                 />
               </dl>
             )}
 
-            <div className="border-t border-slate-800 px-6 py-4 text-xs text-neutral-400">
+            <div className="border-t border-slate-800/80 px-6 py-4 text-center text-xs text-slate-500 sm:px-10">
               {t('publicDeviceInfo.footer')}
             </div>
           </div>
@@ -97,11 +142,30 @@ export function PublicDeviceInfoPage({ deviceId }: PublicDeviceInfoPageProps) {
   )
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+function InfoRow({
+  icon: Icon,
+  label,
+  value,
+  mono = false,
+}: {
+  icon: LucideIcon
+  label: string
+  value: string
+  mono?: boolean
+}) {
   return (
-    <div className="grid gap-1 px-6 py-4 sm:grid-cols-[140px_1fr] sm:gap-3">
-      <dt className="text-xs font-semibold uppercase tracking-[0.03em] text-neutral-400">{label}</dt>
-      <dd className="break-words text-sm leading-relaxed text-neutral-200">{value}</dd>
+    <div className="flex gap-4 px-6 py-4 sm:px-8 sm:py-5">
+      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-slate-700/60 bg-slate-800/60 text-sky-400">
+        <Icon className="size-4" aria-hidden />
+      </div>
+      <div className="min-w-0 flex-1">
+        <dt className="text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">{label}</dt>
+        <dd
+          className={`mt-1 break-words text-sm leading-relaxed text-slate-100 ${mono ? 'font-mono text-xs text-slate-300' : 'font-medium'}`}
+        >
+          {value}
+        </dd>
+      </div>
     </div>
   )
 }
