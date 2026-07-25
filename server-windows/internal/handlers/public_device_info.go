@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/hmdm/server-windows/internal/db"
 	"github.com/hmdm/server-windows/internal/models"
 	appstorage "github.com/hmdm/server-windows/internal/storage"
 	"gorm.io/gorm"
@@ -21,8 +20,8 @@ func (h *WindowsHandler) GetPublicDeviceInfo(c *gin.Context) {
 		return
 	}
 
-	var device models.WindowsDevice
-	if err := db.DB.Where("hardware_id = ?", deviceID).First(&device).Error; err != nil {
+	device, err := findWindowsDeviceByIdentifier(deviceID)
+	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "device not found"})
 			return

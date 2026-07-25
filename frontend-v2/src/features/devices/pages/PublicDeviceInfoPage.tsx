@@ -31,63 +31,65 @@ export function PublicDeviceInfoPage({ deviceId }: PublicDeviceInfoPageProps) {
     : t('publicDeviceInfo.loadFailed')
 
   return (
-    <div className="min-h-screen bg-black px-4 py-8 text-white">
+    <div className="min-h-screen bg-slate-950 px-4 py-8 text-white">
       <div className="mx-auto max-w-xl">
-        <div className="overflow-hidden rounded-2xl border border-neutral-800 bg-black">
-          <div className="px-6 pt-6">
+        <div className="overflow-hidden rounded-xl border border-slate-800">
+          <div className="bg-black px-6 pt-6 pb-6">
             <img
               src={laptopImageSrc}
               alt=""
-              className="mx-auto mb-6 max-h-52 w-full max-w-sm object-contain"
+              className="mx-auto max-h-52 w-full max-w-sm object-contain"
             />
+
+            <div className="mt-6">
+              <div className="mb-2 text-xs font-semibold uppercase tracking-[0.04em] text-blue-400">
+                {t('publicDeviceInfo.badge')}
+              </div>
+              <h1 className="text-2xl font-semibold tracking-tight text-white">
+                {t('publicDeviceInfo.title')}
+              </h1>
+              <p className="mt-2 text-sm text-neutral-400">{t('publicDeviceInfo.subtitle')}</p>
+            </div>
           </div>
 
-          <div className="border-b border-neutral-800 px-6 pb-6">
-            <div className="mb-2 text-xs font-semibold uppercase tracking-[0.04em] text-blue-400">
-              {t('publicDeviceInfo.badge')}
-            </div>
-            <h1 className="text-2xl font-semibold tracking-tight text-white">
-              {t('publicDeviceInfo.title')}
-            </h1>
-            <p className="mt-2 text-sm text-neutral-400">{t('publicDeviceInfo.subtitle')}</p>
-          </div>
+          <div className="bg-slate-900">
+            {showLoading ? (
+              <div className="flex items-center justify-center gap-2 px-6 py-10 text-sm text-neutral-400">
+                <Loader2 className="size-4 animate-spin" />
+                {t('publicDeviceInfo.loading')}
+              </div>
+            ) : error != null || !device ? (
+              <div className="px-6 py-10 text-sm text-red-400">{errorMessage}</div>
+            ) : (
+              <dl className="divide-y divide-slate-800">
+                <InfoRow label={t('publicDeviceInfo.computer')} value={device.hostname?.trim() || '—'} />
+                <InfoRow
+                  label={t('publicDeviceInfo.manufacturerModel')}
+                  value={formatPublicManufacturerModel(
+                    device.manufacturer,
+                    device.model,
+                    t('publicDeviceInfo.unknownDevice'),
+                  )}
+                />
+                <InfoRow label={t('publicDeviceInfo.mdmServer')} value={device.mdmServer?.trim() || '—'} />
+                <InfoRow
+                  label={t('publicDeviceInfo.agentVersion')}
+                  value={device.agentVersion?.trim() || t('publicDeviceInfo.unknown')}
+                />
+                <InfoRow
+                  label={t('publicDeviceInfo.lastSync')}
+                  value={formatPublicLastSync(device.lastSyncTime)}
+                />
+                <InfoRow
+                  label={t('publicDeviceInfo.deviceId')}
+                  value={device.deviceId?.trim() || deviceId.trim() || '—'}
+                />
+              </dl>
+            )}
 
-          {showLoading ? (
-            <div className="flex items-center justify-center gap-2 px-6 py-10 text-sm text-neutral-400">
-              <Loader2 className="size-4 animate-spin" />
-              {t('publicDeviceInfo.loading')}
+            <div className="border-t border-slate-800 px-6 py-4 text-xs text-neutral-400">
+              {t('publicDeviceInfo.footer')}
             </div>
-          ) : error != null || !device ? (
-            <div className="px-6 py-10 text-sm text-red-400">{errorMessage}</div>
-          ) : (
-            <dl className="divide-y divide-neutral-800">
-              <InfoRow label={t('publicDeviceInfo.computer')} value={device.hostname?.trim() || '—'} />
-              <InfoRow
-                label={t('publicDeviceInfo.manufacturerModel')}
-                value={formatPublicManufacturerModel(
-                  device.manufacturer,
-                  device.model,
-                  t('publicDeviceInfo.unknownDevice'),
-                )}
-              />
-              <InfoRow label={t('publicDeviceInfo.mdmServer')} value={device.mdmServer?.trim() || '—'} />
-              <InfoRow
-                label={t('publicDeviceInfo.agentVersion')}
-                value={device.agentVersion?.trim() || t('publicDeviceInfo.unknown')}
-              />
-              <InfoRow
-                label={t('publicDeviceInfo.lastSync')}
-                value={formatPublicLastSync(device.lastSyncTime)}
-              />
-              <InfoRow
-                label={t('publicDeviceInfo.deviceId')}
-                value={device.deviceId?.trim() || deviceId.trim() || '—'}
-              />
-            </dl>
-          )}
-
-          <div className="border-t border-neutral-800 px-6 py-4 text-xs text-neutral-400">
-            {t('publicDeviceInfo.footer')}
           </div>
         </div>
       </div>

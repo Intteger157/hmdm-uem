@@ -10,6 +10,33 @@ import (
 	"github.com/hmdm/server-windows/internal/models"
 )
 
+func TestParseUnsignedDeviceID(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		input string
+		want  uint
+		ok    bool
+	}{
+		{input: "42", want: 42, ok: true},
+		{input: " 7 ", want: 7, ok: true},
+		{input: "0", ok: false},
+		{input: "", ok: false},
+		{input: "550e8400-e29b-41d4-a716-446655440000", ok: false},
+		{input: "abc", ok: false},
+	}
+
+	for _, tc := range cases {
+		got, ok := parseUnsignedDeviceID(tc.input)
+		if ok != tc.ok {
+			t.Fatalf("parseUnsignedDeviceID(%q) ok = %v, want %v", tc.input, ok, tc.ok)
+		}
+		if ok && got != tc.want {
+			t.Fatalf("parseUnsignedDeviceID(%q) = %d, want %d", tc.input, got, tc.want)
+		}
+	}
+}
+
 func TestResolvePublicAgentVersionFromInstalledSoftware(t *testing.T) {
 	t.Parallel()
 
