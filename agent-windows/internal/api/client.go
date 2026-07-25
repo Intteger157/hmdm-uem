@@ -685,6 +685,60 @@ func (c *APIClient) ReportAppInstallLog(authToken, hwid string, appID uint, appN
 	}
 }
 
+// DeviceAppStatusItem is one app deployment status from the server.
+type DeviceAppStatusItem struct {
+	AppID   uint   `json:"appId"`
+	AppName string `json:"appName"`
+	Status  string `json:"status"`
+}
+
+type deviceAppStatusListResponse struct {
+	Items []DeviceAppStatusItem `json:"items"`
+}
+
+// FetchDeviceAppStatuses returns current deployment statuses for this device.
+func (c *APIClient) FetchDeviceAppStatuses(authToken, hwid string) ([]DeviceAppStatusItem, error) {
+	url := c.baseURL + fmt.Sprintf(appStatusPath, url.PathEscape(hwid))
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create app status list request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+authToken)
+	req.Header.Set("X-Device-Id", hwid)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("send app status list request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read app status list response: %w", err)
+	}
+
+	switch resp.StatusCode {
+	case http.StatusUnauthorized:
+		return nil, ErrUnauthorized
+	case http.StatusNotFound:
+		return nil, ErrDeviceNotFound
+	case http.StatusOK:
+		var parsed deviceAppStatusListResponse
+		if err := json.Unmarshal(body, &parsed); err != nil {
+			log.Printf(
+				"app status list: decode response failed: %v body=%q",
+				err,
+				truncateBodyForLog(body, 512),
+			)
+			return nil, fmt.Errorf("decode app status list response: %w", err)
+		}
+		return parsed.Items, nil
+	default:
+		return nil, fmt.Errorf("app status list failed with HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+}
+
 // ReportAppStatus uploads app deployment progress for one required app.
 func (c *APIClient) ReportAppStatus(authToken, hwid string, appID uint, status, errMsg string) error {
 	payload, err := json.Marshal(map[string]any{

@@ -97,6 +97,11 @@ func DeployRequired(required []RequiredApp, opts DeployOptions) {
 	}
 
 	installed := system.CollectInstalledSoftware()
+	if batchNeedsDownloadJitter(required, state, installed) {
+		log.Printf("app deploy: applying batch jitter before processing %d app(s)", len(required))
+		applyDownloadJitter()
+	}
+
 	stateChanged := false
 
 	for _, app := range required {
@@ -245,8 +250,6 @@ func deployURLApp(app RequiredApp, opts DeployOptions, state *AppsState, install
 
 	progress.Report(InstallStatusDownloading, fmt.Sprintf("Download URL: %s", resolvedURL))
 	reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusDownloading, "")
-
-	applyDownloadJitter()
 
 	localPath, err := downloadInstaller(resolvedURL)
 	if err != nil {
@@ -520,6 +523,54 @@ func endAppDeploy(appID uint, appName string) {
 
 func normalizeDeployAppName(name string) string {
 	return strings.ToLower(strings.TrimSpace(name))
+}
+
+func batchNeedsDownloadJitter(required []RequiredApp, state AppsState, installed []system.InstalledSoftwareInfo) bool {
+	for _, app := range required {
+		if state.ShouldSkipDeploy(app.ID, app.UpdatedAt) {
+			continue
+		}
+		if normalizeAppType(app.AppType) == AppTypeWinget {
+			continue
+		}
+		if isAppInstalled(app.Name, app.Version, installed) && !shouldCheckUpdate(app, &state) {
+			continue
+		}
+		if strings.TrimSpace(app.DownloadURL) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// StaleInstallAbortMessage is reported when in-flight installs are cleared on agent restart.
+const StaleInstallAbortMessage = "Installation aborted due to agent restart"
+
+// ReconcileStaleInstallStatuses marks interrupted downloads/installs as failed after service restart.
+func ReconcileStaleInstallStatuses(reporter StatusReporter, statuses []DeviceAppStatusSnapshot) {
+	if reporter == nil || len(statuses) == 0 {
+		return
+	}
+
+	for _, item := range statuses {
+		switch item.Status {
+		case InstallStatusInstalling, InstallStatusDownloading:
+			log.Printf(
+				"app deploy: clearing stale %q status for app id=%d name=%q",
+				item.Status,
+				item.AppID,
+				item.AppName,
+			)
+			reportStatus(reporter, item.AppID, item.AppName, InstallStatusFailed, StaleInstallAbortMessage)
+		}
+	}
+}
+
+// DeviceAppStatusSnapshot is one app deployment status returned by the MDM server.
+type DeviceAppStatusSnapshot struct {
+	AppID   uint
+	AppName string
+	Status  string
 }
 
 func applyDownloadJitter() {

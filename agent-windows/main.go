@@ -277,6 +277,8 @@ func runAgentLoop(stop <-chan struct{}, syncNow <-chan struct{}, cfg *config.Con
 
 	go runPolicyComplianceLoop(stop, cfg, apiClient)
 
+	reconcileStaleAppInstallStatuses(cfg, apiClient)
+
 	log.Printf("running immediate sync on agent start")
 	runAgentCycle(stop, cfg, apiClient)
 
@@ -344,6 +346,33 @@ func runAgentCycle(stop <-chan struct{}, cfg *config.Config, apiClient *api.APIC
 		}
 		log.Printf("command processing failed: %v", err)
 	}
+}
+
+func reconcileStaleAppInstallStatuses(cfg *config.Config, apiClient *api.APIClient) {
+	if cfg.AuthToken == "" || cfg.HardwareID == "" {
+		return
+	}
+
+	items, err := apiClient.FetchDeviceAppStatuses(cfg.AuthToken, cfg.HardwareID)
+	if err != nil {
+		if handleReenrollNeeded(cfg, err) {
+			return
+		}
+		log.Printf("app deploy: stale status reconcile skipped: %v", err)
+		return
+	}
+
+	snapshots := make([]apps.DeviceAppStatusSnapshot, 0, len(items))
+	for _, item := range items {
+		snapshots = append(snapshots, apps.DeviceAppStatusSnapshot{
+			AppID:   item.AppID,
+			AppName: item.AppName,
+			Status:  item.Status,
+		})
+	}
+
+	deployOpts := policies.NewAppDeployOptions(apiClient, cfg.AuthToken, cfg.HardwareID)
+	apps.ReconcileStaleInstallStatuses(deployOpts.StatusReporter, snapshots)
 }
 
 func runPolicyComplianceLoop(stop <-chan struct{}, cfg *config.Config, apiClient *api.APIClient) {
