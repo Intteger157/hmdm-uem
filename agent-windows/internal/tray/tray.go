@@ -3,10 +3,14 @@ package tray
 import (
 	"fmt"
 	"log"
+	"net/url"
 	"os/exec"
+	"strings"
 
 	"github.com/getlantern/systray"
-	"github.com/hmdm/agent-windows/internal/desktop"
+	"github.com/hmdm/agent-windows/internal/agentstate"
+	"github.com/hmdm/agent-windows/internal/brand"
+	"github.com/hmdm/agent-windows/internal/config"
 )
 
 // Run starts the system tray UI. It blocks until the tray exits.
@@ -20,9 +24,9 @@ func onReady(iconData []byte) {
 	systray.SetIcon(iconData)
 	systray.SetTooltip("Singularity MDM Agent")
 
-	mOpen := systray.AddMenuItem("Device Information", "Open local device information page")
+	mOpen := systray.AddMenuItem("Device Information", "Open device information page on MDM server")
 	systray.AddSeparator()
-	mVersion := systray.AddMenuItem("Version: "+desktop.AgentVersion, "")
+	mVersion := systray.AddMenuItem("Version: "+brand.AgentVersion, "")
 	mVersion.Disable()
 
 	go func() {
@@ -37,8 +41,45 @@ func onReady(iconData []byte) {
 func onExit() {}
 
 func openDeviceInformationPage() error {
-	if err := exec.Command("rundll32", "url.dll,FileProtocolHandler", desktop.LocalURL()).Start(); err != nil {
+	pageURL, err := buildDeviceInformationURL()
+	if err != nil {
+		return err
+	}
+	if err := exec.Command("rundll32", "url.dll,FileProtocolHandler", pageURL).Start(); err != nil {
 		return fmt.Errorf("open browser: %w", err)
 	}
 	return nil
+}
+
+func buildDeviceInformationURL() (string, error) {
+	cfg := config.LoadConfig(config.DebugOverrides{})
+	serverURL := strings.TrimSpace(cfg.ServerURL)
+	if serverURL == "" {
+		return "", fmt.Errorf("server URL not configured")
+	}
+
+	state, err := agentstate.Load()
+	if err != nil {
+		return "", fmt.Errorf("load device id: %w", err)
+	}
+	deviceID := strings.TrimSpace(state.DeviceID)
+	if deviceID == "" {
+		return "", fmt.Errorf("device id not configured")
+	}
+
+	return buildDeviceInformationURLFrom(serverURL, deviceID)
+}
+
+func buildDeviceInformationURLFrom(serverURL, deviceID string) (string, error) {
+	serverURL = strings.TrimSpace(serverURL)
+	deviceID = strings.TrimSpace(deviceID)
+	if serverURL == "" {
+		return "", fmt.Errorf("server URL not configured")
+	}
+	if deviceID == "" {
+		return "", fmt.Errorf("device id not configured")
+	}
+
+	base := strings.TrimRight(serverURL, "/")
+	return base + "/device-info/" + url.PathEscape(deviceID), nil
 }

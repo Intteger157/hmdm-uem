@@ -1317,5 +1317,18 @@
   "deviceDetail.battery.desktopNoBattery": "Desktop / No Battery",
   "deviceDetail.battery.downloadReport": "Сформировать отчёт по батарее",
   "deviceDetail.battery.reportQueued": "Отчёт по батарее поставлен в очередь",
-  "deviceDetail.battery.reportFailed": "Не удалось поставить отчёт в очередь"
+  "deviceDetail.battery.reportFailed": "Не удалось поставить отчёт в очередь",
+  "publicDeviceInfo.badge": "Управляемое устройство",
+  "publicDeviceInfo.title": "Singularity MDM Agent",
+  "publicDeviceInfo.subtitle": "Этот компьютер зарегистрирован и управляется вашей организацией.",
+  "publicDeviceInfo.loading": "Загрузка информации об устройстве…",
+  "publicDeviceInfo.notFound": "Устройство не найдено.",
+  "publicDeviceInfo.loadFailed": "Не удалось загрузить информацию об устройстве.",
+  "publicDeviceInfo.computer": "Компьютер",
+  "publicDeviceInfo.mdmServer": "MDM-сервер",
+  "publicDeviceInfo.agentVersion": "Версия агента",
+  "publicDeviceInfo.lastSync": "Последняя синхронизация",
+  "publicDeviceInfo.deviceId": "ID устройства",
+  "publicDeviceInfo.unknown": "Неизвестна",
+  "publicDeviceInfo.footer": "Информация об устройстве предоставляется MDM-сервером."
 }

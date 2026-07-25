@@ -24,6 +24,7 @@ import { AppLayout } from '@/layouts/AppLayout'
 import { AuthLayout } from '@/layouts/AuthLayout'
 import { FilesListPage } from '@/features/files/pages/FilesListPage'
 import { PublicQrEnrollmentPage } from '@/features/devices/pages/PublicQrEnrollmentPage'
+import { PublicDeviceInfoPage } from '@/features/devices/pages/PublicDeviceInfoPage'
 import { WindowsConfigurationsPage } from '@/features/windows/configurations/pages/WindowsConfigurationsPage'
 import { WindowsConfigEditorPage } from '@/features/windows/configurations/pages/WindowsConfigEditorPage'
 import { WindowsAppCatalogPage } from '@/features/windows/applications/pages/WindowsAppCatalogPage'
@@ -226,6 +227,15 @@ const windowsApplicationsRoute = createRoute({
   component: WindowsAppCatalogPage,
 })
 
+const publicDeviceInfoRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/device-info/$deviceId',
+  component: function PublicDeviceInfoRoute() {
+    const { deviceId } = publicDeviceInfoRoute.useParams()
+    return <PublicDeviceInfoPage deviceId={deviceId} />
+  },
+})
+
 const publicQrRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/qr/$qrCodeKey',
@@ -260,6 +270,7 @@ const indexRoute = createRoute({
 })
 
 const routeTree = rootRoute.addChildren([
+  publicDeviceInfoRoute,
   publicQrRoute,
   authLayoutRoute.addChildren([loginRoute]),
   appLayoutRoute.addChildren([

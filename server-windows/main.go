@@ -59,6 +59,7 @@ func main() {
 	// Public bootstrap endpoints (no auth — OOBE machines have no session/JWT).
 	router.GET("/api/windows/enroll", windowsHandler.GetEnrollBootstrapScript)
 	router.GET("/rest/windows/enroll", windowsHandler.GetEnrollBootstrapScript)
+	router.GET("/api/public/device-info/:deviceId", windowsHandler.GetPublicDeviceInfo)
 	router.POST("/api/windows/register", windowsHandler.RegisterBootstrap)
 	router.GET(appstorage.AgentPublicPath(), windowsHandler.DownloadAgentBinary)
 	rest := router.Group("/rest")

@@ -22,6 +22,10 @@ export default defineConfig(({ mode }) => {
           target: windowsBackendUrl,
           changeOrigin: true,
         },
+        '/api/public': {
+          target: windowsBackendUrl,
+          changeOrigin: true,
+        },
         '/api/windows': {
           target: windowsBackendUrl,
           changeOrigin: true,

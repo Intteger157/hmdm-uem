@@ -69,7 +69,7 @@ cd "C:\Program Files\Singularity MDM Agent"
 .\singularity-agent.exe -debug
 ```
 
-If the service cannot be stopped, the debug instance will conflict on port `49152` and cannot write `state.json` while the service (LocalSystem) is still running.
+If the service cannot be stopped, the debug instance may fail to write `state.json` while the service (LocalSystem) is still running.
 
 After debugging:
 
@@ -77,6 +77,6 @@ After debugging:
 Start-Service SingularityMDMAgent
 ```
 
-## Local device information page
+## Device information page
 
-The service exposes a loopback-only page at `http://127.0.0.1:49152/` with hostname, MDM server URL, agent version, and last sync time. The tray helper menu item **Device Information** opens this page in the default browser.
+The tray helper menu item **Device Information** opens a public page on the MDM server at `{ServerURL}/device-info/{DeviceID}` (for example `https://test-dev-mdm.intteger.uk/device-info/<hardware-id>`). The page shows hostname, MDM server URL, agent version, and last sync time from the central server — no local HTTP listener is used on the device.

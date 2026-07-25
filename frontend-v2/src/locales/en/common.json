@@ -1317,5 +1317,18 @@
   "deviceDetail.battery.desktopNoBattery": "Desktop / No Battery",
   "deviceDetail.battery.downloadReport": "Generate battery report",
   "deviceDetail.battery.reportQueued": "Battery report queued",
-  "deviceDetail.battery.reportFailed": "Failed to queue battery report"
+  "deviceDetail.battery.reportFailed": "Failed to queue battery report",
+  "publicDeviceInfo.badge": "Managed device",
+  "publicDeviceInfo.title": "Singularity MDM Agent",
+  "publicDeviceInfo.subtitle": "This computer is enrolled and monitored by your organization.",
+  "publicDeviceInfo.loading": "Loading device information…",
+  "publicDeviceInfo.notFound": "Device not found.",
+  "publicDeviceInfo.loadFailed": "Failed to load device information.",
+  "publicDeviceInfo.computer": "Computer",
+  "publicDeviceInfo.mdmServer": "MDM server",
+  "publicDeviceInfo.agentVersion": "Agent version",
+  "publicDeviceInfo.lastSync": "Last sync",
+  "publicDeviceInfo.deviceId": "Device ID",
+  "publicDeviceInfo.unknown": "Unknown",
+  "publicDeviceInfo.footer": "Device information is served by the MDM server."
 }
