@@ -4,6 +4,7 @@ import {
   assignDeviceApp,
   createApplicationVersion,
   createSoftwareApp,
+  deleteApplicationVersion,
   deleteSoftwareApp,
   fetchConfigProfileApps,
   fetchDeviceAppStatuses,
@@ -71,6 +72,18 @@ export function useCreateApplicationVersionMutation() {
   return useMutation({
     mutationFn: ({ appId, payload }: { appId: number; payload: CreateApplicationVersionPayload }) =>
       createApplicationVersion(appId, payload),
+    onSuccess: async (_data, variables) => {
+      await queryClient.invalidateQueries({ queryKey: windowsSoftwareAppQueryKeys.all })
+      await queryClient.invalidateQueries({ queryKey: windowsSoftwareAppQueryKeys.detail(variables.appId) })
+    },
+  })
+}
+
+export function useDeleteApplicationVersionMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ appId, versionId }: { appId: number; versionId: number }) =>
+      deleteApplicationVersion(appId, versionId),
     onSuccess: async (_data, variables) => {
       await queryClient.invalidateQueries({ queryKey: windowsSoftwareAppQueryKeys.all })
       await queryClient.invalidateQueries({ queryKey: windowsSoftwareAppQueryKeys.detail(variables.appId) })

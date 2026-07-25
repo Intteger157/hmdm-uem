@@ -1,9 +1,10 @@
-import { Loader2, Upload } from 'lucide-react'
+import { Loader2, Trash2, Upload } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { uploadSoftwareApp } from '@/features/windows/applications/api/windows-applications-api'
 import {
+  useDeleteApplicationVersionMutation,
   useSoftwareAppQuery,
   useUpdateSoftwareAppMutation,
 } from '@/features/windows/applications/hooks/use-windows-software-apps'
@@ -30,6 +31,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
+import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
 import { toast } from 'sonner'
 
 interface ApplicationEditSheetProps {
@@ -288,7 +290,7 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
                 )}
               </div>
 
-              <VersionsTable versions={app.versions} />
+              <VersionsTable appId={app.id} versions={app.versions} />
             </TabsContent>
           </Tabs>
         ) : null}
@@ -297,33 +299,87 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
   )
 }
 
-function VersionsTable({ versions }: { versions: ApplicationVersion[] }) {
+function VersionsTable({ appId, versions }: { appId: number; versions: ApplicationVersion[] }) {
   const { t } = useTranslation()
+  const deleteMutation = useDeleteApplicationVersionMutation()
+  const [deleteTarget, setDeleteTarget] = useState<ApplicationVersion | null>(null)
+
+  const handleDeleteVersion = async () => {
+    if (!deleteTarget) {
+      return
+    }
+
+    try {
+      await deleteMutation.mutateAsync({ appId, versionId: deleteTarget.id })
+      toast.success(t('windowsAppCatalog.versions.deleteSuccess'))
+      setDeleteTarget(null)
+    } catch (error: unknown) {
+      const status =
+        error && typeof error === 'object' && 'response' in error
+          ? (error as { response?: { status?: number } }).response?.status
+          : undefined
+      toast.error(
+        status === 409
+          ? t('windowsAppCatalog.versions.deleteInUse')
+          : t('windowsAppCatalog.versions.deleteError'),
+      )
+    }
+  }
 
   if (versions.length === 0) {
     return <p className="text-sm text-muted-foreground">{t('windowsAppCatalog.form.noVersions')}</p>
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border">
-      <table className="w-full text-left text-sm">
-        <thead className="border-b bg-muted/50">
-          <tr className="text-muted-foreground">
-            <th className="px-3 py-2 font-medium">{t('windowsAppCatalog.columns.version')}</th>
-            <th className="px-3 py-2 font-medium">{t('windowsAppCatalog.columns.updated')}</th>
-            <th className="px-3 py-2 font-medium">{t('windowsAppCatalog.columns.installArgs')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {versions.map((version) => (
-            <tr key={version.id} className="border-b last:border-0">
-              <td className="px-3 py-2 whitespace-nowrap">{version.version || '—'}</td>
-              <td className="px-3 py-2 whitespace-nowrap">{formatTimestamp(version.uploadedAt)}</td>
-              <td className="px-3 py-2 font-mono text-xs">{version.installArgs || '—'}</td>
+    <>
+      <div className="overflow-x-auto rounded-lg border">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b bg-muted/50">
+            <tr className="text-muted-foreground">
+              <th className="px-3 py-2 font-medium">{t('windowsAppCatalog.columns.version')}</th>
+              <th className="px-3 py-2 font-medium">{t('windowsAppCatalog.columns.updated')}</th>
+              <th className="px-3 py-2 font-medium">{t('windowsAppCatalog.columns.installArgs')}</th>
+              <th className="px-3 py-2 font-medium">{t('windowsAppCatalog.versions.actions')}</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {versions.map((version) => (
+              <tr key={version.id} className="border-b last:border-0">
+                <td className="px-3 py-2 whitespace-nowrap">{version.version || '—'}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{formatTimestamp(version.uploadedAt)}</td>
+                <td className="px-3 py-2 font-mono text-xs">{version.installArgs || '—'}</td>
+                <td className="px-3 py-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive"
+                    aria-label={t('windowsAppCatalog.versions.deleteTitle')}
+                    onClick={() => setDeleteTarget(version)}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <ConfirmDeleteDialog
+        open={deleteTarget != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteTarget(null)
+          }
+        }}
+        title={t('windowsAppCatalog.versions.deleteTitle')}
+        description={t('windowsAppCatalog.versions.deleteConfirm', {
+          version: deleteTarget?.version ?? '',
+        })}
+        isPending={deleteMutation.isPending}
+        onConfirm={() => void handleDeleteVersion()}
+      />
+    </>
   )
 }

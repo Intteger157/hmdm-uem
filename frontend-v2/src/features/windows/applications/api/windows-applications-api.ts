@@ -51,6 +51,10 @@ export async function createApplicationVersion(
   return fetchSoftwareApp(appId)
 }
 
+export async function deleteApplicationVersion(appId: number, versionId: number): Promise<void> {
+  await windowsApi.delete(`/apps/${appId}/versions/${versionId}`)
+}
+
 export async function deleteSoftwareApp(id: number): Promise<void> {
   await windowsApi.delete(`/apps/${id}`)
 }

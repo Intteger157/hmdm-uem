@@ -261,3 +261,30 @@ func validateApplicationAssignments(assignments []models.ProfileAppAssignment) e
 	}
 	return nil
 }
+
+func isApplicationVersionInUse(appID, versionID uint) (bool, error) {
+	var profileCount int64
+	if err := db.DB.Model(&models.ProfileApp{}).
+		Where("app_id = ? AND version_id = ?", appID, versionID).
+		Count(&profileCount).Error; err != nil {
+		return false, err
+	}
+	if profileCount > 0 {
+		return true, nil
+	}
+
+	var deviceAppCount int64
+	if err := db.DB.Model(&models.WindowsDeviceApp{}).
+		Where("app_id = ? AND version_id = ?", appID, versionID).
+		Count(&deviceAppCount).Error; err != nil {
+		return false, err
+	}
+	return deviceAppCount > 0, nil
+}
+
+func shouldDeleteStoredInstaller(version models.ApplicationVersion) bool {
+	if version.AppType == models.AppTypeUpload {
+		return true
+	}
+	return strings.Contains(strings.TrimSpace(version.FileURL), "/storage/apps/")
+}

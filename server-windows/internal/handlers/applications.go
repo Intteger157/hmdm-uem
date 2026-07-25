@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/hmdm/server-windows/internal/db"
 	"github.com/hmdm/server-windows/internal/models"
+	appstorage "github.com/hmdm/server-windows/internal/storage"
 	"gorm.io/gorm"
 )
 
@@ -277,6 +278,64 @@ func (h *WindowsHandler) CreateApplicationVersion(c *gin.Context) {
 	item := models.ToApplicationVersionJSON(version)
 	item.DownloadURL = normalizeDownloadURL(item.DownloadURL)
 	c.JSON(http.StatusCreated, item)
+}
+
+// DeleteApplicationVersion removes one catalog version and its stored installer file.
+func (h *WindowsHandler) DeleteApplicationVersion(c *gin.Context) {
+	appID, ok := parseUintParam(c.Param("id"))
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid app id"})
+		return
+	}
+	versionID, ok := parseUintParam(c.Param("versionId"))
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid version id"})
+		return
+	}
+
+	var version models.ApplicationVersion
+	if err := db.DB.Where("id = ? AND app_id = ?", versionID, appID).First(&version).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "application version not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup application version"})
+		return
+	}
+
+	inUse, err := isApplicationVersionInUse(appID, versionID)
+	if err != nil {
+		log.Printf("[delete-application-version] usage check failed: app_id=%d version_id=%d err=%v", appID, versionID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to validate version usage"})
+		return
+	}
+	if inUse {
+		c.JSON(http.StatusConflict, gin.H{"error": "version is used in configurations or device assignments"})
+		return
+	}
+
+	if shouldDeleteStoredInstaller(version) {
+		localPath, deleted, err := appstorage.DeleteStoredAppFile(version.FileURL)
+		if err != nil {
+			log.Printf("[delete-application-version] file delete failed: app_id=%d version_id=%d file_url=%q err=%v", appID, versionID, version.FileURL, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete installer file"})
+			return
+		}
+		if deleted {
+			log.Printf("[delete-application-version] deleted file path=%q app_id=%d version_id=%d", localPath, appID, versionID)
+		} else if localPath != "" {
+			log.Printf("[delete-application-version] installer file already absent path=%q app_id=%d version_id=%d", localPath, appID, versionID)
+		}
+	}
+
+	if err := db.DB.Delete(&version).Error; err != nil {
+		log.Printf("[delete-application-version] delete failed: app_id=%d version_id=%d err=%v", appID, versionID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete application version"})
+		return
+	}
+
+	log.Printf("[delete-application-version] deleted app_id=%d version_id=%d version=%q", appID, versionID, version.Version)
+	c.Status(http.StatusNoContent)
 }
 
 func parseOptionalAppID(raw string) (uint, bool) {

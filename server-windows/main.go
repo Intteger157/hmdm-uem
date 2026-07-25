@@ -119,6 +119,7 @@ func main() {
 			windows.GET("/apps/:id", windowsHandler.GetSoftwareApp)
 			windows.PUT("/apps/:id", windowsHandler.UpdateSoftwareApp)
 			windows.POST("/apps/:id/versions", windowsHandler.CreateApplicationVersion)
+			windows.DELETE("/apps/:id/versions/:versionId", windowsHandler.DeleteApplicationVersion)
 			windows.DELETE("/apps/:id", windowsHandler.DeleteSoftwareApp)
 			windows.GET("/devices/:hardwareId/apps/status", windowsHandler.GetDeviceAppStatuses)
 			windows.POST("/devices/:hardwareId/apps/status", windowsHandler.ReportDeviceAppStatus)
