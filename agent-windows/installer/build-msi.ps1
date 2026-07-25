@@ -21,6 +21,8 @@ $outputMsi = Join-Path $outputDir "singularity-agent.msi"
 New-Item -ItemType Directory -Force -Path $stagingDir, $outputDir | Out-Null
 
 if (-not $SkipBuild) {
+    & (Join-Path $agentRoot "scripts\ensure-icon-resource.ps1") -AgentRoot $agentRoot
+
     Write-Host "Building singularity-agent.exe ..."
     Push-Location $agentRoot
     try {

@@ -19,6 +19,8 @@ if (-not $AutopilotDir) {
 
 New-Item -ItemType Directory -Force -Path $stagingDir, $AutopilotDir | Out-Null
 
+& (Join-Path $agentRoot "scripts\ensure-icon-resource.ps1") -AgentRoot $agentRoot
+
 Write-Host "Building singularity-agent.exe (shared binary for Autopilot EXE and MSI) ..."
 Push-Location $agentRoot
 try {
