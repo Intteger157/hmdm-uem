@@ -17,6 +17,7 @@ import (
 	"github.com/hmdm/agent-windows/internal/apps"
 	"github.com/hmdm/agent-windows/internal/commands"
 	"github.com/hmdm/agent-windows/internal/config"
+	"github.com/hmdm/agent-windows/internal/desktop"
 	"github.com/hmdm/agent-windows/internal/policies"
 	"github.com/hmdm/agent-windows/internal/service"
 	"github.com/hmdm/agent-windows/internal/session"
@@ -62,7 +63,7 @@ func run() error {
 
 	if *trayMode {
 		log.Printf("starting Singularity MDM tray helper")
-		tray.Run(cfg, iconData)
+		tray.Run(iconData)
 		return nil
 	}
 
@@ -88,8 +89,12 @@ func run() error {
 		return svc.Run(serviceName, handler)
 	case *debugMode:
 		log.Printf("%s starting in debug (console) mode", serviceName)
+		stopCh := make(chan struct{})
+		go desktop.Run(stopCh, &handler.cfg)
 		go startTrayHelper()
-		return debug.Run(serviceName, handler)
+		err := debug.Run(serviceName, handler)
+		close(stopCh)
+		return err
 	default:
 		fmt.Fprintf(os.Stderr, "use -debug to run %s in console mode\n", serviceName)
 		os.Exit(2)
@@ -204,6 +209,8 @@ func (s *agentService) Execute(_ []string, requests <-chan svc.ChangeRequest, st
 	stopCh := make(chan struct{})
 	s.syncNow = make(chan struct{}, 1)
 
+	go desktop.Run(stopCh, &s.cfg)
+
 	// Report RUNNING before network enrollment so MSI/service manager does not hang.
 	go func() {
 		if err := performHandshake(&s.cfg, s.apiClient, stopCh); err != nil {
@@ -307,6 +314,9 @@ func runAgentCycle(stop <-chan struct{}, cfg *config.Config, apiClient *api.APIC
 		log.Printf("inventory upload failed: %v", err)
 	} else {
 		log.Printf("inventory upload succeeded")
+		if err := desktop.RecordSuccessfulSync(time.Now().UTC()); err != nil {
+			log.Printf("failed to record last sync time: %v", err)
+		}
 		if err := processInventoryCommands(cfg, apiClient, pendingCommands); err != nil {
 			if handleReenrollNeeded(cfg, err) {
 				return

@@ -3,38 +3,32 @@ package tray
 import (
 	"fmt"
 	"log"
-	"net/url"
 	"os/exec"
-	"strings"
 
 	"github.com/getlantern/systray"
-	"github.com/hmdm/agent-windows/internal/agentstate"
-	"github.com/hmdm/agent-windows/internal/config"
-	"github.com/hmdm/agent-windows/internal/system"
+	"github.com/hmdm/agent-windows/internal/desktop"
 )
 
-const agentVersion = "1.0"
-
 // Run starts the system tray UI. It blocks until the tray exits.
-func Run(cfg config.Config, iconData []byte) {
+func Run(iconData []byte) {
 	systray.Run(func() {
-		onReady(cfg, iconData)
+		onReady(iconData)
 	}, onExit)
 }
 
-func onReady(cfg config.Config, iconData []byte) {
+func onReady(iconData []byte) {
 	systray.SetIcon(iconData)
 	systray.SetTooltip("Singularity MDM Agent")
 
-	mOpen := systray.AddMenuItem("Open Device Info", "Open MDM portal")
+	mOpen := systray.AddMenuItem("Device Information", "Open local device information page")
 	systray.AddSeparator()
-	mVersion := systray.AddMenuItem("Version: "+agentVersion, "")
+	mVersion := systray.AddMenuItem("Version: "+desktop.AgentVersion, "")
 	mVersion.Disable()
 
 	go func() {
 		for range mOpen.ClickedCh {
-			if err := openDevicePortal(cfg); err != nil {
-				log.Printf("open device portal failed: %v", err)
+			if err := openDeviceInformationPage(); err != nil {
+				log.Printf("open device information page failed: %v", err)
 			}
 		}
 	}()
@@ -42,34 +36,9 @@ func onReady(cfg config.Config, iconData []byte) {
 
 func onExit() {}
 
-func openDevicePortal(cfg config.Config) error {
-	deviceID, err := resolveDeviceID()
-	if err != nil {
-		return err
-	}
-
-	portalURL := buildDevicePortalURL(cfg.ServerURL, deviceID)
-	if err := exec.Command("rundll32", "url.dll,FileProtocolHandler", portalURL).Start(); err != nil {
+func openDeviceInformationPage() error {
+	if err := exec.Command("rundll32", "url.dll,FileProtocolHandler", desktop.LocalURL()).Start(); err != nil {
 		return fmt.Errorf("open browser: %w", err)
 	}
-
 	return nil
-}
-
-func resolveDeviceID() (string, error) {
-	if state, err := agentstate.Load(); err == nil && state.DeviceID != "" {
-		return state.DeviceID, nil
-	}
-
-	hardwareID, err := system.GetHardwareID()
-	if err != nil {
-		return "", fmt.Errorf("resolve device id: %w", err)
-	}
-
-	return hardwareID, nil
-}
-
-func buildDevicePortalURL(serverURL, deviceID string) string {
-	base := strings.TrimRight(strings.TrimSpace(serverURL), "/")
-	return fmt.Sprintf("%s/devices/%s?platform=windows", base, url.PathEscape(deviceID))
 }

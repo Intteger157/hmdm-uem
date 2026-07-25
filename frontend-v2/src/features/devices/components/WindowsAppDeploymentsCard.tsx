@@ -129,7 +129,14 @@ export function WindowsAppDeploymentsCard({ hardwareId, className }: WindowsAppD
             <div className="min-w-0">
               <p className="truncate text-sm font-medium leading-tight">{item.appName}</p>
               {item.errorMessage ? (
-                <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-destructive">{item.errorMessage}</p>
+                <p
+                  className={cn(
+                    'mt-0.5 line-clamp-2 text-sm leading-snug',
+                    item.status === 'Failed' ? 'text-destructive' : 'text-muted-foreground',
+                  )}
+                >
+                  {item.errorMessage}
+                </p>
               ) : null}
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
