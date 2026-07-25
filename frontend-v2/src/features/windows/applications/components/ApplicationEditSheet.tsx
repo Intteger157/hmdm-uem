@@ -145,8 +145,11 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-2xl">
-        <SheetHeader>
+      <SheetContent
+        side="right"
+        className="flex w-full flex-col overflow-hidden data-[side=right]:w-full data-[side=right]:sm:max-w-4xl"
+      >
+        <SheetHeader className="shrink-0">
           <SheetTitle>{app?.name ?? t('windowsAppCatalog.form.editTitle')}</SheetTitle>
           <SheetDescription>
             {app ? formatLatestVersionLabel(app) : t('windowsAppCatalog.form.description')}
@@ -161,8 +164,12 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
         ) : null}
 
         {app ? (
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="px-4 pb-4">
-            <TabsList className="w-full">
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="flex min-h-0 flex-1 flex-col px-4 pb-4"
+          >
+            <TabsList className="w-full shrink-0">
               <TabsTrigger value="general" className="flex-1">
                 {t('windowsAppCatalog.form.tabGeneral')}
               </TabsTrigger>
@@ -220,34 +227,36 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
               </Form>
             </TabsContent>
 
-            <TabsContent value="versions" className="mt-4 space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="edit-app-version" className="text-sm font-medium">
-                  {t('windowsAppCatalog.form.version')}
-                </label>
-                <Input
-                  id="edit-app-version"
-                  value={versionOverride}
-                  placeholder={t('windowsAppCatalog.form.autoDetectPlaceholder')}
-                  autoComplete="off"
-                  disabled={uploadingVersion}
-                  onChange={(event) => setVersionOverride(event.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">{t('windowsAppCatalog.form.versionHint')}</p>
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="edit-app-publisher" className="text-sm font-medium">
-                  {t('windowsAppCatalog.form.publisher')}
-                </label>
-                <Input
-                  id="edit-app-publisher"
-                  value={publisherOverride}
-                  placeholder={t('windowsAppCatalog.form.autoDetectPlaceholder')}
-                  autoComplete="off"
-                  disabled={uploadingVersion}
-                  onChange={(event) => setPublisherOverride(event.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">{t('windowsAppCatalog.form.publisherHint')}</p>
+            <TabsContent value="versions" className="mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label htmlFor="edit-app-version" className="text-sm font-medium">
+                    {t('windowsAppCatalog.form.version')}
+                  </label>
+                  <Input
+                    id="edit-app-version"
+                    value={versionOverride}
+                    placeholder={t('windowsAppCatalog.form.autoDetectPlaceholder')}
+                    autoComplete="off"
+                    disabled={uploadingVersion}
+                    onChange={(event) => setVersionOverride(event.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">{t('windowsAppCatalog.form.versionHint')}</p>
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="edit-app-publisher" className="text-sm font-medium">
+                    {t('windowsAppCatalog.form.publisher')}
+                  </label>
+                  <Input
+                    id="edit-app-publisher"
+                    value={publisherOverride}
+                    placeholder={t('windowsAppCatalog.form.autoDetectPlaceholder')}
+                    autoComplete="off"
+                    disabled={uploadingVersion}
+                    onChange={(event) => setPublisherOverride(event.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">{t('windowsAppCatalog.form.publisherHint')}</p>
+                </div>
               </div>
               <input
                 ref={versionUploadRef}
@@ -332,23 +341,23 @@ function VersionsTable({ appId, versions }: { appId: number; versions: Applicati
 
   return (
     <>
-      <div className="overflow-x-auto rounded-lg border">
-        <table className="w-full text-left text-sm">
+      <div className="rounded-lg border">
+        <table className="w-full table-fixed text-left text-sm">
           <thead className="border-b bg-muted/50">
             <tr className="text-muted-foreground">
-              <th className="px-3 py-2 font-medium">{t('windowsAppCatalog.columns.version')}</th>
-              <th className="px-3 py-2 font-medium">{t('windowsAppCatalog.columns.updated')}</th>
+              <th className="w-[88px] px-3 py-2 font-medium">{t('windowsAppCatalog.columns.version')}</th>
+              <th className="w-[160px] px-3 py-2 font-medium">{t('windowsAppCatalog.columns.updated')}</th>
               <th className="px-3 py-2 font-medium">{t('windowsAppCatalog.columns.installArgs')}</th>
-              <th className="px-3 py-2 font-medium">{t('windowsAppCatalog.versions.actions')}</th>
+              <th className="w-[52px] px-3 py-2 font-medium">{t('windowsAppCatalog.versions.actions')}</th>
             </tr>
           </thead>
           <tbody>
             {versions.map((version) => (
               <tr key={version.id} className="border-b last:border-0">
-                <td className="px-3 py-2 whitespace-nowrap">{version.version || '—'}</td>
-                <td className="px-3 py-2 whitespace-nowrap">{formatTimestamp(version.uploadedAt)}</td>
-                <td className="px-3 py-2 font-mono text-xs">{version.installArgs || '—'}</td>
-                <td className="px-3 py-2">
+                <td className="px-3 py-2 align-top whitespace-nowrap">{version.version || '—'}</td>
+                <td className="px-3 py-2 align-top whitespace-nowrap">{formatTimestamp(version.uploadedAt)}</td>
+                <td className="px-3 py-2 align-top font-mono text-xs break-all">{version.installArgs || '—'}</td>
+                <td className="px-3 py-2 align-top">
                   <Button
                     type="button"
                     variant="ghost"

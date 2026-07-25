@@ -474,7 +474,10 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex w-full flex-col overflow-hidden sm:max-w-2xl">
+      <SheetContent
+        side="right"
+        className="flex w-full flex-col overflow-hidden data-[side=right]:w-full data-[side=right]:sm:max-w-4xl"
+      >
         <SheetHeader>
           <SheetTitle>{t('windowsAppCatalog.form.createTitle')}</SheetTitle>
           <SheetDescription>{t('windowsAppCatalog.form.createDescription')}</SheetDescription>
