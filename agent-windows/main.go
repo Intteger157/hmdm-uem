@@ -297,13 +297,18 @@ func runAgentCycle(stop <-chan struct{}, cfg *config.Config, apiClient *api.APIC
 		}
 	}
 
-	if err := apiClient.SendCheckin(cfg.AuthToken, cfg.HardwareID); err != nil {
+	checkinResult, err := apiClient.SendCheckin(cfg.AuthToken, cfg.HardwareID, policies.LoadLastSyncedConfigHash())
+	if err != nil {
 		if handleReenrollNeeded(cfg, err) {
 			return
 		}
 		log.Printf("checkin failed: %v", err)
 	} else {
-		log.Printf("checkin succeeded")
+		if checkinResult.ConfigChanged {
+			log.Printf("checkin: configuration change detected (hash=%s)", checkinResult.ConfigHash)
+		} else {
+			log.Printf("checkin succeeded")
+		}
 	}
 
 	pendingCommands, err := uploadInventory(cfg, apiClient)

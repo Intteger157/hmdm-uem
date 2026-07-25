@@ -115,7 +115,21 @@ func (h *WindowsHandler) Checkin(c *gin.Context) {
 		return
 	}
 
-	c.Status(http.StatusNoContent)
+	effective, err := buildEffectiveConfig(device)
+	if err != nil {
+		log.Printf("[checkin] effective config failed: hardware_id=%q err=%v", deviceID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to build effective configuration"})
+		return
+	}
+
+	configHash := models.EffectiveConfigHash(effective)
+	clientHash := strings.TrimSpace(c.GetHeader("X-Config-Hash"))
+	configChanged := clientHash == "" || clientHash != configHash
+
+	c.JSON(http.StatusOK, models.CheckinResponse{
+		ConfigHash:    configHash,
+		ConfigChanged: configChanged,
+	})
 }
 
 // Inventory accepts authenticated inventory uploads from enrolled agents.

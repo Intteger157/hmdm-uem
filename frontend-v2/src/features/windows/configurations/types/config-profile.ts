@@ -1,3 +1,5 @@
+import type { ProfileAppAssignment } from '@/features/windows/applications/types/software-app'
+
 export interface WindowsConfigProfilePayload {
   defenderEnabled: boolean
   blockUsbStorage: boolean
@@ -27,6 +29,8 @@ export interface UpsertWindowsConfigProfilePayload {
   payload: WindowsConfigProfilePayload
   isActive: boolean
   isDefault: boolean
+  appIds?: number[]
+  assignments?: ProfileAppAssignment[]
 }
 
 export interface WindowsDeviceGroup {

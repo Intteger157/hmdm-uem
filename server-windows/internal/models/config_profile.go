@@ -37,6 +37,8 @@ type UpsertConfigProfileRequest struct {
 	Payload     WindowsConfigProfilePayload `json:"payload" binding:"required"`
 	IsActive    bool                        `json:"isActive"`
 	IsDefault   bool                        `json:"isDefault"`
+	AppIDs      []uint                      `json:"appIds"`
+	Assignments []ProfileAppAssignment      `json:"assignments"`
 }
 
 // ConfigProfileJSON is one configuration profile for the admin UI.

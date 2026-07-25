@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hmdm/server-windows/internal/db"
@@ -81,22 +82,7 @@ func (h *WindowsHandler) AssignConfigProfileApps(c *gin.Context) {
 
 	assignments := normalizeProfileAssignments(req)
 
-	if err := db.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where("profile_id = ?", profileID).Delete(&models.ProfileApp{}).Error; err != nil {
-			return err
-		}
-		for _, assignment := range assignments {
-			row := models.ProfileApp{
-				ProfileID: profileID,
-				AppID:     assignment.AppID,
-				VersionID: assignment.VersionID,
-			}
-			if err := tx.Create(&row).Error; err != nil {
-				return err
-			}
-		}
-		return nil
-	}); err != nil {
+	if err := replaceProfileApps(profileID, assignments); err != nil {
 		log.Printf("[assign-profile-apps] save failed: profile_id=%d err=%v", profileID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save profile apps"})
 		return
@@ -146,6 +132,44 @@ func assignmentAppIDs(assignments []models.ProfileAppAssignment) []uint {
 
 func deleteConfigProfileApps(profileID uint) error {
 	return db.DB.Where("profile_id = ?", profileID).Delete(&models.ProfileApp{}).Error
+}
+
+func replaceProfileApps(profileID uint, assignments []models.ProfileAppAssignment) error {
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		return replaceProfileAppsTx(tx, profileID, assignments)
+	})
+}
+
+func replaceProfileAppsTx(tx *gorm.DB, profileID uint, assignments []models.ProfileAppAssignment) error {
+	if err := tx.Where("profile_id = ?", profileID).Delete(&models.ProfileApp{}).Error; err != nil {
+		return err
+	}
+	for _, assignment := range assignments {
+		row := models.ProfileApp{
+			ProfileID: profileID,
+			AppID:     assignment.AppID,
+			VersionID: assignment.VersionID,
+		}
+		if err := tx.Create(&row).Error; err != nil {
+			return err
+		}
+	}
+	return tx.Model(&models.WindowsConfigProfile{}).Where("id = ?", profileID).Update("updated_at", time.Now()).Error
+}
+
+func saveProfileAppsForRequest(profileID uint, req models.UpsertConfigProfileRequest) error {
+	if req.AppIDs == nil && req.Assignments == nil {
+		return nil
+	}
+
+	assignments := normalizeProfileAssignments(models.AssignProfileAppsRequest{
+		AppIDs:      req.AppIDs,
+		Assignments: req.Assignments,
+	})
+	if err := validateApplicationAssignments(assignments); err != nil {
+		return err
+	}
+	return replaceProfileApps(profileID, assignments)
 }
 
 // GetDeviceAppStatuses returns deployment statuses for a device.

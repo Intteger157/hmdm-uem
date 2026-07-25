@@ -74,6 +74,7 @@ func buildEffectiveConfig(device models.WindowsDevice) (models.EffectiveConfigRe
 			ProfileID:   entry.Profile.ID,
 			ProfileName: entry.Profile.Name,
 			Source:      entry.Source,
+			UpdatedAt:   entry.Profile.UpdatedAt,
 		})
 	}
 
@@ -88,6 +89,7 @@ func buildEffectiveConfig(device models.WindowsDevice) (models.EffectiveConfigRe
 			ProfileID:   entry.Profile.ID,
 			ProfileName: entry.Profile.Name,
 			Source:      entry.Source,
+			UpdatedAt:   entry.Profile.UpdatedAt,
 		})
 	}
 

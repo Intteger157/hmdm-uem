@@ -9,7 +9,6 @@ import { fetchWindowsDeviceOptions } from '@/features/windows/configurations/api
 import { WindowsAssignmentMultiSelect } from '@/features/windows/configurations/components/WindowsAssignmentMultiSelect'
 import { WindowsProfileAppsSelector } from '@/features/windows/configurations/components/WindowsProfileAppsSelector'
 import {
-  useAssignConfigProfileAppsMutation,
   useConfigProfileAppsQuery,
   useSoftwareAppsQuery,
 } from '@/features/windows/applications/hooks/use-windows-software-apps'
@@ -67,7 +66,6 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
 
   const upsertMutation = useUpsertWindowsConfigProfileMutation()
   const assignMutation = useAssignWindowsConfigProfileMutation()
-  const assignAppsMutation = useAssignConfigProfileAppsMutation()
   const replacePoliciesMutation = useReplaceWindowsConfigProfilePoliciesMutation()
 
   const [registryPolicies, setRegistryPolicies] = useState<WindowsConfigurationPolicy[]>([])
@@ -125,6 +123,8 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
           isActive: values.isActive || values.isDefault,
           isDefault: values.isDefault,
           payload: values.payload,
+          appIds: values.appAssignments.map((item) => item.appId),
+          assignments: values.appAssignments,
         },
       })
 
@@ -133,14 +133,6 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
         assignments: {
           groupIds: values.groupIds,
           deviceIds: values.deviceIds,
-        },
-      })
-
-      await assignAppsMutation.mutateAsync({
-        profileId: saved.id,
-        payload: {
-          appIds: values.appAssignments.map((item) => item.appId),
-          assignments: values.appAssignments,
         },
       })
 
@@ -174,7 +166,6 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
   const isPending =
     upsertMutation.isPending ||
     assignMutation.isPending ||
-    assignAppsMutation.isPending ||
     replacePoliciesMutation.isPending
   const profileName = form.watch('name')
 

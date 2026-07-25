@@ -40,7 +40,7 @@ type ConfigurationPolicyListResponse struct {
 
 // ReplaceConfigurationPoliciesRequest replaces all policies for one profile.
 type ReplaceConfigurationPoliciesRequest struct {
-	Items []ConfigurationPolicyJSON `json:"items" binding:"required"`
+	Items []ConfigurationPolicyJSON `json:"items"`
 }
 
 // DeviceConfigurationsResponse is returned to the agent for one device.

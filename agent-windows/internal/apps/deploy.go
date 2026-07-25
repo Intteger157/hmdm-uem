@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/exec"
@@ -226,6 +227,8 @@ func deployURLApp(app RequiredApp, opts DeployOptions, state *AppsState, install
 
 	progress.Report(InstallStatusDownloading, fmt.Sprintf("Download URL: %s", resolvedURL))
 	reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusDownloading, "")
+
+	applyDownloadJitter()
 
 	localPath, err := downloadInstaller(resolvedURL)
 	if err != nil {
@@ -499,4 +502,15 @@ func endAppDeploy(appID uint, appName string) {
 
 func normalizeDeployAppName(name string) string {
 	return strings.ToLower(strings.TrimSpace(name))
+}
+
+func applyDownloadJitter() {
+	const minDelaySec = 5
+	const maxDelaySec = 120
+	delaySec := minDelaySec + rand.Intn(maxDelaySec-minDelaySec+1)
+	log.Printf(
+		"Singularity MDM: Randomized delay applied to prevent server overload. Waiting %d seconds before download...",
+		delaySec,
+	)
+	time.Sleep(time.Duration(delaySec) * time.Second)
 }

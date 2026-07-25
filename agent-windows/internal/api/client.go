@@ -81,6 +81,12 @@ type submitCommandResultRequest struct {
 	Output string `json:"output"`
 }
 
+// CheckinResponse is returned by POST /rest/windows/checkin.
+type CheckinResponse struct {
+	ConfigHash    string `json:"configHash"`
+	ConfigChanged bool   `json:"configChanged"`
+}
+
 // PendingCommand describes a command fetched from the server poll queue.
 type PendingCommand struct {
 	ID      uint
@@ -215,34 +221,46 @@ func (c *APIClient) Enroll(enrollToken, hwid string) (string, error) {
 }
 
 // SendCheckin updates server-side presence without uploading full inventory.
-func (c *APIClient) SendCheckin(authToken, hwid string) error {
+func (c *APIClient) SendCheckin(authToken, hwid, configHash string) (CheckinResponse, error) {
 	req, err := http.NewRequest(http.MethodPost, c.baseURL+checkinPath, http.NoBody)
 	if err != nil {
-		return fmt.Errorf("create checkin request: %w", err)
+		return CheckinResponse{}, fmt.Errorf("create checkin request: %w", err)
 	}
 
 	req.Header.Set("Authorization", "Bearer "+authToken)
 	req.Header.Set("X-Device-Id", hwid)
+	if trimmedHash := strings.TrimSpace(configHash); trimmedHash != "" {
+		req.Header.Set("X-Config-Hash", trimmedHash)
+	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("send checkin request: %w", err)
+		return CheckinResponse{}, fmt.Errorf("send checkin request: %w", err)
 	}
 	defer resp.Body.Close()
 
-	if _, err := io.Copy(io.Discard, resp.Body); err != nil {
-		return fmt.Errorf("read checkin response: %w", err)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return CheckinResponse{}, fmt.Errorf("read checkin response: %w", err)
 	}
 
 	switch resp.StatusCode {
 	case http.StatusUnauthorized:
-		return ErrUnauthorized
+		return CheckinResponse{}, ErrUnauthorized
 	case http.StatusNotFound:
-		return ErrDeviceNotFound
-	case http.StatusOK, http.StatusNoContent:
-		return nil
+		return CheckinResponse{}, ErrDeviceNotFound
+	case http.StatusOK:
+		var parsed CheckinResponse
+		if len(body) > 0 {
+			if err := json.Unmarshal(body, &parsed); err != nil {
+				return CheckinResponse{}, fmt.Errorf("decode checkin response: %w", err)
+			}
+		}
+		return parsed, nil
+	case http.StatusNoContent:
+		return CheckinResponse{}, nil
 	default:
-		return fmt.Errorf("checkin failed with HTTP %d", resp.StatusCode)
+		return CheckinResponse{}, fmt.Errorf("checkin failed with HTTP %d", resp.StatusCode)
 	}
 }
 
