@@ -277,6 +277,7 @@ func runAgentLoop(stop <-chan struct{}, syncNow <-chan struct{}, cfg *config.Con
 
 	go runPolicyComplianceLoop(stop, cfg, apiClient)
 
+	policies.InitRequiredAppIDsFromCache()
 	reconcileStaleAppInstallStatuses(cfg, apiClient)
 
 	log.Printf("running immediate sync on agent start")

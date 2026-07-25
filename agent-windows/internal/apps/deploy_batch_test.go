@@ -3,6 +3,7 @@
 package apps
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/hmdm/agent-windows/internal/system"
@@ -77,5 +78,32 @@ func TestReconcileStaleInstallStatusesReportsFailed(t *testing.T) {
 		if report.errMsg != StaleInstallAbortMessage {
 			t.Fatalf("unexpected error message: %q", report.errMsg)
 		}
+	}
+}
+
+func TestIsAppStillRequiredDefaultsTrueWithoutValidator(t *testing.T) {
+	if !isAppStillRequired(DeployOptions{}, 42) {
+		t.Fatal("expected deploy to proceed when validator is not configured")
+	}
+}
+
+func TestIsAppStillRequiredUsesValidator(t *testing.T) {
+	opts := DeployOptions{
+		IsAppStillRequired: func(appID uint) bool {
+			return appID == 7
+		},
+	}
+	if !isAppStillRequired(opts, 7) {
+		t.Fatal("expected app 7 to be required")
+	}
+	if isAppStillRequired(opts, 8) {
+		t.Fatal("expected app 8 to be canceled")
+	}
+}
+
+func TestFormatInstallFailureMessageUsesTimeoutStatus(t *testing.T) {
+	message := formatInstallFailureMessage(fmt.Errorf("%s", InstallTimeoutStatusMessage), installRunResult{})
+	if message != InstallTimeoutStatusMessage {
+		t.Fatalf("expected timeout status message, got %q", message)
 	}
 }

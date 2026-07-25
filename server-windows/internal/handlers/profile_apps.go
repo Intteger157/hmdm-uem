@@ -338,7 +338,8 @@ func normalizeAppStatus(raw string) string {
 		models.AppStatusDownloading,
 		models.AppStatusInstalling,
 		models.AppStatusSuccess,
-		models.AppStatusFailed:
+		models.AppStatusFailed,
+		models.AppStatusCanceled:
 		return raw
 	default:
 		return ""

@@ -130,6 +130,7 @@ func NewAppDeployOptions(client *api.APIClient, authToken, hardwareID string) ap
 	opts.StepLogger = func(appID uint, appName, step, output string) error {
 		return client.ReportAppInstallLog(authToken, hardwareID, appID, appName, step, output)
 	}
+	opts.IsAppStillRequired = IsRequiredAppID
 	return opts
 }
 

@@ -60,9 +60,10 @@ type StepLogger func(appID uint, appName, status, output string) error
 
 // DeployOptions configures app deployment callbacks and server URL resolution.
 type DeployOptions struct {
-	BaseURL        string
-	StatusReporter StatusReporter
-	StepLogger     StepLogger
+	BaseURL            string
+	StatusReporter     StatusReporter
+	StepLogger         StepLogger
+	IsAppStillRequired func(appID uint) bool
 }
 
 // DeployRequiredAsync starts app deployment in a background goroutine so jitter,
@@ -105,6 +106,11 @@ func DeployRequired(required []RequiredApp, opts DeployOptions) {
 	stateChanged := false
 
 	for _, app := range required {
+		if !isAppStillRequired(opts, app.ID) {
+			reportDeployCanceled(opts, app)
+			continue
+		}
+
 		checked, deployErr := deployApp(app, opts, &state, installed)
 		if checked {
 			stateChanged = true
@@ -123,6 +129,11 @@ func DeployRequired(required []RequiredApp, opts DeployOptions) {
 }
 
 func deployApp(app RequiredApp, opts DeployOptions, state *AppsState, installed []system.InstalledSoftwareInfo) (checked bool, err error) {
+	if !isAppStillRequired(opts, app.ID) {
+		reportDeployCanceled(opts, app)
+		return false, nil
+	}
+
 	if state.ShouldSkipDeploy(app.ID, app.UpdatedAt) {
 		log.Printf(
 			"app deploy: skip id=%d name=%q updatedAt=%q (already deployed per local cache)",
@@ -154,6 +165,10 @@ func deployApp(app RequiredApp, opts DeployOptions, state *AppsState, installed 
 }
 
 func reportDeployFailure(opts DeployOptions, progress *InstallProgressReporter, app RequiredApp, state *AppsState, message string, err error) (bool, error) {
+	if isInstallTimeout(err) {
+		message = InstallTimeoutStatusMessage
+	}
+
 	if progress != nil {
 		progress.Report(InstallStatusFailed, message)
 	} else {
@@ -167,6 +182,34 @@ func reportDeployFailure(opts DeployOptions, progress *InstallProgressReporter, 
 		return false, err
 	}
 	return false, fmt.Errorf("%s", message)
+}
+
+func isAppStillRequired(opts DeployOptions, appID uint) bool {
+	if opts.IsAppStillRequired == nil {
+		return true
+	}
+	return opts.IsAppStillRequired(appID)
+}
+
+func reportDeployCanceled(opts DeployOptions, app RequiredApp) {
+	log.Printf(
+		"app deploy: canceled id=%d name=%q (no longer required by configuration)",
+		app.ID,
+		app.Name,
+	)
+	reportInstallProgress(opts.StepLogger, app.ID, app.Name, InstallStatusCanceled, InstallCanceledMessage)
+	reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusCanceled, InstallCanceledMessage)
+}
+
+func isInstallTimeout(err error) bool {
+	if err == nil {
+		return false
+	}
+	if procexec.IsTimeout(err) {
+		return true
+	}
+	return strings.Contains(err.Error(), procexec.InstallTimeoutMessage) ||
+		strings.Contains(err.Error(), InstallTimeoutStatusMessage)
 }
 
 func deployWingetApp(app RequiredApp, opts DeployOptions, state *AppsState) (bool, error) {
@@ -185,6 +228,10 @@ func deployWingetApp(app RequiredApp, opts DeployOptions, state *AppsState) (boo
 	}
 
 	if !installed {
+		if !isAppStillRequired(opts, app.ID) {
+			reportDeployCanceled(opts, app)
+			return false, nil
+		}
 		progress.Report(InstallStatusInstalling, fmt.Sprintf("Running: winget install --id %s --silent", wingetID))
 		reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusInstalling, "")
 		output, err := runWingetOutput("install", "--id", wingetID)
@@ -202,6 +249,11 @@ func deployWingetApp(app RequiredApp, opts DeployOptions, state *AppsState) (boo
 		reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusSuccess, "Already installed")
 		state.MarkDeployed(app.ID, app.UpdatedAt)
 		return true, nil
+	}
+
+	if !isAppStillRequired(opts, app.ID) {
+		reportDeployCanceled(opts, app)
+		return false, nil
 	}
 
 	progress.Report(InstallStatusInstalling, fmt.Sprintf("Running: winget upgrade --id %s --silent", wingetID))
@@ -248,6 +300,11 @@ func deployURLApp(app RequiredApp, opts DeployOptions, state *AppsState, install
 		return reportDeployFailure(opts, progress, app, state, fmt.Sprintf("resolve download URL: %v", err), fmt.Errorf("resolve download URL: %w", err))
 	}
 
+	if !isAppStillRequired(opts, app.ID) {
+		reportDeployCanceled(opts, app)
+		return false, nil
+	}
+
 	progress.Report(InstallStatusDownloading, fmt.Sprintf("Download URL: %s", resolvedURL))
 	reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusDownloading, "")
 
@@ -267,14 +324,16 @@ func deployURLApp(app RequiredApp, opts DeployOptions, state *AppsState, install
 	progress.Report(InstallStatusInstalling, fmt.Sprintf("Installer path: %s", localPath))
 	reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusInstalling, "")
 
+	if !isAppStillRequired(opts, app.ID) {
+		reportDeployCanceled(opts, app)
+		return false, nil
+	}
+
 	log.Printf("app deploy: installing id=%d name=%q path=%q installArgs=%q", app.ID, app.Name, localPath, app.InstallArgs)
 	result, err := runURLInstaller(localPath, app.InstallArgs)
 	if err != nil {
 		log.Printf("app deploy: install failed id=%d name=%q: %v", app.ID, app.Name, err)
-		resultMessage := formatInstallResult(result)
-		if resultMessage == "" {
-			resultMessage = err.Error()
-		}
+		resultMessage := formatInstallFailureMessage(err, result)
 		return reportDeployFailure(opts, progress, app, state, resultMessage, fmt.Errorf("install: %w", err))
 	}
 
@@ -297,10 +356,26 @@ func formatCommandFailure(command, output string, err error) string {
 		b.WriteString("\n")
 	}
 	if err != nil {
-		b.WriteString("Error: ")
-		b.WriteString(err.Error())
+		if isInstallTimeout(err) {
+			b.WriteString("Error: ")
+			b.WriteString(InstallTimeoutStatusMessage)
+		} else {
+			b.WriteString("Error: ")
+			b.WriteString(err.Error())
+		}
 	}
 	return strings.TrimSpace(b.String())
+}
+
+func formatInstallFailureMessage(err error, result installRunResult) string {
+	if isInstallTimeout(err) {
+		return InstallTimeoutStatusMessage
+	}
+	message := formatInstallResult(result)
+	if message == "" && err != nil {
+		message = err.Error()
+	}
+	return message
 }
 
 func shouldCheckUpdate(app RequiredApp, state *AppsState) bool {

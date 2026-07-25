@@ -61,6 +61,7 @@ func SaveDesiredConfig(config EffectiveConfig) error {
 	if err := os.WriteFile(configFilePath(), payload, 0o644); err != nil {
 		return fmt.Errorf("write config.json: %w", err)
 	}
+	UpdateRequiredAppIDs(config.RequiredApps)
 	return nil
 }
 
@@ -281,6 +282,7 @@ func ClearPolicyCache() error {
 	if err := ClearDesiredConfig(); err != nil {
 		return err
 	}
+	UpdateRequiredAppIDs(nil)
 	return SaveSyncState(syncState{LastSyncedHash: emptyPolicyHash})
 }
 

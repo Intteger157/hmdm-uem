@@ -8,6 +8,7 @@ const (
 	AppStatusInstalling  = "Installing"
 	AppStatusSuccess     = "Success"
 	AppStatusFailed      = "Failed"
+	AppStatusCanceled    = "Canceled"
 )
 
 // DeviceAppStatus tracks deployment progress for one app on one device.

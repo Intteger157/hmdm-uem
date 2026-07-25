@@ -12,6 +12,10 @@ const (
 	InstallStatusInstalling  = "Installing"
 	InstallStatusSuccess     = "Success"
 	InstallStatusFailed      = "Failed"
+	InstallStatusCanceled    = "Canceled"
+
+	InstallTimeoutStatusMessage = "Installation timed out (process killed)"
+	InstallCanceledMessage      = "Removed from configuration before installation started"
 )
 
 // InstallProgressReporter sends unified app install updates to Action Logs.

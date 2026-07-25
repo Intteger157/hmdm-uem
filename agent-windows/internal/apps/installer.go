@@ -15,7 +15,7 @@ import (
 
 const (
 	exitCodeSuccessRebootRequired = 3010
-	installProcessTimeout         = procexec.InstallTimeout
+	appInstallTimeout             = 20 * time.Minute
 )
 
 var exeSilentArgSets = [][]string{
@@ -36,32 +36,43 @@ func isInstallerSuccess(exitCode int) bool {
 }
 
 func runURLInstaller(installerPath, installArgs string) (installRunResult, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), appInstallTimeout)
+	defer cancel()
+
 	ext := strings.ToLower(filepath.Ext(installerPath))
 	customArgs := strings.TrimSpace(installArgs)
 
 	if ext == ".msi" {
 		args := strings.Fields(customArgs)
 		cmd, cmdLine := buildInstallerCommandWithArgs(installerPath, args)
-		return runPreparedInstaller(cmd, cmdLine, installProcessTimeout, true)
+		return runPreparedInstaller(ctx, cmd, cmdLine, true)
 	}
 
 	if customArgs != "" {
 		args := strings.Fields(customArgs)
 		_, cmdLine := buildInstallerCommandWithArgs(installerPath, args)
-		return runEXEInstaller(installerPath, args, cmdLine)
+		return runEXEInstaller(ctx, installerPath, args, cmdLine)
 	}
 
 	var attemptResults []installRunResult
 	for _, args := range exeSilentArgSets {
+		if ctx.Err() != nil {
+			break
+		}
+
 		_, cmdLine := buildInstallerCommandWithArgs(installerPath, args)
-		result, err := runEXEInstaller(installerPath, args, cmdLine)
+		result, err := runEXEInstaller(ctx, installerPath, args, cmdLine)
 		attemptResults = append(attemptResults, result)
 		if err == nil {
 			return result, nil
 		}
-		if procexec.IsTimeout(err) || strings.Contains(err.Error(), procexec.InstallTimeoutMessage) {
+		if isInstallTimeout(err) {
 			break
 		}
+	}
+
+	if len(attemptResults) == 0 {
+		return installRunResult{}, fmt.Errorf("%s", InstallTimeoutStatusMessage)
 	}
 
 	combined := formatInstallAttempts(attemptResults)
@@ -69,12 +80,15 @@ func runURLInstaller(installerPath, installArgs string) (installRunResult, error
 	if combined != "" {
 		last.Stdout = combined
 	}
+	if ctx.Err() == context.DeadlineExceeded {
+		return last, fmt.Errorf("%s", InstallTimeoutStatusMessage)
+	}
 	return last, fmt.Errorf("all silent install attempts failed")
 }
 
-func runEXEInstaller(installerPath string, args []string, cmdLine string) (installRunResult, error) {
+func runEXEInstaller(ctx context.Context, installerPath string, args []string, cmdLine string) (installRunResult, error) {
 	cmd, _ := buildInstallerCommandWithArgs(installerPath, args)
-	return runPreparedInstaller(cmd, cmdLine, installProcessTimeout, false)
+	return runPreparedInstaller(ctx, cmd, cmdLine, false)
 }
 
 func buildInstallerCommandWithArgs(installerPath string, args []string) (*exec.Cmd, string) {
@@ -97,10 +111,7 @@ func buildInstallerCommandWithArgs(installerPath string, args []string) (*exec.C
 	}
 }
 
-func runPreparedInstaller(cmd *exec.Cmd, cmdLine string, timeout time.Duration, captureOutput bool) (installRunResult, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
+func runPreparedInstaller(ctx context.Context, cmd *exec.Cmd, cmdLine string, captureOutput bool) (installRunResult, error) {
 	execPath := cmd.Path
 	if execPath == "" && len(cmd.Args) > 0 {
 		execPath = cmd.Args[0]
@@ -110,7 +121,7 @@ func runPreparedInstaller(cmd *exec.Cmd, cmdLine string, timeout time.Duration, 
 		execArgs = cmd.Args[1:]
 	}
 
-	wrapped := exec.Command(execPath, execArgs...)
+	wrapped := exec.CommandContext(ctx, execPath, execArgs...)
 	wrapped.Dir = cmd.Dir
 	wrapped.Env = cmd.Env
 
@@ -122,15 +133,15 @@ func runPreparedInstaller(cmd *exec.Cmd, cmdLine string, timeout time.Duration, 
 		Stderr:      runResult.Stderr,
 	}
 
-	if procexec.IsTimeout(err) {
+	if procexec.IsTimeout(err) || ctx.Err() == context.DeadlineExceeded {
 		if result.Stderr != "" {
 			result.Stderr += "\n"
 		}
-		result.Stderr += procexec.InstallTimeoutMessage
+		result.Stderr += InstallTimeoutStatusMessage
 		if result.ExitCode == 0 {
 			result.ExitCode = -1
 		}
-		return result, fmt.Errorf("installer timed out: %s", formatInstallResult(result))
+		return result, fmt.Errorf("%s", InstallTimeoutStatusMessage)
 	}
 
 	if isInstallerSuccess(result.ExitCode) {
