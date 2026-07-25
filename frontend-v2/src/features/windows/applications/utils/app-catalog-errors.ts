@@ -17,6 +17,17 @@ export function getWindowsApiErrorMessage(error: unknown, fallback: string): str
     }
   }
 
+  if (payload && typeof payload === 'object' && 'message' in payload) {
+    const message = payload.message
+    if (typeof message === 'string' && message.trim()) {
+      return message.trim()
+    }
+  }
+
+  if (error.message.trim()) {
+    return error.message.trim()
+  }
+
   return fallback
 }
 

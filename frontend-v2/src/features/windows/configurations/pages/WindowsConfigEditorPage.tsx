@@ -45,6 +45,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
+import { getWindowsApiErrorMessage } from '@/features/windows/applications/utils/app-catalog-errors'
 
 interface WindowsConfigEditorPageProps {
   profileId?: number
@@ -114,21 +115,25 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
   }, [isNew, profileQuery.data, assignmentsQuery.data, profileAppsQuery.data, form])
 
   const handleSubmit = form.handleSubmit(async (values) => {
+    const upsertPayload = {
+      name: values.name.trim(),
+      description: values.description?.trim() || undefined,
+      isActive: values.isActive || values.isDefault,
+      isDefault: values.isDefault,
+      payload: values.payload,
+      requiredApps: values.appAssignments.map((item) => ({
+        appId: item.appId,
+        versionPolicy:
+          item.versionId == null || item.versionId === 0 ? 'latest' : String(item.versionId),
+      })),
+    }
+
+    console.log('Saving required apps payload:', upsertPayload)
+
     try {
       const saved = await upsertMutation.mutateAsync({
         id: profileId,
-        payload: {
-          name: values.name.trim(),
-          description: values.description?.trim() || undefined,
-          isActive: values.isActive || values.isDefault,
-          isDefault: values.isDefault,
-          payload: values.payload,
-          requiredApps: values.appAssignments.map((item) => ({
-            appId: item.appId,
-            versionPolicy:
-              item.versionId == null || item.versionId === 0 ? 'latest' : String(item.versionId),
-          })),
-        },
+        payload: upsertPayload,
       })
 
       await assignMutation.mutateAsync({
@@ -161,8 +166,9 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
           replace: true,
         })
       }
-    } catch {
-      toast.error(t('windowsConfigurations.form.error'))
+    } catch (error) {
+      console.error('Configuration profile save failed:', error)
+      toast.error(getWindowsApiErrorMessage(error, t('windowsConfigurations.form.error')))
     }
   })
 

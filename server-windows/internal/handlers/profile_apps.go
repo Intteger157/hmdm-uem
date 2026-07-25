@@ -76,16 +76,16 @@ func (h *WindowsHandler) AssignConfigProfileApps(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "one or more apps or versions were not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to validate apps"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	assignments := normalizeProfileAssignments(req)
 
 	if err := replaceProfileApps(profileID, assignments); err != nil {
-		log.Printf("[assign-profile-apps] save failed: profile_id=%d err=%v", profileID, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save profile apps"})
-		return
+		if respondSaveProfileAppsError(c, profileID, "assign-profile-apps", err) {
+			return
+		}
 	}
 
 	log.Printf("[assign-profile-apps] profile_id=%d apps=%d", profileID, len(assignments))
@@ -185,7 +185,7 @@ func respondSaveProfileAppsError(c *gin.Context, profileID uint, action string, 
 		return true
 	}
 	log.Printf("[%s] save apps failed: id=%d err=%v", action, profileID, err)
-	c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save profile apps"})
+	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	return true
 }
 

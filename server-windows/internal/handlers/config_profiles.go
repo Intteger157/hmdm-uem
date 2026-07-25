@@ -102,7 +102,7 @@ func (h *WindowsHandler) CreateConfigProfile(c *gin.Context) {
 
 	if err := db.DB.Create(&profile).Error; err != nil {
 		log.Printf("[create-config-profile] save failed: name=%q err=%v", name, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create configuration profile"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -176,7 +176,7 @@ func (h *WindowsHandler) UpdateConfigProfile(c *gin.Context) {
 
 	if err := db.DB.Save(&profile).Error; err != nil {
 		log.Printf("[update-config-profile] save failed: id=%d err=%v", profileID, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update configuration profile"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
