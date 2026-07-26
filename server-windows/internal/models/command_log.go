@@ -34,14 +34,15 @@ const AppInstallCanceledMessage = "Application removed from configuration profil
 
 // DeviceCommandLog stores queued and completed remote commands with raw agent output.
 type DeviceCommandLog struct {
-	ID          uint       `gorm:"primaryKey"`
-	DeviceID    string     `gorm:"index"`
-	CommandName string     `gorm:"index"`
-	Payload     string
-	Status      string `gorm:"index"`
-	Output      string `gorm:"type:text"`
-	CreatedAt   time.Time
-	ExecutedAt  *time.Time
+	ID               uint       `gorm:"primaryKey"`
+	DeviceID         string     `gorm:"index"`
+	CommandName      string     `gorm:"index"`
+	Payload          string
+	Status           string     `gorm:"index"`
+	Output           string     `gorm:"type:text"`
+	WindowsCommandID *uint      `gorm:"index"`
+	CreatedAt        time.Time
+	ExecutedAt       *time.Time
 }
 
 func (DeviceCommandLog) TableName() string {

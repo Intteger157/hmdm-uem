@@ -42,6 +42,7 @@ type EnqueueCommandResponse struct {
 	ID     uint   `json:"id"`
 	Action string `json:"action"`
 	Status string `json:"status"`
+	LogID  uint   `json:"logId,omitempty"`
 }
 
 // PollCommandResponse is returned to the agent when a command is ready.

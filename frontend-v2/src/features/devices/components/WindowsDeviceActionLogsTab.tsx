@@ -12,10 +12,13 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { BoolField } from '@/shared/components/BoolField'
 import { useWindowsDeviceCommandLogsQuery } from '@/features/windows/hooks/use-windows-device-command-logs-query'
 import type { DeviceCommandLogEntry } from '@/features/windows/api/windows-api'
 import { formatDeviceTimestamp } from '@/features/devices/utils/device-detail-formatters'
 import { cn } from '@/lib/utils'
+
+const BACKGROUND_LOG_COMMANDS = new Set(['PolicyEnforcement', 'AppInstall'])
 
 interface WindowsDeviceActionLogsTabProps {
   hardwareId: string
@@ -90,13 +93,32 @@ function formatLogPayload(entry: DeviceCommandLogEntry): string {
 }
 
 function formatLogCommandName(entry: DeviceCommandLogEntry, t: (key: string) => string): string {
-  if (entry.commandName === 'AppInstall') {
-    return t('deviceDetail.actionLogs.appInstall')
+  switch (entry.commandName) {
+    case 'AppInstall':
+      return t('deviceDetail.actionLogs.appInstall')
+    case 'UninstallApp':
+      return t('deviceDetail.actionLogs.uninstallApp')
+    case 'PolicyEnforcement':
+      return t('deviceDetail.actionLogs.policyEnforcement')
+    case 'lock':
+      return t('deviceDetail.actionLogs.lock')
+    case 'restart':
+      return t('deviceDetail.actionLogs.restart')
+    case 'sync':
+      return t('deviceDetail.actionLogs.sync')
+    case 'powershell':
+      return t('deviceDetail.actionLogs.powershell')
+    case 'bitlocker_enable':
+      return t('deviceDetail.actionLogs.bitlockerEnable')
+    case 'install':
+      return t('deviceDetail.actionLogs.install')
+    case 'get_services':
+      return t('deviceDetail.actionLogs.getServices')
+    case 'restart_service':
+      return t('deviceDetail.actionLogs.restartService')
+    default:
+      return entry.commandName
   }
-  if (entry.commandName === 'UninstallApp') {
-    return t('deviceDetail.actionLogs.uninstallApp')
-  }
-  return entry.commandName
 }
 
 function downloadBatteryReportHtml(output: string) {
@@ -112,8 +134,11 @@ function downloadBatteryReportHtml(output: string) {
 export function WindowsDeviceActionLogsTab({ hardwareId }: WindowsDeviceActionLogsTabProps) {
   const { t } = useTranslation()
   const [selectedOutput, setSelectedOutput] = useState<DeviceCommandLogEntry | null>(null)
+  const [showBackgroundLogs, setShowBackgroundLogs] = useState(false)
   const { data, isLoading, isError, error } = useWindowsDeviceCommandLogsQuery(hardwareId)
-  const logs = data?.items ?? []
+  const logs = (data?.items ?? []).filter((entry) =>
+    showBackgroundLogs ? true : !BACKGROUND_LOG_COMMANDS.has(entry.commandName),
+  )
 
   if (isLoading) {
     return (
@@ -139,6 +164,14 @@ export function WindowsDeviceActionLogsTab({ hardwareId }: WindowsDeviceActionLo
 
   return (
     <>
+      <div className="mb-3">
+        <BoolField
+          id={`${hardwareId}-show-background-logs`}
+          label={t('deviceDetail.actionLogs.showBackgroundLogs')}
+          checked={showBackgroundLogs}
+          onCheckedChange={setShowBackgroundLogs}
+        />
+      </div>
       <Card>
         <CardContent className="p-0">
           <div className="max-h-[32rem] overflow-auto">

@@ -1,8 +1,10 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { waitForCommandLogResult } from '@/features/windows/lib/wait-for-command-log-result'
 import { waitForWindowsCommandResult } from '@/features/windows/lib/wait-for-command-result'
+import { windowsDeviceDetailQueryKeys } from '@/features/windows/hooks/windows-device-detail-query-keys'
 
 type CommandTrackingKind = 'poll' | 'action-log'
 
@@ -16,6 +18,7 @@ interface UseDeviceCommandToastOptions {
 
 export function useDeviceCommandToast({ onGoToActionLogs }: UseDeviceCommandToastOptions) {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
 
   const trackCommand = useCallback(
     (hardwareId: string, commandId: number, kind: CommandTrackingKind) => {
@@ -23,6 +26,12 @@ export function useDeviceCommandToast({ onGoToActionLogs }: UseDeviceCommandToas
       const action = {
         label: t('deviceDetail.actions.goToActionLogs'),
         onClick: onGoToActionLogs,
+      }
+
+      const invalidateActionLogs = () => {
+        void queryClient.invalidateQueries({
+          queryKey: windowsDeviceDetailQueryKeys.commandLogs(hardwareId),
+        })
       }
 
       toast.loading(t('deviceDetail.actions.commandWaiting'), {
@@ -36,6 +45,8 @@ export function useDeviceCommandToast({ onGoToActionLogs }: UseDeviceCommandToas
           : waitForWindowsCommandResult(hardwareId, commandId)
 
       void waitForResult.then((result) => {
+        invalidateActionLogs()
+
         if (!result) {
           toast.error(t('deviceDetail.actions.commandTimedOut'), {
             id: toastId,
@@ -61,7 +72,7 @@ export function useDeviceCommandToast({ onGoToActionLogs }: UseDeviceCommandToas
         })
       })
     },
-    [onGoToActionLogs, t],
+    [onGoToActionLogs, queryClient, t],
   )
 
   const trackPollCommand = useCallback(

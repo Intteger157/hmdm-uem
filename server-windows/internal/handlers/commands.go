@@ -89,11 +89,17 @@ func (h *WindowsHandler) EnqueueCommand(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[enqueue-command] queued id=%d hardware_id=%q action=%q", command.ID, hardwareID, action)
+	logID, logErr := createPollActionLog(hardwareID, action, payloadString(req.Payload), command.ID)
+	if logErr != nil {
+		log.Printf("[enqueue-command] action log create failed: hardware_id=%q action=%q err=%v", hardwareID, action, logErr)
+	}
+
+	log.Printf("[enqueue-command] queued id=%d hardware_id=%q action=%q log_id=%d", command.ID, hardwareID, action, logID)
 	c.JSON(http.StatusAccepted, models.EnqueueCommandResponse{
 		ID:     command.ID,
 		Action: command.Action,
 		Status: command.Status,
+		LogID:  logID,
 	})
 }
 
@@ -220,6 +226,8 @@ func (h *WindowsHandler) CompleteCommand(c *gin.Context) {
 	if command.Action == "get_services" {
 		persistServicesFromCommandResult(deviceID, command.Result, req.Success)
 	}
+
+	completePollActionLog(command, req.Success, command.Result)
 
 	log.Printf("[complete-command] id=%d hardware_id=%q action=%q success=%v", commandID, deviceID, command.Action, req.Success)
 	c.Status(http.StatusOK)

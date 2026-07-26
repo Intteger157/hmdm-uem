@@ -193,7 +193,11 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
   ): Promise<boolean> => {
     try {
       const response = await windowsCommandMutation.mutateAsync({ action, payload })
-      trackPollCommand(device.number, response.id)
+      if (response.logId) {
+        trackActionLogCommand(device.number, response.logId)
+      } else {
+        trackPollCommand(device.number, response.id)
+      }
       return true
     } catch {
       toast.error(t('deviceDetail.actions.error'))

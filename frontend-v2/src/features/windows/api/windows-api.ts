@@ -228,6 +228,7 @@ interface EnqueueCommandResponse {
   id: number
   action: string
   status: string
+  logId?: number
 }
 
 export interface WindowsLatestCommandResponse {
