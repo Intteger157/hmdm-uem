@@ -51,9 +51,10 @@ func (h *WindowsHandler) ListStoredFiles(c *gin.Context) {
 
 // UploadStoredFile stores one repository file with streaming upload.
 func (h *WindowsHandler) UploadStoredFile(c *gin.Context) {
-	if err := filestorage.EnsureFilesDirectory(); err != nil {
-		log.Printf("[upload-file] ensure directory failed: err=%v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to prepare upload directory"})
+	uploadDir := filestorage.FilesDirectory()
+	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+		log.Printf("[upload-file] create upload directory failed: dir=%q err=%v", uploadDir, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file: " + err.Error()})
 		return
 	}
 
@@ -75,12 +76,12 @@ func (h *WindowsHandler) UploadStoredFile(c *gin.Context) {
 
 	ext := filepath.Ext(originalName)
 	storedName := uuid.NewString() + ext
-	destPath := filepath.Join(filestorage.FilesDirectory(), storedName)
+	destPath := filepath.Join(uploadDir, storedName)
 
 	src, err := fileHeader.Open()
 	if err != nil {
 		log.Printf("[upload-file] open upload failed: name=%q err=%v", originalName, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to read uploaded file"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file: " + err.Error()})
 		return
 	}
 	defer src.Close()
@@ -88,7 +89,7 @@ func (h *WindowsHandler) UploadStoredFile(c *gin.Context) {
 	dest, err := os.Create(destPath)
 	if err != nil {
 		log.Printf("[upload-file] create destination failed: path=%q err=%v", destPath, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save uploaded file"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file: " + err.Error()})
 		return
 	}
 
@@ -97,14 +98,14 @@ func (h *WindowsHandler) UploadStoredFile(c *gin.Context) {
 	closeErr := dest.Close()
 	if err != nil {
 		os.Remove(destPath)
-		log.Printf("[upload-file] stream save failed: name=%q err=%v", storedName, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save uploaded file"})
+		log.Printf("[upload-file] stream save failed: path=%q err=%v", destPath, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file: " + err.Error()})
 		return
 	}
 	if closeErr != nil {
 		os.Remove(destPath)
-		log.Printf("[upload-file] close destination failed: name=%q err=%v", storedName, closeErr)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save uploaded file"})
+		log.Printf("[upload-file] close destination failed: path=%q err=%v", destPath, closeErr)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file: " + closeErr.Error()})
 		return
 	}
 	if written == 0 {
