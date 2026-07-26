@@ -59,6 +59,22 @@ Install location: `C:\Program Files\Singularity MDM Agent\singularity-agent.exe`
 Data directory: `C:\ProgramData\Singularity MDM Agent\`  
 Registry settings: `HKLM\SOFTWARE\Singularity MDM\Agent`
 
+## Autostart (service + tray)
+
+Install/upgrade runs `singularity-agent.exe -install`, which:
+
+- Ensures the `SingularityMDMAgent` Windows service uses **Automatic** start and **Restart** recovery actions (after 1 minute)
+- Registers tray autostart for all users: `HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run\SingularityMDMTray` → `"<exe>" -tray`
+
+Uninstall (`singularity-agent.exe -uninstall`) removes the `SingularityMDMTray` Run value.
+
+To repair autostart on an existing machine:
+
+```powershell
+cd "C:\Program Files\Singularity MDM Agent"
+.\singularity-agent.exe -install
+```
+
 ## Debug logs (console)
 
 Run PowerShell **as Administrator**, stop the service, then start the agent in console mode:

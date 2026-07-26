@@ -58,6 +58,12 @@ if ($process.ExitCode -ne 0) {
 Remove-LegacyAgentService -LegacyServiceName "HMDMAgent"
 Ensure-AgentService -ExePath $AgentExe
 
+Write-Host "Configuring service autostart, recovery actions, and tray Run registry entry ..."
+& $AgentExe -install
+if ($LASTEXITCODE -ne 0) {
+    throw "singularity-agent.exe -install failed with exit code $LASTEXITCODE"
+}
+
 if (Test-Path "HKLM:\SOFTWARE\Singularity MDM\Agent") {
     Set-ItemProperty -Path "HKLM:\SOFTWARE\Singularity MDM\Agent" -Name "ServerURL" -Value $ServerUrl
 }

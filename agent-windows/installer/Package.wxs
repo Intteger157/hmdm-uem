@@ -15,6 +15,7 @@
     <InstallExecuteSequence>
       <Custom Action="RemoveLegacyAgentService" Before="EnsureAgentService" Condition="NOT REMOVE" />
       <Custom Action="EnsureAgentService" After="InstallServices" Condition="NOT REMOVE" />
+      <Custom Action="ConfigureAgentInstall" After="EnsureAgentService" Condition="NOT REMOVE" />
       <Custom Action="NotifyServerUninstall" Before="RemoveFiles" Condition="REMOVE=&quot;ALL&quot;" />
     </InstallExecuteSequence>
 
@@ -72,6 +73,14 @@
       Id="EnsureAgentService"
       Directory="System6432Folder"
       ExeCommand="cmd.exe /c sc create SingularityMDMAgent binPath= &quot;[AGENTDIR]singularity-agent.exe&quot; start= auto obj= LocalSystem DisplayName= &quot;Singularity MDM Agent&quot;"
+      Execute="commit"
+      Impersonate="no"
+      Return="ignore" />
+
+    <CustomAction
+      Id="ConfigureAgentInstall"
+      FileRef="SingularityAgentExe"
+      ExeCommand="-install"
       Execute="commit"
       Impersonate="no"
       Return="ignore" />

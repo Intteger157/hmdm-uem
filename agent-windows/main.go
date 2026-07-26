@@ -23,6 +23,7 @@ import (
 	"github.com/hmdm/agent-windows/internal/policies"
 	"github.com/hmdm/agent-windows/internal/service"
 	"github.com/hmdm/agent-windows/internal/session"
+	"github.com/hmdm/agent-windows/internal/setup"
 	"github.com/hmdm/agent-windows/internal/system"
 	"github.com/hmdm/agent-windows/internal/tray"
 	"golang.org/x/sys/windows/svc"
@@ -45,6 +46,7 @@ var policySyncRunning int32
 var (
 	debugMode       = flag.Bool("debug", false, "run in console mode for debugging")
 	trayMode        = flag.Bool("tray", false, "run system tray helper in the interactive user session")
+	installMode     = flag.Bool("install", false, "configure Windows service autostart and tray helper Run registry entry")
 	uninstallMode   = flag.Bool("uninstall", false, "notify MDM server that the agent is being removed")
 	serverURL       = flag.String("server", "", "MDM server URL for debug when registry value is empty (e.g. https://mdm.example.com)")
 	enrollmentToken = flag.String("token", "", "enrollment token for debug when registry value is empty")
@@ -68,6 +70,14 @@ func run() error {
 		log.Printf("starting Singularity MDM tray helper")
 		tray.Run(iconData)
 		return nil
+	}
+
+	if *installMode {
+		exePath, err := os.Executable()
+		if err != nil {
+			return fmt.Errorf("resolve executable path: %w", err)
+		}
+		return setup.Install(exePath)
 	}
 
 	log.Printf("using server URL: %s", cfg.ServerURL)
@@ -102,6 +112,10 @@ func run() error {
 }
 
 func runUninstallNotify(cfg *config.Config, apiClient *api.APIClient) error {
+	if err := setup.RemoveTrayAutostart(); err != nil {
+		log.Printf("remove tray autostart registry value: %v", err)
+	}
+
 	hardwareID, err := system.GetHardwareID()
 	if err != nil {
 		return fmt.Errorf("resolve hardware id: %w", err)
