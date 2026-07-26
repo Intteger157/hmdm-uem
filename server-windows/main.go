@@ -32,6 +32,8 @@ func main() {
 	}
 
 	router := gin.Default()
+	// Keep multipart parsing memory small so large uploads spill to disk instead of RAM.
+	router.MaxMultipartMemory = 32 << 20
 
 	if err := appstorage.EnsureAppsDirectory(); err != nil {
 		log.Printf("apps storage directory init failed: %v", err)

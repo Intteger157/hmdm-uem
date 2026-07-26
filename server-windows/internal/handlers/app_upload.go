@@ -3,8 +3,10 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -17,7 +19,7 @@ import (
 	"gorm.io/gorm"
 )
 
-const maxAppUploadBytes int64 = 256 << 20
+const maxAppUploadBytes int64 = 10 << 30
 
 // UploadApplication stores a local installer, creates/links a catalog version, and returns parsed metadata.
 func (h *WindowsHandler) UploadApplication(c *gin.Context) {
@@ -49,17 +51,51 @@ func (h *WindowsHandler) UploadApplication(c *gin.Context) {
 
 	originalName := filepath.Base(strings.TrimSpace(fileHeader.Filename))
 	ext := strings.ToLower(filepath.Ext(originalName))
-	if ext != ".exe" && ext != ".msi" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "only .exe and .msi files are supported"})
+	if ext != ".exe" && ext != ".msi" && ext != ".zip" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "only .exe, .msi, and .zip files are supported"})
 		return
 	}
 
 	storedName := uuid.NewString() + ext
 	destPath := filepath.Join(appstorage.AppsDirectory(), storedName)
 
-	if err := c.SaveUploadedFile(fileHeader, destPath); err != nil {
-		log.Printf("[upload-application] save failed: name=%q err=%v", storedName, err)
+	src, err := fileHeader.Open()
+	if err != nil {
+		log.Printf("[upload-application] open upload failed: name=%q err=%v", originalName, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to read uploaded file"})
+		return
+	}
+	defer src.Close()
+
+	dest, err := os.Create(destPath)
+	if err != nil {
+		log.Printf("[upload-application] create destination failed: path=%q err=%v", destPath, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save uploaded file"})
+		return
+	}
+
+	written, err := io.Copy(dest, src)
+	closeErr := dest.Close()
+	if err != nil {
+		os.Remove(destPath)
+		log.Printf("[upload-application] stream save failed: name=%q err=%v", storedName, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save uploaded file"})
+		return
+	}
+	if closeErr != nil {
+		os.Remove(destPath)
+		log.Printf("[upload-application] close destination failed: name=%q err=%v", storedName, closeErr)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save uploaded file"})
+		return
+	}
+	if written == 0 {
+		os.Remove(destPath)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "empty file upload"})
+		return
+	}
+	if written > maxAppUploadBytes {
+		os.Remove(destPath)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "file exceeds upload size limit"})
 		return
 	}
 
@@ -70,9 +106,13 @@ func (h *WindowsHandler) UploadApplication(c *gin.Context) {
 	version := strings.TrimSpace(parsed.Version)
 	publisher := strings.TrimSpace(parsed.Publisher)
 
-	detectedArgs, detectErr := metadata.DetectInstallerArgs(destPath)
-	if detectErr != nil {
-		log.Printf("[upload-application] installer detection failed: name=%q err=%v", originalName, detectErr)
+	var detectedArgs string
+	if ext != ".zip" {
+		var detectErr error
+		detectedArgs, detectErr = metadata.DetectInstallerArgs(destPath)
+		if detectErr != nil {
+			log.Printf("[upload-application] installer detection failed: name=%q err=%v", originalName, detectErr)
+		}
 	}
 
 	publicPath := fmt.Sprintf("/storage/apps/%s", storedName)

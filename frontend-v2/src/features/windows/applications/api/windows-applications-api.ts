@@ -13,6 +13,7 @@ import type {
   UpdateApplicationPayload,
   UploadApplicationResponse,
 } from '@/features/windows/applications/types/software-app'
+import type { UploadProgressState } from '@/features/windows/applications/utils/installer-upload'
 
 const windowsApi = axios.create({
   baseURL: `${API_BASE}/windows`,
@@ -64,7 +65,10 @@ export interface UploadSoftwareAppOptions {
   version?: string
   publisher?: string
   installArgs?: string
+  onUploadProgress?: (progress: UploadProgressState) => void
 }
+
+export type { UploadProgressState } from '@/features/windows/applications/utils/installer-upload'
 
 export async function uploadSoftwareApp(
   file: File,
@@ -92,6 +96,16 @@ export async function uploadSoftwareApp(
     {
       headers: {
         ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      timeout: 0,
+      onUploadProgress: (event) => {
+        if (!options?.onUploadProgress) {
+          return
+        }
+        const total = event.total ?? file.size
+        const loaded = event.loaded
+        const percent = total > 0 ? Math.round((loaded * 100) / total) : 0
+        options.onUploadProgress({ percent, loaded, total })
       },
     },
   )

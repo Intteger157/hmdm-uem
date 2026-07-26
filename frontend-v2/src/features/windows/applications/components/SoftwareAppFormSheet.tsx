@@ -4,7 +4,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
+import { AppUploadProgress } from '@/features/windows/applications/components/AppUploadProgress'
 import { fetchSoftwareApps, uploadSoftwareApp } from '@/features/windows/applications/api/windows-applications-api'
+import {
+  isSupportedInstaller,
+  type UploadProgressState,
+} from '@/features/windows/applications/utils/installer-upload'
 import {
   useCreateApplicationVersionMutation,
   useCreateSoftwareAppMutation,
@@ -123,11 +128,6 @@ function createDefaultFormValues(): SoftwareAppFormValues {
   }
 }
 
-function isSupportedInstaller(file: File): boolean {
-  const name = file.name.toLowerCase()
-  return name.endsWith('.exe') || name.endsWith('.msi')
-}
-
 function supportsUpdatePolicy(appType: SoftwareAppType): boolean {
   return appType === 'url' || appType === 'winget'
 }
@@ -140,6 +140,7 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pendingVersionPayloadRef = useRef<CreateApplicationVersionPayload | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<UploadProgressState | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [downloadUrlLocked, setDownloadUrlLocked] = useState(false)
   const [detectedInstallArgs, setDetectedInstallArgs] = useState('')
@@ -171,6 +172,7 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
     if (open) {
       form.reset(createDefaultFormValues())
       setUploading(false)
+      setUploadProgress(null)
       setIsDragging(false)
       setDownloadUrlLocked(false)
       setDetectedInstallArgs('')
@@ -245,19 +247,22 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
     }
 
     setUploading(true)
+    setUploadProgress({ percent: 0, loaded: 0, total: file.size })
     try {
       const manualVersion = (form.getValues('version') ?? '').trim()
       const manualPublisher = (form.getValues('publisher') ?? '').trim()
+      const isZip = file.name.toLowerCase().endsWith('.zip')
       const result = await uploadSoftwareApp(file, {
         ...(manualVersion ? { version: manualVersion } : {}),
         ...(manualPublisher ? { publisher: manualPublisher } : {}),
+        onUploadProgress: setUploadProgress,
       })
       form.setValue('appType', 'upload', { shouldValidate: true })
       form.setValue('name', result.name, { shouldValidate: true })
       form.setValue('version', result.version?.trim() ?? '', { shouldValidate: true })
       form.setValue('publisher', result.publisher?.trim() ?? '', { shouldValidate: true })
       form.setValue('downloadUrl', result.url, { shouldValidate: true })
-      form.setValue('silentInstallation', true)
+      form.setValue('silentInstallation', !isZip)
       form.setValue('installArgs', '')
       setDetectedInstallArgs(result.detectedArgs ?? '')
       form.setValue('autoUpdate', false)
@@ -266,6 +271,7 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
       toast.error(t('windowsAppCatalog.form.uploadError'))
     } finally {
       setUploading(false)
+      setUploadProgress(null)
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
@@ -409,7 +415,7 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
       <input
         ref={fileInputRef}
         type="file"
-        accept=".exe,.msi"
+        accept=".exe,.msi,.zip"
         className="hidden"
         disabled={uploading}
         onChange={(event) => {
@@ -455,7 +461,11 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
           uploading && 'pointer-events-none opacity-70',
         )}
       >
-        {uploading ? (
+        {uploading && uploadProgress ? (
+          <div className="w-full max-w-md px-4">
+            <AppUploadProgress progress={uploadProgress} />
+          </div>
+        ) : uploading ? (
           <>
             <Loader2 className="size-6 animate-spin text-muted-foreground" />
             <p className="text-sm font-medium">{t('windowsAppCatalog.form.uploading')}</p>

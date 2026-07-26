@@ -3,6 +3,11 @@ import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { uploadSoftwareApp } from '@/features/windows/applications/api/windows-applications-api'
+import { AppUploadProgress } from '@/features/windows/applications/components/AppUploadProgress'
+import {
+  isSupportedInstaller,
+  type UploadProgressState,
+} from '@/features/windows/applications/utils/installer-upload'
 import {
   useDeleteApplicationVersionMutation,
   useSoftwareAppQuery,
@@ -57,17 +62,13 @@ function formatTimestamp(value: string): string {
   }).format(parsed)
 }
 
-function isSupportedInstaller(file: File): boolean {
-  const name = file.name.toLowerCase()
-  return name.endsWith('.exe') || name.endsWith('.msi')
-}
-
 export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationEditSheetProps) {
   const { t } = useTranslation()
   const appQuery = useSoftwareAppQuery(appId, open && appId != null)
   const updateMutation = useUpdateSoftwareAppMutation()
   const versionUploadRef = useRef<HTMLInputElement>(null)
   const [uploadingVersion, setUploadingVersion] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<UploadProgressState | null>(null)
   const [versionOverride, setVersionOverride] = useState('')
   const [publisherOverride, setPublisherOverride] = useState('')
   const [activeTab, setActiveTab] = useState('general')
@@ -81,6 +82,8 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
       setActiveTab('general')
       setVersionOverride('')
       setPublisherOverride('')
+      setUploadingVersion(false)
+      setUploadProgress(null)
       return
     }
     const app = appQuery.data
@@ -119,6 +122,7 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
     }
 
     setUploadingVersion(true)
+    setUploadProgress(null)
     try {
       const manualVersion = versionOverride.trim()
       const manualPublisher = publisherOverride.trim()
@@ -126,6 +130,7 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
         appId,
         ...(manualVersion ? { version: manualVersion } : {}),
         ...(manualPublisher ? { publisher: manualPublisher } : {}),
+        onUploadProgress: setUploadProgress,
       })
       setVersionOverride(result.version)
       setPublisherOverride(result.publisher?.trim() ?? publisherOverride)
@@ -135,6 +140,7 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
       toast.error(t('windowsAppCatalog.form.uploadError'))
     } finally {
       setUploadingVersion(false)
+      setUploadProgress(null)
       if (versionUploadRef.current) {
         versionUploadRef.current.value = ''
       }
@@ -261,7 +267,7 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
               <input
                 ref={versionUploadRef}
                 type="file"
-                accept=".exe,.msi"
+                accept=".exe,.msi,.zip"
                 className="hidden"
                 disabled={uploadingVersion}
                 onChange={(event) => {
@@ -286,7 +292,11 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
                   uploadingVersion && 'pointer-events-none opacity-70',
                 )}
               >
-                {uploadingVersion ? (
+                {uploadingVersion && uploadProgress ? (
+                  <div className="w-full max-w-md px-4">
+                    <AppUploadProgress progress={uploadProgress} />
+                  </div>
+                ) : uploadingVersion ? (
                   <>
                     <Loader2 className="size-5 animate-spin text-muted-foreground" />
                     <p className="text-sm">{t('windowsAppCatalog.form.uploading')}</p>

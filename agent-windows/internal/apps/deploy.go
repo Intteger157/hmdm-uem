@@ -30,7 +30,7 @@ const (
 	UpdateFrequencyDaily  = "daily"
 	UpdateFrequencyWeekly = "weekly"
 
-	downloadTimeout = 15 * time.Minute
+	downloadTimeout      = 2 * time.Hour
 )
 
 var (
@@ -363,7 +363,12 @@ func deployURLApp(app RequiredApp, opts DeployOptions, state *AppsState, install
 	}
 
 	log.Printf("app deploy: installing id=%d name=%q path=%q installArgs=%q", app.ID, app.Name, localPath, app.InstallArgs)
-	result, err := runURLInstaller(localPath, app.InstallArgs)
+	var result installRunResult
+	if isZipInstaller(localPath) {
+		result, err = runZipInstaller(localPath, app.InstallArgs)
+	} else {
+		result, err = runURLInstaller(localPath, app.InstallArgs)
+	}
 	if err != nil {
 		log.Printf("app deploy: install failed id=%d name=%q: %v", app.ID, app.Name, err)
 		resultMessage := formatInstallFailureMessage(err, result)
@@ -584,6 +589,8 @@ func installerExtension(downloadURL, contentType string) string {
 	switch strings.ToLower(strings.TrimSpace(contentType)) {
 	case "application/x-msi", "application/x-msdownload":
 		return ".msi"
+	case "application/zip":
+		return ".zip"
 	default:
 		return ".exe"
 	}
