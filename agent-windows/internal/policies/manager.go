@@ -5,6 +5,7 @@ import (
 
 	"github.com/hmdm/agent-windows/internal/api"
 	"github.com/hmdm/agent-windows/internal/apps"
+	"github.com/hmdm/agent-windows/internal/files"
 )
 
 type Reporter func(success bool, output string) error
@@ -12,7 +13,7 @@ type Reporter func(success bool, output string) error
 type BitLockerKeyUploader func(recoveryKey string) error
 
 // SyncFromServer fetches effective policy, caches it locally, and enforces when changed.
-func SyncFromServer(fetch func() (EffectiveConfig, error), report Reporter, deploy apps.DeployOptions, uploadBitLockerKey BitLockerKeyUploader) error {
+func SyncFromServer(fetch func() (EffectiveConfig, error), report Reporter, deploy apps.DeployOptions, fileDeploy files.DeployOptions, uploadBitLockerKey BitLockerKeyUploader) error {
 	config, err := fetch()
 	if err != nil {
 		cached, cacheErr := LoadDesiredConfig()
@@ -34,6 +35,11 @@ func SyncFromServer(fetch func() (EffectiveConfig, error), report Reporter, depl
 	if len(config.RequiredApps) > 0 {
 		log.Printf("app deploy: scheduling %d required app(s) for async deployment", len(config.RequiredApps))
 		apps.DeployRequiredAsync(config.RequiredApps, deploy)
+	}
+
+	if len(config.FileDeployments) > 0 {
+		log.Printf("file deploy: scheduling %d file deployment rule(s)", len(config.FileDeployments))
+		files.DeployRequiredAsync(config.FileDeployments, fileDeploy)
 	}
 
 	configHash := ConfigHash(config)
@@ -79,7 +85,7 @@ func SyncFromServer(fetch func() (EffectiveConfig, error), report Reporter, depl
 }
 
 // RunComplianceCheck verifies policy state against cached desired config and re-applies on drift.
-func RunComplianceCheck(report Reporter, deploy apps.DeployOptions, uploadBitLockerKey BitLockerKeyUploader) error {
+func RunComplianceCheck(report Reporter, deploy apps.DeployOptions, fileDeploy files.DeployOptions, uploadBitLockerKey BitLockerKeyUploader) error {
 	if IsEmptyPolicyHash(LoadLastSyncedConfigHash()) {
 		return nil
 	}
@@ -94,6 +100,10 @@ func RunComplianceCheck(report Reporter, deploy apps.DeployOptions, uploadBitLoc
 
 	if len(config.RequiredApps) > 0 {
 		apps.DeployRequiredAsync(config.RequiredApps, deploy)
+	}
+
+	if len(config.FileDeployments) > 0 {
+		files.DeployRequiredAsync(config.FileDeployments, fileDeploy)
 	}
 
 	results, reconciled, err := ReconcileCompliance(config.Payload)
@@ -136,6 +146,22 @@ func NewAppDeployOptions(client *api.APIClient, authToken, hardwareID string) ap
 		return client.ReportAppInstallLog(authToken, hardwareID, appID, appName, step, output)
 	}
 	opts.IsAppStillRequired = IsRequiredAppID
+	return opts
+}
+
+// NewFileDeployOptions builds callbacks for file deployment Action Logs.
+func NewFileDeployOptions(client *api.APIClient, authToken, hardwareID string) files.DeployOptions {
+	opts := files.DeployOptions{}
+	if client != nil {
+		opts.BaseURL = client.BaseURL()
+	}
+	if client == nil || authToken == "" || hardwareID == "" {
+		return opts
+	}
+
+	opts.Logger = func(deploymentID, fileID uint, fileName, status, output string) error {
+		return client.ReportFileDeploymentLog(authToken, hardwareID, deploymentID, fileID, fileName, status, output)
+	}
 	return opts
 }
 

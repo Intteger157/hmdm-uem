@@ -42,7 +42,7 @@ func (h *WindowsHandler) GetDeviceEffectiveConfig(c *gin.Context) {
 		return
 	}
 
-	if len(response.AppliedProfiles) == 0 && len(response.RequiredApps) == 0 {
+	if len(response.AppliedProfiles) == 0 && len(response.RequiredApps) == 0 && len(response.FileDeployments) == 0 {
 		c.Status(http.StatusNoContent)
 		return
 	}
@@ -116,9 +116,15 @@ func buildEffectiveConfig(device models.WindowsDevice) (models.EffectiveConfigRe
 		return models.EffectiveConfigResponse{}, err
 	}
 
+	fileDeployments, err := loadFileDeploymentsForProfiles(profileIDs)
+	if err != nil {
+		return models.EffectiveConfigResponse{}, err
+	}
+
 	response := models.EffectiveConfigResponse{
 		Payload:         merged,
 		RequiredApps:    filteredApps,
+		FileDeployments: fileDeployments,
 		AppliedProfiles: applied,
 	}
 

@@ -37,6 +37,8 @@ func InitDB(dsn string) (*gorm.DB, error) {
 		&models.ProfileApp{},
 		&models.WindowsDeviceApp{},
 		&models.DeviceAppStatus{},
+		&models.StoredFile{},
+		&models.ProfileFileDeployment{},
 	); err != nil {
 		return nil, fmt.Errorf("migrate database: %w", err)
 	}

@@ -251,7 +251,6 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
     try {
       const manualVersion = (form.getValues('version') ?? '').trim()
       const manualPublisher = (form.getValues('publisher') ?? '').trim()
-      const isZip = file.name.toLowerCase().endsWith('.zip')
       const result = await uploadSoftwareApp(file, {
         ...(manualVersion ? { version: manualVersion } : {}),
         ...(manualPublisher ? { publisher: manualPublisher } : {}),
@@ -262,7 +261,7 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
       form.setValue('version', result.version?.trim() ?? '', { shouldValidate: true })
       form.setValue('publisher', result.publisher?.trim() ?? '', { shouldValidate: true })
       form.setValue('downloadUrl', result.url, { shouldValidate: true })
-      form.setValue('silentInstallation', !isZip)
+      form.setValue('silentInstallation', true)
       form.setValue('installArgs', '')
       setDetectedInstallArgs(result.detectedArgs ?? '')
       form.setValue('autoUpdate', false)
@@ -415,7 +414,7 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
       <input
         ref={fileInputRef}
         type="file"
-        accept=".exe,.msi,.zip"
+        accept=".exe,.msi"
         className="hidden"
         disabled={uploading}
         onChange={(event) => {

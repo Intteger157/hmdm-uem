@@ -267,7 +267,7 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
               <input
                 ref={versionUploadRef}
                 type="file"
-                accept=".exe,.msi,.zip"
+                accept=".exe,.msi"
                 className="hidden"
                 disabled={uploadingVersion}
                 onChange={(event) => {

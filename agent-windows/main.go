@@ -17,6 +17,7 @@ import (
 	"github.com/hmdm/agent-windows/internal/agentstate"
 	"github.com/hmdm/agent-windows/internal/api"
 	"github.com/hmdm/agent-windows/internal/apps"
+	"github.com/hmdm/agent-windows/internal/files"
 	"github.com/hmdm/agent-windows/internal/brand"
 	"github.com/hmdm/agent-windows/internal/commands"
 	"github.com/hmdm/agent-windows/internal/config"
@@ -396,8 +397,9 @@ func runPolicyComplianceLoop(stop <-chan struct{}, cfg *config.Config, apiClient
 			}
 			reporter := policies.NewReporter(apiClient, cfg.AuthToken, cfg.HardwareID)
 			deployOpts := policies.NewAppDeployOptions(apiClient, cfg.AuthToken, cfg.HardwareID)
+			fileDeployOpts := policies.NewFileDeployOptions(apiClient, cfg.AuthToken, cfg.HardwareID)
 			bitlockerUpload := policies.NewBitLockerKeyUploader(apiClient, cfg.AuthToken, cfg.HardwareID)
-			if err := policies.RunComplianceCheck(reporter, deployOpts, bitlockerUpload); err != nil {
+			if err := policies.RunComplianceCheck(reporter, deployOpts, fileDeployOpts, bitlockerUpload); err != nil {
 				if handleReenrollNeeded(cfg, err) {
 					continue
 				}
@@ -426,6 +428,7 @@ func syncPolicyFromServer(cfg *config.Config, apiClient *api.APIClient) {
 
 	reporter := policies.NewReporter(apiClient, cfg.AuthToken, cfg.HardwareID)
 	deployOpts := policies.NewAppDeployOptions(apiClient, cfg.AuthToken, cfg.HardwareID)
+	fileDeployOpts := policies.NewFileDeployOptions(apiClient, cfg.AuthToken, cfg.HardwareID)
 	bitlockerUpload := policies.NewBitLockerKeyUploader(apiClient, cfg.AuthToken, cfg.HardwareID)
 	err := policies.SyncFromServer(func() (policies.EffectiveConfig, error) {
 		response, err := apiClient.FetchEffectiveConfig(cfg.AuthToken, cfg.HardwareID)
@@ -452,6 +455,22 @@ func syncPolicyFromServer(cfg *config.Config, apiClient *api.APIClient) {
 			})
 		}
 
+		fileDeployments := make([]files.RequiredFileDeployment, 0, len(response.FileDeployments))
+		for _, deployment := range response.FileDeployments {
+			fileDeployments = append(fileDeployments, files.RequiredFileDeployment{
+				ID:               deployment.ID,
+				FileID:           deployment.FileID,
+				OriginalName:     deployment.OriginalName,
+				DownloadURL:      deployment.DownloadURL,
+				SizeBytes:        deployment.SizeBytes,
+				SHA256:           deployment.SHA256,
+				DestinationPath:  deployment.DestinationPath,
+				Unzip:            deployment.Unzip,
+				PostActionScript: deployment.PostActionScript,
+				UpdatedAt:        deployment.UpdatedAt,
+			})
+		}
+
 		return policies.EffectiveConfig{
 			Payload: policies.Payload{
 				DefenderEnabled:   response.Payload.DefenderEnabled,
@@ -460,12 +479,13 @@ func syncPolicyFromServer(cfg *config.Config, apiClient *api.APIClient) {
 				ScreenLockTimeout: response.Payload.ScreenLockTimeout,
 				RequireBitLocker:  response.Payload.RequireBitLocker,
 			},
-			RequiredApps: requiredApps,
-			ProfileID:    response.ProfileID,
-			ProfileName:  response.ProfileName,
-			Source:       response.Source,
+			RequiredApps:    requiredApps,
+			FileDeployments: fileDeployments,
+			ProfileID:       response.ProfileID,
+			ProfileName:     response.ProfileName,
+			Source:          response.Source,
 		}, nil
-	}, reporter, deployOpts, bitlockerUpload)
+	}, reporter, deployOpts, fileDeployOpts, bitlockerUpload)
 	if err != nil {
 		if handleReenrollNeeded(cfg, err) {
 			return

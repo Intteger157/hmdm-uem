@@ -8,6 +8,13 @@ import { ArrowLeft } from 'lucide-react'
 import { fetchWindowsDeviceOptions } from '@/features/windows/configurations/api/windows-configurations-api'
 import { WindowsAssignmentMultiSelect } from '@/features/windows/configurations/components/WindowsAssignmentMultiSelect'
 import { WindowsProfileAppsSelector } from '@/features/windows/configurations/components/WindowsProfileAppsSelector'
+import { WindowsProfileFileDeploymentsEditor } from '@/features/windows/configurations/components/WindowsProfileFileDeploymentsEditor'
+import {
+  useAssignProfileFileDeploymentsMutation,
+  useProfileFileDeploymentsQuery,
+  useStoredFilesQuery,
+} from '@/features/windows/files/hooks/use-windows-files'
+import type { ProfileFileDeploymentRule } from '@/features/windows/files/types/stored-file'
 import {
   useConfigProfileAppsQuery,
   useSoftwareAppsQuery,
@@ -70,16 +77,20 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
     !isNew,
   )
   const profileAppsQuery = useConfigProfileAppsQuery(isNew ? null : profileId ?? null, !isNew)
+  const fileDeploymentsQuery = useProfileFileDeploymentsQuery(isNew ? null : profileId ?? null, !isNew)
   const policiesQuery = useWindowsConfigProfilePoliciesQuery(isNew ? null : profileId ?? null, !isNew)
 
   const upsertMutation = useUpsertWindowsConfigProfileMutation()
   const assignMutation = useAssignWindowsConfigProfileMutation()
   const replacePoliciesMutation = useReplaceWindowsConfigProfilePoliciesMutation()
+  const assignFileDeploymentsMutation = useAssignProfileFileDeploymentsMutation()
 
   const [registryPolicies, setRegistryPolicies] = useState<WindowsConfigurationPolicy[]>([])
   const [enabledQuickPolicyIds, setEnabledQuickPolicyIds] = useState<string[]>([])
+  const [fileDeploymentRules, setFileDeploymentRules] = useState<ProfileFileDeploymentRule[]>([])
 
   const softwareAppsQuery = useSoftwareAppsQuery(true)
+  const storedFilesQuery = useStoredFilesQuery(true)
   const groupsQuery = useWindowsDeviceGroupsQuery(true)
   const devicesQuery = useQuery({
     queryKey: ['windows-device-options'],
@@ -111,6 +122,12 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
       setRegistryPolicies(manualPolicies)
     }
   }, [policiesQuery.data])
+
+  useEffect(() => {
+    if (fileDeploymentsQuery.data) {
+      setFileDeploymentRules(fileDeploymentsQuery.data)
+    }
+  }, [fileDeploymentsQuery.data])
 
   useEffect(() => {
     if (isNew) {
@@ -172,6 +189,13 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
         items: normalizedPolicies,
       })
 
+      await assignFileDeploymentsMutation.mutateAsync({
+        profileId: saved.id,
+        items: fileDeploymentRules.filter(
+          (rule) => rule.fileId > 0 && rule.destinationPath.trim().length > 0,
+        ),
+      })
+
       toast.success(isEdit ? t('windowsConfigurations.form.updated') : t('windowsConfigurations.form.created'))
 
       if (isNew && saved.id) {
@@ -190,7 +214,8 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
   const isPending =
     upsertMutation.isPending ||
     assignMutation.isPending ||
-    replacePoliciesMutation.isPending
+    replacePoliciesMutation.isPending ||
+    assignFileDeploymentsMutation.isPending
   const profileName = form.watch('name')
 
   const groupOptions = (groupsQuery.data ?? []).map((group) => ({
@@ -257,6 +282,7 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
               <TabsTrigger value="quickSettings">{t('windowsConfigurations.form.quickSettings')}</TabsTrigger>
               <TabsTrigger value="registryPolicies">{t('windowsConfigurations.form.registryPolicies')}</TabsTrigger>
               <TabsTrigger value="apps">{t('windowsConfigurations.form.requiredApps')}</TabsTrigger>
+              <TabsTrigger value="fileDeployments">{t('windowsConfigurations.form.fileDeployments')}</TabsTrigger>
               <TabsTrigger value="assignments">{t('windowsConfigurations.form.assignments')}</TabsTrigger>
             </TabsList>
 
@@ -490,6 +516,23 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
                         </FormControl>
                       </FormItem>
                     )}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="fileDeployments" className="mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>{t('windowsConfigurations.fileDeployments.title')}</CardTitle>
+                  <CardDescription>{t('windowsConfigurations.fileDeployments.description')}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <WindowsProfileFileDeploymentsEditor
+                    files={storedFilesQuery.data ?? []}
+                    rules={fileDeploymentRules}
+                    onChange={setFileDeploymentRules}
+                    disabled={isPending || storedFilesQuery.isLoading}
                   />
                 </CardContent>
               </Card>

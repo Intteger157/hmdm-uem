@@ -19,7 +19,7 @@ import (
 	"gorm.io/gorm"
 )
 
-const maxAppUploadBytes int64 = 10 << 30
+const maxAppUploadBytes int64 = 256 << 20
 
 // UploadApplication stores a local installer, creates/links a catalog version, and returns parsed metadata.
 func (h *WindowsHandler) UploadApplication(c *gin.Context) {
@@ -51,8 +51,8 @@ func (h *WindowsHandler) UploadApplication(c *gin.Context) {
 
 	originalName := filepath.Base(strings.TrimSpace(fileHeader.Filename))
 	ext := strings.ToLower(filepath.Ext(originalName))
-	if ext != ".exe" && ext != ".msi" && ext != ".zip" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "only .exe, .msi, and .zip files are supported"})
+	if ext != ".exe" && ext != ".msi" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "only .exe and .msi files are supported"})
 		return
 	}
 
@@ -99,6 +99,13 @@ func (h *WindowsHandler) UploadApplication(c *gin.Context) {
 		return
 	}
 
+	if err := metadata.ValidateInstallerFile(destPath, originalName); err != nil {
+		os.Remove(destPath)
+		log.Printf("[upload-application] metadata validation failed: name=%q err=%v", originalName, err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read installer metadata"})
+		return
+	}
+
 	overrideVersion := strings.TrimSpace(c.PostForm("version"))
 	overridePublisher := strings.TrimSpace(c.PostForm("publisher"))
 	parsed := resolveUploadMetadata(destPath, originalName, overrideVersion, overridePublisher)
@@ -106,13 +113,12 @@ func (h *WindowsHandler) UploadApplication(c *gin.Context) {
 	version := strings.TrimSpace(parsed.Version)
 	publisher := strings.TrimSpace(parsed.Publisher)
 
-	var detectedArgs string
-	if ext != ".zip" {
-		var detectErr error
-		detectedArgs, detectErr = metadata.DetectInstallerArgs(destPath)
-		if detectErr != nil {
-			log.Printf("[upload-application] installer detection failed: name=%q err=%v", originalName, detectErr)
-		}
+	detectedArgs, detectErr := metadata.DetectInstallerArgs(destPath)
+	if detectErr != nil {
+		os.Remove(destPath)
+		log.Printf("[upload-application] installer detection failed: name=%q err=%v", originalName, detectErr)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read installer metadata"})
+		return
 	}
 
 	publicPath := fmt.Sprintf("/storage/apps/%s", storedName)

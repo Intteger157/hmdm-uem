@@ -31,6 +31,7 @@ const (
 	bitlockerKeyPath          = "/rest/windows/devices/%s/bitlocker-key"
 	appStatusPath             = "/rest/windows/devices/%s/apps/status"
 	appInstallLogPath         = "/rest/windows/devices/%s/logs/app-install"
+	fileDeploymentLogPath     = "/rest/windows/devices/%s/logs/file-deployment"
 )
 
 // ErrUnauthorized indicates the server rejected the current auth token.
@@ -128,6 +129,20 @@ type RequiredAppPayload struct {
 	UpdateFrequency string `json:"updateFrequency"`
 }
 
+// FileDeploymentPayload is one file deployment rule from effective configuration.
+type FileDeploymentPayload struct {
+	ID               uint   `json:"id"`
+	FileID           uint   `json:"fileId"`
+	OriginalName     string `json:"originalName"`
+	DownloadURL      string `json:"downloadUrl"`
+	SizeBytes        int64  `json:"sizeBytes"`
+	SHA256           string `json:"sha256"`
+	DestinationPath  string `json:"destinationPath"`
+	Unzip            bool   `json:"unzip"`
+	PostActionScript string `json:"postActionScript"`
+	UpdatedAt        string `json:"updatedAt"`
+}
+
 // AppliedProfilePayload describes one profile that contributed to effective policy.
 type AppliedProfilePayload struct {
 	ProfileID   uint   `json:"profileId"`
@@ -138,12 +153,13 @@ type AppliedProfilePayload struct {
 
 // EffectiveConfigResponse is returned by GET /rest/windows/devices/:id/effective-config.
 type EffectiveConfigResponse struct {
-	Payload         EffectiveConfigPayload  `json:"payload"`
-	RequiredApps    []RequiredAppPayload    `json:"requiredApps"`
-	ProfileID       uint                    `json:"profileId,omitempty"`
-	ProfileName     string                  `json:"profileName,omitempty"`
-	Source          string                  `json:"source,omitempty"`
-	AppliedProfiles []AppliedProfilePayload `json:"appliedProfiles,omitempty"`
+	Payload         EffectiveConfigPayload    `json:"payload"`
+	RequiredApps    []RequiredAppPayload      `json:"requiredApps"`
+	FileDeployments []FileDeploymentPayload   `json:"fileDeployments"`
+	ProfileID       uint                      `json:"profileId,omitempty"`
+	ProfileName     string                    `json:"profileName,omitempty"`
+	Source          string                    `json:"source,omitempty"`
+	AppliedProfiles []AppliedProfilePayload   `json:"appliedProfiles,omitempty"`
 }
 
 // DeviceConfigurationsResponse is returned by GET /rest/windows/devices/:id/configurations.
@@ -172,7 +188,7 @@ func IsEmptyEffectiveConfig(response EffectiveConfigResponse) bool {
 	if strings.TrimSpace(response.Source) != "" {
 		return false
 	}
-	return len(response.RequiredApps) == 0
+	return len(response.RequiredApps) == 0 && len(response.FileDeployments) == 0
 }
 func NewAPIClient(cfg config.Config) *APIClient {
 	return &APIClient{
@@ -723,6 +739,49 @@ func (c *APIClient) ReportAppInstallLog(authToken, hwid string, appID uint, appN
 		return nil
 	default:
 		return fmt.Errorf("app install log failed with HTTP %d", resp.StatusCode)
+	}
+}
+
+// ReportFileDeploymentLog uploads file deployment progress to Action Logs.
+func (c *APIClient) ReportFileDeploymentLog(authToken, hwid string, deploymentID, fileID uint, fileName, status, output string) error {
+	payload, err := json.Marshal(map[string]any{
+		"deploymentId": deploymentID,
+		"fileId":       fileID,
+		"fileName":     fileName,
+		"status":       status,
+		"output":       output,
+	})
+	if err != nil {
+		return fmt.Errorf("marshal file deployment log request: %w", err)
+	}
+
+	url := c.baseURL + fmt.Sprintf(fileDeploymentLogPath, url.PathEscape(hwid))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(payload))
+	if err != nil {
+		return fmt.Errorf("create file deployment log request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+authToken)
+	req.Header.Set("X-Device-Id", hwid)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("send file deployment log request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if _, err := io.Copy(io.Discard, resp.Body); err != nil {
+		return fmt.Errorf("read file deployment log response: %w", err)
+	}
+
+	switch resp.StatusCode {
+	case http.StatusUnauthorized:
+		return ErrUnauthorized
+	case http.StatusOK, http.StatusNoContent:
+		return nil
+	default:
+		return fmt.Errorf("file deployment log failed with HTTP %d", resp.StatusCode)
 	}
 }
 

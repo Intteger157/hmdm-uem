@@ -18,7 +18,7 @@ import type { DeviceCommandLogEntry } from '@/features/windows/api/windows-api'
 import { formatDeviceTimestamp } from '@/features/devices/utils/device-detail-formatters'
 import { cn } from '@/lib/utils'
 
-const BACKGROUND_LOG_COMMANDS = new Set(['PolicyEnforcement', 'AppInstall'])
+const BACKGROUND_LOG_COMMANDS = new Set(['PolicyEnforcement', 'AppInstall', 'FileDeployment'])
 
 interface WindowsDeviceActionLogsTabProps {
   hardwareId: string
@@ -75,6 +75,20 @@ function truncatePayload(payload: string, maxLen = 120): string {
 }
 
 function formatLogPayload(entry: DeviceCommandLogEntry): string {
+  if (entry.commandName === 'FileDeployment') {
+    try {
+      const parsed = JSON.parse(entry.payload) as { fileName?: string; fileId?: number }
+      if (parsed.fileName) {
+        return parsed.fileName
+      }
+      if (parsed.fileId != null) {
+        return `fileId=${parsed.fileId}`
+      }
+    } catch {
+      // fall through
+    }
+  }
+
   if (entry.commandName === 'AppInstall' || entry.commandName === 'UninstallApp') {
     try {
       const parsed = JSON.parse(entry.payload) as { appName?: string; appId?: number }
@@ -100,6 +114,8 @@ function formatLogCommandName(entry: DeviceCommandLogEntry, t: (key: string) => 
       return t('deviceDetail.actionLogs.uninstallApp')
     case 'PolicyEnforcement':
       return t('deviceDetail.actionLogs.policyEnforcement')
+    case 'FileDeployment':
+      return t('deviceDetail.actionLogs.fileDeployment')
     case 'lock':
       return t('deviceDetail.actionLogs.lock')
     case 'restart':

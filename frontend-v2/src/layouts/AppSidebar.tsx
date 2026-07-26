@@ -68,6 +68,7 @@ function useNavState() {
     isWindowsEnrollment: pathname.startsWith('/windows/enrollment'),
     isWindowsScripts: pathname.startsWith('/windows/scripts'),
     isWindowsApplications: pathname.startsWith('/windows/applications'),
+    isWindowsFiles: pathname.startsWith('/windows/files'),
   }
 }
 
@@ -273,6 +274,15 @@ export function AppSidebar() {
               >
                 <Package />
                 <span>{t('nav.windowsApplications')}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={nav.isWindowsFiles}
+                render={<Link to="/windows/files" />}
+              >
+                <FolderOpen />
+                <span>{t('nav.windowsFiles')}</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

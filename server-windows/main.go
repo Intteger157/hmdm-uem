@@ -46,6 +46,17 @@ func main() {
 	}
 	router.StaticFS("/storage/apps", gin.Dir(appsDir, false))
 
+	if err := appstorage.EnsureFilesDirectory(); err != nil {
+		log.Printf("files storage directory init failed: %v", err)
+	}
+	filesDir := appstorage.FilesDirectory()
+	if entries, err := os.ReadDir(filesDir); err != nil {
+		log.Printf("files storage directory %q unreadable: %v", filesDir, err)
+	} else {
+		log.Printf("files storage directory %q (%d file(s)) served at /storage/files/", filesDir, len(entries))
+	}
+	router.StaticFS("/storage/files", gin.Dir(filesDir, false))
+
 	if err := appstorage.EnsureAgentDirectory(); err != nil {
 		log.Printf("agent storage directory init failed: %v", err)
 	}
@@ -78,6 +89,7 @@ func main() {
 			windows.GET("/devices/:hardwareId/effective-config", windowsHandler.GetDeviceEffectiveConfig)
 			windows.POST("/devices/:hardwareId/policy-enforcement", windowsHandler.ReportPolicyEnforcement)
 			windows.POST("/devices/:hardwareId/logs/app-install", windowsHandler.ReportAppInstallLog)
+			windows.POST("/devices/:hardwareId/logs/file-deployment", windowsHandler.ReportFileDeploymentLog)
 			windows.DELETE("/devices/:hardwareId", windowsHandler.DeleteDevice)
 			windows.POST("/devices/:hardwareId/commands", windowsHandler.EnqueueCommand)
 			windows.GET("/devices/:hardwareId/commands/latest", windowsHandler.GetLatestCommand)
@@ -116,6 +128,11 @@ func main() {
 			windows.POST("/configurations/:id/apps", windowsHandler.AssignConfigProfileApps)
 			windows.GET("/configurations/:id/policies", windowsHandler.GetConfigProfilePolicies)
 			windows.PUT("/configurations/:id/policies", windowsHandler.ReplaceConfigProfilePolicies)
+			windows.GET("/configurations/:id/file-deployments", windowsHandler.GetConfigProfileFileDeployments)
+			windows.POST("/configurations/:id/file-deployments", windowsHandler.AssignConfigProfileFileDeployments)
+			windows.GET("/files", windowsHandler.ListStoredFiles)
+			windows.POST("/files/upload", windowsHandler.UploadStoredFile)
+			windows.DELETE("/files/:id", windowsHandler.DeleteStoredFile)
 			windows.GET("/apps", windowsHandler.ListSoftwareApps)
 			windows.POST("/applications/upload", windowsHandler.UploadApplication)
 			windows.POST("/apps", windowsHandler.CreateSoftwareApp)

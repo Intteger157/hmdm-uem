@@ -38,12 +38,13 @@ type RequiredApp struct {
 
 // EffectiveConfigResponse is the merged policy payload for one device.
 type EffectiveConfigResponse struct {
-	Payload         WindowsConfigProfilePayload `json:"payload"`
-	RequiredApps    []RequiredApp               `json:"requiredApps"`
-	ProfileID       uint                        `json:"profileId,omitempty"`
-	ProfileName     string                      `json:"profileName,omitempty"`
-	Source          string                      `json:"source,omitempty"`
-	AppliedProfiles []AppliedProfileSource      `json:"appliedProfiles"`
+	Payload          WindowsConfigProfilePayload `json:"payload"`
+	RequiredApps     []RequiredApp               `json:"requiredApps"`
+	FileDeployments  []FileDeployment            `json:"fileDeployments"`
+	ProfileID        uint                        `json:"profileId,omitempty"`
+	ProfileName      string                      `json:"profileName,omitempty"`
+	Source           string                      `json:"source,omitempty"`
+	AppliedProfiles  []AppliedProfileSource      `json:"appliedProfiles"`
 }
 
 func OverlayConfigPayload(base, overlay WindowsConfigProfilePayload) WindowsConfigProfilePayload {
@@ -70,11 +71,25 @@ func MergeConfigPayloads(groupPayloads, directPayloads []WindowsConfigProfilePay
 const emptyEffectiveConfigHash = "no-policy"
 
 type effectiveConfigFingerprint struct {
-	Payload      WindowsConfigProfilePayload `json:"payload"`
-	RequiredApps []requiredAppFingerprint    `json:"requiredApps"`
-	ProfileID    uint                        `json:"profileId"`
-	ProfileName  string                      `json:"profileName"`
-	Source       string                      `json:"source"`
+	Payload          WindowsConfigProfilePayload `json:"payload"`
+	RequiredApps     []requiredAppFingerprint    `json:"requiredApps"`
+	FileDeployments  []fileDeploymentFingerprint `json:"fileDeployments"`
+	ProfileID        uint                        `json:"profileId"`
+	ProfileName      string                      `json:"profileName"`
+	Source           string                      `json:"source"`
+}
+
+type fileDeploymentFingerprint struct {
+	ID               uint   `json:"id"`
+	FileID           uint   `json:"fileId"`
+	OriginalName     string `json:"originalName"`
+	DownloadURL      string `json:"downloadUrl"`
+	SizeBytes        int64  `json:"sizeBytes"`
+	SHA256           string `json:"sha256"`
+	DestinationPath  string `json:"destinationPath"`
+	Unzip            bool   `json:"unzip"`
+	PostActionScript string `json:"postActionScript"`
+	UpdatedAt        string `json:"updatedAt"`
 }
 
 type requiredAppFingerprint struct {
@@ -101,7 +116,7 @@ func HasAssignedEffectivePolicy(cfg EffectiveConfigResponse) bool {
 	if strings.TrimSpace(cfg.Source) != "" {
 		return true
 	}
-	return len(cfg.RequiredApps) > 0
+	return len(cfg.RequiredApps) > 0 || len(cfg.FileDeployments) > 0
 }
 
 // EffectiveConfigHash returns a stable fingerprint for agent check-in diffing.
@@ -126,12 +141,29 @@ func EffectiveConfigHash(cfg EffectiveConfigResponse) string {
 		})
 	}
 
+	fileDeployments := make([]fileDeploymentFingerprint, 0, len(cfg.FileDeployments))
+	for _, deployment := range cfg.FileDeployments {
+		fileDeployments = append(fileDeployments, fileDeploymentFingerprint{
+			ID:               deployment.ID,
+			FileID:           deployment.FileID,
+			OriginalName:     deployment.OriginalName,
+			DownloadURL:      deployment.DownloadURL,
+			SizeBytes:        deployment.SizeBytes,
+			SHA256:           deployment.SHA256,
+			DestinationPath:  deployment.DestinationPath,
+			Unzip:            deployment.Unzip,
+			PostActionScript: deployment.PostActionScript,
+			UpdatedAt:        formatJSONTime(deployment.UpdatedAt),
+		})
+	}
+
 	payload, err := json.Marshal(effectiveConfigFingerprint{
-		Payload:      cfg.Payload,
-		RequiredApps: requiredApps,
-		ProfileID:    cfg.ProfileID,
-		ProfileName:  cfg.ProfileName,
-		Source:       cfg.Source,
+		Payload:         cfg.Payload,
+		RequiredApps:    requiredApps,
+		FileDeployments: fileDeployments,
+		ProfileID:       cfg.ProfileID,
+		ProfileName:     cfg.ProfileName,
+		Source:          cfg.Source,
 	})
 	if err != nil {
 		return ""

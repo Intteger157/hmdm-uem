@@ -363,12 +363,7 @@ func deployURLApp(app RequiredApp, opts DeployOptions, state *AppsState, install
 	}
 
 	log.Printf("app deploy: installing id=%d name=%q path=%q installArgs=%q", app.ID, app.Name, localPath, app.InstallArgs)
-	var result installRunResult
-	if isZipInstaller(localPath) {
-		result, err = runZipInstaller(localPath, app.InstallArgs)
-	} else {
-		result, err = runURLInstaller(localPath, app.InstallArgs)
-	}
+	result, err := runURLInstaller(localPath, app.InstallArgs)
 	if err != nil {
 		log.Printf("app deploy: install failed id=%d name=%q: %v", app.ID, app.Name, err)
 		resultMessage := formatInstallFailureMessage(err, result)

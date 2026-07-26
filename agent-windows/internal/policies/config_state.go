@@ -9,16 +9,18 @@ import (
 	"strings"
 
 	"github.com/hmdm/agent-windows/internal/apps"
+	"github.com/hmdm/agent-windows/internal/files"
 )
 
 const emptyPolicyHash = "no-policy"
 
 type configFingerprint struct {
-	Payload      Payload            `json:"payload"`
-	RequiredApps []apps.RequiredApp `json:"requiredApps"`
-	ProfileID    uint               `json:"profileId"`
-	ProfileName  string             `json:"profileName"`
-	Source       string             `json:"source"`
+	Payload         Payload                        `json:"payload"`
+	RequiredApps    []apps.RequiredApp             `json:"requiredApps"`
+	FileDeployments []files.RequiredFileDeployment `json:"fileDeployments"`
+	ProfileID       uint                           `json:"profileId"`
+	ProfileName     string                         `json:"profileName"`
+	Source          string                         `json:"source"`
 }
 
 // HasAssignedPolicy reports whether the server assigned an active configuration profile.
@@ -32,7 +34,7 @@ func (c EffectiveConfig) HasAssignedPolicy() bool {
 	if strings.TrimSpace(c.Source) != "" {
 		return true
 	}
-	return len(c.RequiredApps) > 0
+	return len(c.RequiredApps) > 0 || len(c.FileDeployments) > 0
 }
 
 // ConfigHash returns a stable fingerprint for diffing server-provided configuration.
@@ -42,11 +44,12 @@ func ConfigHash(config EffectiveConfig) string {
 	}
 
 	payload, err := json.Marshal(configFingerprint{
-		Payload:      config.Payload,
-		RequiredApps: config.RequiredApps,
-		ProfileID:    config.ProfileID,
-		ProfileName:  config.ProfileName,
-		Source:       config.Source,
+		Payload:         config.Payload,
+		RequiredApps:    config.RequiredApps,
+		FileDeployments: config.FileDeployments,
+		ProfileID:       config.ProfileID,
+		ProfileName:     config.ProfileName,
+		Source:          config.Source,
 	})
 	if err != nil {
 		return ""

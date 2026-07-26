@@ -1,6 +1,6 @@
 export function isSupportedInstaller(file: File): boolean {
   const name = file.name.toLowerCase()
-  return name.endsWith('.exe') || name.endsWith('.msi') || name.endsWith('.zip')
+  return name.endsWith('.exe') || name.endsWith('.msi')
 }
 
 export function formatUploadBytes(bytes: number): string {
