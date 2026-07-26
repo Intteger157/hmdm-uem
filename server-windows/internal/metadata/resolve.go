@@ -96,7 +96,7 @@ func resolveMsiMetadata(path string) resolvedInstallerMetadata {
 }
 
 func readFileSample(path string) []byte {
-	data, err := readFilePrefix(path, 8<<20)
+	data, err := readInstallerSample(path, 8<<20)
 	if err != nil {
 		return nil
 	}

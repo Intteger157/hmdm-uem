@@ -11,8 +11,8 @@ import (
 const maxInstallerScanBytes = 2 << 20
 
 var (
-	nsisSignature         = []byte("Nullsoft.NSIS.exehead")
-	innoSetupSignature    = []byte("Inno Setup")
+	nsisExeheadSignature   = []byte("Nullsoft.NSIS.exehead")
+	innoSetupSignature     = []byte("Inno Setup")
 	installShieldSignature = []byte("InstallShield")
 )
 
@@ -26,29 +26,59 @@ func DetectInstallerArgs(path string) (string, error) {
 		return "", nil
 	}
 
-	sample, err := readFilePrefix(path, maxInstallerScanBytes)
+	sample, err := readInstallerSample(path, maxInstallerScanBytes)
 	if err != nil {
 		return "", err
 	}
 
+	lowerSample := bytes.ToLower(sample)
+
 	switch {
-	case bytes.Contains(sample, nsisSignature):
-		return "/S", nil
 	case bytes.Contains(sample, innoSetupSignature):
 		return "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART", nil
 	case bytes.Contains(sample, installShieldSignature):
 		return `/s /v"/qn"`, nil
+	case bytes.Contains(lowerSample, []byte("wix toolset")) || bytes.Contains(lowerSample, []byte("burn")):
+		return "-quiet -norestart", nil
+	case bytes.Contains(sample, nsisExeheadSignature),
+		bytes.Contains(sample, []byte("Nullsoft")),
+		bytes.Contains(sample, []byte("NSIS")):
+		return "/S", nil
 	default:
 		return "", nil
 	}
 }
 
-func readFilePrefix(path string, maxBytes int64) ([]byte, error) {
+func readInstallerSample(path string, maxBytes int64) ([]byte, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
 
-	return io.ReadAll(io.LimitReader(file, maxBytes))
+	info, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+
+	var sample bytes.Buffer
+	prefix, err := io.ReadAll(io.LimitReader(file, maxBytes))
+	if err != nil {
+		return nil, err
+	}
+	sample.Write(prefix)
+
+	if info.Size() > maxBytes {
+		suffixOffset := info.Size() - maxBytes
+		if _, err := file.Seek(suffixOffset, io.SeekStart); err != nil {
+			return nil, err
+		}
+		suffix, err := io.ReadAll(io.LimitReader(file, maxBytes))
+		if err != nil {
+			return nil, err
+		}
+		sample.Write(suffix)
+	}
+
+	return sample.Bytes(), nil
 }

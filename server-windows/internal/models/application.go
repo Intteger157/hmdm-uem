@@ -50,7 +50,7 @@ type UploadApplicationResponse struct {
 	Name         string `json:"name"`
 	Version      string `json:"version"`
 	Publisher    string `json:"publisher"`
-	DetectedArgs string `json:"detectedArgs"`
+	SuggestedArgs string `json:"suggested_args"`
 	AppID        uint   `json:"appId"`
 	VersionID    uint   `json:"versionId"`
 	IsNewApp     bool   `json:"isNewApp"`

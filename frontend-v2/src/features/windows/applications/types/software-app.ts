@@ -60,7 +60,7 @@ export interface UploadApplicationResponse {
   name: string
   version: string
   publisher?: string
-  detectedArgs: string
+  suggestedArgs?: string
   appId?: number
   versionId?: number
   isNewApp?: boolean

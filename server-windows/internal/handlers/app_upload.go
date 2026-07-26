@@ -132,7 +132,7 @@ func (h *WindowsHandler) UploadApplication(c *gin.Context) {
 			Name:         name,
 			Version:      version,
 			Publisher:    publisher,
-			DetectedArgs: detectedArgs,
+			SuggestedArgs: detectedArgs,
 		})
 		return
 	}
@@ -177,7 +177,7 @@ func (h *WindowsHandler) UploadApplication(c *gin.Context) {
 		Name:         name,
 		Version:      appVersion.Version,
 		Publisher:    app.Publisher,
-		DetectedArgs: detectedArgs,
+		SuggestedArgs: detectedArgs,
 		AppID:        app.ID,
 		VersionID:    appVersion.ID,
 		IsNewApp:     false,

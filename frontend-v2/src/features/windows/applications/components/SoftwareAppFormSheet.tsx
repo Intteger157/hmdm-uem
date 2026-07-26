@@ -189,9 +189,7 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
     const resolvedInstallArgs =
       values.appType === 'winget'
         ? undefined
-        : values.silentInstallation
-          ? detectedInstallArgs.trim() || undefined
-          : values.installArgs?.trim() || undefined
+        : values.installArgs?.trim() || detectedInstallArgs.trim() || undefined
 
     return {
       version: normalizeAppVersion(values.version),
@@ -256,14 +254,15 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
         ...(manualPublisher ? { publisher: manualPublisher } : {}),
         onUploadProgress: setUploadProgress,
       })
+      const suggestedArgs = result.suggestedArgs?.trim() ?? ''
       form.setValue('appType', 'upload', { shouldValidate: true })
       form.setValue('name', result.name, { shouldValidate: true })
       form.setValue('version', result.version?.trim() ?? '', { shouldValidate: true })
       form.setValue('publisher', result.publisher?.trim() ?? '', { shouldValidate: true })
       form.setValue('downloadUrl', result.url, { shouldValidate: true })
-      form.setValue('silentInstallation', true)
-      form.setValue('installArgs', '')
-      setDetectedInstallArgs(result.detectedArgs ?? '')
+      setDetectedInstallArgs(suggestedArgs)
+      form.setValue('installArgs', suggestedArgs, { shouldValidate: true })
+      form.setValue('silentInstallation', suggestedArgs === '')
       form.setValue('autoUpdate', false)
       setDownloadUrlLocked(true)
     } catch {
@@ -589,7 +588,7 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
                     </FormItem>
                   )}
                 />
-                {!silentInstallation ? (
+                {(!silentInstallation || detectedInstallArgs.trim() !== '') ? (
                   <FormField
                     control={form.control}
                     name="installArgs"
