@@ -4,34 +4,31 @@ package policies
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 	"time"
 )
 
-const (
-	bitLockerRecoveryKeyPrefix = "RECOVERY_KEY:"
-	bitLockerScriptTimeout     = 10 * time.Minute
-)
-
-var bitLockerRecoveryKeyPattern = regexp.MustCompile(`\b(?:\d{6}-){7}\d{6}\b`)
+const bitLockerScriptTimeout = 10 * time.Minute
 
 const enableBitLockerScript = `
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Continue'
 $WarningPreference = 'SilentlyContinue'
 Import-Module BitLocker -ErrorAction SilentlyContinue
 $vol = Get-BitLockerVolume -MountPoint 'C:' -ErrorAction Stop
 $status = $vol.VolumeStatus.ToString()
 if ($status -ne 'FullyEncrypted' -and $status -ne 'EncryptionInProgress') {
   Add-BitLockerKeyProtector -MountPoint 'C:' -RecoveryPasswordProtector
-  Enable-BitLocker -MountPoint 'C:' -SkipHardwareTest
   $vol = Get-BitLockerVolume -MountPoint 'C:' -ErrorAction Stop
+  $protector = $vol.KeyProtector | Where-Object { $_.KeyProtectorType -eq 'RecoveryPassword' } | Select-Object -First 1
+  if ($null -eq $protector) { throw 'recovery password protector not found' }
+  Write-Output $protector.RecoveryPassword
+  $id = $protector.KeyProtectorId
+  try { manage-bde -protectors -adbackup C: -id $id 2>&1 | Out-String | Write-Output } catch { Write-Output $_.Exception.Message }
+  Enable-BitLocker -MountPoint 'C:' -SkipHardwareTest 2>&1 | Out-String | Write-Output
+} else {
+  $protector = $vol.KeyProtector | Where-Object { $_.KeyProtectorType -eq 'RecoveryPassword' } | Select-Object -First 1
+  if ($null -ne $protector) { Write-Output $protector.RecoveryPassword }
 }
-$protector = $vol.KeyProtector | Where-Object { $_.KeyProtectorType -eq 'RecoveryPassword' } | Select-Object -First 1
-if ($null -eq $protector) { throw 'recovery password protector not found' }
-$id = $protector.KeyProtectorId
-try { manage-bde -protectors -adbackup C: -id $id 2>$null | Out-Null } catch {}
-Write-Output $protector.RecoveryPassword
 `
 
 func enforceRequireBitLocker(required bool) Result {
@@ -46,20 +43,7 @@ func enforceRequireBitLocker(required bool) Result {
 	}
 
 	output, err := runPowerShellScript(enableBitLockerScript, bitLockerScriptTimeout)
-	if err != nil {
-		return Result{Name: "BitLocker", Success: false, Message: fmt.Sprintf("enable failed: %v", err)}
-	}
-
-	recoveryKey := extractBitLockerRecoveryKeyFromOutput(output)
-	if recoveryKey == "" {
-		return Result{Name: "BitLocker", Success: false, Message: "BitLocker started but recovery key was not returned"}
-	}
-
-	return Result{
-		Name:    "BitLocker",
-		Success: true,
-		Message: bitLockerRecoveryKeyPrefix + recoveryKey,
-	}
+	return buildBitLockerEnableResult(evaluateBitLockerEnableOutput(output, err))
 }
 
 func readBitLockerEncrypted() (bool, error) {
@@ -87,28 +71,4 @@ switch ($vol.VolumeStatus.ToString()) {
 	default:
 		return false, fmt.Errorf("unknown BitLocker status: %s", strings.TrimSpace(output))
 	}
-}
-
-func extractBitLockerRecoveryKeyFromOutput(output string) string {
-	match := bitLockerRecoveryKeyPattern.FindString(output)
-	return strings.TrimSpace(match)
-}
-
-func ExtractBitLockerRecoveryKey(results []Result) string {
-	for _, result := range results {
-		if result.Name != "BitLocker" || !result.Success {
-			continue
-		}
-		if strings.HasPrefix(result.Message, bitLockerRecoveryKeyPrefix) {
-			return strings.TrimSpace(strings.TrimPrefix(result.Message, bitLockerRecoveryKeyPrefix))
-		}
-	}
-	return ""
-}
-
-func sanitizeResultMessage(message string) string {
-	if strings.HasPrefix(message, bitLockerRecoveryKeyPrefix) {
-		return "recovery key escrowed"
-	}
-	return message
 }
