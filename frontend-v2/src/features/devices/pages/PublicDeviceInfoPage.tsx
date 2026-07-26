@@ -50,12 +50,11 @@ export function PublicDeviceInfoPage({ deviceId }: PublicDeviceInfoPageProps) {
       <div className="relative mx-auto w-full max-w-2xl">
         <div className="overflow-hidden rounded-2xl border border-slate-800/80 shadow-2xl shadow-black/50 ring-1 ring-white/5">
           <div className="relative bg-black px-5 pt-5 pb-5 sm:px-6">
-            <div className="relative mx-auto max-w-xs">
-              <div className="absolute inset-x-6 top-6 h-16 rounded-full bg-sky-500/25 blur-3xl" />
+            <div className="mx-auto h-28 max-w-[220px] overflow-hidden">
               <img
                 src={laptopImageSrc}
                 alt=""
-                className="relative mx-auto h-32 w-full max-w-xs object-contain drop-shadow-[0_16px_32px_rgba(0,0,0,0.65)]"
+                className="mx-auto h-40 w-full max-w-[220px] object-cover object-center drop-shadow-[0_12px_24px_rgba(0,0,0,0.5)]"
               />
             </div>
 
