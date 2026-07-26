@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hmdm/server-windows/internal/db"
@@ -156,8 +157,17 @@ func main() {
 		}
 	}
 
-	log.Printf("server-windows listening on %s", listenAddr)
-	if err := router.Run(listenAddr); err != nil {
+	uploadTimeout := 60 * time.Minute
+	srv := &http.Server{
+		Addr:         listenAddr,
+		Handler:      router,
+		ReadTimeout:  uploadTimeout,
+		WriteTimeout: uploadTimeout,
+		IdleTimeout:  uploadTimeout,
+	}
+
+	log.Printf("server-windows listening on %s (upload timeouts=%s)", listenAddr, uploadTimeout)
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
 	}
 }

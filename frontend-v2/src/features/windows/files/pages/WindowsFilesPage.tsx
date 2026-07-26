@@ -13,6 +13,7 @@ import type { StoredFile } from '@/features/windows/files/types/stored-file'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
+import { getWindowsApiErrorMessage } from '@/features/windows/applications/utils/app-catalog-errors'
 import { toast } from 'sonner'
 
 function formatTimestamp(value: string): string {
@@ -43,8 +44,8 @@ export function WindowsFilesPage() {
         onUploadProgress: setUploadProgress,
       })
       toast.success(t('windowsFiles.upload.success'))
-    } catch {
-      toast.error(t('windowsFiles.upload.error'))
+    } catch (error) {
+      toast.error(getWindowsApiErrorMessage(error, t('windowsFiles.upload.error')))
     } finally {
       setUploadProgress(null)
       if (fileInputRef.current) {

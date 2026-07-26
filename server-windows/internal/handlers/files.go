@@ -62,12 +62,8 @@ func (h *WindowsHandler) UploadStoredFile(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing file upload"})
 		return
 	}
-	if fileHeader.Size <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "empty file upload"})
-		return
-	}
-	if fileHeader.Size > maxFileUploadBytes {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "file exceeds upload size limit"})
+	if fileHeader.Size > 0 && fileHeader.Size > maxFileUploadBytes {
+		c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "file exceeds upload size limit"})
 		return
 	}
 
