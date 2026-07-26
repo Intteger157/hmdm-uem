@@ -68,6 +68,8 @@ Install/upgrade runs `singularity-agent.exe -install`, which:
 
 Uninstall (`singularity-agent.exe -uninstall`) removes the `SingularityMDMTray` Run value.
 
+The `-tray` helper hides its console window at startup so autostart from the Run key does not leave a black cmd window on screen.
+
 To repair autostart on an existing machine:
 
 ```powershell

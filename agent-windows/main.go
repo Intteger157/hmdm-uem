@@ -20,6 +20,7 @@ import (
 	"github.com/hmdm/agent-windows/internal/brand"
 	"github.com/hmdm/agent-windows/internal/commands"
 	"github.com/hmdm/agent-windows/internal/config"
+	"github.com/hmdm/agent-windows/internal/console"
 	"github.com/hmdm/agent-windows/internal/policies"
 	"github.com/hmdm/agent-windows/internal/service"
 	"github.com/hmdm/agent-windows/internal/session"
@@ -67,6 +68,7 @@ func run() error {
 	})
 
 	if *trayMode {
+		console.HideWindow()
 		log.Printf("starting Singularity MDM tray helper")
 		tray.Run(iconData)
 		return nil
