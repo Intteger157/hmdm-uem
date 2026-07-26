@@ -85,6 +85,9 @@ export function WindowsAppliedConfigurationCard({
                 usbReadOnly: data?.payload.usbReadOnly
                   ? t('deviceDetail.appliedConfiguration.readOnly')
                   : t('deviceDetail.appliedConfiguration.readWrite'),
+                bitlocker: data?.payload.requireBitLocker
+                  ? t('deviceDetail.appliedConfiguration.enabled')
+                  : t('deviceDetail.appliedConfiguration.disabled'),
                 lockTimeout: data?.payload.screenLockTimeout ?? 0,
               })}
             </p>

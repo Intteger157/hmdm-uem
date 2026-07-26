@@ -51,7 +51,7 @@ func formatResults(results []Result) (string, bool) {
 			status = "Failed"
 			allSuccess = false
 		}
-		message := strings.TrimSpace(result.Message)
+		message := sanitizeResultMessage(strings.TrimSpace(result.Message))
 		if message == "" {
 			message = status
 		}

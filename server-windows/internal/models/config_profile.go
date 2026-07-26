@@ -12,6 +12,7 @@ type WindowsConfigProfilePayload struct {
 	BlockUsbStorage   bool `json:"blockUsbStorage"`
 	UsbReadOnly       bool `json:"usbReadOnly"`
 	ScreenLockTimeout int  `json:"screenLockTimeout"`
+	RequireBitLocker  bool `json:"requireBitLocker"`
 }
 
 // WindowsConfigProfile is a reusable Windows device policy profile.

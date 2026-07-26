@@ -12,7 +12,12 @@ import {
   useConfigProfileAppsQuery,
   useSoftwareAppsQuery,
 } from '@/features/windows/applications/hooks/use-windows-software-apps'
+import { WindowsQuickSettingsEditor } from '@/features/windows/configurations/components/WindowsQuickSettingsEditor'
 import { WindowsRegistryPoliciesEditor } from '@/features/windows/configurations/components/WindowsRegistryPoliciesEditor'
+import {
+  buildRegistryPoliciesForSubmit,
+  partitionPoliciesByPresets,
+} from '@/features/windows/configurations/utils/quick-policies-utils'
 import {
   useAssignWindowsConfigProfileMutation,
   useReplaceWindowsConfigProfilePoliciesMutation,
@@ -72,6 +77,7 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
   const replacePoliciesMutation = useReplaceWindowsConfigProfilePoliciesMutation()
 
   const [registryPolicies, setRegistryPolicies] = useState<WindowsConfigurationPolicy[]>([])
+  const [enabledQuickPolicyIds, setEnabledQuickPolicyIds] = useState<string[]>([])
 
   const softwareAppsQuery = useSoftwareAppsQuery(true)
   const groupsQuery = useWindowsDeviceGroupsQuery(true)
@@ -99,7 +105,10 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
 
   useEffect(() => {
     if (policiesQuery.data?.items) {
-      setRegistryPolicies(policiesQuery.data.items)
+      const { enabledQuickPolicyIds: loadedQuickPolicyIds, manualPolicies } =
+        partitionPoliciesByPresets(policiesQuery.data.items)
+      setEnabledQuickPolicyIds(loadedQuickPolicyIds)
+      setRegistryPolicies(manualPolicies)
     }
   }, [policiesQuery.data])
 
@@ -149,7 +158,8 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
         assignments: assignmentsPayload,
       })
 
-      const normalizedPolicies = registryPolicies
+      const mergedPolicies = buildRegistryPoliciesForSubmit(registryPolicies, enabledQuickPolicyIds)
+      const normalizedPolicies = mergedPolicies
         .map((policy) => ({
           policyPath: policy.policyPath.trim(),
           valueType: policy.valueType.trim(),
@@ -244,6 +254,7 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
             <TabsList>
               <TabsTrigger value="general">{t('windowsConfigurations.form.general')}</TabsTrigger>
               <TabsTrigger value="policies">{t('windowsConfigurations.form.securityPolicies')}</TabsTrigger>
+              <TabsTrigger value="quickSettings">{t('windowsConfigurations.form.quickSettings')}</TabsTrigger>
               <TabsTrigger value="registryPolicies">{t('windowsConfigurations.form.registryPolicies')}</TabsTrigger>
               <TabsTrigger value="apps">{t('windowsConfigurations.form.requiredApps')}</TabsTrigger>
               <TabsTrigger value="assignments">{t('windowsConfigurations.form.assignments')}</TabsTrigger>
@@ -381,6 +392,23 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
                   />
                   <FormField
                     control={form.control}
+                    name="payload.requireBitLocker"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <BoolField
+                            id="windows-config-require-bitlocker"
+                            label={t('windowsConfigurations.form.requireBitLocker')}
+                            hint={t('windowsConfigurations.form.requireBitLockerHint')}
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
                     name="payload.screenLockTimeout"
                     render={({ field }) => (
                       <FormItem>
@@ -403,6 +431,22 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
                         <FormMessage />
                       </FormItem>
                     )}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="quickSettings" className="mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>{t('windowsConfigurations.editor.quickSettingsTitle')}</CardTitle>
+                  <CardDescription>{t('windowsConfigurations.editor.quickSettingsDescription')}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <WindowsQuickSettingsEditor
+                    enabledPresetIds={enabledQuickPolicyIds}
+                    onChange={setEnabledQuickPolicyIds}
+                    disabled={isPending}
                   />
                 </CardContent>
               </Card>

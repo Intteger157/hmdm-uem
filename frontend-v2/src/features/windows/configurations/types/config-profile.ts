@@ -10,6 +10,7 @@ export interface WindowsConfigProfilePayload {
   blockUsbStorage: boolean
   usbReadOnly: boolean
   screenLockTimeout: number
+  requireBitLocker: boolean
 }
 
 export interface WindowsConfigProfile {
@@ -95,4 +96,5 @@ export const DEFAULT_WINDOWS_CONFIG_PROFILE_PAYLOAD: WindowsConfigProfilePayload
   blockUsbStorage: false,
   usbReadOnly: false,
   screenLockTimeout: 0,
+  requireBitLocker: false,
 }

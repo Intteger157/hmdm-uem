@@ -6,11 +6,12 @@ import "fmt"
 
 // EnforcePolicies applies all MVP policies from the effective payload.
 func EnforcePolicies(payload Payload) []Result {
-	results := make([]Result, 0, 4)
+	results := make([]Result, 0, 5)
 	results = append(results, enforceDefender(payload.DefenderEnabled))
 	results = append(results, enforceUSBBlock(payload.BlockUsbStorage))
 	results = append(results, enforceUsbReadOnly(payload.UsbReadOnly))
 	results = append(results, enforceScreenLockTimeout(payload.ScreenLockTimeout))
+	results = append(results, enforceRequireBitLocker(payload.RequireBitLocker))
 	return results
 }
 
@@ -100,6 +101,23 @@ func IsCompliant(desired Payload) (bool, []Result) {
 		})
 	} else {
 		results = append(results, Result{Name: "ScreenLock", Success: true, Message: "compliant"})
+	}
+
+	if desired.RequireBitLocker {
+		encrypted, err := readBitLockerEncrypted()
+		if err != nil {
+			results = append(results, Result{Name: "BitLocker", Success: false, Message: err.Error()})
+		} else if !encrypted {
+			results = append(results, Result{
+				Name:    "BitLocker",
+				Success: false,
+				Message: "expected C: encrypted, found unencrypted",
+			})
+		} else {
+			results = append(results, Result{Name: "BitLocker", Success: true, Message: "compliant"})
+		}
+	} else {
+		results = append(results, Result{Name: "BitLocker", Success: true, Message: "not required"})
 	}
 
 	for _, result := range results {

@@ -280,5 +280,6 @@ export function normalizeConfigProfilePayload(raw: unknown): WindowsConfigProfil
     blockUsbStorage: Boolean(record.blockUsbStorage),
     usbReadOnly: Boolean(record.usbReadOnly),
     screenLockTimeout: screenLockTimeout ?? 0,
+    requireBitLocker: Boolean(record.requireBitLocker),
   }
 }

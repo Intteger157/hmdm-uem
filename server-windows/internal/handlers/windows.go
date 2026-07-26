@@ -188,7 +188,9 @@ func (h *WindowsHandler) Inventory(c *gin.Context) {
 	device.WifiBSSID = req.WifiBSSID
 	device.PendingUpdates = req.PendingUpdates
 	device.LastUpdateCheck = req.LastUpdateCheck
-	device.BitLockerKey = req.BitLockerKey
+	if key := strings.TrimSpace(req.BitLockerKey); key != "" {
+		device.BitLockerKey = key
+	}
 	device.BatteryLevel = req.BatteryLevel
 	device.BatteryStatus = req.BatteryStatus
 	device.DiskEncrypted = req.DiskEncrypted

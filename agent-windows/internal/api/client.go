@@ -28,6 +28,7 @@ const (
 	effectiveConfigPath       = "/rest/windows/devices/%s/effective-config"
 	deviceConfigurationsPath  = "/rest/windows/devices/%s/configurations"
 	policyEnforcementLogPath  = "/rest/windows/devices/%s/policy-enforcement"
+	bitlockerKeyPath          = "/rest/windows/devices/%s/bitlocker-key"
 	appStatusPath             = "/rest/windows/devices/%s/apps/status"
 	appInstallLogPath         = "/rest/windows/devices/%s/logs/app-install"
 )
@@ -108,6 +109,7 @@ type EffectiveConfigPayload struct {
 	BlockUsbStorage   bool `json:"blockUsbStorage"`
 	UsbReadOnly       bool `json:"usbReadOnly"`
 	ScreenLockTimeout int  `json:"screenLockTimeout"`
+	RequireBitLocker  bool `json:"requireBitLocker"`
 }
 
 // RequiredAppPayload is one app required by effective configuration.
@@ -640,6 +642,45 @@ func (c *APIClient) ReportPolicyEnforcement(authToken, hwid string, success bool
 		return nil
 	default:
 		return fmt.Errorf("policy enforcement log failed with HTTP %d", resp.StatusCode)
+	}
+}
+
+// SubmitBitLockerKey uploads a BitLocker recovery password for escrow on the MDM server.
+func (c *APIClient) SubmitBitLockerKey(authToken, hwid, recoveryKey string) error {
+	payload, err := json.Marshal(map[string]string{
+		"recoveryKey": recoveryKey,
+	})
+	if err != nil {
+		return fmt.Errorf("marshal bitlocker key request: %w", err)
+	}
+
+	url := c.baseURL + fmt.Sprintf(bitlockerKeyPath, url.PathEscape(hwid))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(payload))
+	if err != nil {
+		return fmt.Errorf("create bitlocker key request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+authToken)
+	req.Header.Set("X-Device-Id", hwid)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("send bitlocker key request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if _, err := io.Copy(io.Discard, resp.Body); err != nil {
+		return fmt.Errorf("read bitlocker key response: %w", err)
+	}
+
+	switch resp.StatusCode {
+	case http.StatusUnauthorized:
+		return ErrUnauthorized
+	case http.StatusOK, http.StatusNoContent:
+		return nil
+	default:
+		return fmt.Errorf("bitlocker key upload failed with HTTP %d", resp.StatusCode)
 	}
 }
 

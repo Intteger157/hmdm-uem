@@ -24,6 +24,7 @@ export const configProfileFormSchema = z.object({
     blockUsbStorage: z.boolean(),
     usbReadOnly: z.boolean(),
     screenLockTimeout: z.number().int().min(0),
+    requireBitLocker: z.boolean(),
   }),
   groupIds: z.array(z.number().int().positive()),
   deviceIds: z.array(z.number().int().positive()),

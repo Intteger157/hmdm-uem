@@ -9,8 +9,10 @@ import (
 
 type Reporter func(success bool, output string) error
 
+type BitLockerKeyUploader func(recoveryKey string) error
+
 // SyncFromServer fetches effective policy, caches it locally, and enforces when changed.
-func SyncFromServer(fetch func() (EffectiveConfig, error), report Reporter, deploy apps.DeployOptions) error {
+func SyncFromServer(fetch func() (EffectiveConfig, error), report Reporter, deploy apps.DeployOptions, uploadBitLockerKey BitLockerKeyUploader) error {
 	config, err := fetch()
 	if err != nil {
 		cached, cacheErr := LoadDesiredConfig()
@@ -40,6 +42,7 @@ func SyncFromServer(fetch func() (EffectiveConfig, error), report Reporter, depl
 	}
 
 	results, applied, err := ApplyIfNeeded(config.Payload)
+	uploadEscrowedBitLockerKey(results, uploadBitLockerKey)
 	reportChange := shouldReportConfigChange(configHash)
 	if err != nil {
 		output, _ := FormatResults(results)
@@ -76,7 +79,7 @@ func SyncFromServer(fetch func() (EffectiveConfig, error), report Reporter, depl
 }
 
 // RunComplianceCheck verifies policy state against cached desired config and re-applies on drift.
-func RunComplianceCheck(report Reporter, deploy apps.DeployOptions) error {
+func RunComplianceCheck(report Reporter, deploy apps.DeployOptions, uploadBitLockerKey BitLockerKeyUploader) error {
 	if IsEmptyPolicyHash(LoadLastSyncedConfigHash()) {
 		return nil
 	}
@@ -95,6 +98,7 @@ func RunComplianceCheck(report Reporter, deploy apps.DeployOptions) error {
 
 	results, reconciled, err := ReconcileCompliance(config.Payload)
 	if err != nil {
+		uploadEscrowedBitLockerKey(results, uploadBitLockerKey)
 		output, _ := FormatResults(results)
 		log.Printf("policy compliance reconciliation failed: %s", output)
 		return err
@@ -105,6 +109,7 @@ func RunComplianceCheck(report Reporter, deploy apps.DeployOptions) error {
 
 	output, success := FormatResults(results)
 	log.Printf("policy compliance reconciliation completed success=%v\n%s", success, output)
+	uploadEscrowedBitLockerKey(results, uploadBitLockerKey)
 	if report != nil {
 		if reportErr := report(success, output); reportErr != nil {
 			log.Printf("policy compliance log upload failed: %v", reportErr)
@@ -132,6 +137,31 @@ func NewAppDeployOptions(client *api.APIClient, authToken, hardwareID string) ap
 	}
 	opts.IsAppStillRequired = IsRequiredAppID
 	return opts
+}
+
+func uploadEscrowedBitLockerKey(results []Result, upload BitLockerKeyUploader) {
+	if upload == nil {
+		return
+	}
+	recoveryKey := ExtractBitLockerRecoveryKey(results)
+	if recoveryKey == "" {
+		return
+	}
+	if err := upload(recoveryKey); err != nil {
+		log.Printf("bitlocker key upload failed: %v", err)
+		return
+	}
+	log.Printf("bitlocker recovery key uploaded to MDM server")
+}
+
+// NewBitLockerKeyUploader builds a callback that uploads a recovery key to the MDM server.
+func NewBitLockerKeyUploader(client *api.APIClient, authToken, hardwareID string) BitLockerKeyUploader {
+	if client == nil || authToken == "" || hardwareID == "" {
+		return nil
+	}
+	return func(recoveryKey string) error {
+		return client.SubmitBitLockerKey(authToken, hardwareID, recoveryKey)
+	}
 }
 
 // NewReporter builds a callback that posts enforcement output to the MDM server.

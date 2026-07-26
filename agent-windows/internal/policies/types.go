@@ -10,6 +10,7 @@ type Payload struct {
 	BlockUsbStorage   bool `json:"blockUsbStorage"`
 	UsbReadOnly       bool `json:"usbReadOnly"`
 	ScreenLockTimeout int  `json:"screenLockTimeout"`
+	RequireBitLocker  bool `json:"requireBitLocker"`
 }
 
 // EffectiveConfig is the full effective-config API response cached locally.
@@ -39,5 +40,6 @@ func EqualPayload(a, b Payload) bool {
 	return a.DefenderEnabled == b.DefenderEnabled &&
 		a.BlockUsbStorage == b.BlockUsbStorage &&
 		a.UsbReadOnly == b.UsbReadOnly &&
-		a.ScreenLockTimeout == b.ScreenLockTimeout
+		a.ScreenLockTimeout == b.ScreenLockTimeout &&
+		a.RequireBitLocker == b.RequireBitLocker
 }

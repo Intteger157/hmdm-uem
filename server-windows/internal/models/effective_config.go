@@ -52,6 +52,7 @@ func OverlayConfigPayload(base, overlay WindowsConfigProfilePayload) WindowsConf
 		BlockUsbStorage:   overlay.BlockUsbStorage,
 		UsbReadOnly:       overlay.UsbReadOnly,
 		ScreenLockTimeout: overlay.ScreenLockTimeout,
+		RequireBitLocker:  overlay.RequireBitLocker,
 	}
 }
 

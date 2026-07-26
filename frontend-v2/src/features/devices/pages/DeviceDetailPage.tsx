@@ -17,7 +17,6 @@ import {
   Globe,
   HardDrive,
   Hash,
-  Key,
   Layers,
   Lock,
   LockKeyhole,
@@ -33,6 +32,7 @@ import type { LucideIcon } from 'lucide-react'
 import { DeviceActionsPanel } from '@/features/devices/components/DeviceActionsPanel'
 import { DeviceDetailCommandToastProvider } from '@/features/devices/context/device-detail-command-toast-context'
 import { WindowsAppDeploymentsCard } from '@/features/devices/components/WindowsAppDeploymentsCard'
+import { WindowsDeviceBitLockerTab } from '@/features/devices/components/WindowsDeviceBitLockerTab'
 import { WindowsDeviceInstalledSoftwareTab } from '@/features/devices/components/WindowsDeviceInstalledSoftwareTab'
 import { WindowsDeviceServicesTab } from '@/features/devices/components/WindowsDeviceServicesTab'
 import { WindowsDeviceActionLogsTab } from '@/features/devices/components/WindowsDeviceActionLogsTab'
@@ -190,6 +190,9 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
           ) : null}
           {isWindows ? (
             <TabsTrigger value="services">{t('deviceDetail.tabs.services')}</TabsTrigger>
+          ) : null}
+          {isWindows ? (
+            <TabsTrigger value="bitlocker">{t('deviceDetail.tabs.bitlocker')}</TabsTrigger>
           ) : null}
           {isWindows ? (
             <TabsTrigger value="action-logs">{t('deviceDetail.tabs.actionLogs')}</TabsTrigger>
@@ -360,6 +363,12 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
         {isWindows ? (
           <TabsContent value="services" className={TAB_CONTENT_CLASS}>
             <WindowsDeviceServicesTab hardwareId={device.number} />
+          </TabsContent>
+        ) : null}
+
+        {isWindows ? (
+          <TabsContent value="bitlocker" className={TAB_CONTENT_CLASS}>
+            <WindowsDeviceBitLockerTab device={device} />
           </TabsContent>
         ) : null}
 
@@ -1111,8 +1120,6 @@ function WindowsDiskMetrics({
         {disks.map((disk) => {
           const percent =
             disk.totalGb > 0 ? Math.round((disk.usedGb / disk.totalGb) * 100) : undefined
-          const showBitLockerKey =
-            disk.mountPoint === 'C:' && device.bitLockerKey?.trim()
 
           return (
             <div key={disk.mountPoint} className="space-y-1.5">
@@ -1135,14 +1142,6 @@ function WindowsDiskMetrics({
               ) : (
                 <span className="text-sm">{na}</span>
               )}
-              {showBitLockerKey ? (
-                <div className="flex items-start gap-1.5 pt-0.5">
-                  <Key className="mt-0.5 size-3.5 shrink-0 text-muted-foreground opacity-50" />
-                  <p className="font-mono text-xs leading-relaxed text-muted-foreground">
-                    {device.bitLockerKey}
-                  </p>
-                </div>
-              ) : null}
             </div>
           )
         })}
