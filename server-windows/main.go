@@ -56,7 +56,6 @@ func main() {
 	} else {
 		log.Printf("files storage directory %q (%d file(s)) served at /storage/files/", filesDir, len(entries))
 	}
-	router.StaticFS("/storage/files", gin.Dir(filesDir, false))
 
 	if err := appstorage.EnsureAgentDirectory(); err != nil {
 		log.Printf("agent storage directory init failed: %v", err)
@@ -69,6 +68,7 @@ func main() {
 	}
 
 	windowsHandler := handlers.NewWindowsHandler()
+	router.GET("/storage/files/*filepath", windowsHandler.ServeStoredFile)
 
 	// Public bootstrap endpoints (no auth — OOBE machines have no session/JWT).
 	router.GET("/api/windows/enroll", windowsHandler.GetEnrollBootstrapScript)

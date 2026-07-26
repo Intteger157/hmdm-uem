@@ -8,18 +8,13 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"syscall"
-	"time"
-
 	"github.com/hmdm/agent-windows/internal/brand"
 )
-
-const downloadTimeout = 2 * time.Hour
 
 // RequiredFileDeployment is one file deployment rule from effective config.
 type RequiredFileDeployment struct {
@@ -205,20 +200,19 @@ func ensureCachedFile(deployment RequiredFileDeployment, downloadURL string) (st
 		return cachePath, nil
 	}
 
-	tempPath, err := downloadFile(downloadURL, filepath.Ext(deployment.OriginalName))
-	if err != nil {
+	partialPath := partialDownloadPath(cachePath)
+	if err := downloadFileResumable(downloadURL, partialPath); err != nil {
 		return "", err
 	}
-	defer os.Remove(tempPath)
 
-	if !matchesFileFingerprint(tempPath, deployment.SizeBytes, deployment.SHA256) {
+	if !matchesFileFingerprint(partialPath, deployment.SizeBytes, deployment.SHA256) {
 		return "", fmt.Errorf("downloaded file fingerprint mismatch")
 	}
 
 	if err := os.Remove(cachePath); err != nil && !os.IsNotExist(err) {
 		return "", err
 	}
-	if err := copyFile(tempPath, cachePath); err != nil {
+	if err := os.Rename(partialPath, cachePath); err != nil {
 		return "", err
 	}
 	return cachePath, nil
@@ -270,52 +264,6 @@ func copyFile(sourcePath, destPath string) error {
 		return err
 	}
 	return dest.Close()
-}
-
-func downloadFile(downloadURL, ext string) (string, error) {
-	client := &http.Client{Timeout: downloadTimeout}
-	request, err := http.NewRequest(http.MethodGet, downloadURL, nil)
-	if err != nil {
-		return "", err
-	}
-	request.Header.Set("User-Agent", brand.UserAgent)
-
-	response, err := client.Do(request)
-	if err != nil {
-		return "", err
-	}
-	defer response.Body.Close()
-
-	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
-		body, _ := io.ReadAll(io.LimitReader(response.Body, 4096))
-		message := strings.TrimSpace(string(body))
-		if message == "" {
-			return "", fmt.Errorf("HTTP %d", response.StatusCode)
-		}
-		return "", fmt.Errorf("HTTP %d: %s", response.StatusCode, message)
-	}
-
-	tempFile, err := os.CreateTemp("", brand.DownloadTempPrefix+"*"+ext)
-	if err != nil {
-		return "", err
-	}
-	tempPath := tempFile.Name()
-
-	written, err := io.Copy(tempFile, response.Body)
-	closeErr := tempFile.Close()
-	if err != nil {
-		os.Remove(tempPath)
-		return "", err
-	}
-	if closeErr != nil {
-		os.Remove(tempPath)
-		return "", closeErr
-	}
-	if written == 0 {
-		os.Remove(tempPath)
-		return "", fmt.Errorf("downloaded file is empty")
-	}
-	return tempPath, nil
 }
 
 func resolveDownloadURL(baseURL, rawURL string) (string, error) {
