@@ -24,7 +24,8 @@ type Result struct {
 }
 
 type powershellPayload struct {
-	Script string `json:"script"`
+	Script           string `json:"script"`
+	ExecutionContext string `json:"executionContext"`
 }
 
 type installPayload struct {
@@ -32,17 +33,48 @@ type installPayload struct {
 }
 
 // ExecutePowerShellScript runs a script string and returns captured stdout/stderr.
-func ExecutePowerShellScript(script string) Result {
+func ExecutePowerShellScript(payload string) Result {
+	payload = strings.TrimSpace(payload)
+	if payload == "" {
+		return Result{Success: false, Message: "powershell script is empty"}
+	}
+
+	if strings.HasPrefix(payload, "{") {
+		var parsed powershellPayload
+		if err := json.Unmarshal([]byte(payload), &parsed); err == nil && strings.TrimSpace(parsed.Script) != "" {
+			return runPowerShellWithContext(parsed.Script, parsed.ExecutionContext)
+		}
+	}
+
+	return runPowerShellWithContext(payload, "System")
+}
+
+func runPowerShellWithContext(script, executionContext string) Result {
 	script = strings.TrimSpace(script)
 	if script == "" {
 		return Result{Success: false, Message: "powershell script is empty"}
 	}
 
-	payload, err := json.Marshal(powershellPayload{Script: script})
+	if strings.EqualFold(strings.TrimSpace(executionContext), "User") {
+		commandLine := fmt.Sprintf(
+			`powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command %s`,
+			quotePowerShellCommandArg(script),
+		)
+		if err := session.RunInteractive(commandLine); err != nil {
+			return Result{Success: false, Message: fmt.Sprintf("run in user session failed: %v", err)}
+		}
+		return Result{Success: true, Message: "powershell script launched in logged-on user session"}
+	}
+
+	payload, err := json.Marshal(powershellPayload{Script: script, ExecutionContext: "System"})
 	if err != nil {
 		return Result{Success: false, Message: fmt.Sprintf("marshal payload: %v", err)}
 	}
 	return runPowerShell(payload)
+}
+
+func quotePowerShellCommandArg(value string) string {
+	return fmt.Sprintf(`'%s'`, strings.ReplaceAll(value, "'", "''"))
 }
 
 // Execute runs a remote command locally on the Windows agent.
