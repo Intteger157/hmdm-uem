@@ -88,6 +88,30 @@ func TestPartialDownloadPath(t *testing.T) {
 	}
 }
 
+func TestDownloadFileResumableCreatesParentDirectory(t *testing.T) {
+	t.Parallel()
+
+	payload := []byte("payload")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(payload)
+	}))
+	defer server.Close()
+
+	destPath := filepath.Join(t.TempDir(), "nested", "cache", "file.bin.part")
+	if err := downloadFileResumable(server.URL, destPath); err != nil {
+		t.Fatalf("downloadFileResumable() error = %v", err)
+	}
+
+	got, err := os.ReadFile(destPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(payload) {
+		t.Fatalf("downloaded content = %q, want %q", string(got), string(payload))
+	}
+}
+
 func TestDownloadFileResumableEmptyResponse(t *testing.T) {
 	t.Parallel()
 

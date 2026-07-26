@@ -68,7 +68,7 @@ func DeployRequired(deployments []RequiredFileDeployment, opts DeployOptions) {
 		output, deployErr := deployOne(deployment, opts)
 		if deployErr != nil {
 			log.Printf("file deploy failed id=%d file_id=%d: %v", deployment.ID, deployment.FileID, deployErr)
-			reportLog(opts.Logger, deployment, "Failed", output)
+			reportLog(opts.Logger, deployment, "Failed", deploymentFailureMessage(output, deployErr))
 			state.MarkDeployFailed(deployment.ID, deployment.UpdatedAt)
 			stateChanged = true
 			continue
@@ -91,31 +91,36 @@ func deployOne(deployment RequiredFileDeployment, opts DeployOptions) (string, e
 
 	downloadURL, err := resolveDownloadURL(opts.BaseURL, deployment.DownloadURL)
 	if err != nil {
-		return "", err
+		return deploymentFailureMessage("", err), err
 	}
 
 	localPath, err := ensureCachedFile(deployment, downloadURL)
 	if err != nil {
-		return "", fmt.Errorf("download file: %w", err)
+		wrapped := fmt.Errorf("download file: %w", err)
+		return deploymentFailureMessage("", wrapped), wrapped
 	}
 
 	destination := strings.TrimSpace(deployment.DestinationPath)
 	if destination == "" {
-		return "", fmt.Errorf("destination_path is empty")
+		err := fmt.Errorf("destination_path is empty")
+		return deploymentFailureMessage("", err), err
 	}
 
 	reportLog(opts.Logger, deployment, "Installing", fmt.Sprintf("Deploying to %s", destination))
 
 	if deployment.Unzip {
 		if err := os.MkdirAll(destination, 0o755); err != nil {
-			return "", fmt.Errorf("create destination directory: %w", err)
+			wrapped := fmt.Errorf("create destination directory: %w", err)
+			return deploymentFailureMessage("", wrapped), wrapped
 		}
 		if err := extractZipArchive(localPath, destination); err != nil {
-			return "", fmt.Errorf("extract archive: %w", err)
+			wrapped := fmt.Errorf("extract archive: %w", err)
+			return deploymentFailureMessage("", wrapped), wrapped
 		}
 	} else {
 		if err := copyFileToDestination(localPath, destination, deployment.OriginalName); err != nil {
-			return "", fmt.Errorf("copy file: %w", err)
+			wrapped := fmt.Errorf("copy file: %w", err)
+			return deploymentFailureMessage("", wrapped), wrapped
 		}
 	}
 
@@ -127,7 +132,7 @@ func deployOne(deployment RequiredFileDeployment, opts DeployOptions) (string, e
 	reportLog(opts.Logger, deployment, "Installing", fmt.Sprintf("Running post-action script: %s", script))
 	output, err := runPostActionScript(destination, script)
 	if err != nil {
-		return output, fmt.Errorf("post-action script: %w", err)
+		return deploymentFailureMessage(output, err), fmt.Errorf("post-action script: %w", err)
 	}
 
 	message := fmt.Sprintf("Deployed %q to %s", deployment.OriginalName, destination)
@@ -135,6 +140,25 @@ func deployOne(deployment RequiredFileDeployment, opts DeployOptions) (string, e
 		message += "\n" + output
 	}
 	return message, nil
+}
+
+func deploymentFailureMessage(output string, err error) string {
+	output = strings.TrimSpace(output)
+	errMsg := ""
+	if err != nil {
+		errMsg = strings.TrimSpace(err.Error())
+	}
+
+	switch {
+	case output != "" && errMsg != "" && !strings.Contains(output, errMsg):
+		return output + "\n" + errMsg
+	case output != "":
+		return output
+	case errMsg != "":
+		return errMsg
+	default:
+		return "deployment failed"
+	}
 }
 
 func copyFileToDestination(sourcePath, destinationPath, originalName string) error {
@@ -253,6 +277,10 @@ func copyFile(sourcePath, destPath string) error {
 		return err
 	}
 	defer src.Close()
+
+	if err := os.MkdirAll(filepath.Dir(destPath), os.ModePerm); err != nil {
+		return err
+	}
 
 	dest, err := os.Create(destPath)
 	if err != nil {
