@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -46,10 +45,7 @@ func runZipInstaller(zipPath, installArgs string) (installRunResult, error) {
 	}
 
 	cmdLine := fmt.Sprintf(`%s (cwd=%s)`, customArgs, tempDir)
-	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Dir = tempDir
-
-	return runPreparedInstaller(ctx, cmd, cmdLine, true)
+	return runPreparedInstaller(ctx, args[0], args[1:], cmdLine, tempDir, true)
 }
 
 func extractZipArchive(zipPath, destDir string) error {

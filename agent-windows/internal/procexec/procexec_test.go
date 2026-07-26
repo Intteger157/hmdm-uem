@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 )
 
 func TestIsTimeout(t *testing.T) {
@@ -22,7 +23,10 @@ func TestIsTimeout(t *testing.T) {
 func TestInstallTimeoutMessage(t *testing.T) {
 	t.Parallel()
 
-	if InstallTimeoutMessage != "Installation timed out after 15 minutes. Process killed." {
+	if InstallTimeoutMessage != "Execution timeout (20m)" {
 		t.Fatalf("unexpected timeout message: %q", InstallTimeoutMessage)
+	}
+	if InstallTimeout != 20*time.Minute {
+		t.Fatalf("unexpected install timeout: %s", InstallTimeout)
 	}
 }

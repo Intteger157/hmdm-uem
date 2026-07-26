@@ -4,8 +4,10 @@ package apps
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -87,20 +89,22 @@ func runDetachedURLInstaller(installerPath, installArgs string) (installRunResul
 	ext := strings.ToLower(filepath.Ext(installerPath))
 	customArgs := strings.TrimSpace(installArgs)
 
-	var cmd *exec.Cmd
+	var execPath string
+	var execArgs []string
 	var cmdLine string
 
 	switch {
 	case ext == ".msi":
 		args := strings.Fields(customArgs)
-		cmd, cmdLine = buildInstallerCommandWithArgs(installerPath, args)
+		execPath, execArgs, cmdLine = buildInstallerCommandWithArgs(installerPath, args)
 	case customArgs != "":
 		args := strings.Fields(customArgs)
-		cmd, cmdLine = buildInstallerCommandWithArgs(installerPath, args)
+		execPath, execArgs, cmdLine = buildInstallerCommandWithArgs(installerPath, args)
 	default:
-		cmd, cmdLine = buildInstallerCommandWithArgs(installerPath, []string{"/S"})
+		execPath, execArgs, cmdLine = buildInstallerCommandWithArgs(installerPath, []string{"/S"})
 	}
 
+	cmd := exec.Command(execPath, execArgs...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP | createNoWindow,
 	}
@@ -125,13 +129,13 @@ func runURLInstaller(installerPath, installArgs string) (installRunResult, error
 
 	if ext == ".msi" {
 		args := strings.Fields(customArgs)
-		cmd, cmdLine := buildInstallerCommandWithArgs(installerPath, args)
-		return runPreparedInstaller(ctx, cmd, cmdLine, true)
+		execPath, execArgs, cmdLine := buildInstallerCommandWithArgs(installerPath, args)
+		return runPreparedInstaller(ctx, execPath, execArgs, cmdLine, "", true)
 	}
 
 	if customArgs != "" {
 		args := strings.Fields(customArgs)
-		_, cmdLine := buildInstallerCommandWithArgs(installerPath, args)
+		_, _, cmdLine := buildInstallerCommandWithArgs(installerPath, args)
 		return runEXEInstaller(ctx, installerPath, args, cmdLine)
 	}
 
@@ -141,7 +145,7 @@ func runURLInstaller(installerPath, installArgs string) (installRunResult, error
 			break
 		}
 
-		_, cmdLine := buildInstallerCommandWithArgs(installerPath, args)
+		_, _, cmdLine := buildInstallerCommandWithArgs(installerPath, args)
 		result, err := runEXEInstaller(ctx, installerPath, args, cmdLine)
 		attemptResults = append(attemptResults, result)
 		if err == nil {
@@ -168,11 +172,11 @@ func runURLInstaller(installerPath, installArgs string) (installRunResult, error
 }
 
 func runEXEInstaller(ctx context.Context, installerPath string, args []string, cmdLine string) (installRunResult, error) {
-	cmd, _ := buildInstallerCommandWithArgs(installerPath, args)
-	return runPreparedInstaller(ctx, cmd, cmdLine, false)
+	execPath, execArgs, _ := buildInstallerCommandWithArgs(installerPath, args)
+	return runPreparedInstaller(ctx, execPath, execArgs, cmdLine, "", false)
 }
 
-func buildInstallerCommandWithArgs(installerPath string, args []string) (*exec.Cmd, string) {
+func buildInstallerCommandWithArgs(installerPath string, args []string) (execPath string, execArgs []string, cmdLine string) {
 	ext := strings.ToLower(filepath.Ext(installerPath))
 
 	switch ext {
@@ -181,32 +185,24 @@ func buildInstallerCommandWithArgs(installerPath string, args []string) (*exec.C
 			args = []string{"/quiet", "/norestart"}
 		}
 		msiArgs := append([]string{"/i", installerPath}, args...)
-		cmdLine := fmt.Sprintf(`msiexec.exe %s`, strings.Join(quoteCommandParts(msiArgs), " "))
-		return exec.Command("msiexec.exe", msiArgs...), cmdLine
+		cmdLine = fmt.Sprintf(`msiexec.exe %s`, strings.Join(quoteCommandParts(msiArgs), " "))
+		return "msiexec.exe", msiArgs, cmdLine
 	default:
 		if len(args) == 0 {
 			args = []string{"/S"}
 		}
-		cmdLine := fmt.Sprintf(`"%s" %s`, installerPath, strings.Join(quoteCommandParts(args), " "))
-		return exec.Command(installerPath, args...), cmdLine
+		cmdLine = fmt.Sprintf(`"%s" %s`, installerPath, strings.Join(quoteCommandParts(args), " "))
+		return installerPath, args, cmdLine
 	}
 }
 
-func runPreparedInstaller(ctx context.Context, cmd *exec.Cmd, cmdLine string, captureOutput bool) (installRunResult, error) {
-	execPath := cmd.Path
-	if execPath == "" && len(cmd.Args) > 0 {
-		execPath = cmd.Args[0]
-	}
-	var execArgs []string
-	if len(cmd.Args) > 1 {
-		execArgs = cmd.Args[1:]
+func runPreparedInstaller(ctx context.Context, execPath string, execArgs []string, cmdLine, workDir string, captureOutput bool) (installRunResult, error) {
+	cmd := exec.CommandContext(ctx, execPath, execArgs...)
+	if workDir != "" {
+		cmd.Dir = workDir
 	}
 
-	wrapped := exec.CommandContext(ctx, execPath, execArgs...)
-	wrapped.Dir = cmd.Dir
-	wrapped.Env = cmd.Env
-
-	runResult, err := procexec.Run(ctx, wrapped, captureOutput)
+	runResult, err := procexec.Run(ctx, cmd, captureOutput)
 	result := installRunResult{
 		ExitCode:    runResult.ExitCode,
 		CommandLine: cmdLine,
@@ -214,7 +210,8 @@ func runPreparedInstaller(ctx context.Context, cmd *exec.Cmd, cmdLine string, ca
 		Stderr:      runResult.Stderr,
 	}
 
-	if procexec.IsTimeout(err) || ctx.Err() == context.DeadlineExceeded {
+	if procexec.IsTimeout(err) || errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		log.Printf("[app-install] execution timed out after %s: command=%q", appInstallTimeout, cmdLine)
 		if result.Stderr != "" {
 			result.Stderr += "\n"
 		}

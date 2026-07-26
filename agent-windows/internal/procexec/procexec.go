@@ -14,9 +14,9 @@ import (
 	"time"
 )
 
-const InstallTimeout = 15 * time.Minute
+const InstallTimeout = 20 * time.Minute
 
-const InstallTimeoutMessage = "Installation timed out after 15 minutes. Process killed."
+const InstallTimeoutMessage = "Execution timeout (20m)"
 
 // ConfigureHiddenProcessGroup sets hidden window and a new process group for tree termination.
 func ConfigureHiddenProcessGroup(cmd *exec.Cmd) {

@@ -168,6 +168,7 @@ func deployApp(app RequiredApp, opts DeployOptions, state *AppsState, installed 
 func reportDeployFailure(opts DeployOptions, progress *InstallProgressReporter, app RequiredApp, state *AppsState, message string, err error) (bool, error) {
 	if isInstallTimeout(err) {
 		message = InstallTimeoutStatusMessage
+		log.Printf("app deploy: execution timed out id=%d name=%q: %s", app.ID, app.Name, message)
 	}
 
 	if progress != nil {

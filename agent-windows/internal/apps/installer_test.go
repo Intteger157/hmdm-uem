@@ -26,7 +26,7 @@ func TestFormatInstallAttempts(t *testing.T) {
 func TestBuildInstallerCommandMSI(t *testing.T) {
 	t.Parallel()
 
-	_, cmdLine := buildInstallerCommandWithArgs(`C:\Temp\setup.msi`, nil)
+	_, _, cmdLine := buildInstallerCommandWithArgs(`C:\Temp\setup.msi`, nil)
 	if !strings.Contains(cmdLine, `msiexec.exe /i`) || !strings.Contains(cmdLine, "/quiet") {
 		t.Fatalf("unexpected msi command line: %q", cmdLine)
 	}
@@ -35,7 +35,7 @@ func TestBuildInstallerCommandMSI(t *testing.T) {
 func TestBuildInstallerCommandEXE(t *testing.T) {
 	t.Parallel()
 
-	_, cmdLine := buildInstallerCommandWithArgs(`C:\Temp\setup.exe`, nil)
+	_, _, cmdLine := buildInstallerCommandWithArgs(`C:\Temp\setup.exe`, nil)
 	if !strings.Contains(cmdLine, `C:\Temp\setup.exe`) || !strings.Contains(cmdLine, "/S") {
 		t.Fatalf("unexpected exe command line: %q", cmdLine)
 	}
