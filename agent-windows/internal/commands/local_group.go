@@ -135,7 +135,7 @@ func buildLocalGroupMemberRemoveScript(groupName, userName string) string {
 	member := escapePowerShellSingleQuoted(userName)
 	notFound := escapePowerShellSingleQuoted(localGroupMemberNotFoundOutput)
 	return fmt.Sprintf(
-		"try { $member = Get-LocalGroupMember -Group '%s' | Where-Object { $_.Name -match '%s' -or $_.Name -match '%s'.Split('\\')[-1] }; if ($member) { Remove-LocalGroupMember -Group '%s' -Member $member.SID -ErrorAction Stop } else { Write-Output '%s'; exit 0 } } catch { throw $_ }",
+		"try { $member = Get-LocalGroupMember -Group '%s' | Where-Object { $_.Name -match '%s' -or $_.Name -match '%s'.Split('\\')[-1] }; if ($member) { Remove-LocalGroupMember -Group '%s' -SID $member.SID.Value -ErrorAction Stop } else { Write-Output '%s'; exit 0 } } catch { throw $_ }",
 		group,
 		member,
 		member,
