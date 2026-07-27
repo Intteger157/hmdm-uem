@@ -36,38 +36,35 @@ func TestLocalGroupMemberCommandUsesPowerShellWithAzureADUsername(t *testing.T) 
 	if !strings.Contains(script, "NTAccount") || !strings.Contains(script, "SecurityIdentifier") {
 		t.Fatalf("script = %q, expected SID resolution via NTAccount", script)
 	}
-	if !strings.Contains(script, `net localgroup $group "$sid" /add`) {
-		t.Fatalf("script = %q, expected net localgroup add by SID", script)
+	if !strings.Contains(script, "Add-LocalGroupMember -Group 'Administrators' -Member $sid") {
+		t.Fatalf("script = %q, expected Add-LocalGroupMember with SID variable", script)
 	}
 	if !strings.Contains(script, `AzureAD\user@example.com`) {
 		t.Fatalf("script = %q, expected Azure AD username preserved for SID lookup", script)
 	}
 }
 
-func TestBuildLocalGroupMemberScriptRemoveUsesNetLocalgroupBySID(t *testing.T) {
+func TestBuildLocalGroupMemberScriptRemoveUsesCmdletWithSID(t *testing.T) {
 	t.Parallel()
 
 	script := buildLocalGroupMemberScript(localGroupActionRemove, "Remote Desktop Users", "alice")
-	if !strings.Contains(script, `net localgroup $group "$sid" /delete`) {
-		t.Fatalf("script = %q, expected net localgroup delete by SID", script)
+	if !strings.Contains(script, "Remove-LocalGroupMember -Group 'Remote Desktop Users' -Member $sid") {
+		t.Fatalf("script = %q, expected Remove-LocalGroupMember with SID variable", script)
 	}
-	if strings.Contains(script, "Add-LocalGroupMember") || strings.Contains(script, "[ADSI]") {
-		t.Fatalf("script = %q, should use net localgroup only", script)
-	}
-	if !strings.Contains(script, "$LASTEXITCODE -eq 1377") {
-		t.Fatalf("script = %q, expected idempotent handling for not-a-member", script)
+	if strings.Contains(script, "net localgroup") {
+		t.Fatalf("script = %q, should not use net localgroup", script)
 	}
 }
 
-func TestBuildLocalGroupMemberScriptAddUsesNetLocalgroupBySID(t *testing.T) {
+func TestBuildLocalGroupMemberScriptAddUsesCmdletWithSID(t *testing.T) {
 	t.Parallel()
 
 	script := buildLocalGroupMemberScript(localGroupActionAdd, "Administrators", "alice")
-	if !strings.Contains(script, `net localgroup $group "$sid" /add`) {
-		t.Fatalf("script = %q, expected net localgroup add by SID", script)
+	if !strings.Contains(script, "Add-LocalGroupMember -Group 'Administrators' -Member $sid") {
+		t.Fatalf("script = %q, expected Add-LocalGroupMember with SID variable", script)
 	}
-	if !strings.Contains(script, "$LASTEXITCODE -eq 1378") {
-		t.Fatalf("script = %q, expected idempotent handling for already-a-member", script)
+	if strings.Contains(script, "net localgroup") {
+		t.Fatalf("script = %q, should not use net localgroup", script)
 	}
 }
 
@@ -106,14 +103,26 @@ func TestBuildLocalGroupMemberScriptHandlesExistingMembership(t *testing.T) {
 	t.Parallel()
 
 	script := buildLocalGroupMemberScript(localGroupActionAdd, "Administrators", "alice")
-	if !strings.Contains(script, "$ErrorActionPreference = 'Stop'") {
-		t.Fatalf("script = %q, expected stop-on-error preference", script)
+	if !strings.Contains(script, "try {") || !strings.Contains(script, "} catch {") {
+		t.Fatalf("script = %q, expected try/catch wrapper", script)
 	}
-	if !strings.Contains(script, "$LASTEXITCODE -eq 1378") {
-		t.Fatalf("script = %q, expected already-member exit code handling", script)
+	if !strings.Contains(script, "MemberExists|MemberNotFound") {
+		t.Fatalf("script = %q, expected idempotent exception handling", script)
 	}
 	if !strings.Contains(script, localGroupAlreadyAppliedOutput) {
 		t.Fatalf("script = %q, expected already-applied marker output", script)
+	}
+}
+
+func TestBuildLocalGroupMemberScriptEscapesSingleQuotes(t *testing.T) {
+	t.Parallel()
+
+	script := buildLocalGroupMemberScript(localGroupActionAdd, "O'Brien Users", "AzureAD\\user'@example.com")
+	if !strings.Contains(script, "O''Brien Users") {
+		t.Fatalf("script = %q, expected escaped group name", script)
+	}
+	if !strings.Contains(script, `AzureAD\user''@example.com`) {
+		t.Fatalf("script = %q, expected escaped username", script)
 	}
 }
 

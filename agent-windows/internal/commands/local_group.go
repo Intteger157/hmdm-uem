@@ -115,15 +115,14 @@ func buildLocalGroupMemberScript(action, groupName, userName string) string {
 	group := escapePowerShellSingleQuoted(groupName)
 	member := escapePowerShellSingleQuoted(userName)
 	actionLiteral := escapePowerShellSingleQuoted(action)
-	body := fmt.Sprintf(
-		"$account = New-Object System.Security.Principal.NTAccount('%s'); $sid = $account.Translate([System.Security.Principal.SecurityIdentifier]).Value; $group = '%s'; if ('%s' -eq 'add') { $output = net localgroup $group \"$sid\" /add 2>&1; if ($LASTEXITCODE -eq 1378) { Write-Output '%s'; exit 0 } } else { $output = net localgroup $group \"$sid\" /delete 2>&1; if ($LASTEXITCODE -eq 1377) { Write-Output '%s'; exit 0 } }; if ($LASTEXITCODE -ne 0) { throw (($output | Out-String).Trim()) }",
+	return fmt.Sprintf(
+		"try { $sid = (New-Object System.Security.Principal.NTAccount('%s')).Translate([System.Security.Principal.SecurityIdentifier]).Value; if ('%s' -eq 'add') { Add-LocalGroupMember -Group '%s' -Member $sid -ErrorAction Stop } else { Remove-LocalGroupMember -Group '%s' -Member $sid -ErrorAction Stop } } catch { if ($_.FullyQualifiedErrorId -match 'MemberExists|MemberNotFound') { Write-Output '%s'; exit 0 } else { throw $_ } }",
 		member,
-		group,
 		actionLiteral,
-		localGroupAlreadyAppliedOutput,
+		group,
+		group,
 		localGroupAlreadyAppliedOutput,
 	)
-	return fmt.Sprintf("$ErrorActionPreference = 'Stop'; %s", body)
 }
 
 func newLocalGroupMemberCommand(action, groupName, userName string) *exec.Cmd {
