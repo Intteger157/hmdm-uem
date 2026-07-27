@@ -12,10 +12,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 
 	"github.com/hmdm/agent-windows/internal/brand"
 )
+
+var deployFilesMu sync.Mutex
 
 // RequiredFileDeployment is one file deployment rule from effective config.
 type RequiredFileDeployment struct {
@@ -52,6 +55,9 @@ func DeployRequiredAsync(deployments []RequiredFileDeployment, opts DeployOption
 
 // DeployRequired executes all file deployment rules sequentially.
 func DeployRequired(deployments []RequiredFileDeployment, opts DeployOptions) {
+	deployFilesMu.Lock()
+	defer deployFilesMu.Unlock()
+
 	state, err := LoadFilesState()
 	if err != nil {
 		log.Printf("file state load failed: %v", err)
@@ -60,9 +66,8 @@ func DeployRequired(deployments []RequiredFileDeployment, opts DeployOptions) {
 
 	stateChanged := false
 	for _, deployment := range deployments {
-		if state.ShouldSkipDeploy(deployment.ID, deployment.UpdatedAt) {
-			log.Printf("file deploy: skip id=%d destination=%q (already deployed)", deployment.ID, deployment.DestinationPath)
-			reportLog(opts.Logger, deployment, "Success", "Already deployed")
+		if state.ShouldSkipDeploy(deployment) {
+			log.Printf("file deploy: skip id=%d file_id=%d destination=%q (already applied)", deployment.ID, deployment.FileID, deployment.DestinationPath)
 			continue
 		}
 
@@ -70,13 +75,13 @@ func DeployRequired(deployments []RequiredFileDeployment, opts DeployOptions) {
 		if deployErr != nil {
 			log.Printf("file deploy failed id=%d file_id=%d: %v", deployment.ID, deployment.FileID, deployErr)
 			reportLog(opts.Logger, deployment, "Failed", deploymentFailureMessage(output, deployErr))
-			state.MarkDeployFailed(deployment.ID, deployment.UpdatedAt)
+			state.MarkDeployFailed(deployment)
 			stateChanged = true
 			continue
 		}
 
 		reportLog(opts.Logger, deployment, "Success", output)
-		state.MarkDeployed(deployment.ID, deployment.UpdatedAt)
+		state.MarkDeployed(deployment)
 		stateChanged = true
 	}
 

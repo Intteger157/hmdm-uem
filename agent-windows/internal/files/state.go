@@ -17,6 +17,7 @@ const filesStateFileName = "files_state.json"
 
 type FilesState struct {
 	DeployedRules map[string]string `json:"deployedRules,omitempty"`
+	AppliedFiles  map[string]string `json:"applied_files,omitempty"`
 	FailedRules   map[string]string `json:"failedRules,omitempty"`
 }
 
@@ -27,6 +28,7 @@ func filesStateFilePath() string {
 func newEmptyFilesState() FilesState {
 	return FilesState{
 		DeployedRules: map[string]string{},
+		AppliedFiles:  map[string]string{},
 		FailedRules:   map[string]string{},
 	}
 }
@@ -70,6 +72,9 @@ func normalizeFilesState(state *FilesState) {
 	if state.DeployedRules == nil {
 		state.DeployedRules = map[string]string{}
 	}
+	if state.AppliedFiles == nil {
+		state.AppliedFiles = map[string]string{}
+	}
 	if state.FailedRules == nil {
 		state.FailedRules = map[string]string{}
 	}
@@ -79,25 +84,48 @@ func ruleKey(deploymentID uint) string {
 	return fmt.Sprintf("%d", deploymentID)
 }
 
-func (state FilesState) ShouldSkipDeploy(deploymentID uint, updatedAt string) bool {
-	key := ruleKey(deploymentID)
-	storedUpdatedAt := strings.TrimSpace(state.DeployedRules[key])
-	if storedUpdatedAt == "" {
-		return false
+func (state FilesState) ShouldSkipDeploy(deployment RequiredFileDeployment) bool {
+	key := ruleKey(deployment.ID)
+	storedFingerprint := strings.TrimSpace(state.DeployedRules[key])
+	expectedFingerprint := DeploymentFingerprint(deployment)
+	if storedFingerprint != "" {
+		if storedFingerprint == expectedFingerprint {
+			return true
+		}
+		legacyUpdatedAt := strings.TrimSpace(deployment.UpdatedAt)
+		if legacyUpdatedAt != "" && storedFingerprint == legacyUpdatedAt {
+			return true
+		}
 	}
-	return storedUpdatedAt == strings.TrimSpace(updatedAt)
+
+	fileSHA := strings.ToLower(strings.TrimSpace(deployment.SHA256))
+	if deployment.FileID > 0 && fileSHA != "" {
+		appliedSHA := strings.ToLower(strings.TrimSpace(state.AppliedFiles[appliedFileKey(deployment.FileID)]))
+		if appliedSHA == fileSHA {
+			return true
+		}
+	}
+	return false
 }
 
-func (state *FilesState) MarkDeployed(deploymentID uint, updatedAt string) {
-	key := ruleKey(deploymentID)
-	state.DeployedRules[key] = strings.TrimSpace(updatedAt)
+func (state *FilesState) MarkDeployed(deployment RequiredFileDeployment) {
+	key := ruleKey(deployment.ID)
+	state.DeployedRules[key] = DeploymentFingerprint(deployment)
+	if deployment.FileID > 0 {
+		if sha256 := strings.ToLower(strings.TrimSpace(deployment.SHA256)); sha256 != "" {
+			state.AppliedFiles[appliedFileKey(deployment.FileID)] = sha256
+		}
+	}
 	delete(state.FailedRules, key)
 }
 
-func (state *FilesState) MarkDeployFailed(deploymentID uint, updatedAt string) {
-	key := ruleKey(deploymentID)
-	state.FailedRules[key] = strings.TrimSpace(updatedAt)
+func (state *FilesState) MarkDeployFailed(deployment RequiredFileDeployment) {
+	key := ruleKey(deployment.ID)
+	state.FailedRules[key] = DeploymentFingerprint(deployment)
 	delete(state.DeployedRules, key)
+	if deployment.FileID > 0 {
+		delete(state.AppliedFiles, appliedFileKey(deployment.FileID))
+	}
 }
 
 func parseUpdatedAt(value string) time.Time {

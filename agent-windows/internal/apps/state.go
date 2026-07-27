@@ -104,38 +104,49 @@ func (state *AppsState) MarkChecked(appID uint, checkedAt time.Time) {
 }
 
 // ShouldSkipDeploy reports whether the agent already deployed this catalog revision.
-func (state AppsState) ShouldSkipDeploy(appID uint, serverUpdatedAt string) bool {
+func (state AppsState) ShouldSkipDeploy(app RequiredApp) bool {
 	if state.DeployedApps == nil {
 		return false
 	}
-	cachedUpdatedAt, ok := state.DeployedApps[appKey(appID)]
-	if !ok || strings.TrimSpace(cachedUpdatedAt) == "" {
+	key := appKey(app.ID)
+	stored := strings.TrimSpace(state.DeployedApps[key])
+	if stored == "" {
 		return false
 	}
 
-	cachedTime := parseAppTimestamp(cachedUpdatedAt)
-	serverTime := parseAppTimestamp(serverUpdatedAt)
-	if cachedTime.IsZero() || serverTime.IsZero() {
-		return false
+	expected := AppDeploymentFingerprint(app)
+	if stored == expected {
+		return true
+	}
+	if stored == strings.TrimSpace(app.UpdatedAt) {
+		return true
 	}
 
-	return !cachedTime.Before(serverTime)
+	cachedTime := parseAppTimestamp(stored)
+	serverTime := parseAppTimestamp(app.UpdatedAt)
+	if !cachedTime.IsZero() && !serverTime.IsZero() {
+		return !cachedTime.Before(serverTime)
+	}
+	return false
 }
 
-// MarkDeployed records the catalog UpdatedAt timestamp for a successful deployment.
-func (state *AppsState) MarkDeployed(appID uint, updatedAt string) {
+// MarkDeployed records the catalog revision fingerprint for a successful deployment.
+func (state *AppsState) MarkDeployed(app RequiredApp) {
 	if state.DeployedApps == nil {
 		state.DeployedApps = map[string]string{}
 	}
 	if state.FailedApps != nil {
-		delete(state.FailedApps, appKey(appID))
+		delete(state.FailedApps, appKey(app.ID))
 	}
-	normalized := normalizeAppTimestamp(updatedAt)
+	normalized := AppDeploymentFingerprint(app)
+	if normalized == "" {
+		normalized = normalizeAppTimestamp(app.UpdatedAt)
+	}
 	if normalized == "" {
 		normalized = time.Now().UTC().Format(time.RFC3339)
 	}
-	state.DeployedApps[appKey(appID)] = normalized
-	state.MarkChecked(appID, time.Now().UTC())
+	state.DeployedApps[appKey(app.ID)] = normalized
+	state.MarkChecked(app.ID, time.Now().UTC())
 }
 
 // MarkDeployFailed records a failed deployment for this catalog revision.

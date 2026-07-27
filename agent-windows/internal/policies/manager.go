@@ -32,18 +32,22 @@ func SyncFromServer(fetch func() (EffectiveConfig, error), report Reporter, depl
 		log.Printf("policy sync: failed to save config.json: %v", err)
 	}
 
-	if len(config.RequiredApps) > 0 {
-		log.Printf("app deploy: scheduling %d required app(s) for async deployment", len(config.RequiredApps))
-		apps.DeployRequiredAsync(config.RequiredApps, deploy)
-	}
-
-	if len(config.FileDeployments) > 0 {
-		log.Printf("file deploy: scheduling %d file deployment rule(s)", len(config.FileDeployments))
-		files.DeployRequiredAsync(config.FileDeployments, fileDeploy)
-	}
-
 	configHash := ConfigHash(config)
-	if configHash == LoadLastSyncedConfigHash() {
+	hashChanged := configHash != LoadLastSyncedConfigHash()
+
+	if hashChanged {
+		if len(config.RequiredApps) > 0 {
+			log.Printf("app deploy: scheduling %d required app(s) for async deployment", len(config.RequiredApps))
+			apps.DeployRequiredAsync(config.RequiredApps, deploy)
+		}
+
+		if len(config.FileDeployments) > 0 {
+			log.Printf("file deploy: scheduling %d file deployment rule(s)", len(config.FileDeployments))
+			files.DeployRequiredAsync(config.FileDeployments, fileDeploy)
+		}
+	}
+
+	if !hashChanged {
 		return nil
 	}
 

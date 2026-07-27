@@ -44,7 +44,7 @@ func TestEvaluateFileDeploymentAlreadyDeployed(t *testing.T) {
 	t.Parallel()
 
 	state := newEmptyFilesState()
-	state.MarkDeployed(12, "2026-07-27T10:00:00Z")
+	state.MarkDeployed(RequiredFileDeployment{ID: 12, OriginalName: "done.txt", UpdatedAt: "2026-07-27T10:00:00Z"})
 	deployment := RequiredFileDeployment{ID: 12, OriginalName: "done.txt", UpdatedAt: "2026-07-27T10:00:00Z"}
 	line := evaluateFileDeploymentInCache(deployment, state, t.TempDir())
 	if line != "- File [done.txt]: Already deployed" {

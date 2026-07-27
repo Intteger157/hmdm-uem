@@ -22,7 +22,7 @@ func EvaluateFileDeployment(deployment RequiredFileDeployment, state FilesState)
 
 func evaluateFileDeploymentInCache(deployment RequiredFileDeployment, state FilesState, cacheRoot string) string {
 	name := displayFileName(deployment)
-	if state.ShouldSkipDeploy(deployment.ID, deployment.UpdatedAt) {
+	if state.ShouldSkipDeploy(deployment) {
 		return fmt.Sprintf("- File [%s]: Already deployed", name)
 	}
 

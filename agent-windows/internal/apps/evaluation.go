@@ -12,7 +12,7 @@ import (
 // EvaluateRequiredApp returns one evaluation report line for a required application.
 func EvaluateRequiredApp(app RequiredApp, state AppsState, installed []system.InstalledSoftwareInfo) string {
 	name := displayAppName(app)
-	if state.ShouldSkipDeploy(app.ID, app.UpdatedAt) {
+	if state.ShouldSkipDeploy(app) {
 		return fmt.Sprintf("- App [%s]: Already deployed", name)
 	}
 	if normalizeAppType(app.AppType) == AppTypeWinget {

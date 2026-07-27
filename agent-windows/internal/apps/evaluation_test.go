@@ -33,7 +33,7 @@ func TestEvaluateRequiredAppAlreadyDeployed(t *testing.T) {
 	t.Parallel()
 
 	state := newEmptyAppsState()
-	state.MarkDeployed(3, "2026-07-27T10:00:00Z")
+	state.MarkDeployed(RequiredApp{ID: 3, Name: "Deployed App", UpdatedAt: "2026-07-27T10:00:00Z"})
 	app := RequiredApp{ID: 3, Name: "Deployed App", UpdatedAt: "2026-07-27T10:00:00Z"}
 	line := EvaluateRequiredApp(app, state, nil)
 	if line != "- App [Deployed App]: Already deployed" {
