@@ -51,11 +51,17 @@ func TestBuildLocalGroupMemberScriptRemove(t *testing.T) {
 	t.Parallel()
 
 	script := buildLocalGroupMemberScript(localGroupActionRemove, "Remote Desktop Users", "alice")
-	if !strings.Contains(script, "Remove-LocalGroupMember") {
-		t.Fatalf("script = %q", script)
+	if strings.Contains(script, "Remove-LocalGroupMember") {
+		t.Fatalf("script = %q, Remove-LocalGroupMember should not be used for Azure AD-safe removal", script)
 	}
-	if !strings.Contains(script, "-Member $memberSid") {
-		t.Fatalf("script = %q, expected remove to use SID", script)
+	if !strings.Contains(script, `[ADSI]"WinNT://$env:COMPUTERNAME/$groupName,group"`) {
+		t.Fatalf("script = %q, expected WinNT group lookup", script)
+	}
+	if !strings.Contains(script, "Invoke('Remove', $member.Path)") {
+		t.Fatalf("script = %q, expected WinNT Remove by member path", script)
+	}
+	if !strings.Contains(script, "NTAccount") || !strings.Contains(script, "$memberSid -eq $sid") {
+		t.Fatalf("script = %q, expected SID-based member matching", script)
 	}
 }
 
@@ -97,8 +103,8 @@ func TestBuildLocalGroupMemberScriptHandlesExistingMembership(t *testing.T) {
 	if !strings.Contains(script, "try {") || !strings.Contains(script, "} catch {") {
 		t.Fatalf("script = %q, expected try/catch wrapper", script)
 	}
-	if !strings.Contains(script, "MemberExists*") || !strings.Contains(script, "MemberNotFound*") {
-		t.Fatalf("script = %q, expected membership exception handling", script)
+	if !strings.Contains(script, "MemberExists*") {
+		t.Fatalf("script = %q, expected add membership exception handling", script)
 	}
 	if !strings.Contains(script, localGroupAlreadyAppliedOutput) {
 		t.Fatalf("script = %q, expected already-applied marker output", script)

@@ -112,21 +112,37 @@ func runLocalGroupMember(action, groupName, userName string) (string, error) {
 }
 
 func buildLocalGroupMemberScript(action, groupName, userName string) string {
+	if action == localGroupActionRemove {
+		return buildLocalGroupMemberRemoveScript(groupName, userName)
+	}
+	return buildLocalGroupMemberAddScript(groupName, userName)
+}
+
+func buildLocalGroupMemberAddScript(groupName, userName string) string {
 	group := escapePowerShellSingleQuoted(groupName)
 	member := escapePowerShellSingleQuoted(userName)
-	actionLiteral := escapePowerShellSingleQuoted(action)
 	body := fmt.Sprintf(
-		"$memberSid = (New-Object System.Security.Principal.NTAccount('%s')).Translate([System.Security.Principal.SecurityIdentifier]).Value; if ('%s' -eq 'add') { Add-LocalGroupMember -Group '%s' -Member $memberSid -ErrorAction Stop } else { Remove-LocalGroupMember -Group '%s' -Member $memberSid -ErrorAction Stop }",
+		"$memberSid = (New-Object System.Security.Principal.NTAccount('%s')).Translate([System.Security.Principal.SecurityIdentifier]).Value; Add-LocalGroupMember -Group '%s' -Member $memberSid -ErrorAction Stop",
 		member,
-		actionLiteral,
-		group,
 		group,
 	)
 	return fmt.Sprintf(
-		"$ErrorActionPreference = 'Stop'; try { %s } catch { if ($_.FullyQualifiedErrorId -like '*MemberExists*' -or $_.FullyQualifiedErrorId -like '*MemberNotFound*') { Write-Output '%s'; exit 0 } else { throw $_ } }",
+		"$ErrorActionPreference = 'Stop'; try { %s } catch { if ($_.FullyQualifiedErrorId -like '*MemberExists*') { Write-Output '%s'; exit 0 } else { throw $_ } }",
 		body,
 		localGroupAlreadyAppliedOutput,
 	)
+}
+
+func buildLocalGroupMemberRemoveScript(groupName, userName string) string {
+	group := escapePowerShellSingleQuoted(groupName)
+	member := escapePowerShellSingleQuoted(userName)
+	body := fmt.Sprintf(
+		"$account = New-Object System.Security.Principal.NTAccount('%s'); $sid = $account.Translate([System.Security.Principal.SecurityIdentifier]).Value; $groupName = '%s'; $groupObj = [ADSI]\"WinNT://$env:COMPUTERNAME/$groupName,group\"; $removed = $false; foreach ($member in @($groupObj.psbase.Invoke('Members'))) { $memberSid = (New-Object System.Security.Principal.SecurityIdentifier($member.InvokeGet('ObjectSID'), 0)).Value; if ($memberSid -eq $sid) { $groupObj.psbase.Invoke('Remove', $member.Path); $removed = $true; break } }; if (-not $removed) { Write-Output '%s'; exit 0 }",
+		member,
+		group,
+		localGroupAlreadyAppliedOutput,
+	)
+	return fmt.Sprintf("$ErrorActionPreference = 'Stop'; %s", body)
 }
 
 func newLocalGroupMemberCommand(action, groupName, userName string) *exec.Cmd {
