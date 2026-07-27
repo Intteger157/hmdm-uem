@@ -112,34 +112,15 @@ func runLocalGroupMember(action, groupName, userName string) (string, error) {
 }
 
 func buildLocalGroupMemberScript(action, groupName, userName string) string {
-	if action == localGroupActionRemove {
-		return buildLocalGroupMemberRemoveScript(groupName, userName)
-	}
-	return buildLocalGroupMemberAddScript(groupName, userName)
-}
-
-func buildLocalGroupMemberAddScript(groupName, userName string) string {
 	group := escapePowerShellSingleQuoted(groupName)
 	member := escapePowerShellSingleQuoted(userName)
+	actionLiteral := escapePowerShellSingleQuoted(action)
 	body := fmt.Sprintf(
-		"$memberSid = (New-Object System.Security.Principal.NTAccount('%s')).Translate([System.Security.Principal.SecurityIdentifier]).Value; Add-LocalGroupMember -Group '%s' -Member $memberSid -ErrorAction Stop",
+		"$account = New-Object System.Security.Principal.NTAccount('%s'); $sid = $account.Translate([System.Security.Principal.SecurityIdentifier]).Value; $group = '%s'; if ('%s' -eq 'add') { $output = net localgroup $group \"$sid\" /add 2>&1; if ($LASTEXITCODE -eq 1378) { Write-Output '%s'; exit 0 } } else { $output = net localgroup $group \"$sid\" /delete 2>&1; if ($LASTEXITCODE -eq 1377) { Write-Output '%s'; exit 0 } }; if ($LASTEXITCODE -ne 0) { throw (($output | Out-String).Trim()) }",
 		member,
 		group,
-	)
-	return fmt.Sprintf(
-		"$ErrorActionPreference = 'Stop'; try { %s } catch { if ($_.FullyQualifiedErrorId -like '*MemberExists*') { Write-Output '%s'; exit 0 } else { throw $_ } }",
-		body,
+		actionLiteral,
 		localGroupAlreadyAppliedOutput,
-	)
-}
-
-func buildLocalGroupMemberRemoveScript(groupName, userName string) string {
-	group := escapePowerShellSingleQuoted(groupName)
-	member := escapePowerShellSingleQuoted(userName)
-	body := fmt.Sprintf(
-		"$account = New-Object System.Security.Principal.NTAccount('%s'); $sid = $account.Translate([System.Security.Principal.SecurityIdentifier]).Value; $groupName = '%s'; $groupObj = [ADSI]\"WinNT://$env:COMPUTERNAME/$groupName,group\"; $removed = $false; foreach ($member in @($groupObj.psbase.Invoke('Members'))) { $memberSid = (New-Object System.Security.Principal.SecurityIdentifier($member.InvokeGet('ObjectSID'), 0)).Value; if ($memberSid -eq $sid) { $groupObj.psbase.Invoke('Remove', $member.Path); $removed = $true; break } }; if (-not $removed) { Write-Output '%s'; exit 0 }",
-		member,
-		group,
 		localGroupAlreadyAppliedOutput,
 	)
 	return fmt.Sprintf("$ErrorActionPreference = 'Stop'; %s", body)
