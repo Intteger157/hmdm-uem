@@ -18,13 +18,10 @@ type manageLocalGroupPayload struct {
 }
 
 const (
-	localGroupActionAdd    = "add"
+	localGroupActionAdd = "add"
 	localGroupActionRemove = "remove"
 
-	localGroupAlreadyAppliedOutput  = "Action already applied"
-	localGroupMemberNotFoundOutput  = "User was not found in the group (already removed)."
-	localGroupRemoveIgnored1377Output = "Action applied (Ignored error 1377)"
-	localGroupRemoveSuccessOutput     = "Successfully removed"
+	localGroupMDMAppliedOutput = "Group policy successfully applied"
 )
 
 func manageLocalGroup(payload json.RawMessage) Result {
@@ -41,10 +38,11 @@ func manageLocalGroup(payload json.RawMessage) Result {
 		}
 		return Result{Success: false, Message: message}
 	}
+	_ = output
 
 	result := Result{
 		Success: true,
-		Message: manageLocalGroupResultMessage(parsed.Username, parsed.Group, parsed.Action, output),
+		Message: manageLocalGroupSuccessMessage(parsed.Username, parsed.Group, parsed.Action),
 	}
 
 	if syncResult := executeSyncInventory(); !syncResult.Success && strings.TrimSpace(syncResult.Message) != "" {
@@ -98,12 +96,10 @@ func runLocalGroupMember(action, groupName, userName string) (string, error) {
 	groupName = normalizeNetLocalGroupPrincipal(groupName)
 	userName = normalizeNetLocalGroupPrincipal(userName)
 
-	script := buildLocalGroupMemberScript(action, groupName, userName)
-	stdout, stderr, err := runPowerShellScript(script)
-	combined := strings.TrimSpace(stderr)
-	if combined == "" {
-		combined = strings.TrimSpace(stdout)
-	}
+	script := buildLocalGroupMDMScript(buildLocalGroupXMLPayload(action, groupName, userName))
+	cmd := newLocalGroupMemberCommand(script)
+	output, err := cmd.CombinedOutput()
+	combined := strings.TrimSpace(string(output))
 	if err != nil {
 		log.Printf("manage_local_group failed: action=%s group=%q user=%q: %v (%s)", action, groupName, userName, err, combined)
 		if combined != "" {
@@ -114,70 +110,39 @@ func runLocalGroupMember(action, groupName, userName string) (string, error) {
 	return combined, nil
 }
 
-func buildLocalGroupMemberScript(action, groupName, userName string) string {
+func buildLocalGroupXMLPayload(action, groupName, userName string) string {
+	group := escapeXMLAttribute(groupName)
+	member := escapeXMLAttribute(userName)
 	if action == localGroupActionRemove {
-		return buildLocalGroupMemberRemoveScript(groupName, userName)
+		return fmt.Sprintf(`<GroupConfiguration><accessgroup desc="%s"><group action="U"/><remove member="%s"/></accessgroup></GroupConfiguration>`, group, member)
 	}
-	return buildLocalGroupMemberAddScript(groupName, userName)
+	return fmt.Sprintf(`<GroupConfiguration><accessgroup desc="%s"><group action="U"/><add member="%s"/></accessgroup></GroupConfiguration>`, group, member)
 }
 
-func buildLocalGroupMemberAddScript(groupName, userName string) string {
-	group := escapePowerShellSingleQuoted(groupName)
-	member := escapePowerShellSingleQuoted(userName)
+func buildLocalGroupMDMScript(xmlPayload string) string {
 	return fmt.Sprintf(
-		"try { $sid = (New-Object System.Security.Principal.NTAccount('%s')).Translate([System.Security.Principal.SecurityIdentifier]).Value; Add-LocalGroupMember -Group '%s' -Member $sid -ErrorAction Stop } catch { if ($_.FullyQualifiedErrorId -match 'MemberExists') { Write-Output '%s'; exit 0 } else { throw $_ } }",
-		member,
-		group,
-		localGroupAlreadyAppliedOutput,
+		"try { $xml = '%s'; $namespace = 'ROOT\\CIMv2\\mdm\\dmmap'; $className = 'MDM_Policy_Config01_LocalUsersAndGroups02'; $filter = \"InstanceID='LocalUsersAndGroups' and ParentID='./Vendor/MSFT/Policy/Config'\"; $instance = Get-CimInstance -Namespace $namespace -ClassName $className -Filter $filter -ErrorAction SilentlyContinue; if ($instance) { $instance.Configure = $xml; Set-CimInstance -InputObject $instance -ErrorAction Stop } else { New-CimInstance -Namespace $namespace -ClassName $className -Property @{ParentID='./Vendor/MSFT/Policy/Config'; InstanceID='LocalUsersAndGroups'; Configure=$xml} -ErrorAction Stop }; Write-Output '%s' } catch { throw $_ }",
+		escapePowerShellSingleQuoted(xmlPayload),
+		localGroupMDMAppliedOutput,
 	)
 }
 
-func buildLocalGroupMemberRemoveScript(groupName, userName string) string {
-	group := escapePowerShellSingleQuoted(groupName)
-	member := escapePowerShellSingleQuoted(userName)
-	notFound := escapePowerShellSingleQuoted(localGroupMemberNotFoundOutput)
-	ignored1377 := escapePowerShellSingleQuoted(localGroupRemoveIgnored1377Output)
-	successRemoved := escapePowerShellSingleQuoted(localGroupRemoveSuccessOutput)
-	return fmt.Sprintf(
-		"try { $targetSid = $null; try { $targetSid = (New-Object System.Security.Principal.NTAccount('%s')).Translate([System.Security.Principal.SecurityIdentifier]).Value } catch {}; $group = '%s'; $member = Get-LocalGroupMember -Group $group | Where-Object { $_.Name -match '%s' -or $_.Name -match '%s'.Split('\\')[-1] -or ($targetSid -and $_.SID.Value -eq $targetSid) -or $_.SID.Value -eq '%s' }; if ($member) { $name = $member.Name; $out = net localgroup `\"$group`\" `\"$name`\" /delete 2>&1; if ($LASTEXITCODE -ne 0) { if ($out -match '1377' -or $out -match 'not a member') { Write-Output '%s'; exit 0 } else { throw $out } } else { Write-Output '%s' } } else { Write-Output '%s'; exit 0 } } catch { throw $_ }",
-		member,
-		group,
-		member,
-		member,
-		member,
-		ignored1377,
-		successRemoved,
-		notFound,
-	)
-}
-
-func newLocalGroupMemberCommand(action, groupName, userName string) *exec.Cmd {
-	script := buildLocalGroupMemberScript(action, groupName, userName)
+func newLocalGroupMemberCommand(script string) *exec.Cmd {
 	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	return cmd
 }
 
+func escapeXMLAttribute(value string) string {
+	value = strings.ReplaceAll(value, "&", "&amp;")
+	value = strings.ReplaceAll(value, `"`, "&quot;")
+	value = strings.ReplaceAll(value, "<", "&lt;")
+	value = strings.ReplaceAll(value, ">", "&gt;")
+	return value
+}
+
 func normalizeNetLocalGroupPrincipal(value string) string {
 	return strings.TrimSpace(value)
-}
-
-func manageLocalGroupResultMessage(username, group, action, output string) string {
-	trimmed := strings.TrimSpace(output)
-	if trimmed == localGroupAlreadyAppliedOutput {
-		return manageLocalGroupAlreadyAppliedMessage(action)
-	}
-	if trimmed == localGroupMemberNotFoundOutput {
-		return trimmed
-	}
-	return manageLocalGroupSuccessMessage(username, group, action)
-}
-
-func manageLocalGroupAlreadyAppliedMessage(action string) string {
-	if action == localGroupActionRemove {
-		return "User was not found in the group (already removed)."
-	}
-	return "User is already a member of the group."
 }
 
 func manageLocalGroupSuccessMessage(username, group, action string) string {

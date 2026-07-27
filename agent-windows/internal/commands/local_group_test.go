@@ -20,75 +20,76 @@ func TestParseManageLocalGroupPayloadPreservesDomainUsername(t *testing.T) {
 	}
 }
 
-func TestLocalGroupMemberCommandUsesPowerShellWithAzureADUsername(t *testing.T) {
+func TestBuildLocalGroupXMLPayloadAdd(t *testing.T) {
 	t.Parallel()
 
-	group := "Administrators"
-	user := `AzureAD\user@example.com`
-	cmd := newLocalGroupMemberCommand(localGroupActionAdd, group, user)
+	xmlPayload := buildLocalGroupXMLPayload(localGroupActionAdd, "Administrators", `AzureAD\user@example.com`)
+	want := `<GroupConfiguration><accessgroup desc="Administrators"><group action="U"/><add member="AzureAD\user@example.com"/></accessgroup></GroupConfiguration>`
+	if xmlPayload != want {
+		t.Fatalf("xmlPayload = %q, want %q", xmlPayload, want)
+	}
+}
+
+func TestBuildLocalGroupXMLPayloadRemove(t *testing.T) {
+	t.Parallel()
+
+	xmlPayload := buildLocalGroupXMLPayload(localGroupActionRemove, "Remote Desktop Users", "alice")
+	if !strings.Contains(xmlPayload, `<remove member="alice"/>`) {
+		t.Fatalf("xmlPayload = %q", xmlPayload)
+	}
+	if strings.Contains(xmlPayload, "<add ") {
+		t.Fatalf("xmlPayload = %q, should not contain add action", xmlPayload)
+	}
+}
+
+func TestBuildLocalGroupXMLPayloadEscapesSpecialCharacters(t *testing.T) {
+	t.Parallel()
+
+	xmlPayload := buildLocalGroupXMLPayload(localGroupActionAdd, `O"Brien Users`, "user&name")
+	if !strings.Contains(xmlPayload, `desc="O&quot;Brien Users"`) {
+		t.Fatalf("xmlPayload = %q, expected escaped group name", xmlPayload)
+	}
+	if !strings.Contains(xmlPayload, `member="user&amp;name"`) {
+		t.Fatalf("xmlPayload = %q, expected escaped username", xmlPayload)
+	}
+}
+
+func TestLocalGroupMemberCommandUsesMDMWMI(t *testing.T) {
+	t.Parallel()
+
+	script := buildLocalGroupMDMScript(buildLocalGroupXMLPayload(localGroupActionAdd, "Administrators", `AzureAD\user@example.com`))
+	cmd := newLocalGroupMemberCommand(script)
 	if len(cmd.Args) < 4 {
 		t.Fatalf("args = %#v", cmd.Args)
 	}
 	if cmd.Args[0] != "powershell.exe" {
 		t.Fatalf("executable = %q, want powershell.exe", cmd.Args[0])
 	}
-	script := cmd.Args[len(cmd.Args)-1]
-	if !strings.Contains(script, "NTAccount") || !strings.Contains(script, "SecurityIdentifier") {
-		t.Fatalf("script = %q, expected SID resolution via NTAccount", script)
+	commandScript := cmd.Args[len(cmd.Args)-1]
+	if !strings.Contains(commandScript, "MDM_Policy_Config01_LocalUsersAndGroups02") {
+		t.Fatalf("script = %q, expected LocalUsersAndGroups MDM class", commandScript)
 	}
-	if !strings.Contains(script, "Add-LocalGroupMember -Group 'Administrators' -Member $sid") {
-		t.Fatalf("script = %q, expected Add-LocalGroupMember with SID variable", script)
+	if !strings.Contains(commandScript, "Get-CimInstance -Namespace $namespace -ClassName $className -Filter $filter") {
+		t.Fatalf("script = %q, expected Get-CimInstance with MDM filter", commandScript)
 	}
-	if !strings.Contains(script, `AzureAD\user@example.com`) {
-		t.Fatalf("script = %q, expected Azure AD username preserved for SID lookup", script)
+	if !strings.Contains(commandScript, "Set-CimInstance -InputObject $instance") || !strings.Contains(commandScript, "New-CimInstance -Namespace $namespace") {
+		t.Fatalf("script = %q, expected Set-CimInstance or New-CimInstance", commandScript)
 	}
-}
-
-func TestBuildLocalGroupMemberScriptRemoveUsesGetLocalGroupMember(t *testing.T) {
-	t.Parallel()
-
-	script := buildLocalGroupMemberScript(localGroupActionRemove, "Remote Desktop Users", `AzureAD\user@example.com`)
-	if !strings.Contains(script, "$group = 'Remote Desktop Users'") {
-		t.Fatalf("script = %q, expected group variable for net localgroup", script)
+	if strings.Contains(commandScript, "Get-LocalGroupMember") || strings.Contains(commandScript, "net localgroup") || strings.Contains(commandScript, "Add-LocalGroupMember") {
+		t.Fatalf("script = %q, should not use legacy group management commands", commandScript)
 	}
-	if !strings.Contains(script, "Get-LocalGroupMember -Group $group") {
-		t.Fatalf("script = %q, expected Get-LocalGroupMember", script)
-	}
-	if !strings.Contains(script, "Where-Object { $_.Name -match") {
-		t.Fatalf("script = %q, expected name filtering", script)
-	}
-	if !strings.Contains(script, "$targetSid") || !strings.Contains(script, "NTAccount") {
-		t.Fatalf("script = %q, expected optional SID translation before member lookup", script)
-	}
-	if !strings.Contains(script, "$_.SID.Value -eq $targetSid") || !strings.Contains(script, "$_.SID.Value -eq 'AzureAD\\user@example.com'") {
-		t.Fatalf("script = %q, expected SID-based member matching", script)
-	}
-	if !strings.Contains(script, "$out = net localgroup `\"$group`\" `\"$name`\" /delete") {
-		t.Fatalf("script = %q, expected net localgroup delete by discovered member name", script)
-	}
-	if strings.Contains(script, "Remove-LocalGroupMember") {
-		t.Fatalf("script = %q, remove should delegate to net localgroup", script)
-	}
-	if !strings.Contains(script, "$out -match '1377' -or $out -match 'not a member'") {
-		t.Fatalf("script = %q, expected ignored 1377 handling", script)
-	}
-	if !strings.Contains(script, localGroupRemoveIgnored1377Output) || !strings.Contains(script, localGroupRemoveSuccessOutput) {
-		t.Fatalf("script = %q, expected remove success markers", script)
-	}
-	if !strings.Contains(script, localGroupMemberNotFoundOutput) {
-		t.Fatalf("script = %q, expected not-found success message", script)
+	if !strings.Contains(commandScript, `<add member="AzureAD\user@example.com"/>`) {
+		t.Fatalf("script = %q, expected XML payload embedded in script", commandScript)
 	}
 }
 
-func TestBuildLocalGroupMemberScriptAddUsesCmdletWithSID(t *testing.T) {
+func TestBuildLocalGroupMDMScriptEscapesSingleQuotes(t *testing.T) {
 	t.Parallel()
 
-	script := buildLocalGroupMemberScript(localGroupActionAdd, "Administrators", "alice")
-	if !strings.Contains(script, "Add-LocalGroupMember -Group 'Administrators' -Member $sid") {
-		t.Fatalf("script = %q, expected Add-LocalGroupMember with SID variable", script)
-	}
-	if strings.Contains(script, "net localgroup") {
-		t.Fatalf("script = %q, should not use net localgroup", script)
+	xmlPayload := buildLocalGroupXMLPayload(localGroupActionAdd, "Administrators", "user'@example.com")
+	script := buildLocalGroupMDMScript(xmlPayload)
+	if !strings.Contains(script, "user''@example.com") {
+		t.Fatalf("script = %q, expected escaped single quote in XML payload", script)
 	}
 }
 
@@ -123,53 +124,16 @@ func TestParseManageLocalGroupPayloadRequiresFields(t *testing.T) {
 	}
 }
 
-func TestBuildLocalGroupMemberScriptHandlesExistingMembership(t *testing.T) {
-	t.Parallel()
-
-	script := buildLocalGroupMemberScript(localGroupActionAdd, "Administrators", "alice")
-	if !strings.Contains(script, "try {") || !strings.Contains(script, "} catch {") {
-		t.Fatalf("script = %q, expected try/catch wrapper", script)
-	}
-	if !strings.Contains(script, "MemberExists") {
-		t.Fatalf("script = %q, expected add idempotent exception handling", script)
-	}
-	if !strings.Contains(script, localGroupAlreadyAppliedOutput) {
-		t.Fatalf("script = %q, expected already-applied marker output", script)
-	}
-}
-
-func TestBuildLocalGroupMemberScriptEscapesSingleQuotes(t *testing.T) {
-	t.Parallel()
-
-	script := buildLocalGroupMemberScript(localGroupActionAdd, "O'Brien Users", "AzureAD\\user'@example.com")
-	if !strings.Contains(script, "O''Brien Users") {
-		t.Fatalf("script = %q, expected escaped group name", script)
-	}
-	if !strings.Contains(script, `AzureAD\user''@example.com`) {
-		t.Fatalf("script = %q, expected escaped username", script)
-	}
-}
-
-func TestManageLocalGroupResultMessageAlreadyApplied(t *testing.T) {
-	t.Parallel()
-
-	addMsg := manageLocalGroupResultMessage("alice", "Administrators", "add", localGroupAlreadyAppliedOutput)
-	if addMsg != "User is already a member of the group." {
-		t.Fatalf("add message = %q", addMsg)
-	}
-
-	removeMsg := manageLocalGroupResultMessage("alice", "Administrators", "remove", localGroupRemoveIgnored1377Output)
-	if removeMsg != "User alice successfully removed from group Administrators" {
-		t.Fatalf("ignored 1377 message = %q", removeMsg)
-	}
-
-	removeMsg = manageLocalGroupResultMessage("alice", "Administrators", "remove", localGroupMemberNotFoundOutput)
-	if removeMsg != localGroupMemberNotFoundOutput {
-		t.Fatalf("remove message = %q", removeMsg)
-	}
-}
-
 func TestManageLocalGroupSuccessMessage(t *testing.T) {
+	t.Parallel()
+
+	addMsg := manageLocalGroupSuccessMessage("alice", "Administrators", "add")
+	if addMsg != "User alice successfully added to group Administrators" {
+		t.Fatalf("message = %q", addMsg)
+	}
+}
+
+func TestManageLocalGroupSuccessMessageRemove(t *testing.T) {
 	t.Parallel()
 
 	addMsg := manageLocalGroupSuccessMessage("bob", "Administrators", "add")
