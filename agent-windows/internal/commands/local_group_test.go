@@ -54,8 +54,8 @@ func TestBuildLocalGroupMemberScriptRemoveUsesGetLocalGroupMember(t *testing.T) 
 	if !strings.Contains(script, "Where-Object { $_.Name -match") {
 		t.Fatalf("script = %q, expected name filtering", script)
 	}
-	if !strings.Contains(script, "Remove-LocalGroupMember -Group 'Remote Desktop Users' -SID $member.SID.Value") {
-		t.Fatalf("script = %q, expected removal by SID string parameter", script)
+	if !strings.Contains(script, "Remove-LocalGroupMember -Group 'Remote Desktop Users' -Member $member.SID.Value") {
+		t.Fatalf("script = %q, expected removal with string SID via -Member", script)
 	}
 	if !strings.Contains(script, localGroupMemberNotFoundOutput) {
 		t.Fatalf("script = %q, expected not-found success message", script)
