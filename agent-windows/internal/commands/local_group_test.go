@@ -57,7 +57,13 @@ func TestBuildLocalGroupMemberScriptRemoveUsesGetLocalGroupMember(t *testing.T) 
 	if !strings.Contains(script, "Where-Object { $_.Name -match") {
 		t.Fatalf("script = %q, expected name filtering", script)
 	}
-	if !strings.Contains(script, `$name = $member.Name; $out = net localgroup "$group" "$name" /delete`) {
+	if !strings.Contains(script, "$targetSid") || !strings.Contains(script, "NTAccount") {
+		t.Fatalf("script = %q, expected optional SID translation before member lookup", script)
+	}
+	if !strings.Contains(script, "$_.SID.Value -eq $targetSid") || !strings.Contains(script, "$_.SID.Value -eq 'AzureAD\\user@example.com'") {
+		t.Fatalf("script = %q, expected SID-based member matching", script)
+	}
+	if !strings.Contains(script, "$out = net localgroup `\"$group`\" `\"$name`\" /delete") {
 		t.Fatalf("script = %q, expected net localgroup delete by discovered member name", script)
 	}
 	if strings.Contains(script, "Remove-LocalGroupMember") {
@@ -65,9 +71,6 @@ func TestBuildLocalGroupMemberScriptRemoveUsesGetLocalGroupMember(t *testing.T) 
 	}
 	if !strings.Contains(script, localGroupMemberNotFoundOutput) {
 		t.Fatalf("script = %q, expected not-found success message", script)
-	}
-	if strings.Contains(script, "NTAccount") {
-		t.Fatalf("script = %q, remove should not translate NTAccount directly", script)
 	}
 }
 
