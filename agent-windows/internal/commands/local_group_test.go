@@ -69,6 +69,12 @@ func TestBuildLocalGroupMemberScriptRemoveUsesGetLocalGroupMember(t *testing.T) 
 	if strings.Contains(script, "Remove-LocalGroupMember") {
 		t.Fatalf("script = %q, remove should delegate to net localgroup", script)
 	}
+	if !strings.Contains(script, "$out -match '1377' -or $out -match 'not a member'") {
+		t.Fatalf("script = %q, expected ignored 1377 handling", script)
+	}
+	if !strings.Contains(script, localGroupRemoveIgnored1377Output) || !strings.Contains(script, localGroupRemoveSuccessOutput) {
+		t.Fatalf("script = %q, expected remove success markers", script)
+	}
 	if !strings.Contains(script, localGroupMemberNotFoundOutput) {
 		t.Fatalf("script = %q, expected not-found success message", script)
 	}
@@ -152,7 +158,12 @@ func TestManageLocalGroupResultMessageAlreadyApplied(t *testing.T) {
 		t.Fatalf("add message = %q", addMsg)
 	}
 
-	removeMsg := manageLocalGroupResultMessage("alice", "Administrators", "remove", localGroupMemberNotFoundOutput)
+	removeMsg := manageLocalGroupResultMessage("alice", "Administrators", "remove", localGroupRemoveIgnored1377Output)
+	if removeMsg != "User alice successfully removed from group Administrators" {
+		t.Fatalf("ignored 1377 message = %q", removeMsg)
+	}
+
+	removeMsg = manageLocalGroupResultMessage("alice", "Administrators", "remove", localGroupMemberNotFoundOutput)
 	if removeMsg != localGroupMemberNotFoundOutput {
 		t.Fatalf("remove message = %q", removeMsg)
 	}

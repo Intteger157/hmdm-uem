@@ -23,6 +23,8 @@ const (
 
 	localGroupAlreadyAppliedOutput  = "Action already applied"
 	localGroupMemberNotFoundOutput  = "User was not found in the group (already removed)."
+	localGroupRemoveIgnored1377Output = "Action applied (Ignored error 1377)"
+	localGroupRemoveSuccessOutput     = "Successfully removed"
 )
 
 func manageLocalGroup(payload json.RawMessage) Result {
@@ -134,13 +136,17 @@ func buildLocalGroupMemberRemoveScript(groupName, userName string) string {
 	group := escapePowerShellSingleQuoted(groupName)
 	member := escapePowerShellSingleQuoted(userName)
 	notFound := escapePowerShellSingleQuoted(localGroupMemberNotFoundOutput)
+	ignored1377 := escapePowerShellSingleQuoted(localGroupRemoveIgnored1377Output)
+	successRemoved := escapePowerShellSingleQuoted(localGroupRemoveSuccessOutput)
 	return fmt.Sprintf(
-		"try { $targetSid = $null; try { $targetSid = (New-Object System.Security.Principal.NTAccount('%s')).Translate([System.Security.Principal.SecurityIdentifier]).Value } catch {}; $group = '%s'; $member = Get-LocalGroupMember -Group $group | Where-Object { $_.Name -match '%s' -or $_.Name -match '%s'.Split('\\')[-1] -or ($targetSid -and $_.SID.Value -eq $targetSid) -or $_.SID.Value -eq '%s' }; if ($member) { $name = $member.Name; $out = net localgroup `\"$group`\" `\"$name`\" /delete 2>&1; if ($LASTEXITCODE -ne 0) { throw $out } } else { Write-Output '%s'; exit 0 } } catch { throw $_ }",
+		"try { $targetSid = $null; try { $targetSid = (New-Object System.Security.Principal.NTAccount('%s')).Translate([System.Security.Principal.SecurityIdentifier]).Value } catch {}; $group = '%s'; $member = Get-LocalGroupMember -Group $group | Where-Object { $_.Name -match '%s' -or $_.Name -match '%s'.Split('\\')[-1] -or ($targetSid -and $_.SID.Value -eq $targetSid) -or $_.SID.Value -eq '%s' }; if ($member) { $name = $member.Name; $out = net localgroup `\"$group`\" `\"$name`\" /delete 2>&1; if ($LASTEXITCODE -ne 0) { if ($out -match '1377' -or $out -match 'not a member') { Write-Output '%s'; exit 0 } else { throw $out } } else { Write-Output '%s' } } else { Write-Output '%s'; exit 0 } } catch { throw $_ }",
 		member,
 		group,
 		member,
 		member,
 		member,
+		ignored1377,
+		successRemoved,
 		notFound,
 	)
 }
