@@ -93,7 +93,7 @@ func Execute(action string, payload json.RawMessage) Result {
 	case "install":
 		return installSoftware(payload)
 	case "wipe":
-		return Result{Success: false, Message: "factory wipe is not implemented yet"}
+		return factoryWipe()
 	case "get_services":
 		return getServices()
 	case "restart_service":
