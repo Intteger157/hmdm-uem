@@ -150,6 +150,33 @@ func TestDownloadFileResumableEmptyResponse(t *testing.T) {
 	}
 }
 
+func TestDownloadFileResumableClosesFileOnError(t *testing.T) {
+	t.Parallel()
+
+	payload := []byte("partial-payload")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		if _, err := w.Write(payload[:4]); err != nil {
+			t.Fatal(err)
+		}
+		if flusher, ok := w.(http.Flusher); ok {
+			flusher.Flush()
+		}
+		panic(http.ErrAbortHandler)
+	}))
+	defer server.Close()
+
+	destPath := filepath.Join(t.TempDir(), "file.bin.part")
+	err := downloadFileResumable(server.URL, destPath)
+	if err == nil {
+		t.Fatal("expected download error")
+	}
+
+	if removeErr := os.Remove(destPath); removeErr != nil {
+		t.Fatalf("expected partial file to be removable after download failure, got %v", removeErr)
+	}
+}
+
 func fileSize(t *testing.T, path string) int64 {
 	t.Helper()
 	info, err := os.Stat(path)

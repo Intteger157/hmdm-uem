@@ -247,6 +247,13 @@ func ensureCachedFile(deployment RequiredFileDeployment, downloadURL string) (st
 		}
 	}
 
+	releaseDownload, acquired := acquireFileDownloadLock(cachePath)
+	if !acquired {
+		log.Printf("file deploy: Download already in progress: %q", cachePath)
+		return "", false, fmt.Errorf("%s", downloadAlreadyInProgressMessage)
+	}
+	defer releaseDownload()
+
 	if err := removeMismatchedDownloadFile(cachePath, expectedSize); err != nil {
 		return "", false, err
 	}

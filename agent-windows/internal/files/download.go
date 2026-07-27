@@ -59,94 +59,83 @@ func downloadFileResumable(downloadURL, destPath string) error {
 	}
 
 	for {
-		ctx, cancel := context.WithTimeout(context.Background(), fileDownloadTimeout)
-
-		request, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadURL, nil)
+		restart, err := downloadFileResumableOnce(client, downloadURL, destPath, offset)
 		if err != nil {
-			cancel()
 			return err
 		}
-		request.Header.Set("User-Agent", brand.UserAgent)
-		if offset > 0 {
-			request.Header.Set("Range", fmt.Sprintf("bytes=%d-", offset))
+		if !restart {
+			return nil
 		}
-
-		response, err := client.Do(request)
-		if err != nil {
-			cancel()
-			return err
-		}
-
-		switch response.StatusCode {
-		case http.StatusOK:
-			if offset > 0 {
-				response.Body.Close()
-				cancel()
-				if err := os.Truncate(destPath, 0); err != nil {
-					return err
-				}
-				offset = 0
-				continue
-			}
-		case http.StatusPartialContent:
-			// Continue from current offset.
-		case http.StatusRequestedRangeNotSatisfiable:
-			response.Body.Close()
-			cancel()
-			if offset > 0 {
-				return nil
-			}
-			return fmt.Errorf("HTTP %d", response.StatusCode)
-		default:
-			message := readLimitedHTTPErrorBody(response.Body)
-			response.Body.Close()
-			cancel()
-			if message == "" {
-				return fmt.Errorf("HTTP %d", response.StatusCode)
-			}
-			return fmt.Errorf("HTTP %d: %s", response.StatusCode, message)
-		}
-
-		file, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY, 0o644)
-		if err != nil {
-			response.Body.Close()
-			cancel()
-			return err
-		}
-		if offset > 0 {
-			if _, err := file.Seek(offset, io.SeekStart); err != nil {
-				file.Close()
-				response.Body.Close()
-				cancel()
-				return err
-			}
-		} else if response.StatusCode == http.StatusOK {
-			if err := file.Truncate(0); err != nil {
-				file.Close()
-				response.Body.Close()
-				cancel()
-				return err
-			}
-		}
-
-		written, copyErr := io.Copy(file, response.Body)
-		closeBodyErr := response.Body.Close()
-		closeFileErr := file.Close()
-		cancel()
-		if copyErr != nil {
-			return copyErr
-		}
-		if closeBodyErr != nil {
-			return closeBodyErr
-		}
-		if closeFileErr != nil {
-			return closeFileErr
-		}
-		if written == 0 && offset == 0 {
-			return fmt.Errorf("downloaded file is empty")
-		}
-		return nil
+		offset = 0
 	}
+}
+
+func downloadFileResumableOnce(client *http.Client, downloadURL, destPath string, offset int64) (restart bool, err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), fileDownloadTimeout)
+	defer cancel()
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadURL, nil)
+	if err != nil {
+		return false, err
+	}
+	request.Header.Set("User-Agent", brand.UserAgent)
+	if offset > 0 {
+		request.Header.Set("Range", fmt.Sprintf("bytes=%d-", offset))
+	}
+
+	response, err := client.Do(request)
+	if err != nil {
+		return false, err
+	}
+	defer response.Body.Close()
+
+	switch response.StatusCode {
+	case http.StatusOK:
+		if offset > 0 {
+			if err := os.Truncate(destPath, 0); err != nil {
+				return false, err
+			}
+			return true, nil
+		}
+	case http.StatusPartialContent:
+		// Continue from current offset.
+	case http.StatusRequestedRangeNotSatisfiable:
+		if offset > 0 {
+			return false, nil
+		}
+		return false, fmt.Errorf("HTTP %d", response.StatusCode)
+	default:
+		message := readLimitedHTTPErrorBody(response.Body)
+		if message == "" {
+			return false, fmt.Errorf("HTTP %d", response.StatusCode)
+		}
+		return false, fmt.Errorf("HTTP %d: %s", response.StatusCode, message)
+	}
+
+	file, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+
+	if offset > 0 {
+		if _, err := file.Seek(offset, io.SeekStart); err != nil {
+			return false, err
+		}
+	} else if response.StatusCode == http.StatusOK {
+		if err := file.Truncate(0); err != nil {
+			return false, err
+		}
+	}
+
+	written, err := io.Copy(file, response.Body)
+	if err != nil {
+		return false, err
+	}
+	if written == 0 && offset == 0 {
+		return false, fmt.Errorf("downloaded file is empty")
+	}
+	return false, nil
 }
 
 func fileDownloadHTTPClient() *http.Client {
