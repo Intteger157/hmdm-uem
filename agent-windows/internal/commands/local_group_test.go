@@ -44,15 +44,24 @@ func TestLocalGroupMemberCommandUsesPowerShellWithAzureADUsername(t *testing.T) 
 	}
 }
 
-func TestBuildLocalGroupMemberScriptRemoveUsesCmdletWithSID(t *testing.T) {
+func TestBuildLocalGroupMemberScriptRemoveUsesGetLocalGroupMember(t *testing.T) {
 	t.Parallel()
 
-	script := buildLocalGroupMemberScript(localGroupActionRemove, "Remote Desktop Users", "alice")
-	if !strings.Contains(script, "Remove-LocalGroupMember -Group 'Remote Desktop Users' -Member $sid") {
-		t.Fatalf("script = %q, expected Remove-LocalGroupMember with SID variable", script)
+	script := buildLocalGroupMemberScript(localGroupActionRemove, "Remote Desktop Users", `AzureAD\user@example.com`)
+	if !strings.Contains(script, "Get-LocalGroupMember -Group 'Remote Desktop Users'") {
+		t.Fatalf("script = %q, expected Get-LocalGroupMember", script)
 	}
-	if strings.Contains(script, "net localgroup") {
-		t.Fatalf("script = %q, should not use net localgroup", script)
+	if !strings.Contains(script, "Where-Object { $_.Name -match") {
+		t.Fatalf("script = %q, expected name filtering", script)
+	}
+	if !strings.Contains(script, "Remove-LocalGroupMember -Group 'Remote Desktop Users' -Member $member.SID") {
+		t.Fatalf("script = %q, expected removal by discovered member SID", script)
+	}
+	if !strings.Contains(script, localGroupMemberNotFoundOutput) {
+		t.Fatalf("script = %q, expected not-found success message", script)
+	}
+	if strings.Contains(script, "NTAccount") {
+		t.Fatalf("script = %q, remove should not translate NTAccount directly", script)
 	}
 }
 
@@ -106,8 +115,8 @@ func TestBuildLocalGroupMemberScriptHandlesExistingMembership(t *testing.T) {
 	if !strings.Contains(script, "try {") || !strings.Contains(script, "} catch {") {
 		t.Fatalf("script = %q, expected try/catch wrapper", script)
 	}
-	if !strings.Contains(script, "MemberExists|MemberNotFound") {
-		t.Fatalf("script = %q, expected idempotent exception handling", script)
+	if !strings.Contains(script, "MemberExists") {
+		t.Fatalf("script = %q, expected add idempotent exception handling", script)
 	}
 	if !strings.Contains(script, localGroupAlreadyAppliedOutput) {
 		t.Fatalf("script = %q, expected already-applied marker output", script)
@@ -134,8 +143,8 @@ func TestManageLocalGroupResultMessageAlreadyApplied(t *testing.T) {
 		t.Fatalf("add message = %q", addMsg)
 	}
 
-	removeMsg := manageLocalGroupResultMessage("alice", "Administrators", "remove", localGroupAlreadyAppliedOutput)
-	if removeMsg != "User was not found in the group (already removed)." {
+	removeMsg := manageLocalGroupResultMessage("alice", "Administrators", "remove", localGroupMemberNotFoundOutput)
+	if removeMsg != localGroupMemberNotFoundOutput {
 		t.Fatalf("remove message = %q", removeMsg)
 	}
 }

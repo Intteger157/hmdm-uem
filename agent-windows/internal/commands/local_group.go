@@ -21,7 +21,8 @@ const (
 	localGroupActionAdd    = "add"
 	localGroupActionRemove = "remove"
 
-	localGroupAlreadyAppliedOutput = "Action already applied"
+	localGroupAlreadyAppliedOutput  = "Action already applied"
+	localGroupMemberNotFoundOutput  = "User was not found in the group (already removed)."
 )
 
 func manageLocalGroup(payload json.RawMessage) Result {
@@ -112,16 +113,34 @@ func runLocalGroupMember(action, groupName, userName string) (string, error) {
 }
 
 func buildLocalGroupMemberScript(action, groupName, userName string) string {
+	if action == localGroupActionRemove {
+		return buildLocalGroupMemberRemoveScript(groupName, userName)
+	}
+	return buildLocalGroupMemberAddScript(groupName, userName)
+}
+
+func buildLocalGroupMemberAddScript(groupName, userName string) string {
 	group := escapePowerShellSingleQuoted(groupName)
 	member := escapePowerShellSingleQuoted(userName)
-	actionLiteral := escapePowerShellSingleQuoted(action)
 	return fmt.Sprintf(
-		"try { $sid = (New-Object System.Security.Principal.NTAccount('%s')).Translate([System.Security.Principal.SecurityIdentifier]).Value; if ('%s' -eq 'add') { Add-LocalGroupMember -Group '%s' -Member $sid -ErrorAction Stop } else { Remove-LocalGroupMember -Group '%s' -Member $sid -ErrorAction Stop } } catch { if ($_.FullyQualifiedErrorId -match 'MemberExists|MemberNotFound') { Write-Output '%s'; exit 0 } else { throw $_ } }",
+		"try { $sid = (New-Object System.Security.Principal.NTAccount('%s')).Translate([System.Security.Principal.SecurityIdentifier]).Value; Add-LocalGroupMember -Group '%s' -Member $sid -ErrorAction Stop } catch { if ($_.FullyQualifiedErrorId -match 'MemberExists') { Write-Output '%s'; exit 0 } else { throw $_ } }",
 		member,
-		actionLiteral,
-		group,
 		group,
 		localGroupAlreadyAppliedOutput,
+	)
+}
+
+func buildLocalGroupMemberRemoveScript(groupName, userName string) string {
+	group := escapePowerShellSingleQuoted(groupName)
+	member := escapePowerShellSingleQuoted(userName)
+	notFound := escapePowerShellSingleQuoted(localGroupMemberNotFoundOutput)
+	return fmt.Sprintf(
+		"try { $member = Get-LocalGroupMember -Group '%s' | Where-Object { $_.Name -match '%s' -or $_.Name -match '%s'.Split('\\')[-1] }; if ($member) { Remove-LocalGroupMember -Group '%s' -Member $member.SID -ErrorAction Stop } else { Write-Output '%s'; exit 0 } } catch { throw $_ }",
+		group,
+		member,
+		member,
+		group,
+		notFound,
 	)
 }
 
@@ -137,14 +156,14 @@ func normalizeNetLocalGroupPrincipal(value string) string {
 }
 
 func manageLocalGroupResultMessage(username, group, action, output string) string {
-	if isLocalGroupAlreadyApplied(output) {
+	trimmed := strings.TrimSpace(output)
+	if trimmed == localGroupAlreadyAppliedOutput {
 		return manageLocalGroupAlreadyAppliedMessage(action)
 	}
+	if trimmed == localGroupMemberNotFoundOutput {
+		return trimmed
+	}
 	return manageLocalGroupSuccessMessage(username, group, action)
-}
-
-func isLocalGroupAlreadyApplied(output string) bool {
-	return strings.TrimSpace(output) == localGroupAlreadyAppliedOutput
 }
 
 func manageLocalGroupAlreadyAppliedMessage(action string) string {
