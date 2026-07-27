@@ -116,12 +116,11 @@ func buildLocalGroupMemberScript(action, groupName, userName string) string {
 	member := escapePowerShellSingleQuoted(userName)
 	actionLiteral := escapePowerShellSingleQuoted(action)
 	body := fmt.Sprintf(
-		"if ('%s' -eq 'add') { Add-LocalGroupMember -Group '%s' -Member '%s' -ErrorAction Stop } else { Remove-LocalGroupMember -Group '%s' -Member '%s' -ErrorAction Stop }",
+		"$memberSid = (New-Object System.Security.Principal.NTAccount('%s')).Translate([System.Security.Principal.SecurityIdentifier]).Value; if ('%s' -eq 'add') { Add-LocalGroupMember -Group '%s' -Member $memberSid -ErrorAction Stop } else { Remove-LocalGroupMember -Group '%s' -Member $memberSid -ErrorAction Stop }",
+		member,
 		actionLiteral,
 		group,
-		member,
 		group,
-		member,
 	)
 	return fmt.Sprintf(
 		"$ErrorActionPreference = 'Stop'; try { %s } catch { if ($_.FullyQualifiedErrorId -like '*MemberExists*' -or $_.FullyQualifiedErrorId -like '*MemberNotFound*') { Write-Output '%s'; exit 0 } else { throw $_ } }",

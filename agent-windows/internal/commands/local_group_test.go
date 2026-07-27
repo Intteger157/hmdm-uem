@@ -33,11 +33,17 @@ func TestLocalGroupMemberCommandUsesPowerShellWithAzureADUsername(t *testing.T) 
 		t.Fatalf("executable = %q, want powershell.exe", cmd.Args[0])
 	}
 	script := cmd.Args[len(cmd.Args)-1]
+	if !strings.Contains(script, "NTAccount") || !strings.Contains(script, "SecurityIdentifier") {
+		t.Fatalf("script = %q, expected SID resolution via NTAccount", script)
+	}
+	if !strings.Contains(script, "-Member $memberSid") {
+		t.Fatalf("script = %q, expected group cmdlets to use resolved SID", script)
+	}
 	if !strings.Contains(script, "Add-LocalGroupMember") {
 		t.Fatalf("script = %q, expected Add-LocalGroupMember", script)
 	}
 	if !strings.Contains(script, `AzureAD\user@example.com`) {
-		t.Fatalf("script = %q, expected Azure AD username preserved", script)
+		t.Fatalf("script = %q, expected Azure AD username preserved for SID lookup", script)
 	}
 }
 
@@ -48,8 +54,8 @@ func TestBuildLocalGroupMemberScriptRemove(t *testing.T) {
 	if !strings.Contains(script, "Remove-LocalGroupMember") {
 		t.Fatalf("script = %q", script)
 	}
-	if !strings.Contains(script, "'remove' -eq 'add'") {
-		t.Fatalf("script = %q, expected remove action branch", script)
+	if !strings.Contains(script, "-Member $memberSid") {
+		t.Fatalf("script = %q, expected remove to use SID", script)
 	}
 }
 
