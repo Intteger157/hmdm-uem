@@ -28,8 +28,8 @@ export function useUploadStoredFileMutation() {
   return useMutation({
     mutationFn: ({ file, onUploadProgress }: { file: File; onUploadProgress?: (progress: import('@/features/windows/applications/utils/installer-upload').UploadProgressState) => void }) =>
       uploadStoredFile(file, { onUploadProgress }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: windowsFilesQueryKeys.list() })
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: windowsFilesQueryKeys.list() })
     },
   })
 }

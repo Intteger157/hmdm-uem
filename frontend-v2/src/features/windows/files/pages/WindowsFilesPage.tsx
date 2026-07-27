@@ -34,9 +34,18 @@ export function WindowsFilesPage() {
   const uploadMutation = useUploadStoredFileMutation()
   const deleteMutation = useDeleteStoredFileMutation()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<UploadProgressState | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<StoredFile | null>(null)
   const [isForceDeleteRequired, setIsForceDeleteRequired] = useState(false)
+
+  const resetUploadState = () => {
+    setIsUploading(false)
+    setUploadProgress(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
 
   const resetDeleteDialog = () => {
     setDeleteTarget(null)
@@ -55,20 +64,19 @@ export function WindowsFilesPage() {
   }
 
   const handleUpload = async (file: File) => {
+    setIsUploading(true)
     setUploadProgress({ percent: 0, loaded: 0, total: file.size })
     try {
       await uploadMutation.mutateAsync({
         file,
         onUploadProgress: setUploadProgress,
       })
+      resetUploadState()
       toast.success(t('windowsFiles.upload.success'))
     } catch (error) {
       toast.error(getWindowsApiErrorMessage(error, t('windowsFiles.upload.error')))
     } finally {
-      setUploadProgress(null)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
+      resetUploadState()
     }
   }
 
@@ -108,7 +116,7 @@ export function WindowsFilesPage() {
             ref={fileInputRef}
             type="file"
             className="hidden"
-            disabled={uploadMutation.isPending}
+            disabled={isUploading}
             onChange={(event) => {
               const file = event.target.files?.[0]
               if (file) {
@@ -118,10 +126,10 @@ export function WindowsFilesPage() {
           />
           <Button
             type="button"
-            disabled={uploadMutation.isPending}
+            disabled={isUploading}
             onClick={() => fileInputRef.current?.click()}
           >
-            {uploadMutation.isPending ? (
+            {isUploading ? (
               <Loader2 className="size-4 animate-spin" />
             ) : (
               <Plus className="size-4" />
@@ -131,7 +139,7 @@ export function WindowsFilesPage() {
         </div>
       </div>
 
-      {uploadMutation.isPending && uploadProgress ? (
+      {isUploading && uploadProgress ? (
         <Card>
           <CardContent className="py-6">
             <AppUploadProgress progress={uploadProgress} />
