@@ -88,6 +88,28 @@ func TestPartialDownloadPath(t *testing.T) {
 	}
 }
 
+func TestHeadRemoteContentLength(t *testing.T) {
+	t.Parallel()
+
+	payload := []byte("0123456789")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodHead {
+			t.Fatalf("expected HEAD, got %s", r.Method)
+		}
+		w.Header().Set("Content-Length", "10")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	size, err := headRemoteContentLength(server.URL)
+	if err != nil {
+		t.Fatalf("headRemoteContentLength() error = %v", err)
+	}
+	if size != int64(len(payload)) {
+		t.Fatalf("headRemoteContentLength() = %d, want %d", size, len(payload))
+	}
+}
+
 func TestDownloadFileResumableCreatesParentDirectory(t *testing.T) {
 	t.Parallel()
 

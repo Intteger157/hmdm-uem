@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+
 	"github.com/hmdm/agent-windows/internal/brand"
 )
 
@@ -86,6 +87,8 @@ func DeployRequired(deployments []RequiredFileDeployment, opts DeployOptions) {
 	}
 }
 
+const skipDownloadActionLogMessage = "File already downloaded. Executing post-action script..."
+
 func deployOne(deployment RequiredFileDeployment, opts DeployOptions) (string, error) {
 	reportLog(opts.Logger, deployment, "Downloading", fmt.Sprintf("Downloading %q", deployment.OriginalName))
 
@@ -94,10 +97,13 @@ func deployOne(deployment RequiredFileDeployment, opts DeployOptions) (string, e
 		return deploymentFailureMessage("", err), err
 	}
 
-	localPath, err := ensureCachedFile(deployment, downloadURL)
+	localPath, skippedDownload, err := ensureCachedFile(deployment, downloadURL)
 	if err != nil {
 		wrapped := fmt.Errorf("download file: %w", err)
 		return deploymentFailureMessage("", wrapped), wrapped
+	}
+	if skippedDownload {
+		reportLog(opts.Logger, deployment, "Installing", skipDownloadActionLogMessage)
 	}
 
 	destination := strings.TrimSpace(deployment.DestinationPath)
@@ -207,39 +213,119 @@ func runPostActionScript(workingDir, script string) (string, error) {
 	return message, nil
 }
 
-func ensureCachedFile(deployment RequiredFileDeployment, downloadURL string) (string, error) {
+func ensureCachedFile(deployment RequiredFileDeployment, downloadURL string) (string, bool, error) {
 	cacheDir, err := brand.EnsureProgramDataDir()
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 	cacheRoot := filepath.Join(cacheDir, "file_cache")
 	if err := os.MkdirAll(cacheRoot, 0o755); err != nil {
-		return "", err
+		return "", false, err
 	}
 
 	cacheName := fmt.Sprintf("%d_%s%s", deployment.FileID, deployment.SHA256, filepath.Ext(deployment.OriginalName))
 	cachePath := filepath.Join(cacheRoot, cacheName)
+	partialPath := partialDownloadPath(cachePath)
 
 	if matchesFileFingerprint(cachePath, deployment.SizeBytes, deployment.SHA256) {
-		return cachePath, nil
+		log.Printf("file deploy: cached file fingerprint matches, skipping download: %q", cachePath)
+		return cachePath, true, nil
 	}
 
-	partialPath := partialDownloadPath(cachePath)
+	remoteSize, headErr := headRemoteContentLength(downloadURL)
+	expectedSize := remoteSize
+	if expectedSize <= 0 {
+		expectedSize = deployment.SizeBytes
+	}
+
+	if headErr == nil && remoteSize > 0 {
+		if reused, reuseErr := tryReuseExistingDownload(cachePath, expectedSize, deployment); reuseErr != nil {
+			return "", false, reuseErr
+		} else if reused {
+			log.Printf("file deploy: %s path=%q", skipDownloadLogMessage, cachePath)
+			return cachePath, true, nil
+		}
+	}
+
+	if err := removeMismatchedDownloadFile(cachePath, expectedSize); err != nil {
+		return "", false, err
+	}
+	if err := removeMismatchedDownloadFile(partialPath, expectedSize); err != nil {
+		return "", false, err
+	}
+
 	if err := downloadFileResumable(downloadURL, partialPath); err != nil {
-		return "", err
+		return "", false, err
 	}
 
 	if !matchesFileFingerprint(partialPath, deployment.SizeBytes, deployment.SHA256) {
-		return "", fmt.Errorf("downloaded file fingerprint mismatch")
+		return "", false, fmt.Errorf("downloaded file fingerprint mismatch")
 	}
 
 	if err := os.Remove(cachePath); err != nil && !os.IsNotExist(err) {
-		return "", err
+		return "", false, err
 	}
 	if err := os.Rename(partialPath, cachePath); err != nil {
-		return "", err
+		return "", false, err
 	}
-	return cachePath, nil
+	return cachePath, false, nil
+}
+
+func tryReuseExistingDownload(cachePath string, expectedSize int64, deployment RequiredFileDeployment) (bool, error) {
+	info, err := os.Stat(cachePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	if expectedSize <= 0 || info.Size() != expectedSize {
+		if removeErr := os.Remove(cachePath); removeErr != nil && !os.IsNotExist(removeErr) {
+			return false, removeErr
+		}
+		return false, nil
+	}
+	if !localFileMatchesExpectedContent(cachePath, deployment) {
+		if removeErr := os.Remove(cachePath); removeErr != nil && !os.IsNotExist(removeErr) {
+			return false, removeErr
+		}
+		return false, nil
+	}
+	return true, nil
+}
+
+func localFileMatchesExpectedContent(path string, deployment RequiredFileDeployment) bool {
+	if strings.TrimSpace(deployment.SHA256) != "" {
+		hash, err := hashFile(path)
+		if err != nil {
+			return false
+		}
+		return strings.EqualFold(hash, deployment.SHA256)
+	}
+	if deployment.SizeBytes > 0 {
+		info, err := os.Stat(path)
+		if err != nil {
+			return false
+		}
+		return info.Size() == deployment.SizeBytes
+	}
+	return true
+}
+
+func removeMismatchedDownloadFile(path string, expectedSize int64) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	if expectedSize <= 0 || info.Size() != expectedSize {
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+	return nil
 }
 
 func matchesFileFingerprint(path string, sizeBytes int64, sha256Hex string) bool {

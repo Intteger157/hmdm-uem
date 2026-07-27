@@ -18,6 +18,34 @@ import (
 
 const fileDownloadTimeout = 3 * time.Hour
 
+const skipDownloadLogMessage = "File already exists and size matches, skipping download"
+
+func headRemoteContentLength(downloadURL string) (int64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodHead, downloadURL, nil)
+	if err != nil {
+		return 0, err
+	}
+	request.Header.Set("User-Agent", brand.UserAgent)
+
+	response, err := fileDownloadHTTPClient().Do(request)
+	if err != nil {
+		return 0, err
+	}
+	defer response.Body.Close()
+	io.Copy(io.Discard, response.Body)
+
+	if response.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("HTTP %d", response.StatusCode)
+	}
+	if response.ContentLength <= 0 {
+		return 0, fmt.Errorf("missing Content-Length")
+	}
+	return response.ContentLength, nil
+}
+
 func downloadFileResumable(downloadURL, destPath string) error {
 	if err := os.MkdirAll(filepath.Dir(destPath), os.ModePerm); err != nil {
 		return fmt.Errorf("create download directory: %w", err)
