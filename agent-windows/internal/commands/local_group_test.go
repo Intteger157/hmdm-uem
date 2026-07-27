@@ -48,14 +48,20 @@ func TestBuildLocalGroupMemberScriptRemoveUsesGetLocalGroupMember(t *testing.T) 
 	t.Parallel()
 
 	script := buildLocalGroupMemberScript(localGroupActionRemove, "Remote Desktop Users", `AzureAD\user@example.com`)
-	if !strings.Contains(script, "Get-LocalGroupMember -Group 'Remote Desktop Users'") {
+	if !strings.Contains(script, "$group = 'Remote Desktop Users'") {
+		t.Fatalf("script = %q, expected group variable for net localgroup", script)
+	}
+	if !strings.Contains(script, "Get-LocalGroupMember -Group $group") {
 		t.Fatalf("script = %q, expected Get-LocalGroupMember", script)
 	}
 	if !strings.Contains(script, "Where-Object { $_.Name -match") {
 		t.Fatalf("script = %q, expected name filtering", script)
 	}
-	if !strings.Contains(script, "Remove-LocalGroupMember -Group 'Remote Desktop Users' -Member $member.SID.Value") {
-		t.Fatalf("script = %q, expected removal with string SID via -Member", script)
+	if !strings.Contains(script, `$name = $member.Name; $out = net localgroup "$group" "$name" /delete`) {
+		t.Fatalf("script = %q, expected net localgroup delete by discovered member name", script)
+	}
+	if strings.Contains(script, "Remove-LocalGroupMember") {
+		t.Fatalf("script = %q, remove should delegate to net localgroup", script)
 	}
 	if !strings.Contains(script, localGroupMemberNotFoundOutput) {
 		t.Fatalf("script = %q, expected not-found success message", script)
