@@ -292,6 +292,7 @@ func runAgentLoop(stop <-chan struct{}, syncNow <-chan struct{}, cfg *config.Con
 	commands.SetApplyConfigurationHandler(func() (string, error) {
 		return runForceApplyConfiguration(cfg, apiClient)
 	})
+	commands.SetAfterFactoryResetStarted(commands.DefaultAfterFactoryResetExit)
 
 	go runPolicyComplianceLoop(stop, cfg, apiClient)
 
