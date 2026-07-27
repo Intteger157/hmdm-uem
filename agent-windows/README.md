@@ -68,11 +68,11 @@ Install/upgrade runs `singularity-agent.exe -install`, which:
 
 Uninstall (`singularity-agent.exe -uninstall`) removes the `SingularityMDMTray` Run value.
 
-The `-tray` helper hides its console window at startup so autostart from the Run key does not leave a black cmd window on screen.
+Release builds link with `-H windowsgui` so the tray helper starts as a Windows GUI process without a console window. At runtime the `-tray` helper also detaches stdin to avoid blocking when launched from the Run key without a terminal.
+
+For local debugging without `-H windowsgui`, use `go run . -debug` from source instead of the release binary.
 
 To repair autostart on an existing machine:
-
-```powershell
 cd "C:\Program Files\Singularity MDM Agent"
 .\singularity-agent.exe -install
 ```

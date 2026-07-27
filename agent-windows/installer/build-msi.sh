@@ -20,7 +20,7 @@ OUTPUT_MSI="$OUTPUT_DIR/singularity-agent.msi"
 mkdir -p "$STAGING_DIR" "$OUTPUT_DIR"
 
 echo "Building singularity-agent.exe ..."
-GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o "$STAGING_DIR/singularity-agent.exe" "$ROOT"
+GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w -H windowsgui" -o "$STAGING_DIR/singularity-agent.exe" "$ROOT"
 
 cd "$INSTALLER_DIR"
 

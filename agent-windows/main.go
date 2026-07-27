@@ -70,6 +70,7 @@ func run() error {
 
 	if *trayMode {
 		console.HideWindow()
+		detachStdin()
 		log.Printf("starting Singularity MDM tray helper")
 		tray.Run(iconData)
 		return nil
@@ -704,4 +705,12 @@ func handleReenrollNeeded(cfg *config.Config, err error) bool {
 	}
 	cfg.AuthToken = ""
 	return true
+}
+
+func detachStdin() {
+	devNull, err := os.Open(os.DevNull)
+	if err != nil {
+		return
+	}
+	os.Stdin = devNull
 }

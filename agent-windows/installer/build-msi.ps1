@@ -29,7 +29,7 @@ if (-not $SkipBuild) {
         $env:GOOS = "windows"
         $env:GOARCH = "amd64"
         $env:CGO_ENABLED = "0"
-        go build -ldflags="-s -w" -o $stagingExe .
+        go build -ldflags="-s -w -H windowsgui" -o $stagingExe .
     }
     finally {
         Pop-Location
