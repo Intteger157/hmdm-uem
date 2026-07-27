@@ -20,6 +20,8 @@ var kbDigitsPattern = regexp.MustCompile(`[0-9]+`)
 // ExecuteDeviceCommand runs a DeviceCommandLog action and returns combined console output.
 func ExecuteDeviceCommand(commandName, payload string) Result {
 	switch commandName {
+	case "sync":
+		return executeSyncInventory()
 	case "UninstallUpdate":
 		return uninstallWindowsUpdate(payload)
 	case "powershell":

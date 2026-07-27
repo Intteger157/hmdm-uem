@@ -285,6 +285,11 @@ func runAgentLoop(stop <-chan struct{}, syncNow <-chan struct{}, cfg *config.Con
 	ticker := time.NewTicker(inventoryInterval)
 	defer ticker.Stop()
 
+	commands.SetSyncInventoryHandler(func() error {
+		_, err := uploadInventory(cfg, apiClient)
+		return err
+	})
+
 	go runPolicyComplianceLoop(stop, cfg, apiClient)
 
 	policies.InitRequiredAppIDsFromCache()
