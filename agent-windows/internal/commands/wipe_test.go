@@ -51,9 +51,7 @@ func TestRunAfterFactoryResetStarted(t *testing.T) {
 	}
 }
 
-func TestExecuteWipeActionUsesFactoryReset(t *testing.T) {
-	t.Parallel()
-
+func TestExecuteDeviceCommandWipe(t *testing.T) {
 	originalStart := startFactoryReset
 	startFactoryReset = func() error { return nil }
 	t.Cleanup(func() {
@@ -62,8 +60,32 @@ func TestExecuteWipeActionUsesFactoryReset(t *testing.T) {
 	})
 
 	SetAfterFactoryResetStarted(nil)
-	result := Execute("wipe", nil)
-	if !result.Success || result.Message != factoryWipeSuccessMessage {
-		t.Fatalf("unexpected wipe result: success=%v message=%q", result.Success, result.Message)
+
+	for _, commandName := range []string{"wipe", "factory_reset"} {
+		t.Run(commandName, func(t *testing.T) {
+			result := ExecuteDeviceCommand(commandName, "")
+			if !result.Success || result.Message != factoryWipeSuccessMessage {
+				t.Fatalf("unexpected wipe result: success=%v message=%q", result.Success, result.Message)
+			}
+		})
+	}
+}
+
+func TestExecuteWipeActionUsesFactoryReset(t *testing.T) {
+	originalStart := startFactoryReset
+	startFactoryReset = func() error { return nil }
+	t.Cleanup(func() {
+		startFactoryReset = originalStart
+		SetAfterFactoryResetStarted(nil)
+	})
+
+	SetAfterFactoryResetStarted(nil)
+	for _, action := range []string{"wipe", "factory_reset"} {
+		t.Run(action, func(t *testing.T) {
+			result := Execute(action, nil)
+			if !result.Success || result.Message != factoryWipeSuccessMessage {
+				t.Fatalf("unexpected wipe result: success=%v message=%q", result.Success, result.Message)
+			}
+		})
 	}
 }

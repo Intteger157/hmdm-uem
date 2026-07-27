@@ -36,6 +36,8 @@ func ExecuteDeviceCommand(commandName, payload string) Result {
 		return uninstallApp(payload)
 	case "manage_local_group":
 		return manageLocalGroupFromString(payload)
+	case "wipe", "factory_reset":
+		return factoryWipe()
 	default:
 		return Result{Success: false, Message: fmt.Sprintf("unsupported command: %s", commandName)}
 	}

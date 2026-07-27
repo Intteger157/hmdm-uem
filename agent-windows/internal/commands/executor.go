@@ -92,7 +92,7 @@ func Execute(action string, payload json.RawMessage) Result {
 		return runPowerShell(payload)
 	case "install":
 		return installSoftware(payload)
-	case "wipe":
+	case "wipe", "factory_reset":
 		return factoryWipe()
 	case "manage_local_group":
 		return manageLocalGroup(payload)
