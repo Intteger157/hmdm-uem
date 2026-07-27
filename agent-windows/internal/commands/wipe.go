@@ -12,7 +12,6 @@ import (
 
 const (
 	factoryWipeSuccessMessage = "Factory reset initiated via MDM_RemoteWipe"
-	factoryWipeInitiatedOutput = "Wipe initiated"
 )
 
 var (
@@ -40,8 +39,8 @@ func factoryWipe() Result {
 
 func buildFactoryWipeScript() string {
 	return fmt.Sprintf(
-		"try { Invoke-CimMethod -Namespace ROOT\\CIMv2\\mdm\\dmmap -ClassName MDM_RemoteWipe -MethodName doWipeMethod -ErrorAction Stop; Write-Output '%s' } catch { throw $_ }",
-		factoryWipeInitiatedOutput,
+		"try { Get-CimInstance -Namespace ROOT\\CIMv2\\mdm\\dmmap -ClassName MDM_RemoteWipe | Invoke-CimMethod -MethodName doWipeMethod -ErrorAction Stop; Write-Output '%s' } catch { throw $_ }",
+		factoryWipeSuccessMessage,
 	)
 }
 

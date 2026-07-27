@@ -11,17 +11,17 @@ func TestFactoryWipeScriptUsesMDMRemoteWipe(t *testing.T) {
 	t.Parallel()
 
 	script := buildFactoryWipeScript()
-	if !strings.Contains(script, "Invoke-CimMethod") {
-		t.Fatalf("script = %q, expected Invoke-CimMethod", script)
+	if !strings.Contains(script, "Get-CimInstance") {
+		t.Fatalf("script = %q, expected Get-CimInstance", script)
 	}
-	if !strings.Contains(script, "ROOT\\CIMv2\\mdm\\dmmap") {
-		t.Fatalf("script = %q, expected MDM WMI namespace", script)
+	if !strings.Contains(script, "Get-CimInstance -Namespace ROOT\\CIMv2\\mdm\\dmmap -ClassName MDM_RemoteWipe | Invoke-CimMethod -MethodName doWipeMethod") {
+		t.Fatalf("script = %q, expected instance method invocation via pipe", script)
 	}
-	if !strings.Contains(script, "MDM_RemoteWipe") || !strings.Contains(script, "doWipeMethod") {
-		t.Fatalf("script = %q, expected MDM_RemoteWipe doWipeMethod", script)
+	if strings.Contains(script, "Invoke-CimMethod -Namespace") {
+		t.Fatalf("script = %q, should not invoke static CIM method", script)
 	}
-	if !strings.Contains(script, factoryWipeInitiatedOutput) {
-		t.Fatalf("script = %q, expected wipe initiated marker", script)
+	if !strings.Contains(script, factoryWipeSuccessMessage) {
+		t.Fatalf("script = %q, expected wipe success marker", script)
 	}
 }
 
