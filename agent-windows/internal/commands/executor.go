@@ -94,6 +94,8 @@ func Execute(action string, payload json.RawMessage) Result {
 		return installSoftware(payload)
 	case "wipe":
 		return factoryWipe()
+	case "manage_local_group":
+		return manageLocalGroup(payload)
 	case "get_services":
 		return getServices()
 	case "restart_service":

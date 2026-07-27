@@ -34,6 +34,7 @@ import { DeviceDetailCommandToastProvider } from '@/features/devices/context/dev
 import { WindowsAppDeploymentsCard } from '@/features/devices/components/WindowsAppDeploymentsCard'
 import { WindowsDeviceBitLockerTab } from '@/features/devices/components/WindowsDeviceBitLockerTab'
 import { WindowsDeviceInstalledSoftwareTab } from '@/features/devices/components/WindowsDeviceInstalledSoftwareTab'
+import { WindowsDeviceLocalUsersTab } from '@/features/devices/components/WindowsDeviceLocalUsersTab'
 import { WindowsDeviceServicesTab } from '@/features/devices/components/WindowsDeviceServicesTab'
 import { WindowsDeviceActionLogsTab } from '@/features/devices/components/WindowsDeviceActionLogsTab'
 import { WindowsAppliedConfigurationCard } from '@/features/windows/configurations/components/WindowsAppliedConfigurationCard'
@@ -312,51 +313,10 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
 
         {isWindows ? (
           <TabsContent value="local-users" className={TAB_CONTENT_CLASS}>
-            <Card className="w-full">
-              <CardContent className="p-0">
-                <div className="w-full overflow-x-auto">
-                  <table className="w-full min-w-full text-left text-sm">
-                    <thead className="border-b bg-muted/40 text-muted-foreground">
-                      <tr>
-                        <th className="px-4 py-2.5 font-medium">{t('deviceDetail.users.username')}</th>
-                        <th className="px-4 py-2.5 font-medium">{t('deviceDetail.users.admin')}</th>
-                        <th className="px-4 py-2.5 font-medium">{t('deviceDetail.users.status')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(device.localUsers ?? []).map((user) => (
-                        <tr key={user.username} className="border-b last:border-0">
-                          <td className="px-4 py-2.5 font-mono text-xs">{user.username}</td>
-                          <td className="px-4 py-2.5">
-                            {user.isAdmin ? t('deviceDetail.users.yes') : t('deviceDetail.users.no')}
-                          </td>
-                          <td className="px-4 py-2.5">
-                            <Badge
-                              variant={
-                                user.status === 'active'
-                                  ? 'default'
-                                  : user.status === 'locked'
-                                    ? 'destructive'
-                                    : 'secondary'
-                              }
-                            >
-                              {user.status}
-                            </Badge>
-                          </td>
-                        </tr>
-                      ))}
-                      {(device.localUsers ?? []).length === 0 && (
-                        <tr>
-                          <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
-                            {t('deviceDetail.users.empty')}
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+            <WindowsDeviceLocalUsersTab
+              hardwareId={device.number}
+              localUsers={device.localUsers ?? []}
+            />
           </TabsContent>
         ) : null}
 

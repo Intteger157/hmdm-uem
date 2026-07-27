@@ -34,6 +34,8 @@ func ExecuteDeviceCommand(commandName, payload string) Result {
 		return installWindowsUpdate(payload)
 	case "UninstallApp":
 		return uninstallApp(payload)
+	case "manage_local_group":
+		return manageLocalGroupFromString(payload)
 	default:
 		return Result{Success: false, Message: fmt.Sprintf("unsupported command: %s", commandName)}
 	}

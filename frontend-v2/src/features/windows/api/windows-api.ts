@@ -211,6 +211,7 @@ export type WindowsCommandAction =
   | 'powershell'
   | 'install'
   | 'wipe'
+  | 'manage_local_group'
   | 'get_services'
   | 'restart_service'
 
@@ -218,6 +219,9 @@ export interface WindowsCommandPayload {
   script?: string
   url?: string
   service_name?: string
+  username?: string
+  group?: string
+  action?: 'add' | 'remove'
 }
 
 export interface WindowsDeviceServicesResponse {

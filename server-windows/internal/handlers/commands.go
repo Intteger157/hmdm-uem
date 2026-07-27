@@ -23,8 +23,9 @@ var allowedCommandActions = map[string]struct{}{
 	"bitlocker_enable": {},
 	"powershell":       {},
 	"install":          {},
-	"wipe":             {},
-	"get_services":     {},
+	"wipe":                 {},
+	"manage_local_group":   {},
+	"get_services":         {},
 	"restart_service":  {},
 }
 
