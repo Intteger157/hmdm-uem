@@ -14,6 +14,9 @@ func TestFactoryWipeScriptUsesMDMRemoteWipe(t *testing.T) {
 	if !strings.Contains(script, "Get-CimInstance") {
 		t.Fatalf("script = %q, expected Get-CimInstance", script)
 	}
+	if !strings.Contains(script, "Invoke-CimMethod -MethodName doWipeMethod -Arguments @{param=''}") {
+		t.Fatalf("script = %q, expected empty param argument for MDM wipe method", script)
+	}
 	if !strings.Contains(script, "Get-CimInstance -Namespace ROOT\\CIMv2\\mdm\\dmmap -ClassName MDM_RemoteWipe | Invoke-CimMethod -MethodName doWipeMethod") {
 		t.Fatalf("script = %q, expected instance method invocation via pipe", script)
 	}

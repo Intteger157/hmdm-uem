@@ -39,7 +39,7 @@ func factoryWipe() Result {
 
 func buildFactoryWipeScript() string {
 	return fmt.Sprintf(
-		"try { Get-CimInstance -Namespace ROOT\\CIMv2\\mdm\\dmmap -ClassName MDM_RemoteWipe | Invoke-CimMethod -MethodName doWipeMethod -ErrorAction Stop; Write-Output '%s' } catch { throw $_ }",
+		"try { Get-CimInstance -Namespace ROOT\\CIMv2\\mdm\\dmmap -ClassName MDM_RemoteWipe | Invoke-CimMethod -MethodName doWipeMethod -Arguments @{param=''} -ErrorAction Stop; Write-Output '%s' } catch { throw $_ }",
 		factoryWipeSuccessMessage,
 	)
 }
