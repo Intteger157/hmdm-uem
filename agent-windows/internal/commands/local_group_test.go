@@ -4,9 +4,37 @@ package commands
 
 import (
 	"encoding/json"
+	"os/exec"
 	"strings"
 	"testing"
 )
+
+func TestParseManageLocalGroupPayloadPreservesDomainUsername(t *testing.T) {
+	t.Parallel()
+
+	payload, err := parseManageLocalGroupPayload(json.RawMessage(`{"username":"AzureAD\\user@example.com","group":"Administrators","action":"add"}`))
+	if err != nil {
+		t.Fatalf("parseManageLocalGroupPayload() error = %v", err)
+	}
+	if payload.Username != `AzureAD\user@example.com` {
+		t.Fatalf("username = %q", payload.Username)
+	}
+}
+
+func TestRunNetLocalGroupCommandPreservesBackslashArgument(t *testing.T) {
+	t.Parallel()
+
+	group := "Administrators"
+	user := `AzureAD\user@example.com`
+	flag := "/add"
+	cmd := exec.Command("net", "localgroup", group, user, flag)
+	if len(cmd.Args) < 5 {
+		t.Fatalf("args = %#v", cmd.Args)
+	}
+	if cmd.Args[3] != user {
+		t.Fatalf("username arg = %q, want %q", cmd.Args[3], user)
+	}
+}
 
 func TestParseManageLocalGroupPayload(t *testing.T) {
 	t.Parallel()

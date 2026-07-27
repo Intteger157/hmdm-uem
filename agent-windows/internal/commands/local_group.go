@@ -70,8 +70,8 @@ func parseManageLocalGroupPayload(payload json.RawMessage) (manageLocalGroupPayl
 		return parseManageLocalGroupPayload(json.RawMessage(strings.TrimSpace(asString)))
 	}
 
-	parsed.Username = strings.TrimSpace(parsed.Username)
-	parsed.Group = strings.TrimSpace(parsed.Group)
+	parsed.Username = normalizeNetLocalGroupPrincipal(parsed.Username)
+	parsed.Group = normalizeNetLocalGroupPrincipal(parsed.Group)
 	parsed.Action = strings.ToLower(strings.TrimSpace(parsed.Action))
 
 	if parsed.Username == "" {
@@ -94,6 +94,10 @@ func runNetLocalGroup(action, groupName, userName string) (string, error) {
 		flag = "/delete"
 	}
 
+	groupName = normalizeNetLocalGroupPrincipal(groupName)
+	userName = normalizeNetLocalGroupPrincipal(userName)
+
+	// Pass group and user as single argv entries so domain names like AzureAD\user@domain.com stay intact.
 	cmd := exec.Command("net", "localgroup", groupName, userName, flag)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	output, err := cmd.CombinedOutput()
@@ -105,6 +109,10 @@ func runNetLocalGroup(action, groupName, userName string) (string, error) {
 		return "", err
 	}
 	return combined, nil
+}
+
+func normalizeNetLocalGroupPrincipal(value string) string {
+	return strings.TrimSpace(value)
 }
 
 func manageLocalGroupSuccessMessage(username, group, action string) string {

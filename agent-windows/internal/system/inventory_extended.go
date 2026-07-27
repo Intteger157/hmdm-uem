@@ -271,12 +271,18 @@ func normalizeInteractiveUsername(raw string) string {
 }
 
 func collectLocalUsers() []LocalUserInfo {
+	adminUsers := collectAdministratorUsernames()
+	localAccounts := collectLocalAccounts(adminUsers)
+	profileUsers := collectProfileUsers(adminUsers)
+	return mergeLocalUsers(localAccounts, profileUsers)
+}
+
+func collectLocalAccounts(adminUsers map[string]bool) []LocalUserInfo {
 	var accounts []win32UserAccount
 	if err := wmi.Query("SELECT Name, Disabled, Lockout FROM Win32_UserAccount WHERE LocalAccount=TRUE", &accounts); err != nil {
 		return nil
 	}
 
-	adminUsers := collectAdministratorUsernames()
 	users := make([]LocalUserInfo, 0, len(accounts))
 	for _, account := range accounts {
 		name := strings.TrimSpace(account.Name)
@@ -294,7 +300,7 @@ func collectLocalUsers() []LocalUserInfo {
 
 		users = append(users, LocalUserInfo{
 			Username: name,
-			IsAdmin:  adminUsers[name],
+			IsAdmin:  isAdminUsername(name, adminUsers),
 			Status:   status,
 		})
 	}
@@ -316,8 +322,25 @@ func collectAdministratorUsernames() map[string]bool {
 		if username != "" {
 			admins[username] = true
 		}
+		if domain := extractWMIComponentField(entry.PartComponent, "Domain"); domain != "" && username != "" {
+			admins[domain+`\`+username] = true
+		}
 	}
 	return admins
+}
+
+func extractWMIComponentField(component, field string) string {
+	marker := field + `="`
+	start := strings.Index(component, marker)
+	if start < 0 {
+		return ""
+	}
+	start += len(marker)
+	end := strings.Index(component[start:], `"`)
+	if end < 0 {
+		return ""
+	}
+	return component[start : start+end]
 }
 
 func extractWMIComponentName(component string) string {
