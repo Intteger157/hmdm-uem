@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Loader2, Plus, Trash2, Upload } from 'lucide-react'
+import axios from 'axios'
+import { Loader2, Plus, Trash2, TriangleAlert, Upload } from 'lucide-react'
 import { AppUploadProgress } from '@/features/windows/applications/components/AppUploadProgress'
 import type { UploadProgressState } from '@/features/windows/applications/utils/installer-upload'
 import { formatUploadBytes } from '@/features/windows/applications/utils/installer-upload'
@@ -35,6 +36,23 @@ export function WindowsFilesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadProgress, setUploadProgress] = useState<UploadProgressState | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<StoredFile | null>(null)
+  const [isForceDeleteRequired, setIsForceDeleteRequired] = useState(false)
+
+  const resetDeleteDialog = () => {
+    setDeleteTarget(null)
+    setIsForceDeleteRequired(false)
+  }
+
+  const isStoredFileInUseError = (error: unknown): boolean => {
+    if (!axios.isAxiosError(error)) {
+      return false
+    }
+    if (error.response?.status === 409) {
+      return true
+    }
+    const message = getWindowsApiErrorMessage(error, '')
+    return /configuration deployments?/i.test(message)
+  }
 
   const handleUpload = async (file: File) => {
     setUploadProgress({ percent: 0, loaded: 0, total: file.size })
@@ -59,17 +77,22 @@ export function WindowsFilesPage() {
       return
     }
     try {
-      await deleteMutation.mutateAsync(deleteTarget.id)
-      toast.success(t('windowsFiles.delete.success'))
-      setDeleteTarget(null)
-    } catch (error: unknown) {
-      const status =
-        error && typeof error === 'object' && 'response' in error
-          ? (error as { response?: { status?: number } }).response?.status
-          : undefined
-      toast.error(
-        status === 409 ? t('windowsFiles.delete.inUse') : t('windowsFiles.delete.error'),
+      await deleteMutation.mutateAsync({
+        id: deleteTarget.id,
+        force: isForceDeleteRequired,
+      })
+      toast.success(
+        isForceDeleteRequired
+          ? t('windowsFiles.delete.forceSuccess')
+          : t('windowsFiles.delete.success'),
       )
+      resetDeleteDialog()
+    } catch (error: unknown) {
+      if (!isForceDeleteRequired && isStoredFileInUseError(error)) {
+        setIsForceDeleteRequired(true)
+        return
+      }
+      toast.error(getWindowsApiErrorMessage(error, t('windowsFiles.delete.error')))
     }
   }
 
@@ -179,11 +202,22 @@ export function WindowsFilesPage() {
         open={deleteTarget != null}
         onOpenChange={(open) => {
           if (!open) {
-            setDeleteTarget(null)
+            resetDeleteDialog()
           }
         }}
         title={t('windowsFiles.delete.title')}
-        description={t('windowsFiles.delete.confirm', { name: deleteTarget?.originalName ?? '' })}
+        description={
+          isForceDeleteRequired
+            ? t('windowsFiles.delete.forceConfirm')
+            : t('windowsFiles.delete.confirm', { name: deleteTarget?.originalName ?? '' })
+        }
+        descriptionClassName={isForceDeleteRequired ? 'text-destructive' : undefined}
+        leadingIcon={
+          isForceDeleteRequired ? <TriangleAlert className="size-4 text-destructive" /> : undefined
+        }
+        confirmLabel={
+          isForceDeleteRequired ? t('windowsFiles.delete.forceButton') : undefined
+        }
         isPending={deleteMutation.isPending}
         onConfirm={() => void handleDelete()}
       />

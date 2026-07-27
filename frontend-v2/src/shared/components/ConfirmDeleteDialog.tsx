@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
@@ -18,6 +19,8 @@ interface ConfirmDeleteDialogProps {
   confirmLabel?: string
   pendingLabel?: string
   confirmVariant?: 'default' | 'destructive'
+  descriptionClassName?: string
+  leadingIcon?: ReactNode
   onConfirm: () => void
 }
 
@@ -30,6 +33,8 @@ export function ConfirmDeleteDialog({
   confirmLabel,
   pendingLabel,
   confirmVariant = 'destructive',
+  descriptionClassName,
+  leadingIcon,
   onConfirm,
 }: ConfirmDeleteDialogProps) {
   const { t } = useTranslation()
@@ -39,7 +44,16 @@ export function ConfirmDeleteDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
+          <DialogDescription className={descriptionClassName}>
+            {leadingIcon ? (
+              <span className="flex items-start gap-2">
+                <span className="mt-0.5 shrink-0">{leadingIcon}</span>
+                <span>{description}</span>
+              </span>
+            ) : (
+              description
+            )}
+          </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

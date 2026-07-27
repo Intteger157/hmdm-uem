@@ -147,6 +147,8 @@ func (h *WindowsHandler) DeleteStoredFile(c *gin.Context) {
 		return
 	}
 
+	forceDelete := parseForceDeleteQuery(c.Query("force"))
+
 	var record models.StoredFile
 	if err := db.DB.First(&record, fileID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -157,17 +159,26 @@ func (h *WindowsHandler) DeleteStoredFile(c *gin.Context) {
 		return
 	}
 
-	var usageCount int64
-	if err := db.DB.Model(&models.ProfileFileDeployment{}).Where("file_id = ?", fileID).Count(&usageCount).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to validate file usage"})
-		return
-	}
-	if usageCount > 0 {
-		c.JSON(http.StatusConflict, gin.H{"error": "file is used in configuration deployments"})
-		return
+	if !forceDelete {
+		var usageCount int64
+		if err := db.DB.Model(&models.ProfileFileDeployment{}).Where("file_id = ?", fileID).Count(&usageCount).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to validate file usage"})
+			return
+		}
+		if usageCount > 0 {
+			c.JSON(http.StatusConflict, gin.H{"error": "file is used in configuration deployments"})
+			return
+		}
 	}
 
-	if err := db.DB.Delete(&record).Error; err != nil {
+	if err := db.DB.Transaction(func(tx *gorm.DB) error {
+		if forceDelete {
+			if err := tx.Where("file_id = ?", fileID).Delete(&models.ProfileFileDeployment{}).Error; err != nil {
+				return err
+			}
+		}
+		return tx.Delete(&record).Error
+	}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete file"})
 		return
 	}
@@ -177,8 +188,21 @@ func (h *WindowsHandler) DeleteStoredFile(c *gin.Context) {
 		log.Printf("[delete-file] remove disk file failed: path=%q err=%v", destPath, err)
 	}
 
-	log.Printf("[delete-file] deleted id=%d name=%q", record.ID, record.OriginalName)
+	if forceDelete {
+		log.Printf("[delete-file] force deleted id=%d name=%q", record.ID, record.OriginalName)
+	} else {
+		log.Printf("[delete-file] deleted id=%d name=%q", record.ID, record.OriginalName)
+	}
 	c.Status(http.StatusNoContent)
+}
+
+func parseForceDeleteQuery(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "1", "true", "yes":
+		return true
+	default:
+		return false
+	}
 }
 
 func toStoredFileJSON(c *gin.Context, file models.StoredFile) models.StoredFileJSON {

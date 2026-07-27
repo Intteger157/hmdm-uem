@@ -37,7 +37,7 @@ export function useUploadStoredFileMutation() {
 export function useDeleteStoredFileMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: deleteStoredFile,
+    mutationFn: ({ id, force }: { id: number; force?: boolean }) => deleteStoredFile(id, { force }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: windowsFilesQueryKeys.list() })
     },

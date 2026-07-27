@@ -47,10 +47,15 @@ export async function uploadStoredFile(
   return response.data
 }
 
-export async function deleteStoredFile(id: number): Promise<void> {
+export interface DeleteStoredFileOptions {
+  force?: boolean
+}
+
+export async function deleteStoredFile(id: number, options?: DeleteStoredFileOptions): Promise<void> {
   const jwt = useAuthStore.getState().jwt
   await axios.delete(`${API_BASE}/windows/files/${id}`, {
     headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},
+    params: options?.force ? { force: 'true' } : undefined,
   })
 }
 
