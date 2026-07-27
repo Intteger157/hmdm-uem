@@ -5,16 +5,14 @@ package commands
 import (
 	"fmt"
 	"os"
-	"os/exec"
+	"strings"
 	"sync"
-	"syscall"
 	"time"
 )
 
 const (
-	factoryResetExecutable    = `C:\Windows\System32\systemreset.exe`
-	factoryResetArgFactory    = "-factoryreset"
-	factoryWipeSuccessMessage = "Factory reset initiated via systemreset.exe"
+	factoryWipeSuccessMessage = "Factory reset initiated via MDM_RemoteWipe"
+	factoryWipeInitiatedOutput = "Wipe initiated"
 )
 
 var (
@@ -23,7 +21,7 @@ var (
 	startFactoryReset   = defaultStartFactoryReset
 )
 
-// SetAfterFactoryResetStarted registers a callback invoked after systemreset.exe starts.
+// SetAfterFactoryResetStarted registers a callback invoked after factory wipe starts.
 func SetAfterFactoryResetStarted(fn func()) {
 	afterFactoryResetMu.Lock()
 	afterFactoryResetFn = fn
@@ -32,7 +30,7 @@ func SetAfterFactoryResetStarted(fn func()) {
 
 func factoryWipe() Result {
 	if err := startFactoryReset(); err != nil {
-		return Result{Success: false, Message: fmt.Sprintf("factory reset failed to start: %v", err)}
+		return Result{Success: false, Message: fmt.Sprintf("factory reset failed: %v", err)}
 	}
 
 	runAfterFactoryResetStarted()
@@ -40,21 +38,26 @@ func factoryWipe() Result {
 	return Result{Success: true, Message: factoryWipeSuccessMessage}
 }
 
-func defaultStartFactoryReset() error {
-	cmd := newFactoryResetCommand()
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-	go func() {
-		_ = cmd.Wait()
-	}()
-	return nil
+func buildFactoryWipeScript() string {
+	return fmt.Sprintf(
+		"try { Invoke-CimMethod -Namespace ROOT\\CIMv2\\mdm\\dmmap -ClassName MDM_RemoteWipe -MethodName doWipeMethod -ErrorAction Stop; Write-Output '%s' } catch { throw $_ }",
+		factoryWipeInitiatedOutput,
+	)
 }
 
-func newFactoryResetCommand() *exec.Cmd {
-	cmd := exec.Command(factoryResetExecutable, factoryResetArgFactory)
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	return cmd
+func defaultStartFactoryReset() error {
+	stdout, stderr, err := runPowerShellScript(buildFactoryWipeScript())
+	combined := strings.TrimSpace(stderr)
+	if combined == "" {
+		combined = strings.TrimSpace(stdout)
+	}
+	if err != nil {
+		if combined != "" {
+			return fmt.Errorf("%s", combined)
+		}
+		return err
+	}
+	return nil
 }
 
 func runAfterFactoryResetStarted() {

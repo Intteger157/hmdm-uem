@@ -2,27 +2,33 @@
 
 package commands
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
-func TestFactoryResetCommandUsesSystemReset(t *testing.T) {
+func TestFactoryWipeScriptUsesMDMRemoteWipe(t *testing.T) {
 	t.Parallel()
 
-	cmd := newFactoryResetCommand()
-	if cmd.Path == "" {
-		t.Fatal("expected factory reset command path")
+	script := buildFactoryWipeScript()
+	if !strings.Contains(script, "Invoke-CimMethod") {
+		t.Fatalf("script = %q, expected Invoke-CimMethod", script)
 	}
-	if cmd.Path != factoryResetExecutable {
-		t.Fatalf("factory reset path = %q, want %q", cmd.Path, factoryResetExecutable)
+	if !strings.Contains(script, "ROOT\\CIMv2\\mdm\\dmmap") {
+		t.Fatalf("script = %q, expected MDM WMI namespace", script)
 	}
-	if len(cmd.Args) < 2 || cmd.Args[len(cmd.Args)-1] != factoryResetArgFactory {
-		t.Fatalf("factory reset args = %#v", cmd.Args)
+	if !strings.Contains(script, "MDM_RemoteWipe") || !strings.Contains(script, "doWipeMethod") {
+		t.Fatalf("script = %q, expected MDM_RemoteWipe doWipeMethod", script)
+	}
+	if !strings.Contains(script, factoryWipeInitiatedOutput) {
+		t.Fatalf("script = %q, expected wipe initiated marker", script)
 	}
 }
 
 func TestFactoryWipeSuccessMessage(t *testing.T) {
 	t.Parallel()
 
-	want := "Factory reset initiated via systemreset.exe"
+	want := "Factory reset initiated via MDM_RemoteWipe"
 	if factoryWipeSuccessMessage != want {
 		t.Fatalf("factoryWipeSuccessMessage = %q, want %q", factoryWipeSuccessMessage, want)
 	}
