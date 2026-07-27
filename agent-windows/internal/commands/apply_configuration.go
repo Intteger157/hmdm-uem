@@ -2,15 +2,18 @@
 
 package commands
 
-import "sync"
+import (
+	"strings"
+	"sync"
+)
 
 var (
 	applyConfigurationMu      sync.RWMutex
-	applyConfigurationHandler func()
+	applyConfigurationHandler func() (string, error)
 )
 
-// SetApplyConfigurationHandler registers the function that fetches and applies configuration.
-func SetApplyConfigurationHandler(fn func()) {
+// SetApplyConfigurationHandler registers the function that evaluates and applies configuration.
+func SetApplyConfigurationHandler(fn func() (string, error)) {
 	applyConfigurationMu.Lock()
 	applyConfigurationHandler = fn
 	applyConfigurationMu.Unlock()
@@ -24,6 +27,13 @@ func executeApplyConfiguration() Result {
 	if fn == nil {
 		return Result{Success: false, Message: "apply configuration handler not configured"}
 	}
-	fn()
-	return Result{Success: true, Message: "configuration apply started"}
+	report, err := fn()
+	if err != nil {
+		return Result{Success: false, Message: err.Error()}
+	}
+	report = strings.TrimSpace(report)
+	if report == "" {
+		report = "configuration apply started"
+	}
+	return Result{Success: true, Message: report}
 }

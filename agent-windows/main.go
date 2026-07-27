@@ -289,8 +289,8 @@ func runAgentLoop(stop <-chan struct{}, syncNow <-chan struct{}, cfg *config.Con
 		_, err := uploadInventory(cfg, apiClient)
 		return err
 	})
-	commands.SetApplyConfigurationHandler(func() {
-		schedulePolicySync(cfg, apiClient)
+	commands.SetApplyConfigurationHandler(func() (string, error) {
+		return runForceApplyConfiguration(cfg, apiClient)
 	})
 
 	go runPolicyComplianceLoop(stop, cfg, apiClient)
@@ -439,60 +439,7 @@ func syncPolicyFromServer(cfg *config.Config, apiClient *api.APIClient) {
 	fileDeployOpts := policies.NewFileDeployOptions(apiClient, cfg.AuthToken, cfg.HardwareID)
 	bitlockerUpload := policies.NewBitLockerKeyUploader(apiClient, cfg.AuthToken, cfg.HardwareID)
 	err := policies.SyncFromServer(func() (policies.EffectiveConfig, error) {
-		response, err := apiClient.FetchEffectiveConfig(cfg.AuthToken, cfg.HardwareID)
-		if err != nil {
-			if errors.Is(err, api.ErrNoEffectivePolicy) {
-				return policies.EffectiveConfig{}, nil
-			}
-			return policies.EffectiveConfig{}, err
-		}
-
-		requiredApps := make([]apps.RequiredApp, 0, len(response.RequiredApps))
-		for _, app := range response.RequiredApps {
-			requiredApps = append(requiredApps, apps.RequiredApp{
-				ID:              app.ID,
-				Name:            app.Name,
-				Version:         app.Version,
-				UpdatedAt:       app.UpdatedAt,
-				DownloadURL:     app.DownloadURL,
-				InstallArgs:     app.InstallArgs,
-				AppType:         app.AppType,
-				WingetID:        app.WingetID,
-				AutoUpdate:      app.AutoUpdate,
-				UpdateFrequency: app.UpdateFrequency,
-			})
-		}
-
-		fileDeployments := make([]files.RequiredFileDeployment, 0, len(response.FileDeployments))
-		for _, deployment := range response.FileDeployments {
-			fileDeployments = append(fileDeployments, files.RequiredFileDeployment{
-				ID:               deployment.ID,
-				FileID:           deployment.FileID,
-				OriginalName:     deployment.OriginalName,
-				DownloadURL:      deployment.DownloadURL,
-				SizeBytes:        deployment.SizeBytes,
-				SHA256:           deployment.SHA256,
-				DestinationPath:  deployment.DestinationPath,
-				Unzip:            deployment.Unzip,
-				PostActionScript: deployment.PostActionScript,
-				UpdatedAt:        deployment.UpdatedAt,
-			})
-		}
-
-		return policies.EffectiveConfig{
-			Payload: policies.Payload{
-				DefenderEnabled:   response.Payload.DefenderEnabled,
-				BlockUsbStorage:   response.Payload.BlockUsbStorage,
-				UsbReadOnly:       response.Payload.UsbReadOnly,
-				ScreenLockTimeout: response.Payload.ScreenLockTimeout,
-				RequireBitLocker:  response.Payload.RequireBitLocker,
-			},
-			RequiredApps:    requiredApps,
-			FileDeployments: fileDeployments,
-			ProfileID:       response.ProfileID,
-			ProfileName:     response.ProfileName,
-			Source:          response.Source,
-		}, nil
+		return fetchEffectiveConfigFromServer(cfg, apiClient)
 	}, reporter, deployOpts, fileDeployOpts, bitlockerUpload)
 	if err != nil {
 		if handleReenrollNeeded(cfg, err) {
@@ -511,26 +458,7 @@ func syncRegistryPoliciesFromServer(cfg *config.Config, apiClient *api.APIClient
 
 	reporter := policies.NewReporter(apiClient, cfg.AuthToken, cfg.HardwareID)
 	err := policies.SyncRegistryPoliciesFromServer(func() (policies.RegistryPoliciesConfig, error) {
-		response, err := apiClient.FetchDeviceConfigurations(cfg.AuthToken, cfg.HardwareID)
-		if err != nil {
-			return policies.RegistryPoliciesConfig{}, err
-		}
-
-		items := make([]policies.RegistryPolicy, 0, len(response.Policies))
-		for _, policy := range response.Policies {
-			items = append(items, policies.RegistryPolicy{
-				ID:         policy.ID,
-				PolicyPath: policy.PolicyPath,
-				ValueType:  policy.ValueType,
-				Value:      policy.Value,
-			})
-		}
-
-		return policies.RegistryPoliciesConfig{
-			ConfigurationID:   response.ConfigurationID,
-			ConfigurationName: response.ConfigurationName,
-			Policies:          items,
-		}, nil
+		return fetchRegistryPoliciesFromServer(cfg, apiClient)
 	}, reporter)
 	if err != nil {
 		if handleReenrollNeeded(cfg, err) {
@@ -538,6 +466,108 @@ func syncRegistryPoliciesFromServer(cfg *config.Config, apiClient *api.APIClient
 		}
 		log.Printf("registry policy sync failed: %v", err)
 	}
+}
+
+func runForceApplyConfiguration(cfg *config.Config, apiClient *api.APIClient) (string, error) {
+	if cfg.AuthToken == "" || cfg.HardwareID == "" {
+		return "", fmt.Errorf("device not enrolled")
+	}
+
+	deployOpts := policies.NewAppDeployOptions(apiClient, cfg.AuthToken, cfg.HardwareID)
+	fileDeployOpts := policies.NewFileDeployOptions(apiClient, cfg.AuthToken, cfg.HardwareID)
+	bitlockerUpload := policies.NewBitLockerKeyUploader(apiClient, cfg.AuthToken, cfg.HardwareID)
+
+	return policies.ForceApplyConfiguration(
+		func() (policies.EffectiveConfig, error) {
+			return fetchEffectiveConfigFromServer(cfg, apiClient)
+		},
+		func() (policies.RegistryPoliciesConfig, error) {
+			return fetchRegistryPoliciesFromServer(cfg, apiClient)
+		},
+		deployOpts,
+		fileDeployOpts,
+		bitlockerUpload,
+	)
+}
+
+func fetchEffectiveConfigFromServer(cfg *config.Config, apiClient *api.APIClient) (policies.EffectiveConfig, error) {
+	response, err := apiClient.FetchEffectiveConfig(cfg.AuthToken, cfg.HardwareID)
+	if err != nil {
+		if errors.Is(err, api.ErrNoEffectivePolicy) {
+			return policies.EffectiveConfig{}, nil
+		}
+		return policies.EffectiveConfig{}, err
+	}
+
+	requiredApps := make([]apps.RequiredApp, 0, len(response.RequiredApps))
+	for _, app := range response.RequiredApps {
+		requiredApps = append(requiredApps, apps.RequiredApp{
+			ID:              app.ID,
+			Name:            app.Name,
+			Version:         app.Version,
+			UpdatedAt:       app.UpdatedAt,
+			DownloadURL:     app.DownloadURL,
+			InstallArgs:     app.InstallArgs,
+			AppType:         app.AppType,
+			WingetID:        app.WingetID,
+			AutoUpdate:      app.AutoUpdate,
+			UpdateFrequency: app.UpdateFrequency,
+		})
+	}
+
+	fileDeployments := make([]files.RequiredFileDeployment, 0, len(response.FileDeployments))
+	for _, deployment := range response.FileDeployments {
+		fileDeployments = append(fileDeployments, files.RequiredFileDeployment{
+			ID:               deployment.ID,
+			FileID:           deployment.FileID,
+			OriginalName:     deployment.OriginalName,
+			DownloadURL:      deployment.DownloadURL,
+			SizeBytes:        deployment.SizeBytes,
+			SHA256:           deployment.SHA256,
+			DestinationPath:  deployment.DestinationPath,
+			Unzip:            deployment.Unzip,
+			PostActionScript: deployment.PostActionScript,
+			UpdatedAt:        deployment.UpdatedAt,
+		})
+	}
+
+	return policies.EffectiveConfig{
+		Payload: policies.Payload{
+			DefenderEnabled:   response.Payload.DefenderEnabled,
+			BlockUsbStorage:   response.Payload.BlockUsbStorage,
+			UsbReadOnly:       response.Payload.UsbReadOnly,
+			ScreenLockTimeout: response.Payload.ScreenLockTimeout,
+			RequireBitLocker:  response.Payload.RequireBitLocker,
+		},
+		RequiredApps:    requiredApps,
+		FileDeployments: fileDeployments,
+		ProfileID:       response.ProfileID,
+		ProfileName:     response.ProfileName,
+		Source:          response.Source,
+	}, nil
+}
+
+func fetchRegistryPoliciesFromServer(cfg *config.Config, apiClient *api.APIClient) (policies.RegistryPoliciesConfig, error) {
+	response, err := apiClient.FetchDeviceConfigurations(cfg.AuthToken, cfg.HardwareID)
+	if err != nil {
+		return policies.RegistryPoliciesConfig{}, err
+	}
+
+	items := make([]policies.RegistryPolicy, 0, len(response.Policies))
+	for _, policy := range response.Policies {
+		items = append(items, policies.RegistryPolicy{
+			ID:         policy.ID,
+			PolicyPath: policy.PolicyPath,
+			ValueType:  policy.ValueType,
+			Value:      policy.Value,
+		})
+	}
+
+	return policies.RegistryPoliciesConfig{
+		ConfigurationID:   response.ConfigurationID,
+		ConfigurationName: response.ConfigurationName,
+		Policies:          items,
+	}, nil
 }
 
 func uploadInventory(cfg *config.Config, apiClient *api.APIClient) ([]api.PendingDeviceCommand, error) {
@@ -607,8 +637,14 @@ func processPendingCommands(stop <-chan struct{}, cfg *config.Config, apiClient 
 		}
 
 		if command.Action == "apply_configuration" {
-			schedulePolicySync(cfg, apiClient)
-			if err := apiClient.CompleteCommand(cfg.AuthToken, cfg.HardwareID, command.ID, true, "configuration apply started"); err != nil {
+			report, err := runForceApplyConfiguration(cfg, apiClient)
+			if err != nil {
+				if reportErr := apiClient.CompleteCommand(cfg.AuthToken, cfg.HardwareID, command.ID, false, err.Error()); reportErr != nil {
+					return reportErr
+				}
+				continue
+			}
+			if err := apiClient.CompleteCommand(cfg.AuthToken, cfg.HardwareID, command.ID, true, report); err != nil {
 				return err
 			}
 			continue
