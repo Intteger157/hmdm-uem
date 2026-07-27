@@ -84,6 +84,35 @@ func TestParseManageLocalGroupPayloadRequiresFields(t *testing.T) {
 	}
 }
 
+func TestBuildLocalGroupMemberScriptHandlesExistingMembership(t *testing.T) {
+	t.Parallel()
+
+	script := buildLocalGroupMemberScript(localGroupActionAdd, "Administrators", "alice")
+	if !strings.Contains(script, "try {") || !strings.Contains(script, "} catch {") {
+		t.Fatalf("script = %q, expected try/catch wrapper", script)
+	}
+	if !strings.Contains(script, "MemberExists*") || !strings.Contains(script, "MemberNotFound*") {
+		t.Fatalf("script = %q, expected membership exception handling", script)
+	}
+	if !strings.Contains(script, localGroupAlreadyAppliedOutput) {
+		t.Fatalf("script = %q, expected already-applied marker output", script)
+	}
+}
+
+func TestManageLocalGroupResultMessageAlreadyApplied(t *testing.T) {
+	t.Parallel()
+
+	addMsg := manageLocalGroupResultMessage("alice", "Administrators", "add", localGroupAlreadyAppliedOutput)
+	if addMsg != "User is already a member of the group." {
+		t.Fatalf("add message = %q", addMsg)
+	}
+
+	removeMsg := manageLocalGroupResultMessage("alice", "Administrators", "remove", localGroupAlreadyAppliedOutput)
+	if removeMsg != "User was not found in the group (already removed)." {
+		t.Fatalf("remove message = %q", removeMsg)
+	}
+}
+
 func TestManageLocalGroupSuccessMessage(t *testing.T) {
 	t.Parallel()
 

@@ -20,6 +20,8 @@ type manageLocalGroupPayload struct {
 const (
 	localGroupActionAdd    = "add"
 	localGroupActionRemove = "remove"
+
+	localGroupAlreadyAppliedOutput = "Action already applied"
 )
 
 func manageLocalGroup(payload json.RawMessage) Result {
@@ -39,7 +41,7 @@ func manageLocalGroup(payload json.RawMessage) Result {
 
 	result := Result{
 		Success: true,
-		Message: manageLocalGroupSuccessMessage(parsed.Username, parsed.Group, parsed.Action),
+		Message: manageLocalGroupResultMessage(parsed.Username, parsed.Group, parsed.Action, output),
 	}
 
 	if syncResult := executeSyncInventory(); !syncResult.Success && strings.TrimSpace(syncResult.Message) != "" {
@@ -112,13 +114,19 @@ func runLocalGroupMember(action, groupName, userName string) (string, error) {
 func buildLocalGroupMemberScript(action, groupName, userName string) string {
 	group := escapePowerShellSingleQuoted(groupName)
 	member := escapePowerShellSingleQuoted(userName)
+	actionLiteral := escapePowerShellSingleQuoted(action)
+	body := fmt.Sprintf(
+		"if ('%s' -eq 'add') { Add-LocalGroupMember -Group '%s' -Member '%s' -ErrorAction Stop } else { Remove-LocalGroupMember -Group '%s' -Member '%s' -ErrorAction Stop }",
+		actionLiteral,
+		group,
+		member,
+		group,
+		member,
+	)
 	return fmt.Sprintf(
-		"$ErrorActionPreference = 'Stop'; if ('%s' -eq 'add') { Add-LocalGroupMember -Group '%s' -Member '%s' -ErrorAction Stop } else { Remove-LocalGroupMember -Group '%s' -Member '%s' -ErrorAction Stop }",
-		escapePowerShellSingleQuoted(action),
-		group,
-		member,
-		group,
-		member,
+		"$ErrorActionPreference = 'Stop'; try { %s } catch { if ($_.FullyQualifiedErrorId -like '*MemberExists*' -or $_.FullyQualifiedErrorId -like '*MemberNotFound*') { Write-Output '%s'; exit 0 } else { throw $_ } }",
+		body,
+		localGroupAlreadyAppliedOutput,
 	)
 }
 
@@ -131,6 +139,24 @@ func newLocalGroupMemberCommand(action, groupName, userName string) *exec.Cmd {
 
 func normalizeNetLocalGroupPrincipal(value string) string {
 	return strings.TrimSpace(value)
+}
+
+func manageLocalGroupResultMessage(username, group, action, output string) string {
+	if isLocalGroupAlreadyApplied(output) {
+		return manageLocalGroupAlreadyAppliedMessage(action)
+	}
+	return manageLocalGroupSuccessMessage(username, group, action)
+}
+
+func isLocalGroupAlreadyApplied(output string) bool {
+	return strings.TrimSpace(output) == localGroupAlreadyAppliedOutput
+}
+
+func manageLocalGroupAlreadyAppliedMessage(action string) string {
+	if action == localGroupActionRemove {
+		return "User was not found in the group (already removed)."
+	}
+	return "User is already a member of the group."
 }
 
 func manageLocalGroupSuccessMessage(username, group, action string) string {
