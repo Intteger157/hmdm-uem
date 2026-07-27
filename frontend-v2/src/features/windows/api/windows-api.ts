@@ -204,6 +204,7 @@ export async function deleteWindowsDevice(hardwareId: string): Promise<void> {
 
 export type WindowsCommandAction =
   | 'sync'
+  | 'apply_configuration'
   | 'restart'
   | 'lock'
   | 'bitlocker_enable'

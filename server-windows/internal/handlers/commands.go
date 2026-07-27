@@ -16,8 +16,9 @@ import (
 )
 
 var allowedCommandActions = map[string]struct{}{
-	"sync":             {},
-	"restart":          {},
+	"sync":                 {},
+	"apply_configuration":  {},
+	"restart":              {},
 	"lock":             {},
 	"bitlocker_enable": {},
 	"powershell":       {},

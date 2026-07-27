@@ -22,6 +22,8 @@ func ExecuteDeviceCommand(commandName, payload string) Result {
 	switch commandName {
 	case "sync":
 		return executeSyncInventory()
+	case "apply_configuration":
+		return executeApplyConfiguration()
 	case "UninstallUpdate":
 		return uninstallWindowsUpdate(payload)
 	case "powershell":

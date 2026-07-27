@@ -122,6 +122,8 @@ function formatLogCommandName(entry: DeviceCommandLogEntry, t: (key: string) => 
       return t('deviceDetail.actionLogs.restart')
     case 'sync':
       return t('deviceDetail.actionLogs.sync')
+    case 'apply_configuration':
+      return t('deviceDetail.actionLogs.applyConfiguration')
     case 'powershell':
       return t('deviceDetail.actionLogs.powershell')
     case 'bitlocker_enable':

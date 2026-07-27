@@ -16,6 +16,7 @@ import {
   Trash2,
   Download,
   Lock,
+  Zap,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
@@ -105,6 +106,12 @@ const ANDROID_ACTIONS: AndroidActionDef[] = [
 
 const WINDOWS_ACTIONS: WindowsActionDef[] = [
   { id: 'sync', icon: RefreshCw, labelKey: 'deviceDetail.actions.sync' },
+  {
+    id: 'apply_configuration',
+    icon: Zap,
+    labelKey: 'deviceDetail.actions.applyConfiguration',
+    descriptionKey: 'deviceDetail.actions.applyConfigurationDescription',
+  },
   { id: 'restart', icon: RotateCcw, labelKey: 'deviceDetail.actions.restart', requiresConfirm: true },
   { id: 'lock', icon: Lock, labelKey: 'deviceDetail.actions.lock' },
   { id: 'bitlocker_enable', icon: Shield, labelKey: 'deviceDetail.actions.bitlocker', requiresConfirm: true },

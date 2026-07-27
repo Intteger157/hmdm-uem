@@ -289,6 +289,9 @@ func runAgentLoop(stop <-chan struct{}, syncNow <-chan struct{}, cfg *config.Con
 		_, err := uploadInventory(cfg, apiClient)
 		return err
 	})
+	commands.SetApplyConfigurationHandler(func() {
+		schedulePolicySync(cfg, apiClient)
+	})
 
 	go runPolicyComplianceLoop(stop, cfg, apiClient)
 
@@ -598,6 +601,14 @@ func processPendingCommands(stop <-chan struct{}, cfg *config.Config, apiClient 
 				continue
 			}
 			if err := apiClient.CompleteCommand(cfg.AuthToken, cfg.HardwareID, command.ID, true, "inventory uploaded"); err != nil {
+				return err
+			}
+			continue
+		}
+
+		if command.Action == "apply_configuration" {
+			schedulePolicySync(cfg, apiClient)
+			if err := apiClient.CompleteCommand(cfg.AuthToken, cfg.HardwareID, command.ID, true, "configuration apply started"); err != nil {
 				return err
 			}
 			continue
