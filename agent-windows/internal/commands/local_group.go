@@ -5,6 +5,7 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os/exec"
 	"strings"
 	"syscall"
@@ -27,7 +28,7 @@ func manageLocalGroup(payload json.RawMessage) Result {
 		return Result{Success: false, Message: err.Error()}
 	}
 
-	output, err := runNetLocalGroup(parsed.Action, parsed.Group, parsed.Username)
+	output, err := runLocalGroupMember(parsed.Action, parsed.Group, parsed.Username)
 	if err != nil {
 		message := strings.TrimSpace(output)
 		if message == "" {
@@ -88,27 +89,44 @@ func parseManageLocalGroupPayload(payload json.RawMessage) (manageLocalGroupPayl
 	return parsed, nil
 }
 
-func runNetLocalGroup(action, groupName, userName string) (string, error) {
-	flag := "/add"
-	if action == localGroupActionRemove {
-		flag = "/delete"
-	}
-
+func runLocalGroupMember(action, groupName, userName string) (string, error) {
 	groupName = normalizeNetLocalGroupPrincipal(groupName)
 	userName = normalizeNetLocalGroupPrincipal(userName)
 
-	// Pass group and user as single argv entries so domain names like AzureAD\user@domain.com stay intact.
-	cmd := exec.Command("net", "localgroup", groupName, userName, flag)
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	output, err := cmd.CombinedOutput()
-	combined := strings.TrimSpace(string(output))
+	script := buildLocalGroupMemberScript(action, groupName, userName)
+	stdout, stderr, err := runPowerShellScript(script)
+	combined := strings.TrimSpace(stderr)
+	if combined == "" {
+		combined = strings.TrimSpace(stdout)
+	}
 	if err != nil {
+		log.Printf("manage_local_group failed: action=%s group=%q user=%q: %v (%s)", action, groupName, userName, err, combined)
 		if combined != "" {
 			return combined, fmt.Errorf("%s", combined)
 		}
 		return "", err
 	}
 	return combined, nil
+}
+
+func buildLocalGroupMemberScript(action, groupName, userName string) string {
+	group := escapePowerShellSingleQuoted(groupName)
+	member := escapePowerShellSingleQuoted(userName)
+	return fmt.Sprintf(
+		"$ErrorActionPreference = 'Stop'; if ('%s' -eq 'add') { Add-LocalGroupMember -Group '%s' -Member '%s' -ErrorAction Stop } else { Remove-LocalGroupMember -Group '%s' -Member '%s' -ErrorAction Stop }",
+		escapePowerShellSingleQuoted(action),
+		group,
+		member,
+		group,
+		member,
+	)
+}
+
+func newLocalGroupMemberCommand(action, groupName, userName string) *exec.Cmd {
+	script := buildLocalGroupMemberScript(action, groupName, userName)
+	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	return cmd
 }
 
 func normalizeNetLocalGroupPrincipal(value string) string {

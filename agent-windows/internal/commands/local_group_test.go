@@ -4,7 +4,6 @@ package commands
 
 import (
 	"encoding/json"
-	"os/exec"
 	"strings"
 	"testing"
 )
@@ -21,18 +20,36 @@ func TestParseManageLocalGroupPayloadPreservesDomainUsername(t *testing.T) {
 	}
 }
 
-func TestRunNetLocalGroupCommandPreservesBackslashArgument(t *testing.T) {
+func TestLocalGroupMemberCommandUsesPowerShellWithAzureADUsername(t *testing.T) {
 	t.Parallel()
 
 	group := "Administrators"
 	user := `AzureAD\user@example.com`
-	flag := "/add"
-	cmd := exec.Command("net", "localgroup", group, user, flag)
-	if len(cmd.Args) < 5 {
+	cmd := newLocalGroupMemberCommand(localGroupActionAdd, group, user)
+	if len(cmd.Args) < 4 {
 		t.Fatalf("args = %#v", cmd.Args)
 	}
-	if cmd.Args[3] != user {
-		t.Fatalf("username arg = %q, want %q", cmd.Args[3], user)
+	if cmd.Args[0] != "powershell.exe" {
+		t.Fatalf("executable = %q, want powershell.exe", cmd.Args[0])
+	}
+	script := cmd.Args[len(cmd.Args)-1]
+	if !strings.Contains(script, "Add-LocalGroupMember") {
+		t.Fatalf("script = %q, expected Add-LocalGroupMember", script)
+	}
+	if !strings.Contains(script, `AzureAD\user@example.com`) {
+		t.Fatalf("script = %q, expected Azure AD username preserved", script)
+	}
+}
+
+func TestBuildLocalGroupMemberScriptRemove(t *testing.T) {
+	t.Parallel()
+
+	script := buildLocalGroupMemberScript(localGroupActionRemove, "Remote Desktop Users", "alice")
+	if !strings.Contains(script, "Remove-LocalGroupMember") {
+		t.Fatalf("script = %q", script)
+	}
+	if !strings.Contains(script, "'remove' -eq 'add'") {
+		t.Fatalf("script = %q, expected remove action branch", script)
 	}
 }
 
