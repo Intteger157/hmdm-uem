@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	factoryResetExecutable    = "systemreset.exe"
+	factoryResetExecutable    = `C:\Windows\System32\systemreset.exe`
 	factoryResetArgFactory    = "-factoryreset"
 	factoryWipeSuccessMessage = "Factory reset initiated via systemreset.exe"
 )

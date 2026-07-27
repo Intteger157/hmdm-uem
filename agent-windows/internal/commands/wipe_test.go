@@ -11,6 +11,9 @@ func TestFactoryResetCommandUsesSystemReset(t *testing.T) {
 	if cmd.Path == "" {
 		t.Fatal("expected factory reset command path")
 	}
+	if cmd.Path != factoryResetExecutable {
+		t.Fatalf("factory reset path = %q, want %q", cmd.Path, factoryResetExecutable)
+	}
 	if len(cmd.Args) < 2 || cmd.Args[len(cmd.Args)-1] != factoryResetArgFactory {
 		t.Fatalf("factory reset args = %#v", cmd.Args)
 	}
