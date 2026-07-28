@@ -62,7 +62,7 @@ func TestLiveTerminalBridgesStdinToStdout(t *testing.T) {
 	})
 
 	done := make(chan error, 1)
-	go func() { done <- StartLiveTerminal(wsURL, "test-token") }()
+	go func() { done <- StartLiveTerminal(wsURL, "test-token", "test-device") }()
 
 	select {
 	case out := <-received:
@@ -89,7 +89,7 @@ func TestLiveTerminalStopsWhenSocketCloses(t *testing.T) {
 	})
 
 	done := make(chan error, 1)
-	go func() { done <- StartLiveTerminal(wsURL, "") }()
+	go func() { done <- StartLiveTerminal(wsURL, "", "") }()
 
 	select {
 	case <-done:

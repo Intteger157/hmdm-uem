@@ -9,7 +9,7 @@ import (
 
 func TestExecuteDeviceCommandApplyConfiguration(t *testing.T) {
 	SetApplyConfigurationHandler(nil)
-	result := ExecuteDeviceCommand("apply_configuration", "")
+	result := ExecuteDeviceCommand("apply_configuration", "", nil)
 	if result.Success {
 		t.Fatal("expected failure when apply configuration handler is not configured")
 	}
@@ -17,7 +17,7 @@ func TestExecuteDeviceCommandApplyConfiguration(t *testing.T) {
 	SetApplyConfigurationHandler(func() (string, error) {
 		return "", errApplyConfigurationFailed
 	})
-	result = ExecuteDeviceCommand("apply_configuration", "")
+	result = ExecuteDeviceCommand("apply_configuration", "", nil)
 	if result.Success || !strings.Contains(result.Message, "apply configuration failed") {
 		t.Fatalf("unexpected result: success=%v message=%q", result.Success, result.Message)
 	}
@@ -27,7 +27,7 @@ func TestExecuteDeviceCommandApplyConfiguration(t *testing.T) {
 		called = true
 		return "=== Configuration Evaluation Report ===\n- App [Demo]: Queued for installation\n", nil
 	})
-	result = ExecuteDeviceCommand("apply_configuration", "")
+	result = ExecuteDeviceCommand("apply_configuration", "", nil)
 	if !result.Success || !strings.Contains(result.Message, "Configuration Evaluation Report") {
 		t.Fatalf("unexpected result: success=%v message=%q", result.Success, result.Message)
 	}

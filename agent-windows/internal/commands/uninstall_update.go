@@ -18,7 +18,7 @@ import (
 var kbDigitsPattern = regexp.MustCompile(`[0-9]+`)
 
 // ExecuteDeviceCommand runs a DeviceCommandLog action and returns combined console output.
-func ExecuteDeviceCommand(commandName, payload string) Result {
+func ExecuteDeviceCommand(commandName, payload string, opts *ExecuteOptions) Result {
 	switch commandName {
 	case "sync":
 		return executeSyncInventory()
@@ -38,6 +38,11 @@ func ExecuteDeviceCommand(commandName, payload string) Result {
 		return manageLocalGroupFromString(payload)
 	case "wipe", "factory_reset":
 		return factoryWipe()
+	case CommandNameRemoteSupport:
+		if opts == nil {
+			return Result{Success: false, Message: "remote_support requires agent runtime context"}
+		}
+		return ExecuteRemoteSupport(*opts, []byte(payload))
 	default:
 		return Result{Success: false, Message: fmt.Sprintf("unsupported command: %s", commandName)}
 	}

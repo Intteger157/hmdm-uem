@@ -595,7 +595,7 @@ func processInventoryCommands(cfg *config.Config, apiClient *api.APIClient, pend
 			defer inflightInventoryCommands.Delete(command.ID)
 
 			log.Printf("executing inventory command id=%d name=%s payload=%s", command.ID, command.CommandName, command.Payload)
-			result := commands.ExecuteDeviceCommand(command.CommandName, command.Payload)
+			result := commands.ExecuteDeviceCommand(command.CommandName, command.Payload, commandExecuteOptions(cfg))
 			if err := apiClient.SubmitCommandResult(cfg.AuthToken, cfg.HardwareID, command.ID, result.Success, result.Message); err != nil {
 				log.Printf("inventory command id=%d result upload failed: %v", command.ID, err)
 				return
@@ -660,7 +660,7 @@ func processPendingCommands(stop <-chan struct{}, cfg *config.Config, apiClient 
 			continue
 		}
 
-		result := commands.Execute(command.Action, command.Payload)
+		result := commands.Execute(command.Action, command.Payload, commandExecuteOptions(cfg))
 		if err := apiClient.CompleteCommand(cfg.AuthToken, cfg.HardwareID, command.ID, result.Success, result.Message); err != nil {
 			return err
 		}
@@ -668,9 +668,20 @@ func processPendingCommands(stop <-chan struct{}, cfg *config.Config, apiClient 
 	}
 }
 
+func commandExecuteOptions(cfg *config.Config) *commands.ExecuteOptions {
+	if cfg == nil {
+		return nil
+	}
+	return &commands.ExecuteOptions{
+		ServerURL:  cfg.ServerURL,
+		AuthToken:  cfg.AuthToken,
+		HardwareID: cfg.HardwareID,
+	}
+}
+
 func isLongRunningPollAction(action string) bool {
 	switch strings.ToLower(strings.TrimSpace(action)) {
-	case "install", "powershell", "bitlocker_enable":
+	case "install", "powershell", "bitlocker_enable", commands.CommandNameRemoteSupport:
 		return true
 	default:
 		return false
@@ -681,7 +692,7 @@ func executePolledCommand(cfg *config.Config, apiClient *api.APIClient, command 
 	defer inflightPollCommands.Delete(command.ID)
 
 	log.Printf("executing command id=%d action=%s (async)", command.ID, command.Action)
-	result := commands.Execute(command.Action, command.Payload)
+	result := commands.Execute(command.Action, command.Payload, commandExecuteOptions(cfg))
 	if err := apiClient.CompleteCommand(cfg.AuthToken, cfg.HardwareID, command.ID, result.Success, result.Message); err != nil {
 		log.Printf("command id=%d completion upload failed: %v", command.ID, err)
 		return

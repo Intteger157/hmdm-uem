@@ -27,10 +27,13 @@ const dialTimeout = 15 * time.Second
 
 // buildDialHeader assembles the handshake headers, carrying the auth token as a
 // bearer credential when one is supplied.
-func buildDialHeader(token string) http.Header {
+func buildDialHeader(token, hardwareID string) http.Header {
 	header := http.Header{}
 	if trimmed := strings.TrimSpace(token); trimmed != "" {
 		header.Set("Authorization", "Bearer "+trimmed)
+	}
+	if trimmed := strings.TrimSpace(hardwareID); trimmed != "" {
+		header.Set("X-Device-Id", trimmed)
 	}
 	return header
 }
@@ -39,9 +42,9 @@ func buildDialHeader(token string) http.Header {
 // pumps data between the socket and the process until either side closes. It
 // blocks until the session ends and always tears down both the process and the
 // socket before returning.
-func StartLiveTerminal(wsURL, token string) error {
+func StartLiveTerminal(wsURL, token, hardwareID string) error {
 	dialer := websocket.Dialer{HandshakeTimeout: dialTimeout}
-	conn, resp, err := dialer.Dial(wsURL, buildDialHeader(token))
+	conn, resp, err := dialer.Dial(wsURL, buildDialHeader(token, hardwareID))
 	if err != nil {
 		if resp != nil {
 			return fmt.Errorf("live terminal dial (%s): %w", resp.Status, err)

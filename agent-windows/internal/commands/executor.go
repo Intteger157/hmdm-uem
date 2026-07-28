@@ -78,8 +78,9 @@ func quotePowerShellCommandArg(value string) string {
 	return fmt.Sprintf(`'%s'`, strings.ReplaceAll(value, "'", "''"))
 }
 
-// Execute runs a remote command locally on the Windows agent.
-func Execute(action string, payload json.RawMessage) Result {
+// Execute runs a remote command locally on the Windows agent. Some actions (such
+// as remote_support) require opts with server credentials; pass nil when unused.
+func Execute(action string, payload json.RawMessage, opts *ExecuteOptions) Result {
 	switch action {
 	case "sync":
 		return Result{Success: true, Message: "inventory sync requested"}
@@ -101,6 +102,11 @@ func Execute(action string, payload json.RawMessage) Result {
 		return getServices()
 	case "restart_service":
 		return restartService(payload)
+	case CommandNameRemoteSupport:
+		if opts == nil {
+			return Result{Success: false, Message: "remote_support requires agent runtime context"}
+		}
+		return ExecuteRemoteSupport(*opts, payload)
 	default:
 		return Result{Success: false, Message: fmt.Sprintf("unsupported action: %s", action)}
 	}

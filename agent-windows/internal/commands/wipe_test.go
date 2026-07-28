@@ -66,7 +66,7 @@ func TestExecuteDeviceCommandWipe(t *testing.T) {
 
 	for _, commandName := range []string{"wipe", "factory_reset"} {
 		t.Run(commandName, func(t *testing.T) {
-			result := ExecuteDeviceCommand(commandName, "")
+			result := ExecuteDeviceCommand(commandName, "", nil)
 			if !result.Success || result.Message != factoryWipeSuccessMessage {
 				t.Fatalf("unexpected wipe result: success=%v message=%q", result.Success, result.Message)
 			}
@@ -85,7 +85,7 @@ func TestExecuteWipeActionUsesFactoryReset(t *testing.T) {
 	SetAfterFactoryResetStarted(nil)
 	for _, action := range []string{"wipe", "factory_reset"} {
 		t.Run(action, func(t *testing.T) {
-			result := Execute(action, nil)
+			result := Execute(action, nil, nil)
 			if !result.Success || result.Message != factoryWipeSuccessMessage {
 				t.Fatalf("unexpected wipe result: success=%v message=%q", result.Success, result.Message)
 			}

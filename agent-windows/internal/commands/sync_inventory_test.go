@@ -9,7 +9,7 @@ import (
 
 func TestExecuteDeviceCommandSync(t *testing.T) {
 	SetSyncInventoryHandler(nil)
-	result := ExecuteDeviceCommand("sync", "")
+	result := ExecuteDeviceCommand("sync", "", nil)
 	if result.Success {
 		t.Fatal("expected failure when sync handler is not configured")
 	}
@@ -17,7 +17,7 @@ func TestExecuteDeviceCommandSync(t *testing.T) {
 	SetSyncInventoryHandler(func() error {
 		return errors.New("upload failed")
 	})
-	result = ExecuteDeviceCommand("sync", "")
+	result = ExecuteDeviceCommand("sync", "", nil)
 	if result.Success || result.Message != "upload failed" {
 		t.Fatalf("unexpected result: success=%v message=%q", result.Success, result.Message)
 	}
@@ -25,7 +25,7 @@ func TestExecuteDeviceCommandSync(t *testing.T) {
 	SetSyncInventoryHandler(func() error {
 		return nil
 	})
-	result = ExecuteDeviceCommand("sync", "")
+	result = ExecuteDeviceCommand("sync", "", nil)
 	if !result.Success || result.Message != "inventory uploaded" {
 		t.Fatalf("unexpected result: success=%v message=%q", result.Success, result.Message)
 	}
