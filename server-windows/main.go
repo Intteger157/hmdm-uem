@@ -70,10 +70,9 @@ func main() {
 	windowsHandler := handlers.NewWindowsHandler()
 	router.GET("/storage/files/*filepath", windowsHandler.ServeStoredFile)
 
-	// Support chat / live terminal WebSocket relay.
-	router.GET("/api/terminal/operator", windowsHandler.HandleOperatorTerminal)
-	router.GET("/api/terminal/client", windowsHandler.HandleClientTerminal)
-	// Backward-compatible aliases for earlier live-terminal builds.
+	// Live terminal WebSocket relay.
+	router.GET("/api/terminal/operator", windowsHandler.HandleAdminTerminal)
+	router.GET("/api/terminal/client", windowsHandler.HandleAgentTerminal)
 	router.GET("/api/terminal/admin", windowsHandler.HandleAdminTerminal)
 	router.GET("/api/terminal/agent", windowsHandler.HandleAgentTerminal)
 

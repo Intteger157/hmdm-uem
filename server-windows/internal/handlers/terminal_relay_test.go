@@ -12,7 +12,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func TestResolveSupportChatSessionIDPrefersSessionIDQuery(t *testing.T) {
+func TestResolveTerminalSessionIDPrefersSessionIDQuery(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	recorder := httptest.NewRecorder()
 	ctx, _ := gin.CreateTestContext(recorder)
@@ -20,18 +20,18 @@ func TestResolveSupportChatSessionIDPrefersSessionIDQuery(t *testing.T) {
 	ctx.Params = gin.Params{{Key: "hardwareId", Value: "device-3"}}
 	ctx.Request.Header.Set("X-Device-Id", "device-4")
 
-	if got := resolveSupportChatSessionID(ctx); got != "session-1" {
+	if got := resolveTerminalSessionID(ctx); got != "session-1" {
 		t.Fatalf("sessionID = %q, want session-1", got)
 	}
 }
 
-func TestSupportChatRelayBridgesOperatorAndClient(t *testing.T) {
+func TestTerminalRelayBridgesAdminAndAgent(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	handler := NewWindowsHandler()
 	router := gin.New()
-	router.GET("/operator", handler.HandleOperatorTerminal)
-	router.GET("/client", handler.HandleClientTerminal)
+	router.GET("/admin", handler.HandleAdminTerminal)
+	router.GET("/agent", handler.HandleAgentTerminal)
 
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -40,23 +40,23 @@ func TestSupportChatRelayBridgesOperatorAndClient(t *testing.T) {
 	sessionID := "device-bridge-test"
 	received := make(chan string, 1)
 
-	var operatorWG sync.WaitGroup
-	operatorWG.Add(1)
+	var adminWG sync.WaitGroup
+	adminWG.Add(1)
 	go func() {
-		defer operatorWG.Done()
-		operatorConn, _, err := websocket.DefaultDialer.Dial(
-			baseURL+"/operator?sessionID="+sessionID,
+		defer adminWG.Done()
+		adminConn, _, err := websocket.DefaultDialer.Dial(
+			baseURL+"/admin?sessionID="+sessionID,
 			nil,
 		)
 		if err != nil {
-			t.Errorf("dial operator: %v", err)
+			t.Errorf("dial admin: %v", err)
 			return
 		}
-		defer operatorConn.Close()
+		defer adminConn.Close()
 
-		_, data, err := operatorConn.ReadMessage()
+		_, data, err := adminConn.ReadMessage()
 		if err != nil {
-			t.Errorf("operator read: %v", err)
+			t.Errorf("admin read: %v", err)
 			return
 		}
 		select {
@@ -67,53 +67,53 @@ func TestSupportChatRelayBridgesOperatorAndClient(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-	clientConn, _, err := websocket.DefaultDialer.Dial(
-		baseURL+"/client?sessionID="+sessionID,
+	agentConn, _, err := websocket.DefaultDialer.Dial(
+		baseURL+"/agent?sessionID="+sessionID,
 		http.Header{
 			"Authorization": []string{"Bearer mock-jwt-token-777"},
 			"X-Device-Id":   []string{sessionID},
 		},
 	)
 	if err != nil {
-		t.Fatalf("dial client: %v", err)
+		t.Fatalf("dial agent: %v", err)
 	}
-	defer clientConn.Close()
+	defer agentConn.Close()
 
-	if err := clientConn.WriteMessage(websocket.TextMessage, []byte("hello-operator")); err != nil {
-		t.Fatalf("client write: %v", err)
+	if err := agentConn.WriteMessage(websocket.TextMessage, []byte("hello-admin")); err != nil {
+		t.Fatalf("agent write: %v", err)
 	}
 
 	select {
 	case msg := <-received:
-		if msg != "hello-operator" {
-			t.Fatalf("operator received %q, want hello-operator", msg)
+		if msg != "hello-admin" {
+			t.Fatalf("admin received %q, want hello-admin", msg)
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("timed out waiting for bridged message")
 	}
 
-	_ = clientConn.Close()
-	operatorWG.Wait()
+	_ = agentConn.Close()
+	adminWG.Wait()
 	time.Sleep(100 * time.Millisecond)
 
-	if _, ok := handler.supportChatRelay.sessions.Load(sessionID); ok {
+	if _, ok := handler.terminalRelay.sessions.Load(sessionID); ok {
 		t.Fatal("session should be removed from registry after disconnect")
 	}
 }
 
-func TestSupportChatClientRequiresPendingSession(t *testing.T) {
+func TestTerminalAgentRequiresPendingSession(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	handler := NewWindowsHandler()
 	router := gin.New()
-	router.GET("/client", handler.HandleClientTerminal)
+	router.GET("/agent", handler.HandleAgentTerminal)
 
 	server := httptest.NewServer(router)
 	defer server.Close()
 
 	baseURL := "ws" + strings.TrimPrefix(server.URL, "http")
 	_, response, err := websocket.DefaultDialer.Dial(
-		baseURL+"/client?sessionID=missing-session",
+		baseURL+"/agent?sessionID=missing-session",
 		http.Header{
 			"Authorization": []string{"Bearer mock-jwt-token-777"},
 			"X-Device-Id":   []string{"missing-session"},
