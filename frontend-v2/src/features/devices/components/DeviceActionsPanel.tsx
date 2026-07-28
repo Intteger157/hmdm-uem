@@ -40,13 +40,12 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
 import { useWindowsDeviceCommandMutation } from '@/features/windows/hooks/use-windows-device-command'
-import { useQueueWindowsDeviceCommandMutation } from '@/features/windows/hooks/use-queue-windows-device-command'
 import { DeployApplicationDialog } from '@/features/devices/components/DeployApplicationDialog'
 import {
   useDeviceAppStatusesQuery,
   useSoftwareAppsQuery,
 } from '@/features/windows/applications/hooks/use-windows-software-apps'
-import { WindowsPowerShellDialog } from '@/features/windows/components/WindowsCommandDialogs'
+import { DeviceTerminalDialog } from '@/features/windows/components/DeviceTerminalDialog'
 import { useDeviceDetailCommandToast } from '@/features/devices/context/device-detail-command-toast-context'
 import type { WindowsCommandAction } from '@/features/windows/api/windows-api'
 
@@ -78,7 +77,7 @@ interface WindowsActionDef {
   labelKey: string
   variant?: 'outline' | 'destructive'
   requiresConfirm?: boolean
-  opensDialog?: 'powershell' | 'catalog'
+  opensDialog?: 'terminal' | 'catalog'
   descriptionKey?: string
 }
 
@@ -122,7 +121,13 @@ const WINDOWS_ACTIONS: WindowsActionDef[] = [
     opensDialog: 'catalog',
     descriptionKey: 'deviceDetail.actions.installDescription',
   },
-  { id: 'powershell', icon: Terminal, labelKey: 'deviceDetail.actions.powershell', opensDialog: 'powershell' },
+  {
+    id: 'powershell',
+    icon: Terminal,
+    labelKey: 'deviceDetail.terminal.title',
+    opensDialog: 'terminal',
+    descriptionKey: 'deviceDetail.terminal.description',
+  },
   { id: 'wipe', icon: Trash2, labelKey: 'deviceDetail.actions.wipe', variant: 'destructive', requiresConfirm: true },
 ]
 
@@ -141,11 +146,10 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
   const [activeDialog, setActiveDialog] = useState<AndroidDialogAction | null>(null)
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
   const [windowsConfirmAction, setWindowsConfirmAction] = useState<WindowsCommandAction | null>(null)
-  const [powershellOpen, setPowershellOpen] = useState(false)
+  const [terminalOpen, setTerminalOpen] = useState(false)
   const [deployAppOpen, setDeployAppOpen] = useState(false)
 
   const windowsCommandMutation = useWindowsDeviceCommandMutation(device.number)
-  const queueLogMutation = useQueueWindowsDeviceCommandMutation(device.number)
   const { trackPollCommand, trackActionLogCommand } = useDeviceDetailCommandToast()
   const deviceAppStatusesQuery = useDeviceAppStatusesQuery(device.number, platform === 'windows')
   const deviceAppStatuses = deviceAppStatusesQuery.data?.items ?? []
@@ -213,8 +217,8 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
   }
 
   const handleWindowsAction = (action: WindowsActionDef) => {
-    if (action.opensDialog === 'powershell') {
-      setPowershellOpen(true)
+    if (action.opensDialog === 'terminal') {
+      setTerminalOpen(true)
       return
     }
     if (action.opensDialog === 'catalog') {
@@ -398,21 +402,10 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
         })}
       </div>
 
-      <WindowsPowerShellDialog
-        open={powershellOpen}
-        onOpenChange={setPowershellOpen}
-        isPending={queueLogMutation.isPending}
-        onSubmit={(script) => {
-          void queueLogMutation
-            .mutateAsync({ commandName: 'powershell', payload: script })
-            .then((response) => {
-              setPowershellOpen(false)
-              trackActionLogCommand(device.number, response.id)
-            })
-            .catch(() => {
-              toast.error(t('deviceDetail.actions.error'))
-            })
-        }}
+      <DeviceTerminalDialog
+        open={terminalOpen}
+        onOpenChange={setTerminalOpen}
+        hardwareId={device.number}
       />
 
       <ConfirmDeleteDialog
