@@ -50,12 +50,14 @@ function decodeSocketPayload(data: unknown): string | undefined {
 
 export function DeviceTerminalDialog({ open, onOpenChange, hardwareId }: DeviceTerminalDialogProps) {
   const { t } = useTranslation()
-  const containerRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement | null>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
+  const resizeObserverRef = useRef<ResizeObserver | null>(null)
   const socketRef = useRef<WebSocket | null>(null)
   const failureWrittenRef = useRef(false)
   const [status, setStatus] = useState<TerminalConnectionStatus>('idle')
+  const [terminalReady, setTerminalReady] = useState(false)
 
   const closeSocket = useCallback(() => {
     const socket = socketRef.current
@@ -65,10 +67,19 @@ export function DeviceTerminalDialog({ open, onOpenChange, hardwareId }: DeviceT
     }
   }, [])
 
-  useEffect(() => {
-    const container = containerRef.current
-    if (!open || !container) {
-      return
+  const disposeTerminal = useCallback(() => {
+    resizeObserverRef.current?.disconnect()
+    resizeObserverRef.current = null
+    closeSocket()
+    terminalRef.current?.dispose()
+    terminalRef.current = null
+    fitAddonRef.current = null
+    setTerminalReady(false)
+  }, [closeSocket])
+
+  const mountTerminal = useCallback((container: HTMLDivElement) => {
+    if (terminalRef.current) {
+      return terminalRef.current
     }
 
     const terminal = new Terminal({
@@ -93,22 +104,58 @@ export function DeviceTerminalDialog({ open, onOpenChange, hardwareId }: DeviceT
     terminalRef.current = terminal
     fitAddonRef.current = fitAddon
 
+    resizeObserverRef.current?.disconnect()
     const resizeObserver = new ResizeObserver(() => fitAddon.fit())
     resizeObserver.observe(container)
+    resizeObserverRef.current = resizeObserver
 
-    return () => {
-      resizeObserver.disconnect()
-      closeSocket()
-      terminal.dispose()
-      terminalRef.current = null
-      fitAddonRef.current = null
+    setTerminalReady(true)
+    return terminal
+  }, [])
+
+  const setContainerRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      containerRef.current = node
+      if (!node || !open) {
+        return
+      }
+      mountTerminal(node)
+    },
+    [mountTerminal, open],
+  )
+
+  useEffect(() => {
+    if (!open) {
+      disposeTerminal()
       setStatus('idle')
+      return
     }
-  }, [open, closeSocket])
 
-  const handleConnect = () => {
-    const terminal = terminalRef.current
-    if (!terminal || socketRef.current) {
+    const container = containerRef.current
+    if (container) {
+      mountTerminal(container)
+    }
+  }, [open, disposeTerminal, mountTerminal])
+
+  const handleConnect = useCallback(() => {
+    console.log('[Terminal] Connect button clicked, initializing WS...')
+
+    if (socketRef.current) {
+      console.warn('[Terminal] WebSocket already active, ignoring duplicate connect')
+      return
+    }
+
+    const container = containerRef.current
+    const terminal = container ? mountTerminal(container) : terminalRef.current
+    if (!terminal) {
+      console.error('[Terminal] xterm is not ready yet')
+      return
+    }
+
+    const deviceId = hardwareId.trim()
+    if (!deviceId) {
+      console.error('[Terminal] hardwareId is missing')
+      terminal.write('\r\n\x1b[31m[-] Device ID is missing.\x1b[0m\r\n')
       return
     }
 
@@ -116,7 +163,10 @@ export function DeviceTerminalDialog({ open, onOpenChange, hardwareId }: DeviceT
     setStatus('connecting')
     terminal.write(TERMINAL_STATUS.initiating)
 
-    const socket = new WebSocket(buildDeviceTerminalWebSocketUrl(hardwareId))
+    const wsUrl = buildDeviceTerminalWebSocketUrl(deviceId)
+    console.log('[Terminal] Opening WebSocket:', wsUrl)
+
+    const socket = new WebSocket(wsUrl)
     socket.binaryType = 'arraybuffer'
     socketRef.current = socket
 
@@ -129,6 +179,7 @@ export function DeviceTerminalDialog({ open, onOpenChange, hardwareId }: DeviceT
     }
 
     socket.onopen = () => {
+      console.log('[Terminal] WebSocket connected')
       setStatus('connected')
       terminal.write(TERMINAL_STATUS.connected)
       fitAddonRef.current?.fit()
@@ -143,21 +194,23 @@ export function DeviceTerminalDialog({ open, onOpenChange, hardwareId }: DeviceT
     }
 
     socket.onerror = () => {
+      console.error('[Terminal] WebSocket error')
       setStatus('error')
       writeFailure()
     }
 
     socket.onclose = () => {
+      console.log('[Terminal] WebSocket closed')
       socketRef.current = null
       writeFailure()
       setStatus((current) => (current === 'connected' ? 'closed' : current === 'connecting' ? 'error' : current))
     }
-  }
+  }, [hardwareId, mountTerminal])
 
-  const handleDisconnect = () => {
+  const handleDisconnect = useCallback(() => {
     closeSocket()
     setStatus('closed')
-  }
+  }, [closeSocket])
 
   const isConnected = status === 'connected'
   const isConnecting = status === 'connecting'
@@ -171,7 +224,7 @@ export function DeviceTerminalDialog({ open, onOpenChange, hardwareId }: DeviceT
         </DialogHeader>
         <div
           id="terminal-container"
-          ref={containerRef}
+          ref={setContainerRef}
           className="h-96 w-full rounded border border-gray-700 bg-black p-2 shadow-none"
         />
         <DialogFooter>
@@ -184,7 +237,11 @@ export function DeviceTerminalDialog({ open, onOpenChange, hardwareId }: DeviceT
               {t('deviceDetail.terminal.disconnect')}
             </Button>
           ) : (
-            <Button type="button" onClick={handleConnect} disabled={isConnecting}>
+            <Button
+              type="button"
+              onClick={handleConnect}
+              disabled={isConnecting || !terminalReady}
+            >
               {isConnecting ? <Loader2 className="size-4 animate-spin" /> : <Plug className="size-4" />}
               {isConnecting ? t('deviceDetail.terminal.connecting') : t('deviceDetail.terminal.connect')}
             </Button>
