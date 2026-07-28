@@ -28,6 +28,9 @@ const dialTimeout = 15 * time.Second
 
 const powershellCommandLine = `powershell.exe -NoProfile -NoLogo`
 
+const defaultTerminalCols = 120
+const defaultTerminalRows = 30
+
 // buildDialHeader assembles the handshake headers, carrying the auth token as a
 // bearer credential when one is supplied.
 func buildDialHeader(token, hardwareID string) http.Header {
@@ -72,7 +75,10 @@ type liveTerminalSession struct {
 }
 
 func (s *liveTerminalSession) run() error {
-	cpty, err := conpty.Start(powershellCommandLine)
+	cpty, err := conpty.Start(
+		powershellCommandLine,
+		conpty.ConPtyDimensions(defaultTerminalCols, defaultTerminalRows),
+	)
 	if err != nil {
 		s.closeConn()
 		return fmt.Errorf("live terminal start conpty: %w", err)
@@ -115,6 +121,9 @@ func (s *liveTerminalSession) pumpSocketToConPty(cpty *conpty.ConPty) {
 			return
 		}
 		if messageType != websocket.TextMessage && messageType != websocket.BinaryMessage {
+			continue
+		}
+		if messageType == websocket.TextMessage && tryHandleControlMessage(cpty, data) {
 			continue
 		}
 		data = normalizeTerminalInput(data)

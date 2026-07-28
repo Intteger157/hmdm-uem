@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { buildDeviceTerminalWebSocketUrl } from '@/features/windows/api/device-terminal-socket'
-import { normalizeTerminalInput } from '@/features/windows/lib/terminal-input'
+import { buildTerminalResizeMessage, normalizeTerminalInput, writeSocketPayload } from '@/features/windows/lib/terminal-input'
 
 interface DeviceTerminalDialogProps {
   open: boolean
@@ -39,14 +39,12 @@ const TERMINAL_STATUS = {
     '\r\n\x1b[31m[-] Connection closed or failed.\x1b[0m\r\n',
 } as const
 
-function decodeSocketPayload(data: unknown): string | undefined {
-  if (typeof data === 'string') {
-    return data
+function syncTerminalSize(terminal: Terminal, fitAddon: FitAddon | null, socket: WebSocket | null) {
+  fitAddon?.fit()
+  if (socket?.readyState !== WebSocket.OPEN || terminal.cols <= 0 || terminal.rows <= 0) {
+    return
   }
-  if (data instanceof ArrayBuffer) {
-    return new TextDecoder().decode(data)
-  }
-  return undefined
+  socket.send(buildTerminalResizeMessage(terminal.cols, terminal.rows))
 }
 
 export function DeviceTerminalDialog({ open, onOpenChange, hardwareId }: DeviceTerminalDialogProps) {
@@ -84,11 +82,12 @@ export function DeviceTerminalDialog({ open, onOpenChange, hardwareId }: DeviceT
     }
 
     const terminal = new Terminal({
-      convertEol: true,
+      convertEol: false,
       cursorBlink: true,
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
       fontSize: 13,
       theme: TERMINAL_THEME,
+      windowsMode: true,
     })
     const fitAddon = new FitAddon()
     terminal.loadAddon(fitAddon)
@@ -106,7 +105,9 @@ export function DeviceTerminalDialog({ open, onOpenChange, hardwareId }: DeviceT
     fitAddonRef.current = fitAddon
 
     resizeObserverRef.current?.disconnect()
-    const resizeObserver = new ResizeObserver(() => fitAddon.fit())
+    const resizeObserver = new ResizeObserver(() => {
+      syncTerminalSize(terminal, fitAddon, socketRef.current)
+    })
     resizeObserver.observe(container)
     resizeObserverRef.current = resizeObserver
 
@@ -183,15 +184,12 @@ export function DeviceTerminalDialog({ open, onOpenChange, hardwareId }: DeviceT
       console.log('[Terminal] WebSocket connected')
       setStatus('connected')
       terminal.write(TERMINAL_STATUS.connected)
-      fitAddonRef.current?.fit()
+      syncTerminalSize(terminal, fitAddonRef.current, socket)
       terminal.focus()
     }
 
     socket.onmessage = (event) => {
-      const payload = decodeSocketPayload(event.data)
-      if (payload != null) {
-        terminal.write(payload)
-      }
+      writeSocketPayload(terminal, event.data)
     }
 
     socket.onerror = () => {
