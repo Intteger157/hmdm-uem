@@ -64,8 +64,11 @@ func TestLocalGroupMemberCommandUsesMDMWMI(t *testing.T) {
 	if !strings.Contains(commandScript, "MDM_Policy_Config01_LocalUsersAndGroups02") {
 		t.Fatalf("script = %q, expected LocalUsersAndGroups MDM class", commandScript)
 	}
-	if !strings.Contains(commandScript, "InstanceID='LocalUsersAndGroups'") {
-		t.Fatalf("script = %q, expected LocalUsersAndGroups instance filter", commandScript)
+	if !strings.Contains(commandScript, "InstanceID='Configure' and ParentID='./Vendor/MSFT/Policy/Config/LocalUsersAndGroups'") {
+		t.Fatalf("script = %q, expected Configure instance under LocalUsersAndGroups policy path", commandScript)
+	}
+	if !strings.Contains(commandScript, "ParentID='./Vendor/MSFT/Policy/Config/LocalUsersAndGroups'; InstanceID='Configure'") {
+		t.Fatalf("script = %q, expected corrected New-CimInstance hierarchy", commandScript)
 	}
 	if !strings.Contains(commandScript, "Get-CimInstance -Namespace $namespace -ClassName $className -Filter $filter") {
 		t.Fatalf("script = %q, expected Get-CimInstance with MDM filter", commandScript)
