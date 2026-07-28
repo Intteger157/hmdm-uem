@@ -29,6 +29,15 @@ const TERMINAL_THEME = {
   cursor: '#e5e7eb',
 }
 
+const TERMINAL_STATUS = {
+  initiating:
+    '\r\n\x1b[33m[*] Initiating connection to server...\x1b[0m\r\n',
+  connected:
+    '\x1b[32m[+] Connected to relay server. Waiting for agent...\x1b[0m\r\n',
+  failed:
+    '\r\n\x1b[31m[-] Connection closed or failed.\x1b[0m\r\n',
+} as const
+
 function decodeSocketPayload(data: unknown): string | undefined {
   if (typeof data === 'string') {
     return data
@@ -45,6 +54,7 @@ export function DeviceTerminalDialog({ open, onOpenChange, hardwareId }: DeviceT
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
   const socketRef = useRef<WebSocket | null>(null)
+  const failureWrittenRef = useRef(false)
   const [status, setStatus] = useState<TerminalConnectionStatus>('idle')
 
   const closeSocket = useCallback(() => {
@@ -102,15 +112,25 @@ export function DeviceTerminalDialog({ open, onOpenChange, hardwareId }: DeviceT
       return
     }
 
+    failureWrittenRef.current = false
     setStatus('connecting')
-    terminal.writeln(t('deviceDetail.terminal.connecting'))
+    terminal.write(TERMINAL_STATUS.initiating)
 
     const socket = new WebSocket(buildDeviceTerminalWebSocketUrl(hardwareId))
     socket.binaryType = 'arraybuffer'
     socketRef.current = socket
 
+    const writeFailure = () => {
+      if (failureWrittenRef.current) {
+        return
+      }
+      failureWrittenRef.current = true
+      terminal.write(TERMINAL_STATUS.failed)
+    }
+
     socket.onopen = () => {
       setStatus('connected')
+      terminal.write(TERMINAL_STATUS.connected)
       fitAddonRef.current?.fit()
       terminal.focus()
     }
@@ -124,13 +144,13 @@ export function DeviceTerminalDialog({ open, onOpenChange, hardwareId }: DeviceT
 
     socket.onerror = () => {
       setStatus('error')
-      terminal.writeln(`\r\n${t('deviceDetail.terminal.error')}`)
+      writeFailure()
     }
 
     socket.onclose = () => {
       socketRef.current = null
-      setStatus((current) => (current === 'error' ? current : 'closed'))
-      terminal.writeln(`\r\n${t('deviceDetail.terminal.disconnected')}`)
+      writeFailure()
+      setStatus((current) => (current === 'connected' ? 'closed' : current === 'connecting' ? 'error' : current))
     }
   }
 
