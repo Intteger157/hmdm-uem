@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { API_BASE } from '@/shared/api/config'
+import { WINDOWS_API_BASE } from '@/shared/api/config'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import type {
   AssignDeviceAppPayload,
@@ -16,7 +16,7 @@ import type {
 import type { UploadProgressState } from '@/features/windows/applications/utils/installer-upload'
 
 const windowsApi = axios.create({
-  baseURL: `${API_BASE}/windows`,
+  baseURL: WINDOWS_API_BASE,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -91,7 +91,7 @@ export async function uploadSoftwareApp(
 
   const jwt = useAuthStore.getState().jwt
   const response = await axios.post<UploadApplicationResponse>(
-    `${API_BASE}/windows/applications/upload`,
+    `${WINDOWS_API_BASE}/applications/upload`,
     formData,
     {
       headers: {

@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { API_BASE } from '@/shared/api/config'
+import { WINDOWS_API_BASE } from '@/shared/api/config'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { isMockApiEnabled } from '@/shared/api/mock-utils'
 import { mockSearchDevices } from '@/shared/api/mocks/devices'
@@ -69,7 +69,7 @@ export interface WindowsDeviceListDto {
 }
 
 const windowsApi = axios.create({
-  baseURL: `${API_BASE}/windows`,
+  baseURL: WINDOWS_API_BASE,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -436,7 +436,7 @@ export async function uploadWindowsAutopilotAgent(file: File): Promise<WindowsAu
 
   const jwt = useAuthStore.getState().jwt
   const response = await axios.post<WindowsAutopilotAgentStatus>(
-    `${API_BASE}/windows/autopilot-agent/upload`,
+    `${WINDOWS_API_BASE}/autopilot-agent/upload`,
     formData,
     {
       headers: {

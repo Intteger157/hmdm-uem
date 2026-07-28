@@ -199,8 +199,8 @@ export function DeviceTerminalDialog({ open, onOpenChange, hardwareId }: DeviceT
       writeFailure()
     }
 
-    socket.onclose = () => {
-      console.log('[Terminal] WebSocket closed')
+    socket.onclose = (event) => {
+      console.log('[Terminal] WebSocket closed', { code: event.code, reason: event.reason, wasClean: event.wasClean })
       socketRef.current = null
       writeFailure()
       setStatus((current) => (current === 'connected' ? 'closed' : current === 'connecting' ? 'error' : current))

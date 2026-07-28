@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { API_BASE } from '@/shared/api/config'
+import { WINDOWS_API_BASE } from '@/shared/api/config'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import type {
   ProfileFileDeploymentsResponse,
@@ -11,7 +11,7 @@ import type { UploadProgressState } from '@/features/windows/applications/utils/
 
 export async function fetchStoredFiles(): Promise<StoredFile[]> {
   const jwt = useAuthStore.getState().jwt
-  const response = await axios.get<StoredFileListResponse>(`${API_BASE}/windows/files`, {
+  const response = await axios.get<StoredFileListResponse>(`${WINDOWS_API_BASE}/files`, {
     headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},
   })
   return response.data.items
@@ -29,7 +29,7 @@ export async function uploadStoredFile(
   formData.append('file', file)
 
   const jwt = useAuthStore.getState().jwt
-  const response = await axios.post<StoredFile>(`${API_BASE}/windows/files/upload`, formData, {
+  const response = await axios.post<StoredFile>(`${WINDOWS_API_BASE}/files/upload`, formData, {
     headers: {
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
@@ -53,7 +53,7 @@ export interface DeleteStoredFileOptions {
 
 export async function deleteStoredFile(id: number, options?: DeleteStoredFileOptions): Promise<void> {
   const jwt = useAuthStore.getState().jwt
-  await axios.delete(`${API_BASE}/windows/files/${id}`, {
+  await axios.delete(`${WINDOWS_API_BASE}/files/${id}`, {
     headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},
     params: options?.force ? { force: 'true' } : undefined,
   })
@@ -62,7 +62,7 @@ export async function deleteStoredFile(id: number, options?: DeleteStoredFileOpt
 export async function fetchProfileFileDeployments(profileId: number): Promise<ProfileFileDeploymentRule[]> {
   const jwt = useAuthStore.getState().jwt
   const response = await axios.get<ProfileFileDeploymentsResponse>(
-    `${API_BASE}/windows/configurations/${profileId}/file-deployments`,
+    `${WINDOWS_API_BASE}/configurations/${profileId}/file-deployments`,
     {
       headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},
     },
@@ -76,7 +76,7 @@ export async function assignProfileFileDeployments(
 ): Promise<ProfileFileDeploymentRule[]> {
   const jwt = useAuthStore.getState().jwt
   const response = await axios.post<ProfileFileDeploymentsResponse>(
-    `${API_BASE}/windows/configurations/${profileId}/file-deployments`,
+    `${WINDOWS_API_BASE}/configurations/${profileId}/file-deployments`,
     { items },
     {
       headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},

@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { API_BASE } from '@/shared/api/config'
+import { WINDOWS_API_BASE } from '@/shared/api/config'
 import type {
   UpsertWindowsConfigProfilePayload,
   WindowsConfigProfile,
@@ -14,7 +14,7 @@ import type {
 } from '@/features/windows/configurations/types/config-profile'
 
 const windowsApi = axios.create({
-  baseURL: `${API_BASE}/windows`,
+  baseURL: WINDOWS_API_BASE,
   headers: {
     'Content-Type': 'application/json',
   },
