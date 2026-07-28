@@ -10,26 +10,40 @@ import (
 
 const bitLockerScriptTimeout = 10 * time.Minute
 
-const enableBitLockerScript = `
-$ErrorActionPreference = 'Continue'
-$WarningPreference = 'SilentlyContinue'
-Import-Module BitLocker -ErrorAction SilentlyContinue
-$vol = Get-BitLockerVolume -MountPoint 'C:' -ErrorAction Stop
-$status = $vol.VolumeStatus.ToString()
-if ($status -ne 'FullyEncrypted' -and $status -ne 'EncryptionInProgress') {
-  Add-BitLockerKeyProtector -MountPoint 'C:' -RecoveryPasswordProtector
-  $vol = Get-BitLockerVolume -MountPoint 'C:' -ErrorAction Stop
-  $protector = $vol.KeyProtector | Where-Object { $_.KeyProtectorType -eq 'RecoveryPassword' } | Select-Object -First 1
-  if ($null -eq $protector) { throw 'recovery password protector not found' }
-  Write-Output $protector.RecoveryPassword
-  $id = $protector.KeyProtectorId
-  try { manage-bde -protectors -adbackup C: -id $id 2>&1 | Out-String | Write-Output } catch { Write-Output $_.Exception.Message }
-  Enable-BitLocker -MountPoint 'C:' -SkipHardwareTest 2>&1 | Out-String | Write-Output
-} else {
-  $protector = $vol.KeyProtector | Where-Object { $_.KeyProtectorType -eq 'RecoveryPassword' } | Select-Object -First 1
-  if ($null -ne $protector) { Write-Output $protector.RecoveryPassword }
+const applyBitLockerMDMPolicyScript = `try { 
+    $namespace = 'ROOT\CIMv2\mdm\dmmap'
+    $className = 'MDM_Policy_Config01_BitLocker02'
+    
+    $instance = Get-CimInstance -Namespace $namespace -ClassName $className -ErrorAction Stop
+    
+    $instance.RequireDeviceEncryption = 1
+    $instance.AllowWarningForOtherDiskEncryption = 0
+    $instance.AllowStandardUserEncryption = 1
+
+    Set-CimInstance -InputObject $instance -ErrorAction Stop 
+    
+    Write-Output 'BitLocker MDM policy successfully applied via WMI Bridge' 
+} catch { throw $_ }`
+
+const bitLockerMDMPolicyAppliedOutput = "BitLocker MDM policy successfully applied via WMI Bridge"
+
+// ApplyBitLockerMDMPolicy enables BitLocker through the MDM Bridge policy singleton.
+func ApplyBitLockerMDMPolicy() Result {
+	output, err := runPowerShellScript(applyBitLockerMDMPolicyScript, bitLockerScriptTimeout)
+	if err != nil {
+		message := strings.TrimSpace(output)
+		if message == "" {
+			message = err.Error()
+		}
+		return Result{Name: "BitLocker", Success: false, Message: message}
+	}
+
+	message := strings.TrimSpace(output)
+	if message == "" {
+		message = bitLockerMDMPolicyAppliedOutput
+	}
+	return Result{Name: "BitLocker", Success: true, Message: message}
 }
-`
 
 func enforceRequireBitLocker(required bool) Result {
 	if !required {
@@ -42,8 +56,7 @@ func enforceRequireBitLocker(required bool) Result {
 		return Result{Name: "BitLocker", Success: true, Message: "already encrypted on C:"}
 	}
 
-	output, err := runPowerShellScript(enableBitLockerScript, bitLockerScriptTimeout)
-	return buildBitLockerEnableResult(evaluateBitLockerEnableOutput(output, err))
+	return ApplyBitLockerMDMPolicy()
 }
 
 func readBitLockerEncrypted() (bool, error) {

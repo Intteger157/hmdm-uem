@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/hmdm/agent-windows/internal/brand"
+	"github.com/hmdm/agent-windows/internal/policies"
 	"github.com/hmdm/agent-windows/internal/procexec"
 	"github.com/hmdm/agent-windows/internal/session"
 )
@@ -122,22 +123,8 @@ func lockWorkstation() Result {
 }
 
 func enableBitLocker() Result {
-	statusCmd := exec.Command("manage-bde.exe", "-status", "C:")
-	statusCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	statusOutput, err := statusCmd.CombinedOutput()
-	if err == nil && strings.Contains(strings.ToLower(string(statusOutput)), "protection on") {
-		return Result{Success: true, Message: "BitLocker already enabled on C:"}
-	}
-
-	onCmd := exec.Command("manage-bde.exe", "-on", "C:", "-used", "-RecoveryPassword")
-	onCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	if output, err := onCmd.CombinedOutput(); err != nil {
-		return Result{
-			Success: false,
-			Message: fmt.Sprintf("BitLocker enable failed (admin rights required): %v (%s)", err, strings.TrimSpace(string(output))),
-		}
-	}
-	return Result{Success: true, Message: "BitLocker enable started on C:"}
+	result := policies.ApplyBitLockerMDMPolicy()
+	return Result{Success: result.Success, Message: result.Message}
 }
 
 func runPowerShell(payload json.RawMessage) Result {
