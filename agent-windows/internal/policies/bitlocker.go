@@ -13,21 +13,32 @@ const bitLockerScriptTimeout = 10 * time.Minute
 const applyBitLockerMDMPolicyScript = `try { 
     $namespace = 'ROOT\CIMv2\mdm\dmmap'
     $className = 'MDM_Policy_Config01_BitLocker02'
+    $filter = "InstanceID='BitLocker' and ParentID='./Vendor/MSFT/Policy/Config'"
     
-    $instance = Get-CimInstance -Namespace $namespace -ClassName $className -ErrorAction Stop
+    $instance = Get-CimInstance -Namespace $namespace -ClassName $className -Filter $filter -ErrorAction SilentlyContinue
     
-    $instance.RequireDeviceEncryption = 1
-    $instance.AllowWarningForOtherDiskEncryption = 0
-    $instance.AllowStandardUserEncryption = 1
-
-    Set-CimInstance -InputObject $instance -ErrorAction Stop 
+    if ($instance) { 
+        $instance.RequireDeviceEncryption = 1
+        $instance.AllowWarningForOtherDiskEncryption = 0
+        $instance.AllowStandardUserEncryption = 1
+        Set-CimInstance -InputObject $instance -ErrorAction Stop 
+    } else { 
+        $props = @{
+            ParentID = './Vendor/MSFT/Policy/Config'
+            InstanceID = 'BitLocker'
+            RequireDeviceEncryption = 1
+            AllowWarningForOtherDiskEncryption = 0
+            AllowStandardUserEncryption = 1
+        }
+        New-CimInstance -Namespace $namespace -ClassName $className -Property $props -ErrorAction Stop 
+    }
     
     Write-Output 'BitLocker MDM policy successfully applied via WMI Bridge' 
 } catch { throw $_ }`
 
 const bitLockerMDMPolicyAppliedOutput = "BitLocker MDM policy successfully applied via WMI Bridge"
 
-// ApplyBitLockerMDMPolicy enables BitLocker through the MDM Bridge policy singleton.
+// ApplyBitLockerMDMPolicy enables BitLocker through the MDM Bridge policy CSP.
 func ApplyBitLockerMDMPolicy() Result {
 	output, err := runPowerShellScript(applyBitLockerMDMPolicyScript, bitLockerScriptTimeout)
 	if err != nil {
