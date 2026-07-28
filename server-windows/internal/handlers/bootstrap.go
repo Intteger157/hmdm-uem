@@ -105,6 +105,10 @@ if ([string]::IsNullOrWhiteSpace($EnrollmentToken)) {
 Write-Host 'Singularity MDM: preparing install directory...'
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 
+Write-Host 'Singularity MDM: stopping existing processes to release file locks...'
+if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue | Where-Object {$_.Status -ne 'Stopped'}) { Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue }
+Stop-Process -Name "singularity-agent" -Force -ErrorAction SilentlyContinue
+
 Write-Host 'Singularity MDM: downloading agent...'
 Invoke-WebRequest -Uri $AgentDownloadUrl -OutFile $AgentExe -UseBasicParsing
 
@@ -165,13 +169,12 @@ func buildProvisioningBlock(provisioning *models.WindowsEnrollmentProvisioningSe
 
 	adminUser := escapePowerShellDoubleQuoted(provisioning.AdminUsername)
 	adminPass := escapePowerShellDoubleQuoted(provisioning.AdminPassword)
-	wmicUser := escapeWMIStringLiteral(provisioning.AdminUsername)
 
 	return fmt.Sprintf(`
 Write-Host 'Singularity MDM: creating local administrator account...'
 net user "%s" "%s" /add
 net localgroup Administrators "%s" /add
-wmic USERACCOUNT WHERE Name='%s' SET PasswordExpires=FALSE
+Set-LocalUser -Name "%s" -PasswordNeverExpires $true
 
 Write-Host 'Singularity MDM: skipping Windows OOBE setup screens...'
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE" /v SkipMachineOOBE /t REG_DWORD /d 1 /f
@@ -179,7 +182,7 @@ reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE" /v SkipUserOOBE /t
 
 Write-Host 'Singularity MDM: rebooting in 5 seconds to complete provisioning...'
 shutdown /r /t 5
-`, adminUser, adminPass, adminUser, wmicUser)
+`, adminUser, adminPass, adminUser, adminUser)
 }
 
 func escapePowerShellDoubleQuoted(value string) string {
@@ -190,9 +193,5 @@ func escapePowerShellDoubleQuoted(value string) string {
 }
 
 func escapePowerShellSingleQuoted(value string) string {
-	return strings.ReplaceAll(value, "'", "''")
-}
-
-func escapeWMIStringLiteral(value string) string {
 	return strings.ReplaceAll(value, "'", "''")
 }

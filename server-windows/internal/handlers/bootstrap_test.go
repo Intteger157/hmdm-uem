@@ -30,6 +30,8 @@ func TestBuildBootstrapScriptTokenMode(t *testing.T) {
 		"New-Service",
 		"Start-Service",
 		"state.json",
+		"stopping existing processes to release file locks",
+		"Stop-Process -Name \"singularity-agent\"",
 	} {
 		if !strings.Contains(script, snippet) {
 			t.Fatalf("expected script to contain %q, got:\n%s", snippet, script)
@@ -77,7 +79,7 @@ func TestBuildBootstrapScriptWithProvisioning(t *testing.T) {
 	for _, snippet := range []string{
 		`net user "Admin" "P@ssw0rd!" /add`,
 		`net localgroup Administrators "Admin" /add`,
-		`wmic USERACCOUNT WHERE Name='Admin' SET PasswordExpires=FALSE`,
+		`Set-LocalUser -Name "Admin" -PasswordNeverExpires $true`,
 		"SkipMachineOOBE",
 		"SkipUserOOBE",
 		"shutdown /r /t 5",
@@ -85,6 +87,9 @@ func TestBuildBootstrapScriptWithProvisioning(t *testing.T) {
 		if !strings.Contains(script, snippet) {
 			t.Fatalf("expected script to contain %q, got:\n%s", snippet, script)
 		}
+	}
+	if strings.Contains(script, "wmic USERACCOUNT") {
+		t.Fatal("expected provisioning block to use Set-LocalUser instead of wmic")
 	}
 }
 
