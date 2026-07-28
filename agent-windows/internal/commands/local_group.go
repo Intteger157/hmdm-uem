@@ -114,7 +114,7 @@ func runLocalGroupMember(action, groupName, userName string) (string, error) {
 func buildLocalGroupMDMScript(action, userName string) string {
 	rawXML := buildLocalGroupRawXML(action, userName)
 	return fmt.Sprintf(
-		"try { $rawXml = '%s'; $escapedXml = [System.Security.SecurityElement]::Escape($rawXml); $namespace = 'ROOT\\CIMv2\\mdm\\dmmap'; $className = 'MDM_Policy_Config01_LocalUsersAndGroups02'; $filter = \"InstanceID='Configure' and ParentID='./Vendor/MSFT/Policy/Config/LocalUsersAndGroups'\"; $instance = Get-CimInstance -Namespace $namespace -ClassName $className -Filter $filter -ErrorAction SilentlyContinue; if ($instance) { $instance.Configure = $escapedXml; Set-CimInstance -InputObject $instance -ErrorAction Stop } else { New-CimInstance -Namespace $namespace -ClassName $className -Property @{ParentID='./Vendor/MSFT/Policy/Config/LocalUsersAndGroups'; InstanceID='Configure'; Configure=$escapedXml} -ErrorAction Stop }; Write-Output '%s' } catch { throw $_ }",
+		"try { $rawXml = '%s'; $escapedXml = [System.Security.SecurityElement]::Escape($rawXml); $namespace = 'ROOT\\CIMv2\\mdm\\dmmap'; $className = 'MDM_Policy_Config01_LocalUsersAndGroups02'; $instance = Get-CimInstance -Namespace $namespace -ClassName $className -ErrorAction Stop; $instance.Configure = $escapedXml; Set-CimInstance -InputObject $instance -ErrorAction Stop; Write-Output '%s' } catch { throw $_ }",
 		escapePowerShellSingleQuoted(rawXML),
 		localGroupMDMAppliedOutput,
 	)

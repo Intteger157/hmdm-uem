@@ -64,17 +64,14 @@ func TestLocalGroupMemberCommandUsesMDMWMI(t *testing.T) {
 	if !strings.Contains(commandScript, "MDM_Policy_Config01_LocalUsersAndGroups02") {
 		t.Fatalf("script = %q, expected LocalUsersAndGroups MDM class", commandScript)
 	}
-	if !strings.Contains(commandScript, "InstanceID='Configure' and ParentID='./Vendor/MSFT/Policy/Config/LocalUsersAndGroups'") {
-		t.Fatalf("script = %q, expected Configure instance under LocalUsersAndGroups policy path", commandScript)
+	if !strings.Contains(commandScript, "Get-CimInstance -Namespace $namespace -ClassName $className -ErrorAction Stop") {
+		t.Fatalf("script = %q, expected singleton Get-CimInstance without filter", commandScript)
 	}
-	if !strings.Contains(commandScript, "ParentID='./Vendor/MSFT/Policy/Config/LocalUsersAndGroups'; InstanceID='Configure'") {
-		t.Fatalf("script = %q, expected corrected New-CimInstance hierarchy", commandScript)
+	if strings.Contains(commandScript, "-Filter") || strings.Contains(commandScript, "New-CimInstance") {
+		t.Fatalf("script = %q, should not use WMI filters or New-CimInstance", commandScript)
 	}
-	if !strings.Contains(commandScript, "Get-CimInstance -Namespace $namespace -ClassName $className -Filter $filter") {
-		t.Fatalf("script = %q, expected Get-CimInstance with MDM filter", commandScript)
-	}
-	if !strings.Contains(commandScript, "Set-CimInstance -InputObject $instance") || !strings.Contains(commandScript, "New-CimInstance -Namespace $namespace") {
-		t.Fatalf("script = %q, expected Set-CimInstance or New-CimInstance", commandScript)
+	if !strings.Contains(commandScript, "Set-CimInstance -InputObject $instance") {
+		t.Fatalf("script = %q, expected Set-CimInstance on existing policy singleton", commandScript)
 	}
 	if strings.Contains(commandScript, "Get-LocalGroupMember") || strings.Contains(commandScript, "net localgroup") || strings.Contains(commandScript, "Add-LocalGroupMember") {
 		t.Fatalf("script = %q, should not use legacy group management commands", commandScript)
