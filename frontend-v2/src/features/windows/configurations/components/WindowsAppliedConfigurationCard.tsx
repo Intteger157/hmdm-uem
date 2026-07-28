@@ -1,18 +1,53 @@
 import { useTranslation } from 'react-i18next'
 import { Shield } from 'lucide-react'
 import { useWindowsDeviceEffectiveConfigQuery } from '@/features/windows/configurations/hooks/use-windows-config-profiles'
+import type { WindowsConfigProfilePayload } from '@/features/windows/configurations/types/config-profile'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import {
+  OVERVIEW_CARD_CONTENT_CLASS,
+  OVERVIEW_CARD_HEADER_CLASS,
+  OVERVIEW_FLAT_CARD_CLASS,
+} from '@/features/devices/components/overview-card-styles'
+import type { TFunction } from 'i18next'
 
 interface WindowsAppliedConfigurationCardProps {
   hardwareId: string
   className?: string
 }
 
-const CARD_HEADER_CLASS = 'flex flex-row items-center justify-between space-y-0 px-3 pb-1 pt-2.5'
-const CARD_CONTENT_CLASS = 'px-3 pb-2.5'
+const CONFIGURATION_TAG_CLASS =
+  'rounded border border-gray-700 bg-gray-800 px-2 py-0.5 text-xs font-medium text-gray-200'
+
+function buildConfigurationTags(payload: WindowsConfigProfilePayload, t: TFunction): string[] {
+  return [
+    t('deviceDetail.appliedConfiguration.tagDefender', {
+      state: payload.defenderEnabled
+        ? t('deviceDetail.appliedConfiguration.enabled')
+        : t('deviceDetail.appliedConfiguration.disabled'),
+    }),
+    t('deviceDetail.appliedConfiguration.tagUsbBlock', {
+      state: payload.blockUsbStorage
+        ? t('deviceDetail.appliedConfiguration.blocked')
+        : t('deviceDetail.appliedConfiguration.allowed'),
+    }),
+    t('deviceDetail.appliedConfiguration.tagUsbAccess', {
+      state: payload.usbReadOnly
+        ? t('deviceDetail.appliedConfiguration.readOnly')
+        : t('deviceDetail.appliedConfiguration.readWrite'),
+    }),
+    t('deviceDetail.appliedConfiguration.tagBitLocker', {
+      state: payload.requireBitLocker
+        ? t('deviceDetail.appliedConfiguration.enabled')
+        : t('deviceDetail.appliedConfiguration.disabled'),
+    }),
+    t('deviceDetail.appliedConfiguration.tagScreenLock', {
+      minutes: payload.screenLockTimeout ?? 0,
+    }),
+  ]
+}
 
 export function WindowsAppliedConfigurationCard({
   hardwareId,
@@ -23,12 +58,12 @@ export function WindowsAppliedConfigurationCard({
 
   if (isLoading) {
     return (
-      <Card className={cn('h-full', className)}>
-        <CardHeader className={CARD_HEADER_CLASS}>
+      <Card className={cn('h-full', OVERVIEW_FLAT_CARD_CLASS, className)}>
+        <CardHeader className={OVERVIEW_CARD_HEADER_CLASS}>
           <Skeleton className="h-3 w-32" />
           <Skeleton className="size-4 rounded-full" />
         </CardHeader>
-        <CardContent className={CARD_CONTENT_CLASS}>
+        <CardContent className={OVERVIEW_CARD_CONTENT_CLASS}>
           <Skeleton className="h-4 w-full" />
         </CardContent>
       </Card>
@@ -37,14 +72,14 @@ export function WindowsAppliedConfigurationCard({
 
   if (isError) {
     return (
-      <Card className={cn('h-full', className)}>
-        <CardHeader className={CARD_HEADER_CLASS}>
+      <Card className={cn('h-full', OVERVIEW_FLAT_CARD_CLASS, className)}>
+        <CardHeader className={OVERVIEW_CARD_HEADER_CLASS}>
           <CardTitle className="text-xs font-medium text-muted-foreground">
             {t('deviceDetail.appliedConfiguration.title')}
           </CardTitle>
           <Shield className="size-4 text-muted-foreground/70" />
         </CardHeader>
-        <CardContent className={cn(CARD_CONTENT_CLASS, 'text-xs text-destructive')}>
+        <CardContent className={cn(OVERVIEW_CARD_CONTENT_CLASS, 'text-xs text-destructive')}>
           {t('deviceDetail.appliedConfiguration.loadFailed')}
         </CardContent>
       </Card>
@@ -52,16 +87,17 @@ export function WindowsAppliedConfigurationCard({
   }
 
   const hasProfile = Boolean(data?.profileName)
+  const configurationTags = data?.payload ? buildConfigurationTags(data.payload, t) : []
 
   return (
-    <Card className={cn('h-full', className)}>
-      <CardHeader className={CARD_HEADER_CLASS}>
+    <Card className={cn('h-full', OVERVIEW_FLAT_CARD_CLASS, className)}>
+      <CardHeader className={OVERVIEW_CARD_HEADER_CLASS}>
         <CardTitle className="text-xs font-medium text-muted-foreground">
           {t('deviceDetail.appliedConfiguration.title')}
         </CardTitle>
         <Shield className="size-4 text-muted-foreground/70" />
       </CardHeader>
-      <CardContent className={cn(CARD_CONTENT_CLASS, 'space-y-1.5')}>
+      <CardContent className={cn(OVERVIEW_CARD_CONTENT_CLASS, 'space-y-2')}>
         {hasProfile ? (
           <>
             <div className="flex flex-wrap items-center gap-1.5">
@@ -74,23 +110,13 @@ export function WindowsAppliedConfigurationCard({
                 </Badge>
               ) : null}
             </div>
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              {t('deviceDetail.appliedConfiguration.summary', {
-                defender: data?.payload.defenderEnabled
-                  ? t('deviceDetail.appliedConfiguration.enabled')
-                  : t('deviceDetail.appliedConfiguration.disabled'),
-                usb: data?.payload.blockUsbStorage
-                  ? t('deviceDetail.appliedConfiguration.blocked')
-                  : t('deviceDetail.appliedConfiguration.allowed'),
-                usbReadOnly: data?.payload.usbReadOnly
-                  ? t('deviceDetail.appliedConfiguration.readOnly')
-                  : t('deviceDetail.appliedConfiguration.readWrite'),
-                bitlocker: data?.payload.requireBitLocker
-                  ? t('deviceDetail.appliedConfiguration.enabled')
-                  : t('deviceDetail.appliedConfiguration.disabled'),
-                lockTimeout: data?.payload.screenLockTimeout ?? 0,
-              })}
-            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {configurationTags.map((tag) => (
+                <span key={tag} className={CONFIGURATION_TAG_CLASS}>
+                  {tag}
+                </span>
+              ))}
+            </div>
           </>
         ) : (
           <p className="text-xs text-muted-foreground">{t('deviceDetail.appliedConfiguration.none')}</p>

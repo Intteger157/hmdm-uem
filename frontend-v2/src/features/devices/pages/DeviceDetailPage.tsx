@@ -32,6 +32,11 @@ import type { LucideIcon } from 'lucide-react'
 import { DeviceActionsPanel } from '@/features/devices/components/DeviceActionsPanel'
 import { DeviceDetailCommandToastProvider } from '@/features/devices/context/device-detail-command-toast-context'
 import { WindowsAppDeploymentsCard } from '@/features/devices/components/WindowsAppDeploymentsCard'
+import {
+  OVERVIEW_CARD_CONTENT_CLASS,
+  OVERVIEW_CARD_HEADER_CLASS,
+  OVERVIEW_FLAT_CARD_CLASS,
+} from '@/features/devices/components/overview-card-styles'
 import { WindowsDeviceBitLockerTab } from '@/features/devices/components/WindowsDeviceBitLockerTab'
 import { WindowsDeviceInstalledSoftwareTab } from '@/features/devices/components/WindowsDeviceInstalledSoftwareTab'
 import { WindowsDeviceLocalUsersTab } from '@/features/devices/components/WindowsDeviceLocalUsersTab'
@@ -63,7 +68,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Progress, ProgressLabel, ProgressValue } from '@/components/ui/progress'
+import { Progress, ProgressIndicator, ProgressLabel, ProgressTrack, ProgressValue } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -86,8 +91,8 @@ const STATUS_BADGE: Record<string, 'default' | 'secondary' | 'destructive' | 'ou
 const NA = 'N/A'
 const METRIC_ICON_CLASS = 'size-6'
 const TILE_HEADER_ICON_CLASS = 'size-4 text-muted-foreground/70'
-const METRIC_CARD_HEADER_CLASS = 'flex flex-row items-center justify-between space-y-0 px-3 pb-1 pt-2.5'
-const METRIC_CARD_CONTENT_CLASS = 'px-3 pb-2.5'
+const METRIC_CARD_HEADER_CLASS = OVERVIEW_CARD_HEADER_CLASS
+const METRIC_CARD_CONTENT_CLASS = OVERVIEW_CARD_CONTENT_CLASS
 const METRIC_VALUE_CLASS = 'text-base font-bold leading-tight'
 const INTERACTIVE_TILE_CLASS = 'cursor-pointer hover:bg-accent/50 transition-colors'
 const TAB_CONTENT_CLASS = 'mt-0 w-full focus-visible:outline-none'
@@ -467,7 +472,7 @@ function CpuMetricCard({
   return (
     <>
       <Card
-        className={cn('h-full', INTERACTIVE_TILE_CLASS, className)}
+        className={cn('h-full', OVERVIEW_FLAT_CARD_CLASS, INTERACTIVE_TILE_CLASS, className)}
         onClick={() => setOpen(true)}
         role="button"
         tabIndex={0}
@@ -574,7 +579,7 @@ function BatteryMetricCard({
   }
 
   return (
-    <Card className={cn('h-full', className)}>
+    <Card className={cn('h-full', OVERVIEW_FLAT_CARD_CLASS, className)}>
       <CardHeader className={METRIC_CARD_HEADER_CLASS}>
         <CardTitle className="text-xs font-medium text-muted-foreground">
           {t('deviceDetail.metrics.battery')}
@@ -628,7 +633,7 @@ function AntivirusMetricCard({
   return (
     <>
       <Card
-        className={cn('h-full', INTERACTIVE_TILE_CLASS, className)}
+        className={cn('h-full', OVERVIEW_FLAT_CARD_CLASS, INTERACTIVE_TILE_CLASS, className)}
         onClick={() => setOpen(true)}
         role="button"
         tabIndex={0}
@@ -729,7 +734,7 @@ function NetworkMetricCard({
   const publicIp = device.publicIp?.trim() || na
 
   return (
-    <Card className={cn('h-full', className)}>
+    <Card className={cn('h-full', OVERVIEW_FLAT_CARD_CLASS, className)}>
       <CardHeader className={METRIC_CARD_HEADER_CLASS}>
         <CardTitle className="text-xs font-medium text-muted-foreground">
           {t('deviceDetail.metrics.network')}
@@ -812,7 +817,7 @@ function WindowsUpdateMetricCard({
   return (
     <>
       <Card
-        className={cn('h-full', INTERACTIVE_TILE_CLASS, className)}
+        className={cn('h-full', OVERVIEW_FLAT_CARD_CLASS, INTERACTIVE_TILE_CLASS, className)}
         onClick={() => setOpen(true)}
         role="button"
         tabIndex={0}
@@ -1045,7 +1050,7 @@ function WindowsDiskMetrics({
         : undefined
 
     return (
-      <Card className={cn('h-full md:col-span-2', className)}>
+      <Card className={cn('h-full md:col-span-2', OVERVIEW_FLAT_CARD_CLASS, className)}>
         <CardHeader className={METRIC_CARD_HEADER_CLASS}>
           <CardTitle className="text-xs font-medium text-muted-foreground">
             {t('deviceDetail.metrics.disk')}
@@ -1054,11 +1059,14 @@ function WindowsDiskMetrics({
         </CardHeader>
         <CardContent className={METRIC_CARD_CONTENT_CLASS}>
           {diskPercent != null ? (
-            <Progress value={diskPercent}>
+            <Progress value={diskPercent} className="gap-1">
               <ProgressLabel className="text-xs">
                 {device.diskUsedGb} / {device.diskTotalGb} GB
               </ProgressLabel>
-              <ProgressValue />
+              <ProgressTrack className="h-1.5">
+                <ProgressIndicator />
+              </ProgressTrack>
+              <ProgressValue className="text-xs" />
             </Progress>
           ) : (
             <span className={METRIC_VALUE_CLASS}>{na}</span>
@@ -1069,39 +1077,43 @@ function WindowsDiskMetrics({
   }
 
   return (
-    <Card className={cn('h-full', className)}>
+    <Card className={cn('h-full', OVERVIEW_FLAT_CARD_CLASS, className)}>
       <CardHeader className={METRIC_CARD_HEADER_CLASS}>
         <CardTitle className="text-xs font-medium text-muted-foreground">
           {t('deviceDetail.metrics.disks')}
         </CardTitle>
         <HardDrive className={TILE_HEADER_ICON_CLASS} />
       </CardHeader>
-      <CardContent className={cn('space-y-2', METRIC_CARD_CONTENT_CLASS)}>
+      <CardContent className={cn('space-y-2.5', METRIC_CARD_CONTENT_CLASS)}>
         {disks.map((disk) => {
           const percent =
             disk.totalGb > 0 ? Math.round((disk.usedGb / disk.totalGb) * 100) : undefined
 
           return (
-            <div key={disk.mountPoint} className="space-y-1.5">
-              <div className="flex items-center gap-1.5 text-xs">
-                <span className="inline-flex items-center gap-1 font-medium">
-                  {disk.mountPoint}
+            <div key={disk.mountPoint} className="space-y-1">
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <span className="inline-flex min-w-0 items-center gap-1.5 font-medium">
                   <DriveEncryptionIcon status={disk.encryptStatus} t={t} />
+                  <span>{disk.mountPoint}</span>
+                  {disk.label ? (
+                    <span className="truncate font-normal text-muted-foreground">· {disk.label}</span>
+                  ) : null}
                 </span>
-                {disk.label ? (
-                  <span className="truncate text-muted-foreground">· {disk.label}</span>
-                ) : null}
+                {percent != null ? (
+                  <span className="shrink-0 tabular-nums text-muted-foreground">
+                    {disk.usedGb} / {disk.totalGb} GB
+                  </span>
+                ) : (
+                  <span className="shrink-0">{na}</span>
+                )}
               </div>
               {percent != null ? (
-                <Progress value={percent}>
-                  <ProgressLabel className="text-xs">
-                    {disk.usedGb} / {disk.totalGb} GB
-                  </ProgressLabel>
-                  <ProgressValue />
+                <Progress value={percent} className="gap-0">
+                  <ProgressTrack className="h-1.5">
+                    <ProgressIndicator />
+                  </ProgressTrack>
                 </Progress>
-              ) : (
-                <span className="text-sm">{na}</span>
-              )}
+              ) : null}
             </div>
           )
         })}
@@ -1127,7 +1139,7 @@ function DeviceDetailSkeleton() {
         </TabsList>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
           {Array.from({ length: 8 }).map((_, i) => (
-            <Card key={i} className="h-full">
+            <Card key={i} className={cn('h-full', OVERVIEW_FLAT_CARD_CLASS)}>
               <CardHeader className={METRIC_CARD_HEADER_CLASS}>
                 <Skeleton className="h-3 w-16" />
                 <Skeleton className="h-3.5 w-3.5 rounded-full" />
@@ -1161,7 +1173,7 @@ function MetricCard({
   valueClassName?: string
 }) {
   return (
-    <Card className={cn('h-full', className)}>
+    <Card className={cn('h-full', OVERVIEW_FLAT_CARD_CLASS, className)}>
       <CardHeader className={METRIC_CARD_HEADER_CLASS}>
         <CardTitle className="text-xs font-medium text-muted-foreground">{label}</CardTitle>
         {HeaderIcon ? <HeaderIcon className={TILE_HEADER_ICON_CLASS} /> : null}

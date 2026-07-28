@@ -1,25 +1,21 @@
-import { Loader2, Package, RefreshCw } from 'lucide-react'
-import { useState } from 'react'
+import { Package } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import {
-  useDeviceAppStatusesQuery,
-  useRetryDeviceAppMutation,
-} from '@/features/windows/applications/hooks/use-windows-software-apps'
+import { useDeviceAppStatusesQuery } from '@/features/windows/applications/hooks/use-windows-software-apps'
 import type { AppDeploymentStatus } from '@/features/windows/applications/types/software-app'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
-import { toast } from 'sonner'
+import {
+  OVERVIEW_CARD_CONTENT_CLASS,
+  OVERVIEW_CARD_HEADER_CLASS,
+  OVERVIEW_FLAT_CARD_CLASS,
+} from '@/features/devices/components/overview-card-styles'
 
 interface WindowsAppDeploymentsCardProps {
   hardwareId: string
   className?: string
 }
-
-const CARD_HEADER_CLASS = 'flex flex-row items-center justify-between space-y-0 px-3 pb-1 pt-2.5'
-const CARD_CONTENT_CLASS = 'px-3 pb-2.5'
 
 function statusBadgeVariant(status: AppDeploymentStatus) {
   switch (status) {
@@ -54,31 +50,17 @@ function statusBadgeClassName(status: AppDeploymentStatus) {
 export function WindowsAppDeploymentsCard({ hardwareId, className }: WindowsAppDeploymentsCardProps) {
   const { t } = useTranslation()
   const { data, isLoading, isError } = useDeviceAppStatusesQuery(hardwareId)
-  const retryMutation = useRetryDeviceAppMutation()
-  const [retryingAppId, setRetryingAppId] = useState<number | null>(null)
   const items = data?.items ?? []
   const successCount = items.filter((item) => item.status === 'Success').length
 
-  const handleRetry = async (appId: number, appName: string) => {
-    setRetryingAppId(appId)
-    try {
-      await retryMutation.mutateAsync({ hardwareId, appId })
-      toast.success(t('deviceDetail.appDeployments.retrySuccess', { appName }))
-    } catch {
-      toast.error(t('deviceDetail.appDeployments.retryError', { appName }))
-    } finally {
-      setRetryingAppId(null)
-    }
-  }
-
   if (isLoading) {
     return (
-      <Card className={cn('h-full', className)}>
-        <CardHeader className={CARD_HEADER_CLASS}>
+      <Card className={cn('h-full', OVERVIEW_FLAT_CARD_CLASS, className)}>
+        <CardHeader className={OVERVIEW_CARD_HEADER_CLASS}>
           <Skeleton className="h-3 w-28" />
           <Skeleton className="size-4 rounded-full" />
         </CardHeader>
-        <CardContent className={CARD_CONTENT_CLASS}>
+        <CardContent className={OVERVIEW_CARD_CONTENT_CLASS}>
           <Skeleton className="h-12 w-full" />
         </CardContent>
       </Card>
@@ -98,8 +80,8 @@ export function WindowsAppDeploymentsCard({ hardwareId, className }: WindowsAppD
   const onlyPending = inProgress && !hasActiveInstall
 
   return (
-    <Card className={cn('h-full', className)}>
-      <CardHeader className={CARD_HEADER_CLASS}>
+    <Card className={cn('h-full', OVERVIEW_FLAT_CARD_CLASS, className)}>
+      <CardHeader className={OVERVIEW_CARD_HEADER_CLASS}>
         <div className="min-w-0 space-y-0.5">
           <CardTitle className="text-xs font-medium text-muted-foreground">
             {t('deviceDetail.appDeployments.title')}
@@ -120,50 +102,16 @@ export function WindowsAppDeploymentsCard({ hardwareId, className }: WindowsAppD
         </div>
         <Package className="size-4 shrink-0 text-muted-foreground/70" />
       </CardHeader>
-      <CardContent className={cn(CARD_CONTENT_CLASS, 'space-y-1.5 pt-0')}>
+      <CardContent className={cn(OVERVIEW_CARD_CONTENT_CLASS, 'divide-y divide-border')}>
         {items.map((item) => (
-          <div
-            key={item.appId}
-            className="flex items-start justify-between gap-2 border-b border-border/60 pb-1.5 last:border-0 last:pb-0"
-          >
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium leading-tight">{item.appName}</p>
-              {item.errorMessage ? (
-                <p
-                  className={cn(
-                    'mt-0.5 line-clamp-2 text-sm leading-snug',
-                    item.status === 'Failed' ? 'text-destructive' : 'text-muted-foreground',
-                  )}
-                >
-                  {item.errorMessage}
-                </p>
-              ) : null}
-            </div>
-            <div className="flex shrink-0 items-center gap-1.5">
-              {item.status === 'Failed' ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-7 gap-1 px-2 text-[11px]"
-                  disabled={retryingAppId === item.appId}
-                  onClick={() => void handleRetry(item.appId, item.appName)}
-                >
-                  {retryingAppId === item.appId ? (
-                    <Loader2 className="size-3 animate-spin" />
-                  ) : (
-                    <RefreshCw className="size-3" />
-                  )}
-                  {t('deviceDetail.appDeployments.retry')}
-                </Button>
-              ) : null}
-              <Badge
-                variant={statusBadgeVariant(item.status)}
-                className={cn('text-[10px]', statusBadgeClassName(item.status))}
-              >
-                {t(`deviceDetail.appDeployments.status.${item.status}`)}
-              </Badge>
-            </div>
+          <div key={item.appId} className="flex items-center justify-between gap-3 py-1.5 first:pt-0 last:pb-0">
+            <p className="min-w-0 truncate text-sm font-medium leading-tight">{item.appName}</p>
+            <Badge
+              variant={statusBadgeVariant(item.status)}
+              className={cn('shrink-0 text-[10px]', statusBadgeClassName(item.status))}
+            >
+              {t(`deviceDetail.appDeployments.status.${item.status}`)}
+            </Badge>
           </div>
         ))}
       </CardContent>
