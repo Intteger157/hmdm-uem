@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { buildDeviceTerminalWebSocketUrl } from '@/features/windows/api/device-terminal-socket'
+import { normalizeTerminalInput } from '@/features/windows/lib/terminal-input'
 
 interface DeviceTerminalDialogProps {
   open: boolean
@@ -97,7 +98,7 @@ export function DeviceTerminalDialog({ open, onOpenChange, hardwareId }: DeviceT
     terminal.onData((data) => {
       const socket = socketRef.current
       if (socket?.readyState === WebSocket.OPEN) {
-        socket.send(data)
+        socket.send(normalizeTerminalInput(data))
       }
     })
 

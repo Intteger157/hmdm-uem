@@ -6,15 +6,16 @@
 package terminal
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
-	"os/exec"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/UserExistsError/conpty"
 	"github.com/gorilla/websocket"
 	"github.com/hmdm/agent-windows/internal/procexec"
 )
@@ -24,6 +25,8 @@ const streamBufferSize = 4096
 
 // dialTimeout bounds how long the initial WebSocket handshake may take.
 const dialTimeout = 15 * time.Second
+
+const powershellCommandLine = `powershell.exe -NoProfile -NoLogo`
 
 // buildDialHeader assembles the handshake headers, carrying the auth token as a
 // bearer credential when one is supplied.
@@ -56,13 +59,12 @@ func StartLiveTerminal(wsURL, token, hardwareID string) error {
 	return session.run()
 }
 
-// liveTerminalSession bridges a single WebSocket connection to a PowerShell process.
+// liveTerminalSession bridges a single WebSocket connection to a PowerShell ConPTY.
 type liveTerminalSession struct {
 	conn *websocket.Conn
-	cmd  *exec.Cmd
+	cpty *conpty.ConPty
 
-	// writeMu serializes writes because gorilla/websocket forbids concurrent
-	// writers, and both the stdout and stderr pumps write to the same socket.
+	// writeMu serializes writes because gorilla/websocket forbids concurrent writers.
 	writeMu sync.Mutex
 
 	closeOnce sync.Once
@@ -70,54 +72,30 @@ type liveTerminalSession struct {
 }
 
 func (s *liveTerminalSession) run() error {
-	cmd := exec.Command("powershell.exe", "-NoProfile", "-NoLogo")
-	procexec.ConfigureHiddenProcessGroup(cmd)
-	s.cmd = cmd
-
-	stdin, err := cmd.StdinPipe()
+	cpty, err := conpty.Start(powershellCommandLine)
 	if err != nil {
 		s.closeConn()
-		return fmt.Errorf("live terminal stdin pipe: %w", err)
+		return fmt.Errorf("live terminal start conpty: %w", err)
 	}
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		s.closeConn()
-		return fmt.Errorf("live terminal stdout pipe: %w", err)
-	}
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		s.closeConn()
-		return fmt.Errorf("live terminal stderr pipe: %w", err)
-	}
-
-	if err := cmd.Start(); err != nil {
-		s.closeConn()
-		return fmt.Errorf("live terminal start powershell: %w", err)
-	}
+	s.cpty = cpty
 
 	var pumps sync.WaitGroup
 
-	// Goroutine 1: socket -> process stdin.
+	// Goroutine 1: socket -> ConPTY stdin.
 	pumps.Add(1)
 	go func() {
 		defer pumps.Done()
-		s.pumpSocketToStdin(stdin)
+		s.pumpSocketToConPty(cpty)
 	}()
 
-	// Goroutine 2 & 3: process stdout/stderr -> socket.
-	pumps.Add(2)
+	// Goroutine 2: ConPTY stdout/stderr -> socket.
+	pumps.Add(1)
 	go func() {
 		defer pumps.Done()
-		s.pumpReaderToSocket(stdout)
-	}()
-	go func() {
-		defer pumps.Done()
-		s.pumpReaderToSocket(stderr)
+		s.pumpConPtyToSocket(cpty)
 	}()
 
-	// When PowerShell exits on its own (e.g. the user typed `exit`), close the
-	// socket so the server-side and the stdin pump unblock and tear down.
-	waitErr := cmd.Wait()
+	_, waitErr := cpty.Wait(context.Background())
 	s.shutdown()
 
 	pumps.Wait()
@@ -128,29 +106,27 @@ func (s *liveTerminalSession) run() error {
 	return nil
 }
 
-// pumpSocketToStdin forwards operator keystrokes from the socket into the process.
-func (s *liveTerminalSession) pumpSocketToStdin(stdin io.WriteCloser) {
-	defer stdin.Close()
+// pumpSocketToConPty forwards operator keystrokes from the socket into the process.
+func (s *liveTerminalSession) pumpSocketToConPty(cpty *conpty.ConPty) {
 	for {
 		messageType, data, err := s.conn.ReadMessage()
 		if err != nil {
-			// Socket closed by the server or the network dropped: kill the
-			// process so we never leave a zombie PowerShell behind.
 			s.killProcess()
 			return
 		}
 		if messageType != websocket.TextMessage && messageType != websocket.BinaryMessage {
 			continue
 		}
-		if _, err := stdin.Write(data); err != nil {
+		data = normalizeTerminalInput(data)
+		if _, err := cpty.Write(data); err != nil {
 			s.killProcess()
 			return
 		}
 	}
 }
 
-// pumpReaderToSocket streams process output to the socket until EOF or error.
-func (s *liveTerminalSession) pumpReaderToSocket(reader io.Reader) {
+// pumpConPtyToSocket streams process output to the socket until EOF or error.
+func (s *liveTerminalSession) pumpConPtyToSocket(reader io.Reader) {
 	buffer := make([]byte, streamBufferSize)
 	for {
 		n, readErr := reader.Read(buffer)
@@ -195,10 +171,15 @@ func (s *liveTerminalSession) closeConn() {
 
 // killProcess forcefully terminates the PowerShell process tree if still running.
 func (s *liveTerminalSession) killProcess() {
-	if s.cmd == nil || s.cmd.Process == nil {
+	if s.cpty == nil {
 		return
 	}
-	if err := procexec.KillProcessTree(s.cmd.Process.Pid); err != nil {
-		log.Printf("live terminal: kill powershell process tree: %v", err)
+	if pid := s.cpty.Pid(); pid > 0 {
+		if err := procexec.KillProcessTree(pid); err != nil {
+			log.Printf("live terminal: kill powershell process tree: %v", err)
+		}
+	}
+	if err := s.cpty.Close(); err != nil {
+		log.Printf("live terminal: close conpty: %v", err)
 	}
 }
