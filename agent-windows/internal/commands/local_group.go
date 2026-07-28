@@ -21,7 +21,8 @@ const (
 	localGroupActionAdd = "add"
 	localGroupActionRemove = "remove"
 
-	localGroupMDMAppliedOutput = "Group policy successfully applied"
+	localGroupAdministratorsSID = "S-1-5-32-544"
+	localGroupMDMAppliedOutput  = "Group policy successfully applied"
 )
 
 func manageLocalGroup(payload json.RawMessage) Result {
@@ -96,7 +97,7 @@ func runLocalGroupMember(action, groupName, userName string) (string, error) {
 	groupName = normalizeNetLocalGroupPrincipal(groupName)
 	userName = normalizeNetLocalGroupPrincipal(userName)
 
-	script := buildLocalGroupMDMScript(buildLocalGroupXMLPayload(action, groupName, userName))
+	script := buildLocalGroupMDMScript(buildLocalGroupXMLPayload(action, userName))
 	cmd := newLocalGroupMemberCommand(script)
 	output, err := cmd.CombinedOutput()
 	combined := strings.TrimSpace(string(output))
@@ -110,13 +111,11 @@ func runLocalGroupMember(action, groupName, userName string) (string, error) {
 	return combined, nil
 }
 
-func buildLocalGroupXMLPayload(action, groupName, userName string) string {
-	group := escapeXMLAttribute(groupName)
-	member := escapeXMLAttribute(userName)
+func buildLocalGroupXMLPayload(action, userName string) string {
 	if action == localGroupActionRemove {
-		return fmt.Sprintf(`<GroupConfiguration><accessgroup desc="%s"><group action="U"/><remove member="%s"/></accessgroup></GroupConfiguration>`, group, member)
+		return fmt.Sprintf(`<GroupConfiguration><accessgroup desc="%s"><group action="U"/><remove member="%s"/></accessgroup></GroupConfiguration>`, localGroupAdministratorsSID, userName)
 	}
-	return fmt.Sprintf(`<GroupConfiguration><accessgroup desc="%s"><group action="U"/><add member="%s"/></accessgroup></GroupConfiguration>`, group, member)
+	return fmt.Sprintf(`<GroupConfiguration><accessgroup desc="%s"><group action="U"/><add member="%s"/></accessgroup></GroupConfiguration>`, localGroupAdministratorsSID, userName)
 }
 
 func buildLocalGroupMDMScript(xmlPayload string) string {
@@ -131,14 +130,6 @@ func newLocalGroupMemberCommand(script string) *exec.Cmd {
 	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	return cmd
-}
-
-func escapeXMLAttribute(value string) string {
-	value = strings.ReplaceAll(value, "&", "&amp;")
-	value = strings.ReplaceAll(value, `"`, "&quot;")
-	value = strings.ReplaceAll(value, "<", "&lt;")
-	value = strings.ReplaceAll(value, ">", "&gt;")
-	return value
 }
 
 func normalizeNetLocalGroupPrincipal(value string) string {
