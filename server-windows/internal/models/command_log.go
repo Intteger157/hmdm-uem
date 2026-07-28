@@ -15,6 +15,7 @@ const (
 	CommandNameBatteryReport        = "battery_report"
 	CommandNameInstallWindowsUpdate = "install_windows_update"
 	CommandNameUninstallApp         = "UninstallApp"
+	CommandNameRemoteSupport        = "remote_support"
 )
 
 const (
