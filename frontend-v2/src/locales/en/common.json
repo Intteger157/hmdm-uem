@@ -523,6 +523,8 @@
   "windows.enrollmentPage.cardDescription": "Run this one-liner on a clean Windows machine to install the Singularity agent automatically.",
   "windows.enrollmentPage.copyCommand": "Copy Command",
   "windows.enrollmentPage.copySuccess": "Enrollment command copied to clipboard",
+  "windows.enrollmentPage.copyUrl": "Copy URL",
+  "windows.enrollmentPage.copyUrlSuccess": "Agent download URL copied to clipboard",
   "windows.enrollmentPage.instructions": "On a fresh Windows machine (OOBE screen), press Shift+F10 to open CMD and paste this command to automatically install the Singularity Agent and provision the device.",
   "windows.enrollmentPage.instructionsToken": "On a fresh Windows machine (OOBE screen), press Shift+F10 to open CMD and paste this command. The enrollment token is embedded in the URL for zero-touch bootstrap.",
   "windows.enrollmentPage.instructionsPassword": "On a fresh Windows machine (OOBE screen), press Shift+F10 to open CMD and paste this command. The bootstrap script will prompt for the MDM enrollment password in the console before installing the agent.",

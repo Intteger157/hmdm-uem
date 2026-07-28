@@ -523,6 +523,8 @@
   "windows.enrollmentPage.cardDescription": "Выполните эту команду на чистой Windows-машине для автоматической установки агента Singularity.",
   "windows.enrollmentPage.copyCommand": "Копировать команду",
   "windows.enrollmentPage.copySuccess": "Команда регистрации скопирована",
+  "windows.enrollmentPage.copyUrl": "Копировать URL",
+  "windows.enrollmentPage.copyUrlSuccess": "URL загрузки агента скопирован в буфер обмена",
   "windows.enrollmentPage.instructions": "На чистой Windows (экран OOBE) нажмите Shift+F10, откройте CMD и вставьте эту команду — агент Singularity установится и зарегистрирует устройство автоматически.",
   "windows.enrollmentPage.instructionsToken": "На чистой Windows (экран OOBE) нажмите Shift+F10, откройте CMD и вставьте эту команду. Токен регистрации передаётся в URL для zero-touch bootstrap.",
   "windows.enrollmentPage.instructionsPassword": "На чистой Windows (экран OOBE) нажмите Shift+F10, откройте CMD и вставьте эту команду. Bootstrap-скрипт запросит пароль регистрации MDM в консоли перед установкой агента.",
