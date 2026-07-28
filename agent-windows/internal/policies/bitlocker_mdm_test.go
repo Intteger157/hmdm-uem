@@ -28,6 +28,12 @@ func TestApplyBitLockerMDMPolicyScriptUsesFilteredWMIWithCreateFallback(t *testi
 	if !strings.Contains(applyBitLockerMDMPolicyScript, "RequireDeviceEncryption = 1") {
 		t.Fatalf("script = %q, expected device encryption requirement", applyBitLockerMDMPolicyScript)
 	}
+	if !strings.Contains(applyBitLockerMDMPolicyScript, "AllowWarningForOtherDiskEncryption = 0") {
+		t.Fatalf("script = %q, expected warning suppression property", applyBitLockerMDMPolicyScript)
+	}
+	if strings.Contains(applyBitLockerMDMPolicyScript, "AllowStandardUserEncryption") {
+		t.Fatalf("script = %q, should not set unsupported AllowStandardUserEncryption", applyBitLockerMDMPolicyScript)
+	}
 	if strings.Contains(applyBitLockerMDMPolicyScript, "manage-bde") || strings.Contains(applyBitLockerMDMPolicyScript, "Enable-BitLocker") {
 		t.Fatalf("script = %q, should not use legacy BitLocker activation commands", applyBitLockerMDMPolicyScript)
 	}

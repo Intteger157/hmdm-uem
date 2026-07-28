@@ -20,7 +20,6 @@ const applyBitLockerMDMPolicyScript = `try {
     if ($instance) { 
         $instance.RequireDeviceEncryption = 1
         $instance.AllowWarningForOtherDiskEncryption = 0
-        $instance.AllowStandardUserEncryption = 1
         Set-CimInstance -InputObject $instance -ErrorAction Stop 
     } else { 
         $props = @{
@@ -28,7 +27,6 @@ const applyBitLockerMDMPolicyScript = `try {
             InstanceID = 'BitLocker'
             RequireDeviceEncryption = 1
             AllowWarningForOtherDiskEncryption = 0
-            AllowStandardUserEncryption = 1
         }
         New-CimInstance -Namespace $namespace -ClassName $className -Property $props -ErrorAction Stop 
     }
