@@ -20,30 +20,30 @@ func TestParseManageLocalGroupPayloadPreservesDomainUsername(t *testing.T) {
 	}
 }
 
-func TestBuildLocalGroupXMLPayloadAdd(t *testing.T) {
+func TestBuildLocalGroupRawXMLAdd(t *testing.T) {
 	t.Parallel()
 
-	xmlPayload := buildLocalGroupXMLPayload(localGroupActionAdd, `AzureAD\user@example.com`)
+	xmlPayload := buildLocalGroupRawXML(localGroupActionAdd, `AzureAD\user@example.com`)
 	want := `<GroupConfiguration><accessgroup desc="S-1-5-32-544"><group action="U"/><add member="AzureAD\user@example.com"/></accessgroup></GroupConfiguration>`
 	if xmlPayload != want {
 		t.Fatalf("xmlPayload = %q, want %q", xmlPayload, want)
 	}
 }
 
-func TestBuildLocalGroupXMLPayloadRemove(t *testing.T) {
+func TestBuildLocalGroupRawXMLRemove(t *testing.T) {
 	t.Parallel()
 
-	xmlPayload := buildLocalGroupXMLPayload(localGroupActionRemove, "alice")
+	xmlPayload := buildLocalGroupRawXML(localGroupActionRemove, "alice")
 	want := `<GroupConfiguration><accessgroup desc="S-1-5-32-544"><group action="U"/><remove member="alice"/></accessgroup></GroupConfiguration>`
 	if xmlPayload != want {
 		t.Fatalf("xmlPayload = %q, want %q", xmlPayload, want)
 	}
 }
 
-func TestBuildLocalGroupXMLPayloadUsesRawMemberName(t *testing.T) {
+func TestBuildLocalGroupRawXMLUsesRawMemberName(t *testing.T) {
 	t.Parallel()
 
-	xmlPayload := buildLocalGroupXMLPayload(localGroupActionAdd, `user&name"test`)
+	xmlPayload := buildLocalGroupRawXML(localGroupActionAdd, `user&name"test`)
 	if !strings.Contains(xmlPayload, `member="user&name"test"`) {
 		t.Fatalf("xmlPayload = %q, expected raw username without XML escaping", xmlPayload)
 	}
@@ -52,7 +52,7 @@ func TestBuildLocalGroupXMLPayloadUsesRawMemberName(t *testing.T) {
 func TestLocalGroupMemberCommandUsesMDMWMI(t *testing.T) {
 	t.Parallel()
 
-	script := buildLocalGroupMDMScript(buildLocalGroupXMLPayload(localGroupActionAdd, `AzureAD\user@example.com`))
+	script := buildLocalGroupMDMScript(localGroupActionAdd, `AzureAD\user@example.com`)
 	cmd := newLocalGroupMemberCommand(script)
 	if len(cmd.Args) < 4 {
 		t.Fatalf("args = %#v", cmd.Args)
@@ -79,6 +79,21 @@ func TestLocalGroupMemberCommandUsesMDMWMI(t *testing.T) {
 	if !strings.Contains(commandScript, `desc="S-1-5-32-544"`) {
 		t.Fatalf("script = %q, expected Administrators SID in XML payload", commandScript)
 	}
+	if !strings.Contains(commandScript, "[System.Security.SecurityElement]::Escape($rawXml)") {
+		t.Fatalf("script = %q, expected SecurityElement XML escape", commandScript)
+	}
+	if !strings.Contains(commandScript, "$instance.Configure = $escapedXml") {
+		t.Fatalf("script = %q, expected escaped XML assigned to Configure", commandScript)
+	}
+	if strings.Contains(commandScript, "$instance.Configure = $rawXml") {
+		t.Fatalf("script = %q, should not assign raw XML directly to Configure", commandScript)
+	}
+	if !strings.Contains(commandScript, localGroupMDMAppliedOutput) {
+		t.Fatalf("script = %q, expected MDM Bridge success marker", commandScript)
+	}
+	if !strings.Contains(commandScript, `$rawXml = '`) {
+		t.Fatalf("script = %q, expected raw XML embedded for escaping", commandScript)
+	}
 	if !strings.Contains(commandScript, `<add member="AzureAD\user@example.com"/>`) {
 		t.Fatalf("script = %q, expected XML payload embedded in script", commandScript)
 	}
@@ -87,8 +102,7 @@ func TestLocalGroupMemberCommandUsesMDMWMI(t *testing.T) {
 func TestBuildLocalGroupMDMScriptEscapesSingleQuotes(t *testing.T) {
 	t.Parallel()
 
-	xmlPayload := buildLocalGroupXMLPayload(localGroupActionAdd, "user'@example.com")
-	script := buildLocalGroupMDMScript(xmlPayload)
+	script := buildLocalGroupMDMScript(localGroupActionAdd, "user'@example.com")
 	if !strings.Contains(script, "user''@example.com") {
 		t.Fatalf("script = %q, expected escaped single quote for PowerShell string", script)
 	}

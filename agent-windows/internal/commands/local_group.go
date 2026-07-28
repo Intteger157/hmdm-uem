@@ -22,7 +22,7 @@ const (
 	localGroupActionRemove = "remove"
 
 	localGroupAdministratorsSID = "S-1-5-32-544"
-	localGroupMDMAppliedOutput  = "Group policy successfully applied"
+	localGroupMDMAppliedOutput  = "Group policy successfully applied via MDM Bridge"
 )
 
 func manageLocalGroup(payload json.RawMessage) Result {
@@ -97,7 +97,7 @@ func runLocalGroupMember(action, groupName, userName string) (string, error) {
 	groupName = normalizeNetLocalGroupPrincipal(groupName)
 	userName = normalizeNetLocalGroupPrincipal(userName)
 
-	script := buildLocalGroupMDMScript(buildLocalGroupXMLPayload(action, userName))
+	script := buildLocalGroupMDMScript(action, userName)
 	cmd := newLocalGroupMemberCommand(script)
 	output, err := cmd.CombinedOutput()
 	combined := strings.TrimSpace(string(output))
@@ -111,19 +111,20 @@ func runLocalGroupMember(action, groupName, userName string) (string, error) {
 	return combined, nil
 }
 
-func buildLocalGroupXMLPayload(action, userName string) string {
+func buildLocalGroupMDMScript(action, userName string) string {
+	rawXML := buildLocalGroupRawXML(action, userName)
+	return fmt.Sprintf(
+		"try { $rawXml = '%s'; $escapedXml = [System.Security.SecurityElement]::Escape($rawXml); $namespace = 'ROOT\\CIMv2\\mdm\\dmmap'; $className = 'MDM_Policy_Config01_LocalUsersAndGroups02'; $filter = \"InstanceID='LocalUsersAndGroups' and ParentID='./Vendor/MSFT/Policy/Config'\"; $instance = Get-CimInstance -Namespace $namespace -ClassName $className -Filter $filter -ErrorAction SilentlyContinue; if ($instance) { $instance.Configure = $escapedXml; Set-CimInstance -InputObject $instance -ErrorAction Stop } else { New-CimInstance -Namespace $namespace -ClassName $className -Property @{ParentID='./Vendor/MSFT/Policy/Config'; InstanceID='LocalUsersAndGroups'; Configure=$escapedXml} -ErrorAction Stop }; Write-Output '%s' } catch { throw $_ }",
+		escapePowerShellSingleQuoted(rawXML),
+		localGroupMDMAppliedOutput,
+	)
+}
+
+func buildLocalGroupRawXML(action, userName string) string {
 	if action == localGroupActionRemove {
 		return fmt.Sprintf(`<GroupConfiguration><accessgroup desc="%s"><group action="U"/><remove member="%s"/></accessgroup></GroupConfiguration>`, localGroupAdministratorsSID, userName)
 	}
 	return fmt.Sprintf(`<GroupConfiguration><accessgroup desc="%s"><group action="U"/><add member="%s"/></accessgroup></GroupConfiguration>`, localGroupAdministratorsSID, userName)
-}
-
-func buildLocalGroupMDMScript(xmlPayload string) string {
-	return fmt.Sprintf(
-		"try { $xml = '%s'; $namespace = 'ROOT\\CIMv2\\mdm\\dmmap'; $className = 'MDM_Policy_Config01_LocalUsersAndGroups02'; $filter = \"InstanceID='LocalUsersAndGroups' and ParentID='./Vendor/MSFT/Policy/Config'\"; $instance = Get-CimInstance -Namespace $namespace -ClassName $className -Filter $filter -ErrorAction SilentlyContinue; if ($instance) { $instance.Configure = $xml; Set-CimInstance -InputObject $instance -ErrorAction Stop } else { New-CimInstance -Namespace $namespace -ClassName $className -Property @{ParentID='./Vendor/MSFT/Policy/Config'; InstanceID='LocalUsersAndGroups'; Configure=$xml} -ErrorAction Stop }; Write-Output '%s' } catch { throw $_ }",
-		escapePowerShellSingleQuoted(xmlPayload),
-		localGroupMDMAppliedOutput,
-	)
 }
 
 func newLocalGroupMemberCommand(script string) *exec.Cmd {
