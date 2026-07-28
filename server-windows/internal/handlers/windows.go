@@ -17,11 +17,15 @@ import (
 const mockAuthToken = "mock-jwt-token-777"
 
 // WindowsHandler serves REST endpoints for the Windows MDM agent.
-type WindowsHandler struct{}
+type WindowsHandler struct {
+	supportChatRelay *supportChatRelay
+}
 
 // NewWindowsHandler creates a Windows agent API handler.
 func NewWindowsHandler() *WindowsHandler {
-	return &WindowsHandler{}
+	return &WindowsHandler{
+		supportChatRelay: newSupportChatRelay(),
+	}
 }
 
 // Enroll accepts an enrollment token and hardware ID, returning a mock JWT.

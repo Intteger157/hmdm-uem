@@ -70,6 +70,13 @@ func main() {
 	windowsHandler := handlers.NewWindowsHandler()
 	router.GET("/storage/files/*filepath", windowsHandler.ServeStoredFile)
 
+	// Support chat / live terminal WebSocket relay.
+	router.GET("/api/terminal/operator", windowsHandler.HandleOperatorTerminal)
+	router.GET("/api/terminal/client", windowsHandler.HandleClientTerminal)
+	// Backward-compatible aliases for earlier live-terminal builds.
+	router.GET("/api/terminal/admin", windowsHandler.HandleAdminTerminal)
+	router.GET("/api/terminal/agent", windowsHandler.HandleAgentTerminal)
+
 	// Public bootstrap endpoints (no auth — OOBE machines have no session/JWT).
 	router.GET("/api/windows/enroll", windowsHandler.GetEnrollBootstrapScript)
 	router.GET("/rest/windows/enroll", windowsHandler.GetEnrollBootstrapScript)
@@ -95,6 +102,7 @@ func main() {
 			windows.POST("/devices/:hardwareId/commands", windowsHandler.EnqueueCommand)
 			windows.GET("/devices/:hardwareId/commands/latest", windowsHandler.GetLatestCommand)
 			windows.GET("/devices/:hardwareId/logs", windowsHandler.ListDeviceCommandLogs)
+			windows.GET("/devices/:hardwareId/terminal", windowsHandler.HandleAdminTerminal)
 			windows.GET("/devices/:hardwareId/services", windowsHandler.GetDeviceServices)
 			windows.POST("/devices/:hardwareId/services/refresh", windowsHandler.RefreshDeviceServices)
 			windows.POST("/devices/:hardwareId/services/:serviceName/restart", windowsHandler.RestartDeviceService)
