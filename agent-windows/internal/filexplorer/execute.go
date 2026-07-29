@@ -11,7 +11,7 @@ import (
 	"syscall"
 )
 
-func buildExecuteCommand(path string) (*exec.Cmd, error) {
+func buildExecuteCommand(path string, args []string) (*exec.Cmd, error) {
 	cleanPath, err := normalizeFilePath(path)
 	if err != nil {
 		return nil, err
@@ -25,25 +25,45 @@ func buildExecuteCommand(path string) (*exec.Cmd, error) {
 		return nil, fmt.Errorf("path is a directory")
 	}
 
+	extraArgs := normalizeExecuteArgs(args)
+
 	switch strings.ToLower(filepath.Ext(cleanPath)) {
 	case ".msi":
-		return exec.Command("msiexec", "/i", cleanPath, "/qn", "/norestart"), nil
+		msiArgs := append([]string{"/i", cleanPath, "/qn", "/norestart"}, extraArgs...)
+		return exec.Command("msiexec", msiArgs...), nil
 	case ".ps1":
-		return exec.Command(
-			"powershell",
-			"-ExecutionPolicy", "Bypass",
-			"-WindowStyle", "Hidden",
-			"-File", cleanPath,
-		), nil
+		psArgs := append(
+			[]string{"-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-File", cleanPath},
+			extraArgs...,
+		)
+		return exec.Command("powershell", psArgs...), nil
 	case ".bat", ".cmd":
-		return exec.Command("cmd", "/c", cleanPath), nil
+		cmdArgs := append([]string{"/c", cleanPath}, extraArgs...)
+		return exec.Command("cmd", cmdArgs...), nil
 	default:
-		return exec.Command(cleanPath), nil
+		return exec.Command(cleanPath, extraArgs...), nil
 	}
 }
 
-func startExecutable(path string) error {
-	cmd, err := buildExecuteCommand(path)
+func normalizeExecuteArgs(args []string) []string {
+	if len(args) == 0 {
+		return nil
+	}
+	normalized := make([]string, 0, len(args))
+	for _, arg := range args {
+		if strings.TrimSpace(arg) == "" {
+			continue
+		}
+		normalized = append(normalized, arg)
+	}
+	if len(normalized) == 0 {
+		return nil
+	}
+	return normalized
+}
+
+func startExecutable(path string, args []string) error {
+	cmd, err := buildExecuteCommand(path, args)
 	if err != nil {
 		return err
 	}

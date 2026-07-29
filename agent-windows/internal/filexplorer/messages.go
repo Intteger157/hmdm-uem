@@ -25,8 +25,9 @@ const (
 )
 
 type incomingCommand struct {
-	Action string `json:"action"`
-	Path   string `json:"path"`
+	Action string   `json:"action"`
+	Path   string   `json:"path"`
+	Args   []string `json:"args"`
 }
 
 type dirListItem struct {

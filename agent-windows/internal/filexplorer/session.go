@@ -107,7 +107,7 @@ func (s *fileExplorerSession) handleCommand(data []byte) error {
 	case ActionUploadEnd:
 		return s.handleUploadEnd()
 	case ActionExecute:
-		return s.handleExecute(cmd.Path)
+		return s.handleExecute(cmd.Path, cmd.Args)
 	default:
 		return s.sendError(fmt.Sprintf("unsupported action: %s", cmd.Action))
 	}
@@ -166,8 +166,8 @@ func (s *fileExplorerSession) handleUploadEnd() error {
 	return s.conn.WriteMessage(websocket.TextMessage, payload)
 }
 
-func (s *fileExplorerSession) handleExecute(path string) error {
-	if err := startExecutable(path); err != nil {
+func (s *fileExplorerSession) handleExecute(path string, args []string) error {
+	if err := startExecutable(path, args); err != nil {
 		return s.sendError(publicErrorMessage(err))
 	}
 

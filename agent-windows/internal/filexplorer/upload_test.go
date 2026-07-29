@@ -40,14 +40,14 @@ func TestUploadDestinationCollectsBinaryChunks(t *testing.T) {
 }
 
 func TestStartExecutableMissingFile(t *testing.T) {
-	err := startExecutable(`C:\does-not-exist\upload-exec-test.exe`)
+	err := startExecutable(`C:\does-not-exist\upload-exec-test.exe`, nil)
 	if err == nil {
 		t.Fatal("expected error for missing executable")
 	}
 }
 
 func TestStartExecutableRejectsDirectory(t *testing.T) {
-	err := startExecutable(os.TempDir())
+	err := startExecutable(os.TempDir(), nil)
 	if err == nil {
 		t.Fatal("expected error when path is a directory")
 	}
