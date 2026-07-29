@@ -75,6 +75,7 @@ services:
       AUTOPILOT_ADMIN_USER: ${AUTOPILOT_ADMIN_USER:-Admin}
       AUTOPILOT_ADMIN_PASS: ${AUTOPILOT_ADMIN_PASS:-}
       ENROLLMENT_SECRET: ${ENROLLMENT_SECRET:-}
+      JWT_SECRET: ${JWT_SECRET:-}
     volumes:
       - ./volumes/files:/opt/hmdm/files
     healthcheck:

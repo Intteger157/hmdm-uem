@@ -22,6 +22,14 @@ const windowsApi = axios.create({
   },
 })
 
+windowsApi.interceptors.request.use((config) => {
+  const jwt = useAuthStore.getState().jwt
+  if (jwt) {
+    config.headers.Authorization = `Bearer ${jwt}`
+  }
+  return config
+})
+
 // Windows App Catalog uses server-windows (Go) only. Do not call Java /private/applications APIs here.
 
 export async function fetchSoftwareApps(): Promise<SoftwareApp[]> {
