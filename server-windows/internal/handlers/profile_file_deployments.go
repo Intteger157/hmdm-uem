@@ -175,14 +175,26 @@ func deleteConfigProfileFileDeployments(profileID uint) error {
 }
 
 func loadFileDeploymentsForProfiles(profileIDs []uint) ([]models.FileDeployment, error) {
-	if len(profileIDs) == 0 {
+	profiles, err := loadActiveProfilesWithAssociations(profileIDs)
+	if err != nil {
+		return nil, err
+	}
+	return fileDeploymentsFromProfiles(profiles)
+}
+
+func fileDeploymentsFromProfiles(profiles []models.WindowsConfigProfile) ([]models.FileDeployment, error) {
+	if len(profiles) == 0 {
 		return nil, nil
 	}
 
-	var rows []models.ProfileFileDeployment
-	if err := db.DB.Where("profile_id IN ?", profileIDs).Order("profile_id ASC, id ASC").Find(&rows).Error; err != nil {
-		return nil, err
+	rows := make([]models.ProfileFileDeployment, 0)
+	for _, profile := range profiles {
+		rows = append(rows, profile.FileDeploymentRules...)
 	}
+	return profileFileDeploymentRowsToDeployments(rows)
+}
+
+func profileFileDeploymentRowsToDeployments(rows []models.ProfileFileDeployment) ([]models.FileDeployment, error) {
 	if len(rows) == 0 {
 		return nil, nil
 	}

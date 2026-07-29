@@ -17,14 +17,16 @@ type WindowsConfigProfilePayload struct {
 
 // WindowsConfigProfile is a reusable Windows device policy profile.
 type WindowsConfigProfile struct {
-	ID          uint            `gorm:"primaryKey"`
-	Name        string          `gorm:"not null"`
-	Description string
-	Payload     json.RawMessage `gorm:"type:jsonb"`
-	IsActive    bool            `gorm:"default:false"`
-	IsDefault   bool            `gorm:"column:is_default;default:false"`
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID                  uint                    `gorm:"primaryKey"`
+	Name                string                  `gorm:"not null"`
+	Description         string
+	Payload             json.RawMessage         `gorm:"type:jsonb"`
+	IsActive            bool                    `gorm:"default:false"`
+	IsDefault           bool                    `gorm:"column:is_default;default:false"`
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
+	RequiredApps        []ProfileApp            `gorm:"foreignKey:ProfileID;references:ID"`
+	FileDeploymentRules []ProfileFileDeployment `gorm:"foreignKey:ProfileID;references:ID"`
 }
 
 func (WindowsConfigProfile) TableName() string {

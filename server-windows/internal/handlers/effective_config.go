@@ -95,12 +95,9 @@ func buildEffectiveConfig(device models.WindowsDevice) (models.EffectiveConfigRe
 
 	merged := models.MergeConfigPayloads(groupPayloads, directPayloads)
 
-	profileIDs := make([]uint, 0, len(applied))
-	for _, entry := range applied {
-		profileIDs = append(profileIDs, entry.ProfileID)
-	}
+	loadedProfiles := profilesFromAssignmentEntries(groupEntries, directEntries)
 
-	requiredApps, err := loadRequiredAppsForProfiles(profileIDs)
+	requiredApps, err := requiredAppsFromProfiles(loadedProfiles)
 	if err != nil {
 		return models.EffectiveConfigResponse{}, err
 	}
@@ -116,7 +113,7 @@ func buildEffectiveConfig(device models.WindowsDevice) (models.EffectiveConfigRe
 		return models.EffectiveConfigResponse{}, err
 	}
 
-	fileDeployments, err := loadFileDeploymentsForProfiles(profileIDs)
+	fileDeployments, err := fileDeploymentsFromProfiles(loadedProfiles)
 	if err != nil {
 		return models.EffectiveConfigResponse{}, err
 	}
@@ -161,8 +158,8 @@ func loadGroupAssignedProfiles(groupID *uint) ([]profileAssignmentEntry, error) 
 		profileIDs = append(profileIDs, link.ProfileID)
 	}
 
-	var profiles []models.WindowsConfigProfile
-	if err := db.DB.Where("id IN ? AND is_active = ?", profileIDs, true).Order("id ASC").Find(&profiles).Error; err != nil {
+	profiles, err := loadActiveProfilesWithAssociations(profileIDs)
+	if err != nil {
 		return nil, err
 	}
 
@@ -190,8 +187,8 @@ func loadDirectAssignedProfiles(deviceID uint) ([]profileAssignmentEntry, error)
 		profileIDs = append(profileIDs, link.ProfileID)
 	}
 
-	var profiles []models.WindowsConfigProfile
-	if err := db.DB.Where("id IN ? AND is_active = ?", profileIDs, true).Order("id ASC").Find(&profiles).Error; err != nil {
+	profiles, err := loadActiveProfilesWithAssociations(profileIDs)
+	if err != nil {
 		return nil, err
 	}
 
@@ -205,20 +202,69 @@ func loadDirectAssignedProfiles(deviceID uint) ([]profileAssignmentEntry, error)
 	return entries, nil
 }
 
-func loadRequiredAppsForProfiles(profileIDs []uint) ([]models.RequiredApp, error) {
+func loadActiveProfilesWithAssociations(profileIDs []uint) ([]models.WindowsConfigProfile, error) {
 	if len(profileIDs) == 0 {
 		return nil, nil
 	}
 
-	var links []models.ProfileApp
-	if err := db.DB.Where("profile_id IN ?", profileIDs).Order("profile_id ASC, app_id ASC").Find(&links).Error; err != nil {
+	var profiles []models.WindowsConfigProfile
+	if err := db.DB.
+		Preload("RequiredApps", func(tx *gorm.DB) *gorm.DB {
+			return tx.Order("profile_id ASC, app_id ASC")
+		}).
+		Preload("FileDeploymentRules", func(tx *gorm.DB) *gorm.DB {
+			return tx.Order("profile_id ASC, id ASC")
+		}).
+		Where("id IN ? AND is_active = ?", profileIDs, true).
+		Order("id ASC").
+		Find(&profiles).Error; err != nil {
 		return nil, err
+	}
+	return profiles, nil
+}
+
+func profilesFromAssignmentEntries(groups, directs []profileAssignmentEntry) []models.WindowsConfigProfile {
+	profiles := make([]models.WindowsConfigProfile, 0, len(groups)+len(directs))
+	seen := make(map[uint]struct{}, len(groups)+len(directs))
+	for _, entry := range groups {
+		if _, ok := seen[entry.Profile.ID]; ok {
+			continue
+		}
+		seen[entry.Profile.ID] = struct{}{}
+		profiles = append(profiles, entry.Profile)
+	}
+	for _, entry := range directs {
+		if _, ok := seen[entry.Profile.ID]; ok {
+			continue
+		}
+		seen[entry.Profile.ID] = struct{}{}
+		profiles = append(profiles, entry.Profile)
+	}
+	return profiles
+}
+
+func requiredAppsFromProfiles(profiles []models.WindowsConfigProfile) ([]models.RequiredApp, error) {
+	if len(profiles) == 0 {
+		return nil, nil
+	}
+
+	links := make([]models.ProfileApp, 0)
+	for _, profile := range profiles {
+		links = append(links, profile.RequiredApps...)
 	}
 	if len(links) == 0 {
 		return nil, nil
 	}
 
 	return profileAppLinksToRequiredApps(links)
+}
+
+func loadRequiredAppsForProfiles(profileIDs []uint) ([]models.RequiredApp, error) {
+	profiles, err := loadActiveProfilesWithAssociations(profileIDs)
+	if err != nil {
+		return nil, err
+	}
+	return requiredAppsFromProfiles(profiles)
 }
 
 func loadDirectAssignedApps(deviceID uint) ([]models.RequiredApp, error) {

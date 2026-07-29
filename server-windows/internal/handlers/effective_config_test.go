@@ -79,3 +79,25 @@ func TestShouldExcludeRequiredAppFailedRevision(t *testing.T) {
 func ptrTime(value time.Time) *time.Time {
 	return &value
 }
+
+func TestProfilesFromAssignmentEntriesDedupesProfiles(t *testing.T) {
+	t.Parallel()
+
+	shared := models.WindowsConfigProfile{
+		ID:   7,
+		Name: "Shared",
+		RequiredApps: []models.ProfileApp{
+			{ProfileID: 7, AppID: 11},
+		},
+	}
+	groupEntries := []profileAssignmentEntry{{Profile: shared, Source: models.AssignmentSourceGroup}}
+	directEntries := []profileAssignmentEntry{{Profile: shared, Source: models.AssignmentSourceDirect}}
+
+	profiles := profilesFromAssignmentEntries(groupEntries, directEntries)
+	if len(profiles) != 1 {
+		t.Fatalf("expected 1 profile, got %d", len(profiles))
+	}
+	if len(profiles[0].RequiredApps) != 1 || profiles[0].RequiredApps[0].AppID != 11 {
+		t.Fatalf("expected preloaded required app on profile, got %+v", profiles[0].RequiredApps)
+	}
+}
