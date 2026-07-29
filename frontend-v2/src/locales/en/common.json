@@ -1028,6 +1028,8 @@
   "deviceDetail.fileExplorer.title": "Remote File Explorer",
   "deviceDetail.fileExplorer.description": "Browse folders and download files from the remote PC in real time.",
   "deviceDetail.fileExplorer.connecting": "Connecting to file explorer relay…",
+  "deviceDetail.fileExplorer.reconnecting": "Reconnecting…",
+  "deviceDetail.fileExplorer.executeArgsPrompt": "Enter installation arguments (e.g., /S or /VERYSILENT):",
   "deviceDetail.fileExplorer.waitingForAgent": "Connected. Waiting for directory listing from the agent…",
   "deviceDetail.fileExplorer.disconnected": "File explorer session closed.",
   "deviceDetail.fileExplorer.error": "Connection failed. Check that the device is online and the agent is updated.",

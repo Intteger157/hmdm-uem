@@ -1028,6 +1028,8 @@
   "deviceDetail.fileExplorer.title": "Удалённый проводник",
   "deviceDetail.fileExplorer.description": "Навигация по папкам и скачивание файлов с удалённого ПК в реальном времени.",
   "deviceDetail.fileExplorer.connecting": "Подключение к мосту файлового проводника…",
+  "deviceDetail.fileExplorer.reconnecting": "Переподключение…",
+  "deviceDetail.fileExplorer.executeArgsPrompt": "Аргументы установки (например, /S или /VERYSILENT):",
   "deviceDetail.fileExplorer.waitingForAgent": "Подключено. Ожидание списка файлов от агента…",
   "deviceDetail.fileExplorer.disconnected": "Сессия проводника закрыта.",
   "deviceDetail.fileExplorer.error": "Не удалось подключиться. Проверьте, что устройство онлайн и агент обновлён.",

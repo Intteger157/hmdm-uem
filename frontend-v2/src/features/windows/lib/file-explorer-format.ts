@@ -140,8 +140,23 @@ export function buildUploadEndCommand(): string {
   return JSON.stringify({ action: 'upload_end' })
 }
 
-export function buildExecuteCommand(path: string): string {
-  return JSON.stringify({ action: 'execute', path })
+export function buildExecuteCommand(path: string, args?: string[]): string {
+  const payload: { action: 'execute'; path: string; args?: string[] } = {
+    action: 'execute',
+    path,
+  }
+  if (args && args.length > 0) {
+    payload.args = args
+  }
+  return JSON.stringify(payload)
+}
+
+export function parseExecuteArgs(raw: string): string[] {
+  return raw.trim().split(/\s+/).filter((part) => part.length > 0)
+}
+
+export function isExeFile(name: string): boolean {
+  return name.trim().toLowerCase().endsWith('.exe')
 }
 
 export function isRunnableFile(name: string): boolean {

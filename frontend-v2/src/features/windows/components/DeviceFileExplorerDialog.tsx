@@ -21,10 +21,12 @@ import {
   DEFAULT_FILE_EXPLORER_PATH,
   formatFileSize,
   formatModifiedTime,
+  isExeFile,
   isRunnableFile,
   joinWindowsPath,
   mapDirListItems,
   parentWindowsPath,
+  parseExecuteArgs,
   parseFileExplorerTextMessage,
   sendFileUploadChunks,
   sortFileEntries,
@@ -37,7 +39,15 @@ interface DeviceFileExplorerDialogProps {
   hardwareId: string
 }
 
-type FileExplorerConnectionStatus = 'idle' | 'connecting' | 'connected' | 'closed' | 'error'
+type FileExplorerConnectionStatus =
+  | 'idle'
+  | 'connecting'
+  | 'connected'
+  | 'reconnecting'
+  | 'closed'
+  | 'error'
+
+const RECONNECT_DELAY_MS = 3000
 
 export function DeviceFileExplorerDialog({ open, onOpenChange, hardwareId }: DeviceFileExplorerDialogProps) {
   const { t } = useTranslation()
@@ -47,6 +57,9 @@ export function DeviceFileExplorerDialog({ open, onOpenChange, hardwareId }: Dev
   const downloadLinkRef = useRef<HTMLAnchorElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const currentPathRef = useRef(DEFAULT_FILE_EXPLORER_PATH)
+  const intentionalCloseRef = useRef(false)
+  const reconnectTimerRef = useRef<number | null>(null)
+  const hasConnectedOnceRef = useRef(false)
 
   const [status, setStatus] = useState<FileExplorerConnectionStatus>('idle')
   const [files, setFiles] = useState<RemoteFileEntry[]>([])
@@ -63,6 +76,13 @@ export function DeviceFileExplorerDialog({ open, onOpenChange, hardwareId }: Dev
   useEffect(() => {
     currentPathRef.current = currentPath
   }, [currentPath])
+
+  const clearReconnectTimer = useCallback(() => {
+    if (reconnectTimerRef.current != null) {
+      window.clearTimeout(reconnectTimerRef.current)
+      reconnectTimerRef.current = null
+    }
+  }, [])
 
   const closeSocket = useCallback(() => {
     const socket = socketRef.current
@@ -91,47 +111,36 @@ export function DeviceFileExplorerDialog({ open, onOpenChange, hardwareId }: Dev
     URL.revokeObjectURL(url)
   }, [])
 
-  useEffect(() => {
-    if (!open) {
-      closeSocket()
-      setStatus('idle')
-      setFiles([])
-      setCurrentPath(DEFAULT_FILE_EXPLORER_PATH)
-      setPathInput(DEFAULT_FILE_EXPLORER_PATH)
-      setStatusMessage(null)
-      setErrorMessage(null)
-      setIsLoadingDirectory(false)
-      setIsDownloading(false)
-      setIsUploading(false)
-      fileChunksRef.current = []
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
-      return
-    }
-
+  const connect = useCallback(() => {
     const deviceId = hardwareId.trim()
-    if (!deviceId) {
-      setStatus('error')
-      setStatusMessage(t('deviceDetail.fileExplorer.missingDeviceId'))
+    if (!deviceId || intentionalCloseRef.current) {
       return
     }
 
-    setStatus('connecting')
-    setStatusMessage(t('deviceDetail.fileExplorer.connecting'))
-    setFiles([])
-    setCurrentPath(DEFAULT_FILE_EXPLORER_PATH)
-    setPathInput(DEFAULT_FILE_EXPLORER_PATH)
-    setErrorMessage(null)
+    clearReconnectTimer()
+    closeSocket()
+
+    if (hasConnectedOnceRef.current) {
+      setStatus('reconnecting')
+      setStatusMessage(t('deviceDetail.fileExplorer.reconnecting'))
+    } else {
+      setStatus('connecting')
+      setStatusMessage(t('deviceDetail.fileExplorer.connecting'))
+    }
 
     const socket = new WebSocket(buildDeviceFileExplorerWebSocketUrl(deviceId))
     socket.binaryType = 'arraybuffer'
     socketRef.current = socket
 
     socket.onopen = () => {
+      if (socketRef.current !== socket) {
+        return
+      }
+      hasConnectedOnceRef.current = true
       setStatus('connected')
-      setStatusMessage(t('deviceDetail.fileExplorer.waitingForAgent'))
-      sendReadDir(DEFAULT_FILE_EXPLORER_PATH)
+      setStatusMessage(null)
+      setErrorMessage(null)
+      sendReadDir(currentPathRef.current)
     }
 
     socket.onmessage = (event) => {
@@ -200,26 +209,81 @@ export function DeviceFileExplorerDialog({ open, onOpenChange, hardwareId }: Dev
     }
 
     socket.onerror = () => {
-      setStatus('error')
-      setStatusMessage(t('deviceDetail.fileExplorer.error'))
+      if (socketRef.current !== socket) {
+        return
+      }
+      setErrorMessage(t('deviceDetail.fileExplorer.error'))
       setIsLoadingDirectory(false)
       setIsDownloading(false)
       setIsUploading(false)
     }
 
     socket.onclose = () => {
+      if (socketRef.current !== socket) {
+        return
+      }
       socketRef.current = null
-      setStatus((current) => (current === 'connecting' ? 'error' : 'closed'))
-      setStatusMessage((current) => current ?? t('deviceDetail.fileExplorer.disconnected'))
       setIsLoadingDirectory(false)
       setIsDownloading(false)
       setIsUploading(false)
+      fileChunksRef.current = []
+
+      if (intentionalCloseRef.current) {
+        setStatus('closed')
+        return
+      }
+
+      setStatus('reconnecting')
+      setStatusMessage(t('deviceDetail.fileExplorer.reconnecting'))
+      reconnectTimerRef.current = window.setTimeout(() => {
+        connect()
+      }, RECONNECT_DELAY_MS)
+    }
+  }, [clearReconnectTimer, closeSocket, hardwareId, sendReadDir, t, triggerBrowserDownload])
+
+  useEffect(() => {
+    if (!open) {
+      intentionalCloseRef.current = true
+      clearReconnectTimer()
+      closeSocket()
+      hasConnectedOnceRef.current = false
+      setStatus('idle')
+      setFiles([])
+      setCurrentPath(DEFAULT_FILE_EXPLORER_PATH)
+      setPathInput(DEFAULT_FILE_EXPLORER_PATH)
+      setStatusMessage(null)
+      setErrorMessage(null)
+      setIsLoadingDirectory(false)
+      setIsDownloading(false)
+      setIsUploading(false)
+      fileChunksRef.current = []
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+      return
     }
 
+    const deviceId = hardwareId.trim()
+    if (!deviceId) {
+      setStatus('error')
+      setStatusMessage(t('deviceDetail.fileExplorer.missingDeviceId'))
+      return
+    }
+
+    intentionalCloseRef.current = false
+    hasConnectedOnceRef.current = false
+    setFiles([])
+    setCurrentPath(DEFAULT_FILE_EXPLORER_PATH)
+    setPathInput(DEFAULT_FILE_EXPLORER_PATH)
+    setErrorMessage(null)
+    connect()
+
     return () => {
+      intentionalCloseRef.current = true
+      clearReconnectTimer()
       closeSocket()
     }
-  }, [closeSocket, hardwareId, open, sendReadDir, t, triggerBrowserDownload])
+  }, [clearReconnectTimer, closeSocket, connect, hardwareId, open, t])
 
   const handleNavigate = () => {
     const nextPath = pathInput.trim()
@@ -267,8 +331,19 @@ export function DeviceFileExplorerDialog({ open, onOpenChange, hardwareId }: Dev
     if (socket?.readyState !== WebSocket.OPEN || isDownloading || isUploading) {
       return
     }
+
     const fullPath = joinWindowsPath(currentPath, entry.name)
-    socket.send(buildExecuteCommand(fullPath))
+    let args: string[] | undefined
+
+    if (isExeFile(entry.name)) {
+      const input = window.prompt(t('deviceDetail.fileExplorer.executeArgsPrompt'), '')
+      if (input === null) {
+        return
+      }
+      args = parseExecuteArgs(input)
+    }
+
+    socket.send(buildExecuteCommand(fullPath, args))
   }
 
   const handleUploadSelectedFile = async (file: File) => {
@@ -301,8 +376,9 @@ export function DeviceFileExplorerDialog({ open, onOpenChange, hardwareId }: Dev
   }
 
   const isConnecting = status === 'connecting'
+  const isReconnecting = status === 'reconnecting'
   const isBusy = isDownloading || isUploading
-  const canInteract = status === 'connected' && !isConnecting && !isBusy
+  const canInteract = status === 'connected' && !isBusy
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -327,7 +403,7 @@ export function DeviceFileExplorerDialog({ open, onOpenChange, hardwareId }: Dev
               }}
               className="h-9 min-w-0 flex-1 border border-zinc-600 bg-zinc-800 px-3 text-sm text-zinc-100 shadow-none outline-none placeholder:text-zinc-500 focus:border-zinc-400"
               placeholder={DEFAULT_FILE_EXPLORER_PATH}
-              disabled={status !== 'connected' || isBusy}
+              disabled={!canInteract}
             />
             <div className="flex shrink-0 flex-wrap gap-2">
               <input
@@ -370,7 +446,12 @@ export function DeviceFileExplorerDialog({ open, onOpenChange, hardwareId }: Dev
           </div>
 
           <div className="min-h-5 text-xs text-zinc-400">
-            {isConnecting ? (
+            {isReconnecting ? (
+              <span className="inline-flex items-center gap-2 text-amber-400">
+                <Loader2 className="size-3.5 animate-spin" />
+                {statusMessage ?? t('deviceDetail.fileExplorer.reconnecting')}
+              </span>
+            ) : isConnecting ? (
               <span className="inline-flex items-center gap-2">
                 <Loader2 className="size-3.5 animate-spin text-zinc-300" />
                 {statusMessage ?? t('deviceDetail.fileExplorer.connecting')}
@@ -426,7 +507,7 @@ export function DeviceFileExplorerDialog({ open, onOpenChange, hardwareId }: Dev
               {sortedFiles.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-8 text-center text-sm text-zinc-500">
-                    {isConnecting || isLoadingDirectory
+                    {isConnecting || isReconnecting || isLoadingDirectory
                       ? t('deviceDetail.fileExplorer.loadingDirectory')
                       : t('deviceDetail.fileExplorer.emptyDirectory')}
                   </td>
