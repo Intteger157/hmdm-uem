@@ -9,6 +9,7 @@ import {
 } from '@/features/windows/configurations/utils/profile-app-assignments'
 import i18n from '@/shared/lib/i18n'
 import { Label } from '@/components/ui/label'
+import { FlatSelect } from '@/components/ui/flat-select'
 
 interface WindowsProfileAppsSelectorProps {
   apps: SoftwareApp[]
@@ -94,22 +95,21 @@ export function WindowsProfileAppsSelector({
             return (
               <div key={assignment.appId} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
                 <span className="min-w-32 text-sm font-medium">{formatDisplayText(app.name)}</span>
-                <select
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:max-w-xs"
+                <FlatSelect
+                  className="sm:max-w-xs"
                   value={value}
                   disabled={disabled}
-                  onChange={(event) => {
-                    const next = event.target.value
+                  onChange={(next) =>
                     setVersion(assignment.appId, next === 'latest' ? null : Number.parseInt(next, 10))
-                  }}
-                >
-                  <option value="latest">{latestOptionLabel}</option>
-                  {app.versions.map((version) => (
-                    <option key={version.id} value={String(version.id)}>
-                      {formatDisplayText(version.version, `#${version.id}`)}
-                    </option>
-                  ))}
-                </select>
+                  }
+                  options={[
+                    { value: 'latest', label: latestOptionLabel },
+                    ...app.versions.map((version) => ({
+                      value: String(version.id),
+                      label: formatDisplayText(version.version, `#${version.id}`),
+                    })),
+                  ]}
+                />
               </div>
             )
           })}

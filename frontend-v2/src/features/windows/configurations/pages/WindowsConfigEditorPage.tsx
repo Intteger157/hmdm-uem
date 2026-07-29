@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -19,8 +19,17 @@ import {
   useConfigProfileAppsQuery,
   useSoftwareAppsQuery,
 } from '@/features/windows/applications/hooks/use-windows-software-apps'
-import { WindowsQuickSettingsEditor } from '@/features/windows/configurations/components/WindowsQuickSettingsEditor'
+import { WindowsDeviceRestrictionsEditor } from '@/features/windows/configurations/components/WindowsDeviceRestrictionsEditor'
+import {
+  WindowsConfigEditorNavIndicator,
+} from '@/features/windows/configurations/components/WindowsConfigEditorNav'
 import { WindowsRegistryPoliciesEditor } from '@/features/windows/configurations/components/WindowsRegistryPoliciesEditor'
+import {
+  applyMergedPresetsToPayload,
+  countDeviceRestrictions,
+  MERGED_PRESET_IDS,
+  syncQuickPolicyIdsWithPayload,
+} from '@/features/windows/configurations/constants/device-restrictions-groups'
 import {
   buildRegistryPoliciesForSubmit,
   partitionPoliciesByPresets,
@@ -118,10 +127,17 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
     if (policiesQuery.data?.items) {
       const { enabledQuickPolicyIds: loadedQuickPolicyIds, manualPolicies } =
         partitionPoliciesByPresets(policiesQuery.data.items)
-      setEnabledQuickPolicyIds(loadedQuickPolicyIds)
+
+      const payloadPatch = applyMergedPresetsToPayload(loadedQuickPolicyIds)
+      if (Object.keys(payloadPatch).length > 0) {
+        const currentPayload = form.getValues('payload')
+        form.setValue('payload', { ...currentPayload, ...payloadPatch })
+      }
+
+      setEnabledQuickPolicyIds(loadedQuickPolicyIds.filter((id) => !MERGED_PRESET_IDS.has(id)))
       setRegistryPolicies(manualPolicies)
     }
-  }, [policiesQuery.data])
+  }, [policiesQuery.data, form])
 
   useEffect(() => {
     if (fileDeploymentsQuery.data) {
@@ -157,13 +173,6 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
       requiredApps: buildRequiredAppsSubmitPayload(values.appAssignments),
     }
 
-    const submitPayload = {
-      profile: upsertPayload,
-      assignments: assignmentsPayload,
-    }
-
-    console.log('Submit Payload:', submitPayload)
-
     try {
       const saved = await upsertMutation.mutateAsync({
         id: profileId,
@@ -175,7 +184,10 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
         assignments: assignmentsPayload,
       })
 
-      const mergedPolicies = buildRegistryPoliciesForSubmit(registryPolicies, enabledQuickPolicyIds)
+      const mergedPolicies = buildRegistryPoliciesForSubmit(
+        registryPolicies,
+        syncQuickPolicyIdsWithPayload(values.payload, enabledQuickPolicyIds),
+      )
       const normalizedPolicies = mergedPolicies
         .map((policy) => ({
           policyPath: policy.policyPath.trim(),
@@ -216,6 +228,51 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
     assignMutation.isPending ||
     replacePoliciesMutation.isPending ||
     assignFileDeploymentsMutation.isPending
+  const payload = form.watch('payload')
+  const appAssignments = form.watch('appAssignments')
+  const groupIds = form.watch('groupIds')
+  const deviceIds = form.watch('deviceIds')
+
+  const tabIndicators = useMemo(
+    () => ({
+      deviceRestrictions: countDeviceRestrictions(payload, enabledQuickPolicyIds),
+      registryPolicies: registryPolicies.filter((policy) => policy.policyPath.trim().length > 0).length,
+      apps: appAssignments.length,
+      fileDeployments: fileDeploymentRules.length,
+      assignments: groupIds.length + deviceIds.length,
+    }),
+    [payload, enabledQuickPolicyIds, registryPolicies, appAssignments, fileDeploymentRules, groupIds, deviceIds],
+  )
+
+  const editorTabs = [
+    { value: 'general', label: t('windowsConfigurations.form.general') },
+    {
+      value: 'deviceRestrictions',
+      label: t('windowsConfigurations.form.deviceRestrictions'),
+      count: tabIndicators.deviceRestrictions,
+    },
+    {
+      value: 'registryPolicies',
+      label: t('windowsConfigurations.form.registryPolicies'),
+      count: tabIndicators.registryPolicies,
+    },
+    {
+      value: 'apps',
+      label: t('windowsConfigurations.form.requiredApps'),
+      count: tabIndicators.apps,
+    },
+    {
+      value: 'fileDeployments',
+      label: t('windowsConfigurations.form.fileDeployments'),
+      count: tabIndicators.fileDeployments,
+    },
+    {
+      value: 'assignments',
+      label: t('windowsConfigurations.form.assignments'),
+      count: tabIndicators.assignments,
+    },
+  ] as const
+
   const profileName = form.watch('name')
 
   const groupOptions = (groupsQuery.data ?? []).map((group) => ({
@@ -275,18 +332,32 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
 
       <Form {...form}>
         <form id="config-form" onSubmit={(event) => void handleSubmit(event)} className="space-y-6">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList>
-              <TabsTrigger value="general">{t('windowsConfigurations.form.general')}</TabsTrigger>
-              <TabsTrigger value="policies">{t('windowsConfigurations.form.securityPolicies')}</TabsTrigger>
-              <TabsTrigger value="quickSettings">{t('windowsConfigurations.form.quickSettings')}</TabsTrigger>
-              <TabsTrigger value="registryPolicies">{t('windowsConfigurations.form.registryPolicies')}</TabsTrigger>
-              <TabsTrigger value="apps">{t('windowsConfigurations.form.requiredApps')}</TabsTrigger>
-              <TabsTrigger value="fileDeployments">{t('windowsConfigurations.form.fileDeployments')}</TabsTrigger>
-              <TabsTrigger value="assignments">{t('windowsConfigurations.form.assignments')}</TabsTrigger>
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            orientation="vertical"
+            className="flex flex-col gap-6 lg:flex-row lg:items-start"
+          >
+            <TabsList
+              variant="line"
+              className="h-auto w-full shrink-0 flex-col items-stretch gap-0 border border-zinc-700/80 bg-zinc-900/40 p-0 lg:w-56"
+            >
+              {editorTabs.map((tab) => (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  className="w-full justify-start rounded-none border-b border-zinc-700/60 px-4 py-3 text-left shadow-none last:border-b-0 data-active:shadow-none"
+                >
+                  <span className="truncate">{tab.label}</span>
+                  {'count' in tab ? (
+                    <WindowsConfigEditorNavIndicator count={tab.count} active={activeTab === tab.value} />
+                  ) : null}
+                </TabsTrigger>
+              ))}
             </TabsList>
 
-            <TabsContent value="general" className="mt-6">
+            <div className="min-w-0 flex-1">
+            <TabsContent value="general" className="mt-0">
               <Card>
                 <CardHeader>
                   <CardTitle>{t('windowsConfigurations.editor.generalTitle')}</CardTitle>
@@ -361,124 +432,24 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
               </Card>
             </TabsContent>
 
-            <TabsContent value="policies" className="mt-6">
-              <Card>
+            <TabsContent value="deviceRestrictions" className="mt-0">
+              <Card className="border-zinc-700/80 shadow-none">
                 <CardHeader>
-                  <CardTitle>{t('windowsConfigurations.editor.securityTitle')}</CardTitle>
-                  <CardDescription>{t('windowsConfigurations.editor.securityDescription')}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="payload.defenderEnabled"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <BoolField
-                            id="windows-config-defender"
-                            label={t('windowsConfigurations.form.defenderEnabled')}
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="payload.blockUsbStorage"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <BoolField
-                            id="windows-config-usb"
-                            label={t('windowsConfigurations.form.blockUsbStorage')}
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="payload.usbReadOnly"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <BoolField
-                            id="windows-config-usb-readonly"
-                            label={t('windowsConfigurations.form.usbReadOnly')}
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="payload.requireBitLocker"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <BoolField
-                            id="windows-config-require-bitlocker"
-                            label={t('windowsConfigurations.form.requireBitLocker')}
-                            hint={t('windowsConfigurations.form.requireBitLockerHint')}
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="payload.screenLockTimeout"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('windowsConfigurations.form.screenLockTimeout')}</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min={0}
-                            className="max-w-xs"
-                            value={field.value}
-                            onChange={(event) => {
-                              const parsed = Number.parseInt(event.target.value, 10)
-                              field.onChange(Number.isNaN(parsed) ? 0 : parsed)
-                            }}
-                          />
-                        </FormControl>
-                        <p className="text-xs text-muted-foreground">
-                          {t('windowsConfigurations.form.screenLockTimeoutHint')}
-                        </p>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="quickSettings" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>{t('windowsConfigurations.editor.quickSettingsTitle')}</CardTitle>
-                  <CardDescription>{t('windowsConfigurations.editor.quickSettingsDescription')}</CardDescription>
+                  <CardTitle>{t('windowsConfigurations.editor.deviceRestrictionsTitle')}</CardTitle>
+                  <CardDescription>{t('windowsConfigurations.editor.deviceRestrictionsDescription')}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <WindowsQuickSettingsEditor
+                  <WindowsDeviceRestrictionsEditor
+                    control={form.control}
                     enabledPresetIds={enabledQuickPolicyIds}
-                    onChange={setEnabledQuickPolicyIds}
+                    onPresetsChange={setEnabledQuickPolicyIds}
                     disabled={isPending}
                   />
                 </CardContent>
               </Card>
             </TabsContent>
 
-            <TabsContent value="registryPolicies" className="mt-6">
+            <TabsContent value="registryPolicies" className="mt-0">
               <Card>
                 <CardHeader>
                   <CardTitle>{t('windowsConfigurations.editor.registryTitle')}</CardTitle>
@@ -494,7 +465,7 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
               </Card>
             </TabsContent>
 
-            <TabsContent value="apps" className="mt-6">
+            <TabsContent value="apps" className="mt-0">
               <Card>
                 <CardHeader>
                   <CardTitle>{t('windowsConfigurations.form.requiredApps')}</CardTitle>
@@ -521,7 +492,7 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
               </Card>
             </TabsContent>
 
-            <TabsContent value="fileDeployments" className="mt-6">
+            <TabsContent value="fileDeployments" className="mt-0">
               <Card>
                 <CardHeader>
                   <CardTitle>{t('windowsConfigurations.fileDeployments.title')}</CardTitle>
@@ -538,7 +509,7 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
               </Card>
             </TabsContent>
 
-            <TabsContent value="assignments" className="mt-6">
+            <TabsContent value="assignments" className="mt-0">
               <Card>
                 <CardHeader>
                   <CardTitle>{t('windowsConfigurations.form.assignments')}</CardTitle>
@@ -586,6 +557,7 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
                 </CardContent>
               </Card>
             </TabsContent>
+            </div>
           </Tabs>
         </form>
       </Form>
