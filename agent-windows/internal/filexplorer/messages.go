@@ -8,13 +8,18 @@ import (
 )
 
 const (
-	ActionReadDir  = "read_dir"
-	ActionDownload = "download"
+	ActionReadDir     = "read_dir"
+	ActionDownload    = "download"
+	ActionUploadStart = "upload_start"
+	ActionUploadEnd   = "upload_end"
+	ActionExecute     = "execute"
 
-	MessageTypeDirList       = "dir_list"
-	MessageTypeDownloadStart = "download_start"
-	MessageTypeDownloadEnd   = "download_end"
-	MessageTypeError         = "error"
+	MessageTypeDirList        = "dir_list"
+	MessageTypeDownloadStart  = "download_start"
+	MessageTypeDownloadEnd    = "download_end"
+	MessageTypeUploadSuccess  = "upload_success"
+	MessageTypeExecSuccess    = "exec_success"
+	MessageTypeError          = "error"
 
 	downloadChunkSize = 64 * 1024
 )
@@ -50,6 +55,14 @@ type downloadEndMessage struct {
 type errorMessage struct {
 	Type    string `json:"type"`
 	Message string `json:"message"`
+}
+
+type uploadSuccessMessage struct {
+	Type string `json:"type"`
+}
+
+type execSuccessMessage struct {
+	Type string `json:"type"`
 }
 
 func encodeJSONMessage(value any) ([]byte, error) {
