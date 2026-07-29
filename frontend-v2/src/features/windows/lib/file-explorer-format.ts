@@ -28,6 +28,14 @@ export interface DownloadEndMessage {
   type: 'download_end'
 }
 
+export interface UploadSuccessMessage {
+  type: 'upload_success'
+}
+
+export interface ExecSuccessMessage {
+  type: 'exec_success'
+}
+
 export interface FileExplorerErrorMessage {
   type: 'error'
   message: string
@@ -37,7 +45,13 @@ export type FileExplorerTextMessage =
   | DirListMessage
   | DownloadStartMessage
   | DownloadEndMessage
+  | UploadSuccessMessage
+  | ExecSuccessMessage
   | FileExplorerErrorMessage
+
+export const UPLOAD_CHUNK_SIZE = 256 * 1024
+
+const RUNNABLE_EXTENSIONS = new Set(['.exe', '.msi', '.bat', '.ps1', '.cmd'])
 
 export function parseFileExplorerTextMessage(raw: string): FileExplorerTextMessage | null {
   try {
@@ -116,4 +130,38 @@ export function buildReadDirCommand(path: string): string {
 
 export function buildDownloadCommand(path: string): string {
   return JSON.stringify({ action: 'download', path })
+}
+
+export function buildUploadStartCommand(path: string): string {
+  return JSON.stringify({ action: 'upload_start', path })
+}
+
+export function buildUploadEndCommand(): string {
+  return JSON.stringify({ action: 'upload_end' })
+}
+
+export function buildExecuteCommand(path: string): string {
+  return JSON.stringify({ action: 'execute', path })
+}
+
+export function isRunnableFile(name: string): boolean {
+  const lower = name.trim().toLowerCase()
+  const dotIndex = lower.lastIndexOf('.')
+  if (dotIndex < 0) {
+    return false
+  }
+  return RUNNABLE_EXTENSIONS.has(lower.slice(dotIndex))
+}
+
+export async function sendFileUploadChunks(
+  socket: WebSocket,
+  file: File,
+  chunkSize = UPLOAD_CHUNK_SIZE,
+): Promise<void> {
+  let offset = 0
+  while (offset < file.size) {
+    const chunk = file.slice(offset, offset + chunkSize)
+    socket.send(await chunk.arrayBuffer())
+    offset += chunkSize
+  }
 }

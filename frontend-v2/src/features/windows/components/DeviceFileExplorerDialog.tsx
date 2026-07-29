@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowUp, FileText, Folder, Loader2 } from 'lucide-react'
+import { ArrowUp, FileText, Folder, Loader2, Play, Upload } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -13,14 +14,19 @@ import {
 import { buildDeviceFileExplorerWebSocketUrl } from '@/features/windows/api/device-filexplorer-socket'
 import {
   buildDownloadCommand,
+  buildExecuteCommand,
   buildReadDirCommand,
+  buildUploadEndCommand,
+  buildUploadStartCommand,
   DEFAULT_FILE_EXPLORER_PATH,
   formatFileSize,
   formatModifiedTime,
+  isRunnableFile,
   joinWindowsPath,
   mapDirListItems,
   parentWindowsPath,
   parseFileExplorerTextMessage,
+  sendFileUploadChunks,
   sortFileEntries,
   type RemoteFileEntry,
 } from '@/features/windows/lib/file-explorer-format'
@@ -39,6 +45,8 @@ export function DeviceFileExplorerDialog({ open, onOpenChange, hardwareId }: Dev
   const fileChunksRef = useRef<BlobPart[]>([])
   const downloadFilenameRef = useRef('download')
   const downloadLinkRef = useRef<HTMLAnchorElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const currentPathRef = useRef(DEFAULT_FILE_EXPLORER_PATH)
 
   const [status, setStatus] = useState<FileExplorerConnectionStatus>('idle')
   const [files, setFiles] = useState<RemoteFileEntry[]>([])
@@ -48,8 +56,13 @@ export function DeviceFileExplorerDialog({ open, onOpenChange, hardwareId }: Dev
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isLoadingDirectory, setIsLoadingDirectory] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
 
   const sortedFiles = useMemo(() => sortFileEntries(files), [files])
+
+  useEffect(() => {
+    currentPathRef.current = currentPath
+  }, [currentPath])
 
   const closeSocket = useCallback(() => {
     const socket = socketRef.current
@@ -89,7 +102,11 @@ export function DeviceFileExplorerDialog({ open, onOpenChange, hardwareId }: Dev
       setErrorMessage(null)
       setIsLoadingDirectory(false)
       setIsDownloading(false)
+      setIsUploading(false)
       fileChunksRef.current = []
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
       return
     }
 
@@ -150,10 +167,23 @@ export function DeviceFileExplorerDialog({ open, onOpenChange, hardwareId }: Dev
           return
         }
 
+        if (message.type === 'upload_success') {
+          setIsUploading(false)
+          toast.success(t('deviceDetail.fileExplorer.uploadSuccess'))
+          sendReadDir(currentPathRef.current)
+          return
+        }
+
+        if (message.type === 'exec_success') {
+          toast.success(t('deviceDetail.fileExplorer.executeSuccess'))
+          return
+        }
+
         if (message.type === 'error') {
           setErrorMessage(message.message)
           setIsLoadingDirectory(false)
           setIsDownloading(false)
+          setIsUploading(false)
           fileChunksRef.current = []
         }
         return
@@ -174,6 +204,7 @@ export function DeviceFileExplorerDialog({ open, onOpenChange, hardwareId }: Dev
       setStatusMessage(t('deviceDetail.fileExplorer.error'))
       setIsLoadingDirectory(false)
       setIsDownloading(false)
+      setIsUploading(false)
     }
 
     socket.onclose = () => {
@@ -182,6 +213,7 @@ export function DeviceFileExplorerDialog({ open, onOpenChange, hardwareId }: Dev
       setStatusMessage((current) => current ?? t('deviceDetail.fileExplorer.disconnected'))
       setIsLoadingDirectory(false)
       setIsDownloading(false)
+      setIsUploading(false)
     }
 
     return () => {
@@ -220,15 +252,57 @@ export function DeviceFileExplorerDialog({ open, onOpenChange, hardwareId }: Dev
       return
     }
     const socket = socketRef.current
-    if (socket?.readyState !== WebSocket.OPEN || isDownloading) {
+    if (socket?.readyState !== WebSocket.OPEN || isDownloading || isUploading) {
       return
     }
     const fullPath = joinWindowsPath(currentPath, entry.name)
     socket.send(buildDownloadCommand(fullPath))
   }
 
+  const handleExecuteFile = (entry: RemoteFileEntry) => {
+    if (entry.isDir || !isRunnableFile(entry.name)) {
+      return
+    }
+    const socket = socketRef.current
+    if (socket?.readyState !== WebSocket.OPEN || isDownloading || isUploading) {
+      return
+    }
+    const fullPath = joinWindowsPath(currentPath, entry.name)
+    socket.send(buildExecuteCommand(fullPath))
+  }
+
+  const handleUploadSelectedFile = async (file: File) => {
+    const socket = socketRef.current
+    if (socket?.readyState !== WebSocket.OPEN || isDownloading || isUploading) {
+      return
+    }
+
+    const targetPath = joinWindowsPath(currentPath, file.name)
+    setIsUploading(true)
+    setErrorMessage(null)
+
+    try {
+      socket.send(buildUploadStartCommand(targetPath))
+      await sendFileUploadChunks(socket, file)
+      socket.send(buildUploadEndCommand())
+    } catch {
+      setIsUploading(false)
+      setErrorMessage(t('deviceDetail.fileExplorer.uploadFailed'))
+    }
+  }
+
+  const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) {
+      return
+    }
+    void handleUploadSelectedFile(file)
+  }
+
   const isConnecting = status === 'connecting'
-  const canInteract = status === 'connected' && !isConnecting
+  const isBusy = isDownloading || isUploading
+  const canInteract = status === 'connected' && !isConnecting && !isBusy
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -253,9 +327,26 @@ export function DeviceFileExplorerDialog({ open, onOpenChange, hardwareId }: Dev
               }}
               className="h-9 min-w-0 flex-1 border border-zinc-600 bg-zinc-800 px-3 text-sm text-zinc-100 shadow-none outline-none placeholder:text-zinc-500 focus:border-zinc-400"
               placeholder={DEFAULT_FILE_EXPLORER_PATH}
-              disabled={!canInteract}
+              disabled={status !== 'connected' || isBusy}
             />
-            <div className="flex shrink-0 gap-2">
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                disabled={!canInteract}
+                onChange={handleFileInputChange}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="border-zinc-600 bg-zinc-800 text-zinc-200 shadow-none hover:bg-zinc-700 hover:text-zinc-100"
+                disabled={!canInteract}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="size-4" />
+                {t('deviceDetail.fileExplorer.upload')}
+              </Button>
               <Button
                 type="button"
                 variant="outline"
@@ -284,6 +375,11 @@ export function DeviceFileExplorerDialog({ open, onOpenChange, hardwareId }: Dev
                 <Loader2 className="size-3.5 animate-spin text-zinc-300" />
                 {statusMessage ?? t('deviceDetail.fileExplorer.connecting')}
               </span>
+            ) : isUploading ? (
+              <span className="inline-flex items-center gap-2 text-zinc-300">
+                <Loader2 className="size-3.5 animate-spin" />
+                {t('deviceDetail.fileExplorer.uploading')}
+              </span>
             ) : isDownloading ? (
               <span className="inline-flex items-center gap-2 text-zinc-300">
                 <Loader2 className="size-3.5 animate-spin" />
@@ -311,11 +407,11 @@ export function DeviceFileExplorerDialog({ open, onOpenChange, hardwareId }: Dev
         <div className="max-h-[28rem] overflow-auto bg-zinc-900">
           <table className="w-full table-fixed border-collapse text-sm">
             <colgroup>
-              <col className="w-[8%]" />
-              <col className="w-[42%]" />
-              <col className="w-[18%]" />
-              <col className="w-[22%]" />
-              <col className="w-[10%]" />
+              <col className="w-[7%]" />
+              <col className="w-[34%]" />
+              <col className="w-[14%]" />
+              <col className="w-[20%]" />
+              <col className="w-[25%]" />
             </colgroup>
             <thead className="sticky top-0 z-10 border-b border-zinc-700 bg-zinc-800">
               <tr className="text-left text-xs uppercase tracking-wide text-zinc-400">
@@ -323,7 +419,7 @@ export function DeviceFileExplorerDialog({ open, onOpenChange, hardwareId }: Dev
                 <th className="px-4 py-2 font-medium">{t('deviceDetail.fileExplorer.columns.name')}</th>
                 <th className="px-4 py-2 font-medium">{t('deviceDetail.fileExplorer.columns.size')}</th>
                 <th className="px-4 py-2 font-medium">{t('deviceDetail.fileExplorer.columns.modified')}</th>
-                <th className="px-4 py-2 text-right font-medium">{t('deviceDetail.fileExplorer.columns.action')}</th>
+                <th className="px-4 py-2 text-right font-medium">{t('deviceDetail.fileExplorer.columns.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -358,14 +454,27 @@ export function DeviceFileExplorerDialog({ open, onOpenChange, hardwareId }: Dev
                     <td className="px-4 py-2 text-zinc-300">{formatModifiedTime(entry.modTime)}</td>
                     <td className="px-4 py-2 text-right">
                       {!entry.isDir ? (
-                        <button
-                          type="button"
-                          className="inline-flex items-center border border-zinc-600 bg-zinc-800 px-2 py-1 text-xs text-zinc-300 shadow-none hover:border-zinc-500 hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40"
-                          disabled={!canInteract || isDownloading}
-                          onClick={() => handleDownloadFile(entry)}
-                        >
-                          {t('deviceDetail.fileExplorer.download')}
-                        </button>
+                        <div className="inline-flex flex-wrap justify-end gap-1">
+                          <button
+                            type="button"
+                            className="inline-flex items-center border border-zinc-600 bg-zinc-800 px-2 py-1 text-xs text-zinc-300 shadow-none hover:border-zinc-500 hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40"
+                            disabled={!canInteract}
+                            onClick={() => handleDownloadFile(entry)}
+                          >
+                            {t('deviceDetail.fileExplorer.download')}
+                          </button>
+                          {isRunnableFile(entry.name) ? (
+                            <button
+                              type="button"
+                              className="inline-flex items-center gap-1 border border-zinc-600 bg-zinc-800 px-2 py-1 text-xs text-zinc-300 shadow-none hover:border-zinc-500 hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40"
+                              disabled={!canInteract}
+                              onClick={() => handleExecuteFile(entry)}
+                            >
+                              <Play className="size-3" />
+                              {t('deviceDetail.fileExplorer.run')}
+                            </button>
+                          ) : null}
+                        </div>
                       ) : null}
                     </td>
                   </tr>
