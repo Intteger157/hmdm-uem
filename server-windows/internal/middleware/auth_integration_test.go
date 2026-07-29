@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
@@ -12,9 +11,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/hmdm/server-windows/internal/db"
 	"github.com/hmdm/server-windows/internal/models"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
+	"github.com/hmdm/server-windows/internal/testsupport"
 )
 
 // consoleFixtureDDL builds a miniature copy of the Java console schema with one
@@ -60,17 +57,7 @@ const testSecret = "20c68f0d9185b1d18cf6add1e8b491fd89529a44"
 func setupConsoleFixture(t *testing.T) {
 	t.Helper()
 
-	dsn := os.Getenv("HMDM_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("HMDM_TEST_DATABASE_URL is not set; skipping admin auth integration test")
-	}
-
-	database, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
-	})
-	if err != nil {
-		t.Fatalf("connect test database: %v", err)
-	}
+	database := testsupport.OpenSchema(t, "it_middleware_auth")
 	if err := database.Exec(consoleFixtureDDL).Error; err != nil {
 		t.Fatalf("install console fixture: %v", err)
 	}

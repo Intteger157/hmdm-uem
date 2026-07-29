@@ -220,6 +220,8 @@ func registerRoutes(router *gin.Engine, windowsHandler *handlers.WindowsHandler,
 			admin.POST("/devices/:hardwareId/apps/:appId/retry", windowsHandler.RetryDeviceApp)
 			admin.GET("/groups", windowsHandler.ListDeviceGroups)
 			admin.POST("/groups", windowsHandler.CreateDeviceGroup)
+			admin.GET("/roles", windowsHandler.ListRoleMatrix)
+			admin.PUT("/roles/:roleId", windowsHandler.UpdateRoleMatrix)
 		}
 	}
 }

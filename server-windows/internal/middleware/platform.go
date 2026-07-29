@@ -25,10 +25,23 @@ var androidPathPrefixes = []string{
 	"/api/android",
 }
 
+// agnosticPathPrefixes are console-wide administration routes that happen to sit
+// under a platform prefix for gateway routing reasons. Role administration spans
+// both ecosystems, so scoping it to Windows would lock out Android operators.
+var agnosticPathPrefixes = []string{
+	"/rest/windows/roles",
+}
+
 // PlatformForPath maps a request path to the device ecosystem it manages, or
 // returns an empty string when the route is ecosystem agnostic.
 func PlatformForPath(path string) string {
 	normalized := strings.ToLower(path)
+
+	for _, prefix := range agnosticPathPrefixes {
+		if strings.HasPrefix(normalized, prefix) {
+			return ""
+		}
+	}
 
 	for _, prefix := range windowsPathPrefixes {
 		if strings.HasPrefix(normalized, prefix) {

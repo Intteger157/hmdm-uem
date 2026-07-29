@@ -2,20 +2,21 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { RoleFormDialog } from '@/features/roles/components/RoleFormDialog'
-import { useDeleteRoleMutation, useRolesQuery } from '@/features/roles/hooks/use-roles'
-import type { UserRole } from '@/features/roles/api/roles-api'
+import { AccessLevelBadge, PlatformScopeBadge } from '@/features/roles/components/RoleMatrixBadges'
+import { useDeleteRoleMutation, useRolesWithMatrixQuery } from '@/features/roles/hooks/use-roles'
+import type { RoleWithMatrix } from '@/features/roles/lib/role-matrix'
 import { Button } from '@/components/ui/button'
 import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
 import { toast } from 'sonner'
 
 export function RolesListPage() {
   const { t } = useTranslation()
-  const { data, isLoading, error, refetch } = useRolesQuery()
+  const { roles, isLoading, error, refetch } = useRolesWithMatrixQuery()
   const deleteMutation = useDeleteRoleMutation()
 
   const [formOpen, setFormOpen] = useState(false)
-  const [editTarget, setEditTarget] = useState<UserRole | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<UserRole | null>(null)
+  const [editTarget, setEditTarget] = useState<RoleWithMatrix | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<RoleWithMatrix | null>(null)
 
   const handleDelete = async () => {
     if (!deleteTarget?.id) return
@@ -58,15 +59,23 @@ export function RolesListPage() {
               <tr>
                 <th className="px-4 py-3 font-medium">{t('roles.columns.name')}</th>
                 <th className="px-4 py-3 font-medium">{t('roles.columns.description')}</th>
+                <th className="px-4 py-3 font-medium">{t('roles.columns.platform')}</th>
+                <th className="px-4 py-3 font-medium">{t('roles.columns.accessLevel')}</th>
                 <th className="px-4 py-3 font-medium">{t('roles.columns.permissions')}</th>
                 <th className="px-4 py-3 font-medium text-right">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
-              {(data ?? []).map((role) => (
+              {roles.map((role) => (
                 <tr key={role.id ?? role.name} className="border-b last:border-b-0">
                   <td className="px-4 py-3 font-medium">{role.name}</td>
                   <td className="px-4 py-3 text-muted-foreground">{role.description ?? '—'}</td>
+                  <td className="px-4 py-3">
+                    <PlatformScopeBadge scope={role.platformScope} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <AccessLevelBadge level={role.accessLevel} />
+                  </td>
                   <td className="px-4 py-3">{role.permissions?.length ?? 0}</td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-1">

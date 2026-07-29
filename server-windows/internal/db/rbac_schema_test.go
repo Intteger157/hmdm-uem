@@ -1,13 +1,11 @@
 package db
 
 import (
-	"os"
 	"testing"
 
 	"github.com/hmdm/server-windows/internal/models"
-	"gorm.io/driver/postgres"
+	"github.com/hmdm/server-windows/internal/testsupport"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 // legacySchemaDDL recreates the parts of the Java Liquibase schema the role
@@ -46,24 +44,13 @@ INSERT INTO users (login, name, password, userRoleId) VALUES ('admin', 'admin', 
 ALTER SEQUENCE userroles_id_seq RESTART WITH 100;
 `
 
-// openLegacyTestDB connects to the database named by HMDM_TEST_DATABASE_URL and
-// installs the legacy schema. The test is skipped when the variable is unset so
-// the default `go test ./...` run stays hermetic.
+// openLegacyTestDB installs the legacy Java schema in a private PostgreSQL
+// schema. The test is skipped when no test database is configured so the default
+// `go test ./...` run stays hermetic.
 func openLegacyTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
-	dsn := os.Getenv("HMDM_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("HMDM_TEST_DATABASE_URL is not set; skipping role matrix integration test")
-	}
-
-	database, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
-	})
-	if err != nil {
-		t.Fatalf("connect test database: %v", err)
-	}
-
+	database := testsupport.OpenSchema(t, "it_db_rbac")
 	if err := database.Exec(legacySchemaDDL).Error; err != nil {
 		t.Fatalf("install legacy schema: %v", err)
 	}

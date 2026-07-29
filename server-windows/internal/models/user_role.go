@@ -35,6 +35,29 @@ func (UserRole) TableName() string {
 	return "userroles"
 }
 
+// NormalizePlatformScope validates a caller-supplied scope, returning the
+// canonical lowercase form and whether it is one of the known values.
+func NormalizePlatformScope(raw string) (string, bool) {
+	scope := strings.ToLower(strings.TrimSpace(raw))
+	switch scope {
+	case PlatformScopeGlobal, PlatformScopeWindows, PlatformScopeAndroid:
+		return scope, true
+	default:
+		return "", false
+	}
+}
+
+// NormalizeAccessLevel mirrors NormalizePlatformScope for the access dimension.
+func NormalizeAccessLevel(raw string) (string, bool) {
+	level := strings.ToLower(strings.TrimSpace(raw))
+	switch level {
+	case AccessLevelHigh, AccessLevelMid, AccessLevelLow:
+		return level, true
+	default:
+		return "", false
+	}
+}
+
 // EffectivePlatformScope falls back to "global" for rows written before the
 // matrix columns existed. Those roles predate scoping and were unrestricted, so
 // demoting them here would silently lock out working accounts.
