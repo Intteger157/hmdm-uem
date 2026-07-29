@@ -31,6 +31,16 @@ export default defineConfig(({ mode }) => {
           target: windowsBackendUrl,
           changeOrigin: true,
         },
+        '/api/taskmgr': {
+          target: windowsBackendUrl,
+          changeOrigin: true,
+          ws: true,
+        },
+        '/api/terminal': {
+          target: windowsBackendUrl,
+          changeOrigin: true,
+          ws: true,
+        },
         '/storage': {
           target: windowsBackendUrl,
           changeOrigin: true,

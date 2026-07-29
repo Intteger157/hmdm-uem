@@ -3,6 +3,7 @@ import {
   Info,
   KeyRound,
   List,
+  ListTree,
   MapPin,
   MessageSquare,
   Monitor,
@@ -46,6 +47,7 @@ import {
   useSoftwareAppsQuery,
 } from '@/features/windows/applications/hooks/use-windows-software-apps'
 import { DeviceTerminalDialog } from '@/features/windows/components/DeviceTerminalDialog'
+import { DeviceTaskManagerDialog } from '@/features/windows/components/DeviceTaskManagerDialog'
 import { useDeviceDetailCommandToast } from '@/features/devices/context/device-detail-command-toast-context'
 import type { WindowsCommandAction } from '@/features/windows/api/windows-api'
 
@@ -71,13 +73,19 @@ interface AndroidActionDef {
   requiresConfirm?: boolean
 }
 
+type WindowsPanelActionId = WindowsCommandAction | 'task_manager'
+
+function isWindowsCommandAction(id: WindowsPanelActionId): id is WindowsCommandAction {
+  return id !== 'task_manager'
+}
+
 interface WindowsActionDef {
-  id: WindowsCommandAction
+  id: WindowsPanelActionId
   icon: typeof RefreshCw
   labelKey: string
   variant?: 'outline' | 'destructive'
   requiresConfirm?: boolean
-  opensDialog?: 'terminal' | 'catalog'
+  opensDialog?: 'terminal' | 'catalog' | 'taskmgr'
   descriptionKey?: string
 }
 
@@ -128,6 +136,13 @@ const WINDOWS_ACTIONS: WindowsActionDef[] = [
     opensDialog: 'terminal',
     descriptionKey: 'deviceDetail.terminal.description',
   },
+  {
+    id: 'task_manager',
+    icon: ListTree,
+    labelKey: 'deviceDetail.taskManager.title',
+    opensDialog: 'taskmgr',
+    descriptionKey: 'deviceDetail.taskManager.description',
+  },
   { id: 'wipe', icon: Trash2, labelKey: 'deviceDetail.actions.wipe', variant: 'destructive', requiresConfirm: true },
 ]
 
@@ -147,6 +162,7 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
   const [windowsConfirmAction, setWindowsConfirmAction] = useState<WindowsCommandAction | null>(null)
   const [terminalOpen, setTerminalOpen] = useState(false)
+  const [taskManagerOpen, setTaskManagerOpen] = useState(false)
   const [deployAppOpen, setDeployAppOpen] = useState(false)
 
   const windowsCommandMutation = useWindowsDeviceCommandMutation(device.number)
@@ -221,15 +237,23 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
       setTerminalOpen(true)
       return
     }
+    if (action.opensDialog === 'taskmgr') {
+      setTaskManagerOpen(true)
+      return
+    }
     if (action.opensDialog === 'catalog') {
       setDeployAppOpen(true)
       return
     }
     if (action.requiresConfirm) {
-      setWindowsConfirmAction(action.id)
+      if (isWindowsCommandAction(action.id)) {
+        setWindowsConfirmAction(action.id)
+      }
       return
     }
-    void queueWindowsCommand(action.id)
+    if (isWindowsCommandAction(action.id)) {
+      void queueWindowsCommand(action.id)
+    }
   }
 
   const windowsConfirmLabel = (action: WindowsCommandAction | null) => {
@@ -405,6 +429,12 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
       <DeviceTerminalDialog
         open={terminalOpen}
         onOpenChange={setTerminalOpen}
+        hardwareId={device.number}
+      />
+
+      <DeviceTaskManagerDialog
+        open={taskManagerOpen}
+        onOpenChange={setTaskManagerOpen}
         hardwareId={device.number}
       />
 
