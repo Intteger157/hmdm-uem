@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import {
+  FolderOpen,
   Info,
   KeyRound,
   List,
@@ -48,6 +49,7 @@ import {
 } from '@/features/windows/applications/hooks/use-windows-software-apps'
 import { DeviceTerminalDialog } from '@/features/windows/components/DeviceTerminalDialog'
 import { DeviceTaskManagerDialog } from '@/features/windows/components/DeviceTaskManagerDialog'
+import { DeviceFileExplorerDialog } from '@/features/windows/components/DeviceFileExplorerDialog'
 import { useDeviceDetailCommandToast } from '@/features/devices/context/device-detail-command-toast-context'
 import type { WindowsCommandAction } from '@/features/windows/api/windows-api'
 
@@ -73,10 +75,10 @@ interface AndroidActionDef {
   requiresConfirm?: boolean
 }
 
-type WindowsPanelActionId = WindowsCommandAction | 'task_manager'
+type WindowsPanelActionId = WindowsCommandAction | 'task_manager' | 'file_explorer'
 
 function isWindowsCommandAction(id: WindowsPanelActionId): id is WindowsCommandAction {
-  return id !== 'task_manager'
+  return id !== 'task_manager' && id !== 'file_explorer'
 }
 
 interface WindowsActionDef {
@@ -85,7 +87,7 @@ interface WindowsActionDef {
   labelKey: string
   variant?: 'outline' | 'destructive'
   requiresConfirm?: boolean
-  opensDialog?: 'terminal' | 'catalog' | 'taskmgr'
+  opensDialog?: 'terminal' | 'catalog' | 'taskmgr' | 'filexplorer'
   descriptionKey?: string
 }
 
@@ -143,6 +145,13 @@ const WINDOWS_ACTIONS: WindowsActionDef[] = [
     opensDialog: 'taskmgr',
     descriptionKey: 'deviceDetail.taskManager.description',
   },
+  {
+    id: 'file_explorer',
+    icon: FolderOpen,
+    labelKey: 'deviceDetail.fileExplorer.title',
+    opensDialog: 'filexplorer',
+    descriptionKey: 'deviceDetail.fileExplorer.description',
+  },
   { id: 'wipe', icon: Trash2, labelKey: 'deviceDetail.actions.wipe', variant: 'destructive', requiresConfirm: true },
 ]
 
@@ -163,6 +172,7 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
   const [windowsConfirmAction, setWindowsConfirmAction] = useState<WindowsCommandAction | null>(null)
   const [terminalOpen, setTerminalOpen] = useState(false)
   const [taskManagerOpen, setTaskManagerOpen] = useState(false)
+  const [fileExplorerOpen, setFileExplorerOpen] = useState(false)
   const [deployAppOpen, setDeployAppOpen] = useState(false)
 
   const windowsCommandMutation = useWindowsDeviceCommandMutation(device.number)
@@ -239,6 +249,10 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
     }
     if (action.opensDialog === 'taskmgr') {
       setTaskManagerOpen(true)
+      return
+    }
+    if (action.opensDialog === 'filexplorer') {
+      setFileExplorerOpen(true)
       return
     }
     if (action.opensDialog === 'catalog') {
@@ -435,6 +449,12 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
       <DeviceTaskManagerDialog
         open={taskManagerOpen}
         onOpenChange={setTaskManagerOpen}
+        hardwareId={device.number}
+      />
+
+      <DeviceFileExplorerDialog
+        open={fileExplorerOpen}
+        onOpenChange={setFileExplorerOpen}
         hardwareId={device.number}
       />
 
