@@ -100,7 +100,7 @@ const METRIC_CARD_HEADER_CLASS = METRIC_TILE_HEADER_CLASS
 const METRIC_CARD_CONTENT_CLASS = METRIC_TILE_CONTENT_CLASS
 const METRIC_VALUE_CLASS = METRIC_TILE_VALUE_CLASS
 const INTERACTIVE_TILE_CLASS = 'cursor-pointer hover:bg-accent/50 transition-colors'
-const TAB_CONTENT_CLASS = 'mt-0 w-full focus-visible:outline-none'
+const TAB_CONTENT_CLASS = 'mt-0 w-full flex-none focus-visible:outline-none'
 
 function deviceTitle(device: DeviceView): string {
   if (device.platform === 'windows') {
@@ -303,11 +303,10 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
               />
             </div>
           ) : (
-            <Card className="w-full">
+            <Card className="w-full overflow-visible shadow-none ring-0">
               <CardContent className="p-0">
-                <div className="w-full overflow-x-auto">
-                  <table className="w-full min-w-full text-left text-sm">
-                    <thead className="sticky top-0 border-b bg-muted/80 backdrop-blur">
+                <table className="w-full min-w-full text-left text-sm">
+                  <thead className="sticky top-0 z-10 border-b bg-muted/80 backdrop-blur">
                       <tr className="text-muted-foreground">
                         <th className="px-4 py-2.5 font-medium">{t('deviceDetail.software.name')}</th>
                         <th className="px-4 py-2.5 font-medium">{t('deviceDetail.software.version')}</th>
@@ -332,8 +331,7 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
                         </tr>
                       )}
                     </tbody>
-                  </table>
-                </div>
+                </table>
               </CardContent>
             </Card>
           )}

@@ -55,7 +55,7 @@ export function WindowsAppDeploymentsCard({ hardwareId, className }: WindowsAppD
 
   if (isLoading) {
     return (
-      <Card className={cn('h-full', OVERVIEW_FLAT_CARD_CLASS, className)}>
+      <Card className={cn(OVERVIEW_FLAT_CARD_CLASS, 'overflow-visible', className)}>
         <CardHeader className={OVERVIEW_CARD_HEADER_CLASS}>
           <Skeleton className="h-3 w-28" />
           <Skeleton className="size-4 rounded-full" />
@@ -80,7 +80,7 @@ export function WindowsAppDeploymentsCard({ hardwareId, className }: WindowsAppD
   const onlyPending = inProgress && !hasActiveInstall
 
   return (
-    <Card className={cn('h-full', OVERVIEW_FLAT_CARD_CLASS, className)}>
+    <Card className={cn(OVERVIEW_FLAT_CARD_CLASS, 'overflow-visible', className)}>
       <CardHeader className={OVERVIEW_CARD_HEADER_CLASS}>
         <div className="min-w-0 space-y-0.5">
           <CardTitle className="text-xs font-medium text-muted-foreground">
