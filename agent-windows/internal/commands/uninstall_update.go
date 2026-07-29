@@ -48,6 +48,11 @@ func ExecuteDeviceCommand(commandName, payload string, opts *ExecuteOptions) Res
 			return Result{Success: false, Message: "start_task_manager requires agent runtime context"}
 		}
 		return ExecuteStartTaskManager(*opts, []byte(payload))
+	case CommandNameStartFileExplorer:
+		if opts == nil {
+			return Result{Success: false, Message: "start_file_explorer requires agent runtime context"}
+		}
+		return ExecuteStartFileExplorer(*opts, []byte(payload))
 	default:
 		return Result{Success: false, Message: fmt.Sprintf("unsupported command: %s", commandName)}
 	}

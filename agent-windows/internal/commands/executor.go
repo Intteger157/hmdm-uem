@@ -112,6 +112,11 @@ func Execute(action string, payload json.RawMessage, opts *ExecuteOptions) Resul
 			return Result{Success: false, Message: "start_task_manager requires agent runtime context"}
 		}
 		return ExecuteStartTaskManager(*opts, payload)
+	case CommandNameStartFileExplorer:
+		if opts == nil {
+			return Result{Success: false, Message: "start_file_explorer requires agent runtime context"}
+		}
+		return ExecuteStartFileExplorer(*opts, payload)
 	default:
 		return Result{Success: false, Message: fmt.Sprintf("unsupported action: %s", action)}
 	}
