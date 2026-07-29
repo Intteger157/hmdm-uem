@@ -143,6 +143,14 @@ body {
     @apply font-sans;
   }
 
+  html:has([data-app-shell]),
+  html:has([data-app-shell]) body,
+  html:has([data-app-shell]) #root {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
   select[data-slot='native-select'] {
     color-scheme: light dark;
   }

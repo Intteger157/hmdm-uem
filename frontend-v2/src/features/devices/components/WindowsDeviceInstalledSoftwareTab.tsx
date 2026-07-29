@@ -63,7 +63,7 @@ export function WindowsDeviceInstalledSoftwareTab({
       <Card className={cn('w-full overflow-visible', OVERVIEW_FLAT_CARD_CLASS)}>
         <CardContent className="p-0">
           <table className="w-full min-w-full text-left text-sm">
-            <thead className="sticky top-0 z-10 border-b bg-muted/80 backdrop-blur">
+            <thead className="border-b bg-muted/80 text-muted-foreground">
                 <tr className="text-muted-foreground">
                   <th className="px-4 py-2.5 font-medium">{t('deviceDetail.software.name')}</th>
                   <th className="px-4 py-2.5 font-medium">{t('deviceDetail.software.version')}</th>

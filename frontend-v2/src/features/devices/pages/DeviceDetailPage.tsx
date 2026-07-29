@@ -100,7 +100,7 @@ const METRIC_CARD_HEADER_CLASS = METRIC_TILE_HEADER_CLASS
 const METRIC_CARD_CONTENT_CLASS = METRIC_TILE_CONTENT_CLASS
 const METRIC_VALUE_CLASS = METRIC_TILE_VALUE_CLASS
 const INTERACTIVE_TILE_CLASS = 'cursor-pointer hover:bg-accent/50 transition-colors'
-const TAB_CONTENT_CLASS = 'mt-0 w-full flex-none focus-visible:outline-none'
+const TAB_CONTENT_CLASS = 'mt-0 h-auto w-full flex-none overflow-visible focus-visible:outline-none'
 
 function deviceTitle(device: DeviceView): string {
   if (device.platform === 'windows') {
@@ -189,7 +189,7 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-3">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="h-auto w-full space-y-3">
         <TabsList
           variant="line"
           className="h-auto w-full flex-wrap justify-start gap-1 [&_[data-slot=tabs-trigger]]:flex-none"
@@ -306,7 +306,7 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
             <Card className="w-full overflow-visible shadow-none ring-0">
               <CardContent className="p-0">
                 <table className="w-full min-w-full text-left text-sm">
-                  <thead className="sticky top-0 z-10 border-b bg-muted/80 backdrop-blur">
+                  <thead className="border-b bg-muted/80 text-muted-foreground">
                       <tr className="text-muted-foreground">
                         <th className="px-4 py-2.5 font-medium">{t('deviceDetail.software.name')}</th>
                         <th className="px-4 py-2.5 font-medium">{t('deviceDetail.software.version')}</th>
