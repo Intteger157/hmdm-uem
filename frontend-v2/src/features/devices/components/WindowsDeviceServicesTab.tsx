@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { OVERVIEW_FLAT_CARD_CLASS } from '@/features/devices/components/overview-card-styles'
 import { cn } from '@/lib/utils'
 
 interface WindowsDeviceServicesTabProps {
@@ -136,7 +137,7 @@ export function WindowsDeviceServicesTab({ hardwareId }: WindowsDeviceServicesTa
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className={OVERVIEW_FLAT_CARD_CLASS}>
         <CardContent className="space-y-3 p-4">
           <Skeleton className="h-8 w-full" />
           <Skeleton className="h-8 w-full" />
@@ -153,7 +154,7 @@ export function WindowsDeviceServicesTab({ hardwareId }: WindowsDeviceServicesTa
     : null
 
   return (
-    <Card>
+    <Card className={cn('w-full overflow-visible', OVERVIEW_FLAT_CARD_CLASS)}>
       <CardContent className="p-0">
         <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
           <p className="text-sm text-muted-foreground">{t('deviceDetail.services.subtitle')}</p>
@@ -173,9 +174,8 @@ export function WindowsDeviceServicesTab({ hardwareId }: WindowsDeviceServicesTa
           <div className="px-4 py-3 text-sm text-destructive">{actionError ?? queryError}</div>
         ) : null}
 
-        <div className="max-h-[32rem] overflow-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="sticky top-0 border-b bg-muted/80 backdrop-blur">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b bg-muted/80 text-muted-foreground">
               <tr className="text-muted-foreground">
                 <th className="px-4 py-2.5 font-medium">{t('deviceDetail.services.displayName')}</th>
                 <th className="px-4 py-2.5 font-medium">{t('deviceDetail.services.serviceName')}</th>
@@ -221,8 +221,7 @@ export function WindowsDeviceServicesTab({ hardwareId }: WindowsDeviceServicesTa
                 </tr>
               )}
             </tbody>
-          </table>
-        </div>
+        </table>
       </CardContent>
     </Card>
   )

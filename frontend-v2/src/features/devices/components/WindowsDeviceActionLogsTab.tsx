@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { OVERVIEW_FLAT_CARD_CLASS } from '@/features/devices/components/overview-card-styles'
 import { BoolField } from '@/shared/components/BoolField'
 import { useWindowsDeviceCommandLogsQuery } from '@/features/windows/hooks/use-windows-device-command-logs-query'
 import type { DeviceCommandLogEntry } from '@/features/windows/api/windows-api'
@@ -162,7 +163,7 @@ export function WindowsDeviceActionLogsTab({ hardwareId }: WindowsDeviceActionLo
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className={OVERVIEW_FLAT_CARD_CLASS}>
         <CardContent className="space-y-3 p-4">
           <Skeleton className="h-8 w-full" />
           <Skeleton className="h-8 w-full" />
@@ -174,7 +175,7 @@ export function WindowsDeviceActionLogsTab({ hardwareId }: WindowsDeviceActionLo
 
   if (isError) {
     return (
-      <Card>
+      <Card className={OVERVIEW_FLAT_CARD_CLASS}>
         <CardContent className="p-4 text-sm text-destructive">
           {error instanceof Error ? error.message : t('deviceDetail.actionLogs.loadFailed')}
         </CardContent>
@@ -192,11 +193,10 @@ export function WindowsDeviceActionLogsTab({ hardwareId }: WindowsDeviceActionLo
           onCheckedChange={setShowBackgroundLogs}
         />
       </div>
-      <Card>
+      <Card className={cn('w-full overflow-visible', OVERVIEW_FLAT_CARD_CLASS)}>
         <CardContent className="p-0">
-          <div className="max-h-[32rem] overflow-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="sticky top-0 border-b bg-muted/80 backdrop-blur">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b bg-muted/80 text-muted-foreground">
                 <tr className="text-muted-foreground">
                   <th className="px-4 py-2.5 font-medium">{t('deviceDetail.actionLogs.date')}</th>
                   <th className="px-4 py-2.5 font-medium">{t('deviceDetail.actionLogs.command')}</th>
@@ -248,7 +248,6 @@ export function WindowsDeviceActionLogsTab({ hardwareId }: WindowsDeviceActionLo
                 ) : null}
               </tbody>
             </table>
-          </div>
         </CardContent>
       </Card>
 

@@ -17,8 +17,10 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { NativeSelect } from '@/components/ui/native-select'
+import { OVERVIEW_FLAT_CARD_CLASS } from '@/features/devices/components/overview-card-styles'
 import { useDeviceDetailCommandToast } from '@/features/devices/context/device-detail-command-toast-context'
 import { useWindowsDeviceCommandMutation } from '@/features/windows/hooks/use-windows-device-command'
+import { cn } from '@/lib/utils'
 
 const SUGGESTED_GROUPS = ['Administrators', 'Remote Desktop Users', 'Users', 'Power Users'] as const
 
@@ -85,62 +87,60 @@ export function WindowsDeviceLocalUsersTab({
 
   return (
     <>
-      <Card className="w-full">
+      <Card className={cn('w-full overflow-visible', OVERVIEW_FLAT_CARD_CLASS)}>
         <CardContent className="p-0">
-          <div className="w-full overflow-x-auto">
-            <table className="w-full min-w-full text-left text-sm">
-              <thead className="border-b bg-muted/40 text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-2.5 font-medium">{t('deviceDetail.users.username')}</th>
-                  <th className="px-4 py-2.5 font-medium">{t('deviceDetail.users.admin')}</th>
-                  <th className="px-4 py-2.5 font-medium">{t('deviceDetail.users.status')}</th>
-                  <th className="px-4 py-2.5 font-medium">{t('deviceDetail.users.actions')}</th>
+          <table className="w-full text-left text-sm">
+            <thead className="border-b bg-muted/80 text-muted-foreground">
+              <tr>
+                <th className="px-4 py-2.5 font-medium">{t('deviceDetail.users.username')}</th>
+                <th className="px-4 py-2.5 font-medium">{t('deviceDetail.users.admin')}</th>
+                <th className="px-4 py-2.5 font-medium">{t('deviceDetail.users.status')}</th>
+                <th className="px-4 py-2.5 font-medium">{t('deviceDetail.users.actions')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {localUsers.map((user) => (
+                <tr key={user.username} className="border-b last:border-0">
+                  <td className="px-4 py-2.5 font-mono text-xs">{user.username}</td>
+                  <td className="px-4 py-2.5">
+                    {user.isAdmin ? t('deviceDetail.users.yes') : t('deviceDetail.users.no')}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <Badge
+                      variant={
+                        user.status === 'active'
+                          ? 'default'
+                          : user.status === 'locked'
+                            ? 'destructive'
+                            : 'secondary'
+                      }
+                    >
+                      {user.status}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={commandMutation.isPending}
+                      onClick={() => handleOpenManage(user)}
+                    >
+                      <Settings2 className="size-3.5" />
+                      {t('deviceDetail.users.manageGroups.manage')}
+                    </Button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {localUsers.map((user) => (
-                  <tr key={user.username} className="border-b last:border-0">
-                    <td className="px-4 py-2.5 font-mono text-xs">{user.username}</td>
-                    <td className="px-4 py-2.5">
-                      {user.isAdmin ? t('deviceDetail.users.yes') : t('deviceDetail.users.no')}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <Badge
-                        variant={
-                          user.status === 'active'
-                            ? 'default'
-                            : user.status === 'locked'
-                              ? 'destructive'
-                              : 'secondary'
-                        }
-                      >
-                        {user.status}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={commandMutation.isPending}
-                        onClick={() => handleOpenManage(user)}
-                      >
-                        <Settings2 className="size-3.5" />
-                        {t('deviceDetail.users.manageGroups.manage')}
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-                {localUsers.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
-                      {t('deviceDetail.users.empty')}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+              ))}
+              {localUsers.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
+                    {t('deviceDetail.users.empty')}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </CardContent>
       </Card>
 
