@@ -17,6 +17,7 @@ const (
 	CommandNameUninstallApp         = "UninstallApp"
 	CommandNameRemoteSupport        = "remote_support"
 	CommandNameStartTaskManager     = "start_task_manager"
+	CommandNameStartFileExplorer    = "start_file_explorer"
 )
 
 const (

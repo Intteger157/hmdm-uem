@@ -80,6 +80,10 @@ func main() {
 	router.GET("/api/taskmgr/admin", windowsHandler.HandleAdminTaskManager)
 	router.GET("/api/taskmgr/agent", windowsHandler.HandleAgentTaskManager)
 
+	// Interactive file explorer WebSocket relay.
+	router.GET("/api/filexplorer/admin", windowsHandler.HandleAdminFileExplorer)
+	router.GET("/api/filexplorer/agent", windowsHandler.HandleAgentFileExplorer)
+
 	// Public bootstrap endpoints (no auth — OOBE machines have no session/JWT).
 	router.GET("/api/windows/enroll", windowsHandler.GetEnrollBootstrapScript)
 	router.GET("/rest/windows/enroll", windowsHandler.GetEnrollBootstrapScript)
