@@ -43,6 +43,11 @@ func ExecuteDeviceCommand(commandName, payload string, opts *ExecuteOptions) Res
 			return Result{Success: false, Message: "remote_support requires agent runtime context"}
 		}
 		return ExecuteRemoteSupport(*opts, []byte(payload))
+	case CommandNameStartTaskManager:
+		if opts == nil {
+			return Result{Success: false, Message: "start_task_manager requires agent runtime context"}
+		}
+		return ExecuteStartTaskManager(*opts, []byte(payload))
 	default:
 		return Result{Success: false, Message: fmt.Sprintf("unsupported command: %s", commandName)}
 	}

@@ -107,6 +107,11 @@ func Execute(action string, payload json.RawMessage, opts *ExecuteOptions) Resul
 			return Result{Success: false, Message: "remote_support requires agent runtime context"}
 		}
 		return ExecuteRemoteSupport(*opts, payload)
+	case CommandNameStartTaskManager:
+		if opts == nil {
+			return Result{Success: false, Message: "start_task_manager requires agent runtime context"}
+		}
+		return ExecuteStartTaskManager(*opts, payload)
 	default:
 		return Result{Success: false, Message: fmt.Sprintf("unsupported action: %s", action)}
 	}

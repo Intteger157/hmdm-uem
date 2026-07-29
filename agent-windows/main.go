@@ -681,7 +681,7 @@ func commandExecuteOptions(cfg *config.Config) *commands.ExecuteOptions {
 
 func isLongRunningPollAction(action string) bool {
 	switch strings.ToLower(strings.TrimSpace(action)) {
-	case "install", "powershell", "bitlocker_enable", commands.CommandNameRemoteSupport:
+	case "install", "powershell", "bitlocker_enable", commands.CommandNameRemoteSupport, commands.CommandNameStartTaskManager:
 		return true
 	default:
 		return false
