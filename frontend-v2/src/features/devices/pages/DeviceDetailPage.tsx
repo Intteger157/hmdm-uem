@@ -109,12 +109,6 @@ function deviceTitle(device: DeviceView): string {
   return device.description ?? device.hostname ?? device.number
 }
 
-function deviceIdentifier(device: DeviceView): string {
-  return device.platform === 'windows'
-    ? (device.hostname ?? device.number)
-    : device.number
-}
-
 interface DeviceDetailPageProps {
   deviceNumber: string
   platform?: Platform
@@ -158,34 +152,23 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
   const onlineStatus = resolveDeviceOnlineStatusCode(device, now)
   const isWindows = device.platform === 'windows'
   const title = deviceTitle(device)
-  const identifier = deviceIdentifier(device)
-  const showIdentifierSubtitle = identifier !== title
 
   return (
     <DeviceDetailCommandToastProvider onGoToActionLogs={() => setActiveTab('action-logs')}>
       <div className="space-y-3">
-      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-x-1 gap-y-2 border-b pb-3 text-sm text-muted-foreground">
         <Link to="/devices" search={{ platform: device.platform }} className="hover:text-foreground">
           {t('nav.devices')}
         </Link>
-        <ChevronRight className="size-3.5" />
-        <span className="text-foreground">{deviceIdentifier(device)}</span>
-      </div>
-
-      <div className="flex flex-col gap-3 border-b pb-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
-            <Badge variant={STATUS_BADGE[onlineStatus] ?? 'secondary'}>
-              {t(`devices.status.${onlineStatus}`)}
-            </Badge>
-            <Badge variant="outline">{device.platform}</Badge>
-            {device.kioskMode && <Badge variant="secondary">Kiosk</Badge>}
-            {device.mdmMode && <Badge variant="secondary">MDM</Badge>}
-          </div>
-          {showIdentifierSubtitle ? (
-            <p className="font-mono text-sm text-muted-foreground">{identifier}</p>
-          ) : null}
+        <ChevronRight className="size-3.5 shrink-0" />
+        <span className="font-semibold text-foreground">{title}</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={STATUS_BADGE[onlineStatus] ?? 'secondary'}>
+            {t(`devices.status.${onlineStatus}`)}
+          </Badge>
+          <Badge variant="outline">{device.platform}</Badge>
+          {device.kioskMode ? <Badge variant="secondary">Kiosk</Badge> : null}
+          {device.mdmMode ? <Badge variant="secondary">MDM</Badge> : null}
         </div>
       </div>
 
@@ -1150,10 +1133,12 @@ function WindowsDiskMetrics({
 function DeviceDetailSkeleton() {
   return (
     <div className="space-y-3">
-      <Skeleton className="h-4 w-48" />
-      <div className="space-y-1.5 border-b pb-3">
-        <Skeleton className="h-8 w-64" />
+      <div className="flex flex-wrap items-center gap-2 border-b pb-3">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="size-3.5 rounded-full" />
         <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-5 w-16 rounded-full" />
+        <Skeleton className="h-5 w-16 rounded-full" />
       </div>
       <Tabs defaultValue="overview" className="w-full space-y-3">
         <TabsList variant="line" className="h-auto w-full flex-wrap justify-start gap-1">
