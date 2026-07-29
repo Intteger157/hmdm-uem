@@ -16,6 +16,7 @@ const (
 	CommandNameInstallWindowsUpdate = "install_windows_update"
 	CommandNameUninstallApp         = "UninstallApp"
 	CommandNameRemoteSupport        = "remote_support"
+	CommandNameStartTaskManager     = "start_task_manager"
 )
 
 const (

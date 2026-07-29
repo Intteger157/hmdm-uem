@@ -18,13 +18,15 @@ const mockAuthToken = "mock-jwt-token-777"
 
 // WindowsHandler serves REST endpoints for the Windows MDM agent.
 type WindowsHandler struct {
-	terminalRelay *terminalRelay
+	terminalRelay    *terminalRelay
+	taskManagerRelay *taskManagerRelay
 }
 
 // NewWindowsHandler creates a Windows agent API handler.
 func NewWindowsHandler() *WindowsHandler {
 	return &WindowsHandler{
-		terminalRelay: newTerminalRelay(),
+		terminalRelay:    newTerminalRelay(),
+		taskManagerRelay: newTaskManagerRelay(),
 	}
 }
 

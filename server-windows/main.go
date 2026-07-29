@@ -76,6 +76,10 @@ func main() {
 	router.GET("/api/terminal/admin", windowsHandler.HandleAdminTerminal)
 	router.GET("/api/terminal/agent", windowsHandler.HandleAgentTerminal)
 
+	// Remote task manager WebSocket relay.
+	router.GET("/api/taskmgr/admin", windowsHandler.HandleAdminTaskManager)
+	router.GET("/api/taskmgr/agent", windowsHandler.HandleAgentTaskManager)
+
 	// Public bootstrap endpoints (no auth — OOBE machines have no session/JWT).
 	router.GET("/api/windows/enroll", windowsHandler.GetEnrollBootstrapScript)
 	router.GET("/rest/windows/enroll", windowsHandler.GetEnrollBootstrapScript)
