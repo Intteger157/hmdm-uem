@@ -1015,6 +1015,8 @@
   "deviceDetail.taskManager.error": "Не удалось подключиться. Проверьте, что устройство онлайн и агент обновлён.",
   "deviceDetail.taskManager.missingDeviceId": "Не указан ID устройства.",
   "deviceDetail.taskManager.processCount": "Процессов: {{count}}",
+  "deviceDetail.taskManager.searchPlaceholder": "Поиск процессов…",
+  "deviceDetail.taskManager.searchEmpty": "Нет процессов по вашему запросу.",
   "deviceDetail.taskManager.loadingProcesses": "Ожидание списка процессов…",
   "deviceDetail.taskManager.emptyProcesses": "Список процессов пока пуст.",
   "deviceDetail.taskManager.killProcess": "Завершить {{name}}",

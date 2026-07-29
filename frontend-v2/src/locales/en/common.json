@@ -1015,6 +1015,8 @@
   "deviceDetail.taskManager.error": "Connection failed. Check that the device is online and the agent is updated.",
   "deviceDetail.taskManager.missingDeviceId": "Device ID is missing.",
   "deviceDetail.taskManager.processCount": "{{count}} processes",
+  "deviceDetail.taskManager.searchPlaceholder": "Search processes…",
+  "deviceDetail.taskManager.searchEmpty": "No processes match your search.",
   "deviceDetail.taskManager.loadingProcesses": "Waiting for process list…",
   "deviceDetail.taskManager.emptyProcesses": "No processes received yet.",
   "deviceDetail.taskManager.killProcess": "End {{name}}",
