@@ -71,6 +71,8 @@ func TestAdminRoutesAreGuarded(t *testing.T) {
 		{http.MethodGet, "/rest/windows/groups"},
 		{http.MethodGet, "/rest/windows/roles"},
 		{http.MethodPut, "/rest/windows/roles/3"},
+		{http.MethodGet, "/api/windows/roles"},
+		{http.MethodPut, "/api/windows/roles/3"},
 		{http.MethodGet, "/rest/windows/enrollment-setup"},
 		{http.MethodGet, "/rest/windows/enrollment-security"},
 		{http.MethodPost, "/rest/windows/enrollment-token"},

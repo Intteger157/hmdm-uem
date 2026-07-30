@@ -22,6 +22,8 @@ func TestPlatformForPath(t *testing.T) {
 		// Role administration spans both ecosystems despite its Windows prefix.
 		{"/rest/windows/roles", ""},
 		{"/rest/windows/roles/3", ""},
+		{"/api/windows/roles", ""},
+		{"/api/windows/roles/3", ""},
 		{"/rest/private/users/current", ""},
 		{"/storage/apps/setup.msi", ""},
 		{"/", ""},

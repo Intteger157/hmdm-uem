@@ -11,7 +11,7 @@ import { toast } from 'sonner'
 
 export function RolesListPage() {
   const { t } = useTranslation()
-  const { roles, isLoading, error, refetch } = useRolesWithMatrixQuery()
+  const { roles, isLoading, error, matrixError, refetch } = useRolesWithMatrixQuery()
   const deleteMutation = useDeleteRoleMutation()
 
   const [formOpen, setFormOpen] = useState(false)
@@ -41,6 +41,12 @@ export function RolesListPage() {
           {t('roles.add')}
         </Button>
       </div>
+
+      {matrixError != null && error == null && !isLoading && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4">
+          <p className="text-sm text-amber-200">{t('roles.matrixLoadError')}</p>
+        </div>
+      )}
 
       {isLoading && <p className="text-sm text-muted-foreground">{t('common.loading')}</p>}
       {error != null && (

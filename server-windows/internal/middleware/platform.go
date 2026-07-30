@@ -30,6 +30,7 @@ var androidPathPrefixes = []string{
 // both ecosystems, so scoping it to Windows would lock out Android operators.
 var agnosticPathPrefixes = []string{
 	"/rest/windows/roles",
+	"/api/windows/roles",
 }
 
 // PlatformForPath maps a request path to the device ecosystem it manages, or

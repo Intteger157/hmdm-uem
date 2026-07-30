@@ -31,6 +31,7 @@ export function useRoleMatrixQuery() {
   return useQuery({
     queryKey: rolesQueryKeys.matrix(),
     queryFn: fetchRoleMatrix,
+    retry: false,
   })
 }
 
@@ -38,25 +39,30 @@ export function useRoleMatrixQuery() {
  * Presents the roles page with a single list even though the data comes from two
  * backends: the Java console owns the roles, the Go server owns their platform
  * scope and access level.
+ *
+ * A Go matrix outage must not hide the Java role list — missing matrix rows fall
+ * back to global/high defaults until the Go API recovers.
  */
 export function useRolesWithMatrixQuery(): {
   roles: RoleWithMatrix[]
   isLoading: boolean
   error: unknown
+  matrixError: unknown
   refetch: () => Promise<unknown>
 } {
   const rolesQuery = useRolesQuery()
   const matrixQuery = useRoleMatrixQuery()
 
   const roles = useMemo(
-    () => mergeRoleMatrix(rolesQuery.data, matrixQuery.data),
-    [rolesQuery.data, matrixQuery.data],
+    () => mergeRoleMatrix(rolesQuery.data, matrixQuery.isError ? undefined : matrixQuery.data),
+    [rolesQuery.data, matrixQuery.data, matrixQuery.isError],
   )
 
   return {
     roles,
-    isLoading: rolesQuery.isLoading || matrixQuery.isLoading,
-    error: rolesQuery.error ?? matrixQuery.error,
+    isLoading: rolesQuery.isLoading,
+    error: rolesQuery.error,
+    matrixError: matrixQuery.error,
     refetch: () => Promise.all([rolesQuery.refetch(), matrixQuery.refetch()]),
   }
 }

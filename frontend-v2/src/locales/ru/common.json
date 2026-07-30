@@ -1157,6 +1157,7 @@
   "roles.delete.confirm": "Удалить роль «{{name}}»?",
   "roles.delete.success": "Роль удалена",
   "roles.delete.error": "Не удалось удалить роль",
+  "roles.matrixLoadError": "Не удалось загрузить платформу и уровень доступа с Windows-сервера. Роли показаны со значениями по умолчанию — выйдите и войдите снова, затем повторите.",
   "roles.form.addTitle": "Добавить роль",
   "roles.form.editTitle": "Редактировать роль",
   "roles.form.description": "Настройка платформы, уровня доступа и прав роли.",

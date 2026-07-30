@@ -224,4 +224,12 @@ func registerRoutes(router *gin.Engine, windowsHandler *handlers.WindowsHandler,
 			admin.PUT("/roles/:roleId", windowsHandler.UpdateRoleMatrix)
 		}
 	}
+
+	// Mirror the role-matrix endpoints under /api/windows for gateways and SPA
+	// builds that prefix console calls with /api instead of /rest.
+	apiAdmin := router.Group("/api/windows", adminOnly)
+	{
+		apiAdmin.GET("/roles", windowsHandler.ListRoleMatrix)
+		apiAdmin.PUT("/roles/:roleId", windowsHandler.UpdateRoleMatrix)
+	}
 }

@@ -1157,6 +1157,7 @@
   "roles.delete.confirm": "Delete role \"{{name}}\"?",
   "roles.delete.success": "Role deleted",
   "roles.delete.error": "Failed to delete role",
+  "roles.matrixLoadError": "Platform and access level could not be loaded from the Windows server. Roles are shown with default values — try signing out and back in, then retry.",
   "roles.form.addTitle": "Add role",
   "roles.form.editTitle": "Edit role",
   "roles.form.description": "Configure role scope, access level, and permissions.",
