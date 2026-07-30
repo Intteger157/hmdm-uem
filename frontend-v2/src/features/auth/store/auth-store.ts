@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { User } from '@/shared/api/types/user'
+import { isLikelyConsoleJwt } from '@/shared/lib/jwt-utils'
 import { hasPermission as checkPermission } from '@/shared/lib/permissions'
 
 interface AuthState {
@@ -27,6 +28,12 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'hmdm-auth-v2',
       partialize: (state) => ({ jwt: state.jwt, user: state.user }),
+      onRehydrateStorage: () => (state) => {
+        if (state?.jwt && !isLikelyConsoleJwt(state.jwt)) {
+          state.jwt = null
+          state.user = null
+        }
+      },
     },
   ),
 )

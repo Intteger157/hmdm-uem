@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { WINDOWS_API_BASE } from '@/shared/api/config'
-import { useAuthStore } from '@/features/auth/store/auth-store'
+import { setupAuthInterceptors } from '@/shared/api/setup-auth-interceptors'
 
 export const PLATFORM_SCOPES = ['global', 'windows', 'android'] as const
 export type PlatformScope = (typeof PLATFORM_SCOPES)[number]
@@ -38,13 +38,7 @@ const matrixApi = axios.create({
   },
 })
 
-matrixApi.interceptors.request.use((config) => {
-  const jwt = useAuthStore.getState().jwt
-  if (jwt) {
-    config.headers.Authorization = `Bearer ${jwt}`
-  }
-  return config
-})
+setupAuthInterceptors(matrixApi)
 
 export function isPlatformScope(value: unknown): value is PlatformScope {
   return PLATFORM_SCOPES.includes(value as PlatformScope)

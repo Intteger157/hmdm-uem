@@ -161,7 +161,12 @@ func resolveConsoleIdentity(claims *adminClaims) (models.User, models.UserRole, 
 }
 
 func abortUnauthorized(c *gin.Context, err error) {
-	log.Printf("[auth] rejected %s %s: %v", c.Request.Method, c.Request.URL.Path, err)
+	if strings.Contains(err.Error(), "signature") {
+		log.Printf("[auth] rejected %s %s: %v (JWT_SECRET must match Java jwt.secretkey; run deploy/scripts/sync-jwt-secret.sh)",
+			c.Request.Method, c.Request.URL.Path, err)
+	} else {
+		log.Printf("[auth] rejected %s %s: %v", c.Request.Method, c.Request.URL.Path, err)
+	}
 	c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 }
 

@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { WINDOWS_API_BASE } from '@/shared/api/config'
-import { useAuthStore } from '@/features/auth/store/auth-store'
+import { setupAuthInterceptors } from '@/shared/api/setup-auth-interceptors'
 import type {
   UpsertWindowsConfigProfilePayload,
   WindowsConfigProfile,
@@ -21,13 +21,7 @@ const windowsApi = axios.create({
   },
 })
 
-windowsApi.interceptors.request.use((config) => {
-  const jwt = useAuthStore.getState().jwt
-  if (jwt) {
-    config.headers.Authorization = `Bearer ${jwt}`
-  }
-  return config
-})
+setupAuthInterceptors(windowsApi)
 
 export async function fetchWindowsConfigProfiles(): Promise<WindowsConfigProfileListResponse> {
   const response = await windowsApi.get<WindowsConfigProfileListResponse>('/configurations')

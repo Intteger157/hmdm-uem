@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { API_BASE } from '@/shared/api/config'
-import { useAuthStore } from '@/features/auth/store/auth-store'
+import { setupAuthInterceptors } from '@/shared/api/setup-auth-interceptors'
 
 export const publicApi = axios.create({
   baseURL: API_BASE,
@@ -16,21 +16,4 @@ export const api = axios.create({
   },
 })
 
-api.interceptors.request.use((config) => {
-  const jwt = useAuthStore.getState().jwt
-  if (jwt) {
-    config.headers.Authorization = `Bearer ${jwt}`
-  }
-  return config
-})
-
-api.interceptors.response.use(
-  (response) => response,
-  (error: unknown) => {
-    if (axios.isAxiosError(error) && error.response?.status === 403) {
-      useAuthStore.getState().logout()
-      window.location.assign('/login')
-    }
-    return Promise.reject(error)
-  },
-)
+setupAuthInterceptors(api)
