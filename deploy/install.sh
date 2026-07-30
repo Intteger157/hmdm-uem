@@ -235,6 +235,12 @@ if [[ -f "${FIX_BASE_URL_SCRIPT}" ]]; then
   bash "${FIX_BASE_URL_SCRIPT}"
 fi
 
+SYNC_JWT_SCRIPT="${DEPLOY_DIR}/scripts/sync-jwt-secret.sh"
+if [[ -f "${SYNC_JWT_SCRIPT}" ]]; then
+  log "Aligning JWT_SECRET with Java jwt.secretkey"
+  bash "${SYNC_JWT_SCRIPT}"
+fi
+
 WINDOWS_PORT="$(grep '^SERVER_WINDOWS_PORT=' "${ENV_FILE}" | cut -d= -f2-)"
 WINDOWS_PORT="${WINDOWS_PORT:-8082}"
 
