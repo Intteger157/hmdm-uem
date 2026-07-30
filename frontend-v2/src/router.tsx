@@ -42,8 +42,11 @@ const rootRoute = createRootRoute({
  * Keeps a role out of the ecosystem it is not scoped to.
  *
  * The sidebar already hides these entries, so this only catches bookmarks,
- * typed URLs and back-button navigation. It is not a security boundary: the
- * servers reject out-of-scope requests on their own.
+ * typed URLs and back-button navigation.
+ *
+ * This is not a security boundary. Go rejects out-of-scope calls to the Windows
+ * routes, but the Android routes are still served by Java, which does not read
+ * platform_scope at all — those checks arrive when the routes move to Go.
  */
 function requirePlatform(platform: Platform) {
   return () => {

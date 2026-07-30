@@ -24,8 +24,11 @@ type ConsoleProfile struct {
 }
 
 // GetConsoleProfile returns the identity that AdminAuth already resolved for
-// this request. Hiding UI is a convenience only — every route keeps enforcing
-// the same scope server-side.
+// this request, so the console can hide the ecosystem it cannot manage.
+//
+// The scope reported here is advisory for the UI. This service keeps enforcing
+// it on every route of its own; the Android routes the Java server still owns do
+// not check it yet.
 func (h *WindowsHandler) GetConsoleProfile(c *gin.Context) {
 	user, userOK := middleware.CurrentUser(c)
 	role, roleOK := middleware.CurrentRole(c)

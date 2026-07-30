@@ -6,10 +6,10 @@ export type PlatformScope = (typeof PLATFORM_SCOPES)[number]
 /**
  * Scope assumed when the console cannot resolve its own role.
  *
- * Hiding navigation is a convenience — both servers reject out-of-scope calls on
- * their own. Falling back to "global" therefore degrades to the pre-RBAC console
- * when the Go service is unreachable, instead of locking an operator out of a UI
- * they are allowed to use.
+ * Falling back to "global" degrades to the pre-RBAC console when the Go service
+ * is unreachable, rather than locking an operator out of a UI they are allowed
+ * to use. That trade-off is deliberate: the scope is a navigation filter, and
+ * Go still rejects out-of-scope calls to its own routes regardless.
  */
 export const DEFAULT_PLATFORM_SCOPE: PlatformScope = 'global'
 

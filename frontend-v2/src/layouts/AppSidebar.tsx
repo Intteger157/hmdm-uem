@@ -311,8 +311,9 @@ export function AppSidebar() {
   const nav = useNavState()
 
   // A role scoped to one ecosystem must not see the other one's navigation.
-  // Both servers enforce the same rule, so this only spares the operator links
-  // that would fail.
+  // Go enforces the same rule on the Windows routes; the Java-served Android
+  // routes do not check scope yet, so for those this is the only thing keeping
+  // an operator out of screens they should not use.
   const platformScope = useAuthStore((s) => s.platformScope)
   const showAndroid = scopeAllowsPlatform(platformScope, 'android')
   const showWindows = scopeAllowsPlatform(platformScope, 'windows')

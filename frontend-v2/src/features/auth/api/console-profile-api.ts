@@ -38,8 +38,9 @@ export async function fetchConsoleProfile(): Promise<ConsoleProfile> {
 /**
  * Resolves the caller's scope, or null when it cannot be determined.
  *
- * Callers treat null as "unrestricted": the servers still reject out-of-scope
- * requests, so a transient Go outage must not blank out the navigation.
+ * Callers treat null as "unrestricted" so a transient Go outage does not blank
+ * out the navigation. Go keeps rejecting out-of-scope calls to its own routes
+ * either way.
  */
 export async function fetchPlatformScope(): Promise<PlatformScope | null> {
   try {
