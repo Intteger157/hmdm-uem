@@ -138,18 +138,39 @@ func TestParseAdminTokenRejectsExpiredToken(t *testing.T) {
 	}
 }
 
-func TestParseAdminTokenRejectsAlgorithmDowngrade(t *testing.T) {
+func TestParseAdminTokenAcceptsHS256(t *testing.T) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub": "admin",
-		"exp": time.Now().Add(time.Hour).Unix(),
+		"sub":   "admin",
+		"token": "auth-token-1",
+		"exp":   time.Now().Add(time.Hour).Unix(),
 	})
 	raw, err := token.SignedString([]byte(javaSecret))
 	if err != nil {
 		t.Fatalf("sign token: %v", err)
 	}
 
+	claims, err := parseAdminToken(raw, javaSecret)
+	if err != nil {
+		t.Fatalf("parseAdminToken() error = %v, want nil", err)
+	}
+	if claims.Subject != "admin" {
+		t.Errorf("Subject = %q, want %q", claims.Subject, "admin")
+	}
+}
+
+func TestParseAdminTokenRejectsUnsupportedAlgorithm(t *testing.T) {
+	token := jwt.NewWithClaims(jwt.SigningMethodNone, jwt.MapClaims{
+		"sub": "admin",
+		"exp": time.Now().Add(time.Hour).Unix(),
+	})
+	//nolint:staticcheck // deliberately constructing an alg=none token for the test
+	raw, err := token.SignedString(jwt.UnsafeAllowNoneSignatureType)
+	if err != nil {
+		t.Fatalf("sign token: %v", err)
+	}
+
 	if _, err := parseAdminToken(raw, javaSecret); err == nil {
-		t.Fatal("parseAdminToken() accepted HS256, want only HS512")
+		t.Fatal("parseAdminToken() accepted alg=none, want rejection")
 	}
 }
 

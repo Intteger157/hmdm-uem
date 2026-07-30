@@ -142,7 +142,9 @@ func resolveConsoleIdentity(claims *adminClaims) (models.User, models.UserRole, 
 		return user, models.UserRole{}, err
 	}
 
-	if user.AuthToken != nil && *user.AuthToken != "" && *user.AuthToken != claims.AuthToken {
+	// Match Java JWTFilter: the rotating authToken claim is optional in the sense
+	// that an absent claim must not be treated as stale when the DB row has one.
+	if claims.AuthToken != "" && user.AuthToken != nil && *user.AuthToken != "" && *user.AuthToken != claims.AuthToken {
 		return user, models.UserRole{}, errStaleAuthToken
 	}
 

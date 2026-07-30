@@ -19,7 +19,10 @@ type adminClaims struct {
 	AuthToken string `json:"token"`
 }
 
-var jwtParser = jwt.NewParser(jwt.WithValidMethods([]string{jwt.SigningMethodHS512.Alg()}))
+var jwtParser = jwt.NewParser(jwt.WithValidMethods([]string{
+	jwt.SigningMethodHS512.Alg(),
+	jwt.SigningMethodHS256.Alg(),
+}))
 
 // hmacKeyCandidates returns the two HMAC key interpretations the Java console
 // may have used when signing a JWT.
