@@ -1,6 +1,7 @@
 import { Outlet, useNavigate } from '@tanstack/react-router'
 import { AppSidebar } from '@/layouts/AppSidebar'
 import { AppTopBar } from '@/layouts/AppTopBar'
+import { usePlatformScopeSync } from '@/features/auth/hooks/use-platform-scope-sync'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -9,6 +10,8 @@ export function AppLayout() {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
+
+  usePlatformScopeSync()
 
   const handleLogout = () => {
     logout()

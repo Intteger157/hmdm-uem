@@ -87,3 +87,15 @@ func (r UserRole) AllowsPlatform(platform string) bool {
 	scope := r.EffectivePlatformScope()
 	return scope == PlatformScopeGlobal || scope == platform
 }
+
+// VisibleScope is the scope the console UI must apply when hiding sections.
+//
+// It differs from EffectivePlatformScope for super admins: AllowsPlatform lets
+// them through regardless of the stored scope, so reporting that scope verbatim
+// would hide navigation they are in fact allowed to use.
+func (r UserRole) VisibleScope() string {
+	if r.SuperAdmin {
+		return PlatformScopeGlobal
+	}
+	return r.EffectivePlatformScope()
+}

@@ -19,11 +19,13 @@ import { DeviceLocationDialog } from '@/features/devices/components/DeviceLocati
 import { WindowsEnrollmentDialog } from '@/features/windows/components/WindowsEnrollmentDialog'
 import { getConfigurationQrCodeKey } from '@/features/devices/api/devices-api'
 import { useDevicesQuery } from '@/features/devices/hooks/use-devices-query'
+import { useAuthStore } from '@/features/auth/store/auth-store'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { isMockApiEnabled } from '@/shared/api/mock-utils'
 import { isPlatform } from '@/shared/api/types/platform'
+import { scopedPlatform } from '@/shared/lib/platform-scope'
 import type { DeviceView } from '@/shared/api/types/device'
 
 const PAGE_SIZE = isMockApiEnabled() ? 5 : 50
@@ -35,7 +37,13 @@ interface DevicesPageProps {
 export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const platform = isPlatform(platformParam) ? platformParam : 'android'
+  const requestedPlatform = isPlatform(platformParam) ? platformParam : 'android'
+
+  // A role scoped to one ecosystem is pinned to it. Deriving the platform here
+  // rather than waiting on a redirect keeps the very first render — and so the
+  // device query — inside the operator's scope.
+  const lockedPlatform = useAuthStore((s) => scopedPlatform(s.platformScope))
+  const platform = lockedPlatform ?? requestedPlatform
 
   const [pageNum, setPageNum] = useState(1)
   const [searchInput, setSearchInput] = useState('')
@@ -52,6 +60,14 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
   useEffect(() => {
     setPageNum(1)
   }, [platform])
+
+  // Route guards catch this on navigation; this also covers the scope arriving
+  // after mount, so a stale ?platform= does not linger in the address bar.
+  useEffect(() => {
+    if (lockedPlatform && requestedPlatform !== lockedPlatform) {
+      void navigate({ to: '/devices', search: { platform: lockedPlatform }, replace: true })
+    }
+  }, [lockedPlatform, requestedPlatform, navigate])
 
   const { data, isLoading, isFetching, error, refetch } = useDevicesQuery({
     platform,
@@ -110,24 +126,26 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
             {platform === 'android' ? t('devices.subtitle') : t('devices.subtitleWindows')}
           </p>
         </div>
-        <div className="flex rounded-lg border p-1">
-          <Button
-            type="button"
-            size="sm"
-            variant={platform === 'android' ? 'default' : 'ghost'}
-            onClick={() => handlePlatformChange('android')}
-          >
-            Android
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={platform === 'windows' ? 'default' : 'ghost'}
-            onClick={() => handlePlatformChange('windows')}
-          >
-            Windows
-          </Button>
-        </div>
+        {lockedPlatform == null && (
+          <div className="flex rounded-lg border p-1">
+            <Button
+              type="button"
+              size="sm"
+              variant={platform === 'android' ? 'default' : 'ghost'}
+              onClick={() => handlePlatformChange('android')}
+            >
+              Android
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={platform === 'windows' ? 'default' : 'ghost'}
+              onClick={() => handlePlatformChange('windows')}
+            >
+              Windows
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

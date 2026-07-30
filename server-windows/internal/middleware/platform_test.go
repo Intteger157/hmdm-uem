@@ -24,6 +24,14 @@ func TestPlatformForPath(t *testing.T) {
 		{"/rest/windows/roles/3", ""},
 		{"/api/windows/roles", ""},
 		{"/api/windows/roles/3", ""},
+		// The profile route reports the caller's own scope, so every operator
+		// must be able to reach it regardless of the platform they manage.
+		{"/rest/windows/me", ""},
+		{"/api/windows/me", ""},
+		{"/rest/windows/me/", ""},
+		// An exemption must not leak onto routes that merely share its prefix.
+		{"/rest/windows/messages", models.PlatformScopeWindows},
+		{"/rest/windows/rolesets", models.PlatformScopeWindows},
 		{"/rest/private/users/current", ""},
 		{"/storage/apps/setup.msi", ""},
 		{"/", ""},

@@ -53,6 +53,55 @@ func TestUserRoleAllowsPlatform(t *testing.T) {
 	}
 }
 
+func TestUserRoleVisibleScope(t *testing.T) {
+	tests := []struct {
+		name string
+		role UserRole
+		want string
+	}{
+		{"global stays global", UserRole{PlatformScope: PlatformScopeGlobal}, PlatformScopeGlobal},
+		{"windows stays windows", UserRole{PlatformScope: PlatformScopeWindows}, PlatformScopeWindows},
+		{"android stays android", UserRole{PlatformScope: PlatformScopeAndroid}, PlatformScopeAndroid},
+		{"blank scope reads as global", UserRole{}, PlatformScopeGlobal},
+		// AllowsPlatform lets super admins through every platform check, so the
+		// UI must not hide sections based on their stored scope.
+		{"superadmin widens to global", UserRole{PlatformScope: PlatformScopeAndroid, SuperAdmin: true}, PlatformScopeGlobal},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.role.VisibleScope(); got != tt.want {
+				t.Errorf("VisibleScope() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUserRoleVisibleScopeAgreesWithAllowsPlatform(t *testing.T) {
+	// The console hides navigation from VisibleScope while the server enforces
+	// AllowsPlatform. If the two ever disagree the UI shows a section that 403s.
+	roles := []UserRole{
+		{PlatformScope: PlatformScopeGlobal},
+		{PlatformScope: PlatformScopeWindows},
+		{PlatformScope: PlatformScopeAndroid},
+		{},
+		{PlatformScope: PlatformScopeAndroid, SuperAdmin: true},
+		{PlatformScope: PlatformScopeWindows, SuperAdmin: true},
+	}
+
+	for _, role := range roles {
+		for _, platform := range []string{PlatformScopeWindows, PlatformScopeAndroid} {
+			scope := role.VisibleScope()
+			uiAllows := scope == PlatformScopeGlobal || scope == platform
+
+			if uiAllows != role.AllowsPlatform(platform) {
+				t.Errorf("role %+v platform %q: UI allows %v but server allows %v",
+					role, platform, uiAllows, role.AllowsPlatform(platform))
+			}
+		}
+	}
+}
+
 func TestUserRoleTableNameMatchesJavaSchema(t *testing.T) {
 	// Liquibase creates `userRoles` unquoted, which PostgreSQL folds to lowercase.
 	if got := (UserRole{}).TableName(); got != "userroles" {

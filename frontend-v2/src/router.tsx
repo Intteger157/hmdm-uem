@@ -32,11 +32,34 @@ import { WindowsFilesPage } from '@/features/windows/files/pages/WindowsFilesPag
 import { WindowsScriptsPage } from '@/features/windows/scripts/pages/WindowsScriptsPage'
 import { WindowsEnrollmentPage } from '@/features/windows/enrollment/pages/WindowsEnrollmentPage'
 import { useAuthStore } from '@/features/auth/store/auth-store'
-import { isPlatform } from '@/shared/api/types/platform'
+import { isPlatform, type Platform } from '@/shared/api/types/platform'
 
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
 })
+
+/**
+ * Keeps a role out of the ecosystem it is not scoped to.
+ *
+ * The sidebar already hides these entries, so this only catches bookmarks,
+ * typed URLs and back-button navigation. It is not a security boundary: the
+ * servers reject out-of-scope requests on their own.
+ */
+function requirePlatform(platform: Platform) {
+  return () => {
+    if (!useAuthStore.getState().allowsPlatform(platform)) {
+      throw redirect({ to: '/dashboard' })
+    }
+  }
+}
+
+/** Rewrites ?platform= on the device routes to the one the role can manage. */
+function requireScopedDevicePlatform({ search }: { search: { platform: Platform } }) {
+  const locked = useAuthStore.getState().scopedPlatform()
+  if (locked && search.platform !== locked) {
+    throw redirect({ to: '/devices', search: { platform: locked } })
+  }
+}
 
 const authLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -80,6 +103,7 @@ const devicesRoute = createRoute({
       ? (search.platform as 'android' | 'windows')
       : 'android',
   }),
+  beforeLoad: requireScopedDevicePlatform,
   component: function DevicesRoute() {
     const { platform } = devicesRoute.useSearch()
     return <DevicesPage platform={platform} />
@@ -94,6 +118,7 @@ const deviceDetailRoute = createRoute({
       ? (search.platform as 'android' | 'windows')
       : 'android',
   }),
+  beforeLoad: requireScopedDevicePlatform,
   component: function DeviceDetailRoute() {
     const { deviceNumber } = deviceDetailRoute.useParams()
     const { platform } = deviceDetailRoute.useSearch()
@@ -104,12 +129,14 @@ const deviceDetailRoute = createRoute({
 const configurationsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/configurations',
+  beforeLoad: requirePlatform('android'),
   component: ConfigurationsListPage,
 })
 
 const configurationCreateRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/configurations/new',
+  beforeLoad: requirePlatform('android'),
   component: function ConfigurationCreateRoute() {
     return <ConfigurationEditorPage isNew />
   },
@@ -118,6 +145,7 @@ const configurationCreateRoute = createRoute({
 const configurationEditorRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/configurations/$configId',
+  beforeLoad: requirePlatform('android'),
   component: function ConfigurationEditorRoute() {
     const { configId } = configurationEditorRoute.useParams()
     return <ConfigurationEditorPage configId={Number(configId)} />
@@ -127,12 +155,14 @@ const configurationEditorRoute = createRoute({
 const applicationsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/applications',
+  beforeLoad: requirePlatform('android'),
   component: ApplicationsListPage,
 })
 
 const applicationVersionsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/applications/$applicationId',
+  beforeLoad: requirePlatform('android'),
   component: function ApplicationVersionsRoute() {
     const { applicationId } = applicationVersionsRoute.useParams()
     return <ApplicationVersionsPage applicationId={Number(applicationId)} />
@@ -142,12 +172,14 @@ const applicationVersionsRoute = createRoute({
 const filesRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/files',
+  beforeLoad: requirePlatform('android'),
   component: FilesListPage,
 })
 
 const groupsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/groups',
+  beforeLoad: requirePlatform('android'),
   component: GroupsListPage,
 })
 
@@ -172,30 +204,35 @@ const rolesRoute = createRoute({
 const remoteControlRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/plugins/remote-control',
+  beforeLoad: requirePlatform('android'),
   component: RemoteControlSettingsPage,
 })
 
 const pushRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/plugins/push',
+  beforeLoad: requirePlatform('android'),
   component: PushListPage,
 })
 
 const messagingRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/plugins/messaging',
+  beforeLoad: requirePlatform('android'),
   component: MessagingListPage,
 })
 
 const windowsConfigurationsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/windows/configurations',
+  beforeLoad: requirePlatform('windows'),
   component: WindowsConfigurationsPage,
 })
 
 const windowsConfigurationCreateRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/windows/configurations/new',
+  beforeLoad: requirePlatform('windows'),
   component: function WindowsConfigurationCreateRoute() {
     return <WindowsConfigEditorPage isNew />
   },
@@ -204,6 +241,7 @@ const windowsConfigurationCreateRoute = createRoute({
 const windowsConfigurationEditorRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/windows/configurations/$profileId',
+  beforeLoad: requirePlatform('windows'),
   component: function WindowsConfigurationEditorRoute() {
     const { profileId } = windowsConfigurationEditorRoute.useParams()
     return <WindowsConfigEditorPage profileId={Number(profileId)} />
@@ -213,24 +251,28 @@ const windowsConfigurationEditorRoute = createRoute({
 const windowsEnrollmentRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/windows/enrollment',
+  beforeLoad: requirePlatform('windows'),
   component: WindowsEnrollmentPage,
 })
 
 const windowsScriptsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/windows/scripts',
+  beforeLoad: requirePlatform('windows'),
   component: WindowsScriptsPage,
 })
 
 const windowsApplicationsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/windows/applications',
+  beforeLoad: requirePlatform('windows'),
   component: WindowsAppCatalogPage,
 })
 
 const windowsFilesRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/windows/files',
+  beforeLoad: requirePlatform('windows'),
   component: WindowsFilesPage,
 })
 

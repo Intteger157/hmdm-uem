@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { MOCK_AUTH } from '@/shared/api/mocks/auth'
 import { isMockApiEnabled } from '@/shared/api/mock-utils'
 import { fetchCurrentUser, loginWithJwt } from '@/features/auth/api/auth-api'
+import { fetchPlatformScope } from '@/features/auth/api/console-profile-api'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { Button } from '@/components/ui/button'
 import {
@@ -50,8 +51,11 @@ export function LoginPage() {
     try {
       const jwt = await loginWithJwt(values.login, values.password)
       useAuthStore.setState({ jwt })
-      const user = await fetchCurrentUser()
-      setAuth(jwt, user)
+      // The scope decides which half of the console is rendered, so it is
+      // resolved before the first page. fetchPlatformScope never rejects; an
+      // unreachable Go server yields null, which reads as unrestricted.
+      const [user, platformScope] = await Promise.all([fetchCurrentUser(), fetchPlatformScope()])
+      setAuth(jwt, user, platformScope)
       void navigate({ to: '/dashboard' })
     } catch (err) {
       const isUnauthorized =

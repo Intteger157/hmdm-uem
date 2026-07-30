@@ -1,14 +1,21 @@
 import axios from 'axios'
 import { WINDOWS_API_BASE } from '@/shared/api/config'
 import { setupAuthInterceptors } from '@/shared/api/setup-auth-interceptors'
+import {
+  DEFAULT_PLATFORM_SCOPE,
+  PLATFORM_SCOPES,
+  isPlatformScope,
+  type PlatformScope,
+} from '@/shared/lib/platform-scope'
 
-export const PLATFORM_SCOPES = ['global', 'windows', 'android'] as const
-export type PlatformScope = (typeof PLATFORM_SCOPES)[number]
+// Scope lives in shared/ because the auth layer needs it to hide navigation and
+// must not depend on the roles feature.
+export { DEFAULT_PLATFORM_SCOPE, PLATFORM_SCOPES, isPlatformScope }
+export type { PlatformScope }
 
 export const ACCESS_LEVELS = ['high', 'mid', 'low'] as const
 export type AccessLevel = (typeof ACCESS_LEVELS)[number]
 
-export const DEFAULT_PLATFORM_SCOPE: PlatformScope = 'global'
 export const DEFAULT_ACCESS_LEVEL: AccessLevel = 'high'
 
 /** Role matrix row as served by the Go server from the shared userroles table. */
@@ -39,10 +46,6 @@ const matrixApi = axios.create({
 })
 
 setupAuthInterceptors(matrixApi)
-
-export function isPlatformScope(value: unknown): value is PlatformScope {
-  return PLATFORM_SCOPES.includes(value as PlatformScope)
-}
 
 export function isAccessLevel(value: unknown): value is AccessLevel {
   return ACCESS_LEVELS.includes(value as AccessLevel)

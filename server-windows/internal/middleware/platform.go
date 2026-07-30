@@ -25,32 +25,42 @@ var androidPathPrefixes = []string{
 	"/api/android",
 }
 
-// agnosticPathPrefixes are console-wide administration routes that happen to sit
-// under a platform prefix for gateway routing reasons. Role administration spans
-// both ecosystems, so scoping it to Windows would lock out Android operators.
-var agnosticPathPrefixes = []string{
+// agnosticRoutes are console-wide routes that happen to sit under a platform
+// prefix for gateway routing reasons. Role administration spans both ecosystems,
+// and the profile route reports the caller's own scope, so scoping either to
+// Windows would lock out Android operators.
+var agnosticRoutes = []string{
 	"/rest/windows/roles",
 	"/api/windows/roles",
+	"/rest/windows/me",
+	"/api/windows/me",
+}
+
+// coversPath reports whether route is an exact match for path or one of its
+// parent segments. Plain prefix matching would let "/rest/windows/me" claim an
+// unrelated "/rest/windows/messages" route.
+func coversPath(path, route string) bool {
+	return path == route || strings.HasPrefix(path, route+"/")
 }
 
 // PlatformForPath maps a request path to the device ecosystem it manages, or
 // returns an empty string when the route is ecosystem agnostic.
 func PlatformForPath(path string) string {
-	normalized := strings.ToLower(path)
+	normalized := strings.ToLower(strings.TrimSuffix(path, "/"))
 
-	for _, prefix := range agnosticPathPrefixes {
-		if strings.HasPrefix(normalized, prefix) {
+	for _, route := range agnosticRoutes {
+		if coversPath(normalized, route) {
 			return ""
 		}
 	}
 
 	for _, prefix := range windowsPathPrefixes {
-		if strings.HasPrefix(normalized, prefix) {
+		if coversPath(normalized, prefix) {
 			return models.PlatformScopeWindows
 		}
 	}
 	for _, prefix := range androidPathPrefixes {
-		if strings.HasPrefix(normalized, prefix) {
+		if coversPath(normalized, prefix) {
 			return models.PlatformScopeAndroid
 		}
 	}

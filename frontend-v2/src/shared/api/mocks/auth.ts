@@ -1,5 +1,7 @@
+import type { ConsoleProfile } from '@/shared/api/types/console-profile'
 import type { User } from '@/shared/api/types/user'
 import { mockNetworkDelay } from '@/shared/api/mock-utils'
+import { DEFAULT_PLATFORM_SCOPE, isPlatformScope } from '@/shared/lib/platform-scope'
 
 const ALL_PERMISSIONS = [
   'settings',
@@ -52,4 +54,23 @@ export async function mockLoginWithJwt(login: string, plainPassword: string): Pr
 export async function mockFetchCurrentUser(): Promise<User> {
   await mockNetworkDelay()
   return MOCK_USER
+}
+
+/**
+ * Mock console profile. Set VITE_MOCK_PLATFORM_SCOPE to "windows" or "android"
+ * to exercise the scoped navigation without running the Go server.
+ */
+export async function mockFetchConsoleProfile(): Promise<ConsoleProfile> {
+  await mockNetworkDelay()
+
+  const configured = import.meta.env.VITE_MOCK_PLATFORM_SCOPE
+  return {
+    userId: MOCK_USER.id,
+    login: MOCK_USER.login,
+    roleId: MOCK_USER.userRole.id,
+    roleName: MOCK_USER.userRole.name,
+    superAdmin: MOCK_USER.userRole.superAdmin,
+    platformScope: isPlatformScope(configured) ? configured : DEFAULT_PLATFORM_SCOPE,
+    accessLevel: 'high',
+  }
 }
