@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { WINDOWS_API_BASE } from '@/shared/api/config'
+import { useAuthStore } from '@/features/auth/store/auth-store'
 import { setupAuthInterceptors } from '@/shared/api/setup-auth-interceptors'
 import type {
   AssignDeviceAppPayload,
