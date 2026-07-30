@@ -21,20 +21,26 @@ type adminClaims struct {
 
 var jwtParser = jwt.NewParser(jwt.WithValidMethods([]string{jwt.SigningMethodHS512.Alg()}))
 
-// hmacKeyCandidates converts the configured secret into HMAC key material.
+// hmacKeyCandidates returns the two HMAC key interpretations the Java console
+// may have used when signing a JWT.
 //
-// The Java server signs with jjwt 0.9, whose signWith(alg, String) overload
-// Base64-decodes the configured jwt.secretkey before using it as the HMAC key,
-// so that interpretation is tried first. Raw bytes are tried as a fallback for
-// deployments that set a literal (non Base64) secret.
+// The default jwt.secretkey is a 40-character hex string. That length is also
+// valid Base64, so decoding it yields 30 bytes that look plausible but are
+// wrong for deployments where Java signs with the raw UTF-8 secret. Raw bytes
+// are therefore tried first; Base64-decoded bytes are the fallback for secrets
+// that were intentionally stored encoded.
 func hmacKeyCandidates(secret string) [][]byte {
 	candidates := make([][]byte, 0, 2)
+	candidates = append(candidates, []byte(secret))
 
 	if decoded, err := base64.StdEncoding.DecodeString(secret); err == nil && len(decoded) > 0 {
-		candidates = append(candidates, decoded)
+		// Skip a duplicate when the secret is too short for Base64 to change it.
+		if len(decoded) != len(secret) || string(decoded) != secret {
+			candidates = append(candidates, decoded)
+		}
 	}
 
-	return append(candidates, []byte(secret))
+	return candidates
 }
 
 // parseAdminToken verifies the signature and standard claims of a console JWT.

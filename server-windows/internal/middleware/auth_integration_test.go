@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -70,15 +69,11 @@ func setupConsoleFixture(t *testing.T) {
 func mintToken(t *testing.T, login, authToken string) string {
 	t.Helper()
 
-	key, err := base64.StdEncoding.DecodeString(testSecret)
-	if err != nil {
-		t.Fatalf("decode secret: %v", err)
-	}
 	signed, err := jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.MapClaims{
 		"sub":   login,
 		"token": authToken,
 		"exp":   time.Now().Add(time.Hour).Unix(),
-	}).SignedString(key)
+	}).SignedString([]byte(testSecret))
 	if err != nil {
 		t.Fatalf("sign token: %v", err)
 	}

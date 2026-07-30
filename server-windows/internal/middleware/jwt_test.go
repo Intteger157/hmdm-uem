@@ -13,9 +13,27 @@ import (
 // build.properties, kept here so the interop assumption is pinned by a test.
 const javaSecret = "20c68f0d9185b1d18cf6add1e8b491fd89529a44"
 
-// signLikeJava mints a token the way the Java TokenProvider does: HS512 over the
-// Base64-decoded secret, subject = login, "token" claim = the user's authToken.
+// signLikeJava mints a token the way the Java TokenProvider does for the
+// shipped hex secret: HS512 over the raw UTF-8 bytes of jwt.secretkey.
 func signLikeJava(t *testing.T, secret, login, authToken string, expiry time.Time) string {
+	t.Helper()
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.MapClaims{
+		"sub":   login,
+		"token": authToken,
+		"exp":   expiry.Unix(),
+	})
+
+	signed, err := token.SignedString([]byte(secret))
+	if err != nil {
+		t.Fatalf("sign token: %v", err)
+	}
+	return signed
+}
+
+// signWithBase64DecodedSecret mints a token using the jjwt 0.9 String overload
+// semantics, where the configured secret is Base64-decoded before signing.
+func signWithBase64DecodedSecret(t *testing.T, secret, login string, expiry time.Time) string {
 	t.Helper()
 
 	key, err := base64.StdEncoding.DecodeString(secret)
@@ -24,9 +42,8 @@ func signLikeJava(t *testing.T, secret, login, authToken string, expiry time.Tim
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.MapClaims{
-		"sub":   login,
-		"token": authToken,
-		"exp":   expiry.Unix(),
+		"sub": login,
+		"exp": expiry.Unix(),
 	})
 
 	signed, err := token.SignedString(key)
@@ -34,6 +51,24 @@ func signLikeJava(t *testing.T, secret, login, authToken string, expiry time.Tim
 		t.Fatalf("sign token: %v", err)
 	}
 	return signed
+}
+
+func TestHmacKeyCandidatesPreferRawBytes(t *testing.T) {
+	keys := hmacKeyCandidates(javaSecret)
+	if len(keys) != 2 {
+		t.Fatalf("len(keys) = %d, want 2", len(keys))
+	}
+	if string(keys[0]) != javaSecret {
+		t.Errorf("keys[0] = %q, want raw secret bytes first", string(keys[0]))
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(javaSecret)
+	if err != nil {
+		t.Fatalf("decode secret: %v", err)
+	}
+	if string(keys[1]) != string(decoded) {
+		t.Error("keys[1] should be the Base64-decoded secret as fallback")
+	}
 }
 
 func TestParseAdminTokenAcceptsJavaSignedToken(t *testing.T) {
@@ -51,8 +86,19 @@ func TestParseAdminTokenAcceptsJavaSignedToken(t *testing.T) {
 	}
 }
 
+func TestParseAdminTokenAcceptsBase64DecodedSecret(t *testing.T) {
+	raw := signWithBase64DecodedSecret(t, javaSecret, "operator", time.Now().Add(time.Hour))
+
+	claims, err := parseAdminToken(raw, javaSecret)
+	if err != nil {
+		t.Fatalf("parseAdminToken() error = %v, want nil", err)
+	}
+	if claims.Subject != "operator" {
+		t.Errorf("Subject = %q, want %q", claims.Subject, "operator")
+	}
+}
+
 func TestParseAdminTokenAcceptsLiteralSecret(t *testing.T) {
-	// Fallback path for deployments whose secret is not valid Base64.
 	const secret = "not-base64-secret!!"
 	token := jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.MapClaims{
 		"sub": "operator",
@@ -93,15 +139,11 @@ func TestParseAdminTokenRejectsExpiredToken(t *testing.T) {
 }
 
 func TestParseAdminTokenRejectsAlgorithmDowngrade(t *testing.T) {
-	key, err := base64.StdEncoding.DecodeString(javaSecret)
-	if err != nil {
-		t.Fatalf("decode secret: %v", err)
-	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub": "admin",
 		"exp": time.Now().Add(time.Hour).Unix(),
 	})
-	raw, err := token.SignedString(key)
+	raw, err := token.SignedString([]byte(javaSecret))
 	if err != nil {
 		t.Fatalf("sign token: %v", err)
 	}
