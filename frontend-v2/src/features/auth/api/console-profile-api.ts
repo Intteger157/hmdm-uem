@@ -38,14 +38,22 @@ export async function fetchConsoleProfile(): Promise<ConsoleProfile> {
 /**
  * Resolves the caller's scope and level, or null when they cannot be determined.
  *
- * Callers treat null as "unrestricted" so a transient Go outage does not blank
- * out the navigation or disable every button. Go keeps refusing out-of-scope and
- * over-level calls to its own routes either way.
+ * Callers treat null as the least privilege, so a failure here locks the console
+ * down rather than opening it up. That makes the failure worth reporting: an
+ * operator who suddenly sees a read-only console needs the reason to be visible
+ * somewhere, and silently returning null gives no way to tell a genuine Observer
+ * role apart from an unreachable /me.
  */
 export async function fetchConsoleAccess(): Promise<ConsoleAccess | null> {
   try {
     return toConsoleAccess(await fetchConsoleProfile())
-  } catch {
+  } catch (err) {
+    const status = axios.isAxiosError(err) ? err.response?.status : undefined
+    console.error(
+      `[rbac] could not read ${WINDOWS_API_BASE}/me${status ? ` (HTTP ${status})` : ''}; ` +
+        'the console will stay restricted until the role resolves',
+      err,
+    )
     return null
   }
 }

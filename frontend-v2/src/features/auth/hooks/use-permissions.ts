@@ -3,8 +3,9 @@ import { useAuthStore } from '@/features/auth/store/auth-store'
 import type { Platform } from '@/shared/api/types/platform'
 import { accessLevelAtLeast, type AccessLevel } from '@/shared/lib/access-level'
 import {
+  isConsoleAccess,
   isConsoleAdministrator,
-  UNRESTRICTED_ACCESS,
+  UNRESOLVED_ACCESS,
   type ConsoleAccess,
 } from '@/shared/lib/console-access'
 import { scopeAllowsPlatform, scopedPlatform } from '@/shared/lib/platform-scope'
@@ -60,11 +61,18 @@ export interface Permissions {
 }
 
 /**
- * Resolves permissions from a stored access object, treating an unresolved role
- * as unrestricted. Exported for the router guards, which run outside React.
+ * Resolves permissions from a stored access object. A null access means the role
+ * has not been read yet, or could not be, and is treated as the least privileged
+ * — see UNRESOLVED_ACCESS.
+ *
+ * Exported for the router guards, which run outside React.
  */
 export function resolvePermissions(access: ConsoleAccess | null): Permissions {
-  const effective = access ?? UNRESTRICTED_ACCESS
+  // Every gated control funnels through here, so the shape is re-checked rather
+  // than only tested for null: the value may have been rehydrated from storage
+  // written by an older build, and one malformed object would otherwise decide
+  // what the whole console offers.
+  const effective = isConsoleAccess(access) ? access : UNRESOLVED_ACCESS
   const atLeast = (required: AccessLevel) => {
     // Super admins pass every level check server-side, so the console must not
     // hide actions from them on the strength of a stored level.

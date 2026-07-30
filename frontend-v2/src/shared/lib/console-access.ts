@@ -1,5 +1,5 @@
 import {
-  DEFAULT_ACCESS_LEVEL,
+  LEAST_ACCESS_LEVEL,
   isAccessLevel,
   type AccessLevel,
 } from '@/shared/lib/access-level'
@@ -24,12 +24,21 @@ export interface ConsoleAccess {
 }
 
 /**
- * Applied while the operator's own role is unknown. See DEFAULT_ACCESS_LEVEL for
- * why this errs towards showing too much rather than too little.
+ * Applied while the operator's own role is unknown, which the two dimensions have
+ * to treat differently.
+ *
+ * The scope decides which ecosystem's navigation renders. It is a filter rather
+ * than a privilege, and assuming neither ecosystem would leave an empty console,
+ * so it opens to "global" and lets the servers refuse the actual calls.
+ *
+ * The level decides what may be done, so it closes to the weakest. Assuming
+ * "high" alongside a "global" scope also satisfies isConsoleAdministrator, which
+ * would silently promote an operator whose /me lookup merely failed — the console
+ * would offer the user, role and settings screens to anyone it could not identify.
  */
-export const UNRESTRICTED_ACCESS: ConsoleAccess = {
+export const UNRESOLVED_ACCESS: ConsoleAccess = {
   platformScope: DEFAULT_PLATFORM_SCOPE,
-  accessLevel: DEFAULT_ACCESS_LEVEL,
+  accessLevel: LEAST_ACCESS_LEVEL,
   superAdmin: false,
 }
 
@@ -47,22 +56,31 @@ export function isConsoleAccess(value: unknown): value is ConsoleAccess {
 }
 
 /**
- * Reads the RBAC dimensions out of a /me payload, falling back to the
- * unrestricted defaults for values the server did not send or that this build
- * does not recognise.
+ * Reads the RBAC dimensions out of a /me payload.
+ *
+ * A value the server did not send, or that this build does not recognise, falls
+ * back to UNRESOLVED_ACCESS rather than to whatever the rest of the payload
+ * implies, so a field the console cannot interpret never widens what it offers.
  */
 export function toConsoleAccess(profile: {
   platformScope?: unknown
   accessLevel?: unknown
   superAdmin?: unknown
 }): ConsoleAccess {
+  if (!isAccessLevel(profile.accessLevel)) {
+    console.warn(
+      '[rbac] /me did not report a usable accessLevel; restricting the console to read-only',
+      { accessLevel: profile.accessLevel },
+    )
+  }
+
   return {
     platformScope: isPlatformScope(profile.platformScope)
       ? profile.platformScope
-      : UNRESTRICTED_ACCESS.platformScope,
+      : UNRESOLVED_ACCESS.platformScope,
     accessLevel: isAccessLevel(profile.accessLevel)
       ? profile.accessLevel
-      : UNRESTRICTED_ACCESS.accessLevel,
+      : UNRESOLVED_ACCESS.accessLevel,
     superAdmin: profile.superAdmin === true,
   }
 }

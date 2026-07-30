@@ -6,14 +6,19 @@ export const ACCESS_LEVELS = ['low', 'mid', 'high'] as const
 export type AccessLevel = (typeof ACCESS_LEVELS)[number]
 
 /**
- * Level assumed when the console cannot resolve its own role.
+ * Level of a stored role row whose access_level column is empty, mirroring
+ * EffectiveAccessLevel in the Go service: such a role predates the matrix and was
+ * unrestricted, so demoting it would lock out working accounts.
  *
- * Mirrors DEFAULT_PLATFORM_SCOPE, and for the same reason: a role predating the
- * matrix columns was unrestricted, so degrading to the pre-RBAC console beats
- * greying out every button because the Go service was briefly unreachable. The
- * server is what actually refuses the call.
+ * This is not the fallback for a role the console could not read — see
+ * LEAST_ACCESS_LEVEL. The distinction matters because the server always resolves a
+ * concrete level before answering /me, so the console only ever has to guess when
+ * the answer never arrived, and guessing "high" there hands out privileges.
  */
 export const DEFAULT_ACCESS_LEVEL: AccessLevel = 'high'
+
+/** Level applied when the console cannot establish what its own role may do. */
+export const LEAST_ACCESS_LEVEL: AccessLevel = 'low'
 
 export function isAccessLevel(value: unknown): value is AccessLevel {
   return ACCESS_LEVELS.includes(value as AccessLevel)
