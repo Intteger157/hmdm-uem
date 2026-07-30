@@ -69,6 +69,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import { getWindowsApiErrorMessage } from '@/features/windows/applications/utils/app-catalog-errors'
+import { usePermissions } from '@/features/auth/hooks/use-permissions'
 
 interface WindowsConfigEditorPageProps {
   profileId?: number
@@ -77,6 +78,7 @@ interface WindowsConfigEditorPageProps {
 
 export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsConfigEditorPageProps) {
   const { t } = useTranslation()
+  const { canMutate } = usePermissions()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('general')
 
@@ -321,13 +323,15 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
             <p className="text-sm text-muted-foreground">{t('windowsConfigurations.editor.subtitle')}</p>
           </div>
         </div>
-        <Button
-          type="submit"
-          form="config-form"
-          disabled={isPending || !profileName.trim()}
-        >
-          {isPending ? t('common.saving') : t('common.save')}
-        </Button>
+        {canMutate && (
+          <Button
+            type="submit"
+            form="config-form"
+            disabled={isPending || !profileName.trim()}
+          >
+            {isPending ? t('common.saving') : t('common.save')}
+          </Button>
+        )}
       </div>
 
       <Form {...form}>

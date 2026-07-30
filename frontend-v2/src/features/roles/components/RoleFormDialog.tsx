@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { RolePermission } from '@/features/roles/api/roles-api'
 import {
-  ACCESS_LEVELS,
+  ACCESS_LEVEL_OPTIONS,
   DEFAULT_ACCESS_LEVEL,
   DEFAULT_PLATFORM_SCOPE,
   PLATFORM_SCOPES,
@@ -58,7 +58,7 @@ export function RoleFormDialog({ open, onOpenChange, role, onSaved }: RoleFormDi
   )
 
   const accessLevelOptions = useMemo(
-    () => ACCESS_LEVELS.map((level) => ({ value: level, label: t(`roles.level.${level}`) })),
+    () => ACCESS_LEVEL_OPTIONS.map((level) => ({ value: level, label: t(`roles.level.${level}`) })),
     [t],
   )
 

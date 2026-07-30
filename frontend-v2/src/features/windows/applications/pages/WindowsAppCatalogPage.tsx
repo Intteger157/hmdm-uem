@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
 import { ListPagination } from '@/shared/components/ListPagination'
 import { usePaginatedList } from '@/shared/hooks/use-paginated-list'
+import { usePermissions } from '@/features/auth/hooks/use-permissions'
 import { toast } from 'sonner'
 
 function matchApp(app: SoftwareApp, query: string): boolean {
@@ -44,6 +45,7 @@ function formatTimestamp(value?: string): string {
 
 export function WindowsAppCatalogPage() {
   const { t } = useTranslation()
+  const { canMutate, canDeleteCritical } = usePermissions()
   const { data, isLoading, error, refetch } = useSoftwareAppsQuery()
   const deleteMutation = useDeleteSoftwareAppMutation()
 
@@ -86,10 +88,12 @@ export function WindowsAppCatalogPage() {
           <h1 className="text-2xl font-semibold tracking-tight">{t('windowsAppCatalog.title')}</h1>
           <p className="text-sm text-muted-foreground">{t('windowsAppCatalog.subtitle')}</p>
         </div>
-        <Button type="button" onClick={() => setCreateOpen(true)}>
-          <Plus className="size-4" />
-          {t('windowsAppCatalog.createApp')}
-        </Button>
+        {canMutate && (
+          <Button type="button" onClick={() => setCreateOpen(true)}>
+            <Plus className="size-4" />
+            {t('windowsAppCatalog.createApp')}
+          </Button>
+        )}
       </div>
 
       <form onSubmit={handleSearch} className="flex max-w-xl gap-2">
@@ -129,7 +133,9 @@ export function WindowsAppCatalogPage() {
                     <th className="px-4 py-3 font-medium">{t('windowsAppCatalog.columns.version')}</th>
                     <th className="px-4 py-3 font-medium">{t('windowsAppCatalog.columns.versionsCount')}</th>
                     <th className="px-4 py-3 font-medium">{t('windowsAppCatalog.columns.updated')}</th>
-                    <th className="px-4 py-3 font-medium">{t('windowsAppCatalog.columns.actions')}</th>
+                    {canMutate && (
+                      <th className="px-4 py-3 font-medium">{t('windowsAppCatalog.columns.actions')}</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -154,24 +160,33 @@ export function WindowsAppCatalogPage() {
                         <td className="px-4 py-3 whitespace-nowrap">
                           {formatTimestamp(latest?.uploadedAt ?? app.createdAt)}
                         </td>
-                        <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
-                          <div className="flex flex-wrap gap-2">
-                            <Button type="button" size="sm" variant="outline" onClick={() => setEditAppId(app.id)}>
-                              <Pencil className="mr-1.5 size-3.5" />
-                              {t('common.edit')}
-                            </Button>
-                            <Button type="button" size="sm" variant="outline" onClick={() => setDeleteTarget(app)}>
-                              <Trash2 className="mr-1.5 size-3.5" />
-                              {t('common.delete')}
-                            </Button>
-                          </div>
-                        </td>
+                        {canMutate && (
+                          <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
+                            <div className="flex flex-wrap gap-2">
+                              <Button type="button" size="sm" variant="outline" onClick={() => setEditAppId(app.id)}>
+                                <Pencil className="mr-1.5 size-3.5" />
+                                {t('common.edit')}
+                              </Button>
+                              {/* Removing the app discards its uploaded installers
+                                  and breaks the configurations requiring it. */}
+                              {canDeleteCritical && (
+                                <Button type="button" size="sm" variant="outline" onClick={() => setDeleteTarget(app)}>
+                                  <Trash2 className="mr-1.5 size-3.5" />
+                                  {t('common.delete')}
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     )
                   })}
                   {pageItems.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
+                      <td
+                        colSpan={canMutate ? 5 : 4}
+                        className="px-4 py-10 text-center text-muted-foreground"
+                      >
                         {t('windowsAppCatalog.empty')}
                       </td>
                     </tr>

@@ -3,10 +3,13 @@ package main
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hmdm/server-windows/internal/handlers"
+	"github.com/hmdm/server-windows/internal/middleware"
+	"github.com/hmdm/server-windows/internal/models"
 )
 
 // newTestRouter registers the production route table. It panics if the route
@@ -92,6 +95,43 @@ func TestAdminRoutesAreGuarded(t *testing.T) {
 				t.Errorf("status = %d, want %d (admin middleware missing)", got, adminGuardStatus)
 			}
 		})
+	}
+}
+
+// isOperatorRelayPath spots the console-facing halves of the remote-session
+// relays. The agent halves carry an enrollment token instead of a console JWT and
+// are authorised inside their handlers.
+func isOperatorRelayPath(path string) bool {
+	if strings.HasSuffix(path, "/agent") || strings.HasSuffix(path, "/client") {
+		return false
+	}
+	return strings.Contains(path, "/terminal") ||
+		strings.Contains(path, "/taskmgr") ||
+		strings.Contains(path, "/filexplorer")
+}
+
+func TestOperatorRelayRoutesRequireEngineerLevel(t *testing.T) {
+	// Walks the real route table rather than a hand-written list, so a relay added
+	// later is classified before it ships. These routes are GETs — a WebSocket
+	// handshake is — and would otherwise read as harmless to an Observer.
+	router := newTestRouter(t)
+
+	checked := 0
+	for _, route := range router.Routes() {
+		if !isOperatorRelayPath(route.Path) {
+			continue
+		}
+		checked++
+
+		got := middleware.MinimumAccessLevelFor(route.Method, route.Path)
+		if got != models.AccessLevelHigh {
+			t.Errorf("%s %s requires %q, want %q: remote sessions must not be reachable below the Engineer level",
+				route.Method, route.Path, got, models.AccessLevelHigh)
+		}
+	}
+
+	if checked == 0 {
+		t.Fatal("no operator relay routes matched — isOperatorRelayPath is out of date")
 	}
 }
 

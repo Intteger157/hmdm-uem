@@ -25,6 +25,7 @@ import { useWindowsDeviceListSyncToasts } from '@/features/devices/hooks/use-win
 import { usePeriodicNow } from '@/shared/hooks/use-periodic-now'
 import { useWindowsDeviceCommandMutation } from '@/features/windows/hooks/use-windows-device-command'
 import { useAuthStore } from '@/features/auth/store/auth-store'
+import { usePermissions } from '@/features/auth/hooks/use-permissions'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import type { DeviceListView, DeviceView } from '@/shared/api/types/device'
@@ -89,8 +90,11 @@ export function DeviceTable({
   const now = usePeriodicNow()
   const devices = data.devices.items
   const windowsSyncToasts = useWindowsDeviceListSyncToasts(platform === 'windows' ? devices : [])
-  const showAndroidActions = platform === 'android' && onEditDevice != null
-  const showWindowsActions = platform === 'windows'
+  // An Observer has nothing to put in this column: every control it holds queues
+  // a command or deletes a record.
+  const { canMutate } = usePermissions()
+  const showAndroidActions = platform === 'android' && onEditDevice != null && canMutate
+  const showWindowsActions = platform === 'windows' && canMutate
 
   if (isLoading && devices.length === 0) {
     return (
@@ -284,6 +288,7 @@ function DeviceRowActions({
   onMenuAction?: (action: DeviceActionsMenuAction, device: DeviceView) => void
 }) {
   const { t } = useTranslation()
+  const { canDeleteCritical } = usePermissions()
   const qrCodeKey = getConfigurationQrCodeKey(configurations, device.configurationId)
 
   return (
@@ -307,16 +312,20 @@ function DeviceRowActions({
       >
         <QrCode className="size-3.5" />
       </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-xs"
-        title={t('devices.actions.delete')}
-        className="text-destructive hover:text-destructive"
-        onClick={() => onDeleteDevice?.(device)}
-      >
-        <Trash2 className="size-3.5" />
-      </Button>
+      {/* Removing the record discards the device's history and forces a
+          re-enrolment, so it stays with the Engineer level. */}
+      {canDeleteCritical && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          title={t('devices.actions.delete')}
+          className="text-destructive hover:text-destructive"
+          onClick={() => onDeleteDevice?.(device)}
+        >
+          <Trash2 className="size-3.5" />
+        </Button>
+      )}
       {onMenuAction && <DeviceActionsMenu device={device} onAction={onMenuAction} />}
     </div>
   )
@@ -514,6 +523,7 @@ function WindowsDeviceRowActions({
   onSyncFail: (deviceId: number, message: string) => void
 }) {
   const { t } = useTranslation()
+  const { canDeleteCritical } = usePermissions()
   const syncMutation = useWindowsDeviceCommandMutation(device.number)
   const isUninstalled = device.windowsAgentStatus === 'uninstalled'
 
@@ -538,7 +548,7 @@ function WindowsDeviceRowActions({
       >
         <RefreshCw className={cn('size-3.5', syncMutation.isPending && 'animate-spin')} />
       </Button>
-      {onDeleteDevice ? (
+      {onDeleteDevice && canDeleteCritical ? (
         <Button
           type="button"
           variant="ghost"

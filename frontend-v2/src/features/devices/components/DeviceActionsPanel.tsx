@@ -52,6 +52,8 @@ import { DeviceTaskManagerDialog } from '@/features/windows/components/DeviceTas
 import { DeviceFileExplorerDialog } from '@/features/windows/components/DeviceFileExplorerDialog'
 import { useDeviceDetailCommandToast } from '@/features/devices/context/device-detail-command-toast-context'
 import type { WindowsCommandAction } from '@/features/windows/api/windows-api'
+import { usePermissions } from '@/features/auth/hooks/use-permissions'
+import type { AccessLevel } from '@/shared/lib/access-level'
 
 type AndroidDialogAction =
   | 'appSettings'
@@ -73,6 +75,11 @@ interface AndroidActionDef {
   variant?: 'outline' | 'destructive'
   kind: 'command' | 'dialog'
   requiresConfirm?: boolean
+  /**
+   * Least access level allowed to use this card. Defaults to the Operator level
+   * because a card that changes nothing is the exception here, not the rule.
+   */
+  minLevel?: AccessLevel
 }
 
 type WindowsPanelActionId = WindowsCommandAction | 'task_manager' | 'file_explorer'
@@ -89,6 +96,8 @@ interface WindowsActionDef {
   requiresConfirm?: boolean
   opensDialog?: 'terminal' | 'catalog' | 'taskmgr' | 'filexplorer'
   descriptionKey?: string
+  /** See AndroidActionDef.minLevel. */
+  minLevel?: AccessLevel
 }
 
 const ANDROID_ACTIONS: AndroidActionDef[] = [
@@ -96,12 +105,28 @@ const ANDROID_ACTIONS: AndroidActionDef[] = [
   { id: 'restart', icon: RotateCcw, labelKey: 'deviceDetail.actions.restart', kind: 'command' },
   { id: 'messaging', icon: MessageSquare, labelKey: 'devices.actionsMenu.messaging', kind: 'dialog' },
   { id: 'push', icon: Send, labelKey: 'devices.actionsMenu.push', kind: 'dialog' },
-  { id: 'remoteControl', icon: Monitor, labelKey: 'devices.actionsMenu.remoteControl', kind: 'dialog' },
-  { id: 'details', icon: Info, labelKey: 'devices.actionsMenu.details', kind: 'dialog' },
-  { id: 'logs', icon: ScrollText, labelKey: 'devices.actionsMenu.logs', kind: 'dialog' },
-  { id: 'installedApps', icon: List, labelKey: 'devices.actionsMenu.installedApps', kind: 'dialog' },
-  { id: 'location', icon: MapPin, labelKey: 'devices.actionsMenu.location', kind: 'dialog' },
+  // The Android counterpart of the Windows live terminal: it hands over the
+  // screen rather than editing a record about the device.
+  {
+    id: 'remoteControl',
+    icon: Monitor,
+    labelKey: 'devices.actionsMenu.remoteControl',
+    kind: 'dialog',
+    minLevel: 'high',
+  },
+  // Read-only dialogs, so an Observer keeps a use for this tab.
+  { id: 'details', icon: Info, labelKey: 'devices.actionsMenu.details', kind: 'dialog', minLevel: 'low' },
+  { id: 'logs', icon: ScrollText, labelKey: 'devices.actionsMenu.logs', kind: 'dialog', minLevel: 'low' },
+  {
+    id: 'installedApps',
+    icon: List,
+    labelKey: 'devices.actionsMenu.installedApps',
+    kind: 'dialog',
+    minLevel: 'low',
+  },
+  { id: 'location', icon: MapPin, labelKey: 'devices.actionsMenu.location', kind: 'dialog', minLevel: 'low' },
   { id: 'appSettings', icon: Settings2, labelKey: 'devices.actionsMenu.appSettings', kind: 'dialog' },
+  // Reboot and lock are routine; the factory reset inside is gated separately.
   { id: 'reset', icon: KeyRound, labelKey: 'devices.reset.title', kind: 'dialog' },
   {
     id: 'wipe',
@@ -110,6 +135,7 @@ const ANDROID_ACTIONS: AndroidActionDef[] = [
     variant: 'destructive',
     kind: 'command',
     requiresConfirm: true,
+    minLevel: 'high',
   },
 ]
 
@@ -131,12 +157,17 @@ const WINDOWS_ACTIONS: WindowsActionDef[] = [
     opensDialog: 'catalog',
     descriptionKey: 'deviceDetail.actions.installDescription',
   },
+  // The three relays below each open a live session on the machine — a shell, a
+  // process list that can kill, a file browser that can upload and execute — so
+  // they sit with wipe rather than with the routine commands above. The Go
+  // service refuses the handshake at anything below this level.
   {
     id: 'powershell',
     icon: Terminal,
     labelKey: 'deviceDetail.terminal.title',
     opensDialog: 'terminal',
     descriptionKey: 'deviceDetail.terminal.description',
+    minLevel: 'high',
   },
   {
     id: 'task_manager',
@@ -144,6 +175,7 @@ const WINDOWS_ACTIONS: WindowsActionDef[] = [
     labelKey: 'deviceDetail.taskManager.title',
     opensDialog: 'taskmgr',
     descriptionKey: 'deviceDetail.taskManager.description',
+    minLevel: 'high',
   },
   {
     id: 'file_explorer',
@@ -151,8 +183,16 @@ const WINDOWS_ACTIONS: WindowsActionDef[] = [
     labelKey: 'deviceDetail.fileExplorer.title',
     opensDialog: 'filexplorer',
     descriptionKey: 'deviceDetail.fileExplorer.description',
+    minLevel: 'high',
   },
-  { id: 'wipe', icon: Trash2, labelKey: 'deviceDetail.actions.wipe', variant: 'destructive', requiresConfirm: true },
+  {
+    id: 'wipe',
+    icon: Trash2,
+    labelKey: 'deviceDetail.actions.wipe',
+    variant: 'destructive',
+    requiresConfirm: true,
+    minLevel: 'high',
+  },
 ]
 
 interface DeviceActionsPanelProps {
@@ -162,6 +202,8 @@ interface DeviceActionsPanelProps {
 
 export function DeviceActionsPanel({ device, platform = device.platform }: DeviceActionsPanelProps) {
   const { t } = useTranslation()
+  const { atLeast } = usePermissions()
+  const allowsAction = (action: { minLevel?: AccessLevel }) => atLeast(action.minLevel ?? 'mid')
 
   const syncMutation = useDeviceConfigSyncMutation()
   const rebootMutation = useDeviceRebootMutation()
@@ -300,7 +342,7 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
     return (
       <>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {ANDROID_ACTIONS.map((action) => {
+          {ANDROID_ACTIONS.filter(allowsAction).map((action) => {
             const Icon = action.icon
             const label = t(action.labelKey)
             return (
@@ -407,7 +449,7 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
   return (
     <>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {WINDOWS_ACTIONS.map((action) => {
+        {WINDOWS_ACTIONS.filter(allowsAction).map((action) => {
           const Icon = action.icon
           const label = t(action.labelKey)
           return (

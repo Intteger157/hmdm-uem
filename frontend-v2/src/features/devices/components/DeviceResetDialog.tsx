@@ -25,6 +25,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { usePermissions } from '@/features/auth/hooks/use-permissions'
 
 interface DeviceResetDialogProps {
   open: boolean
@@ -42,6 +43,7 @@ export function DeviceResetDialog({
   deviceNumber,
 }: DeviceResetDialogProps) {
   const { t } = useTranslation()
+  const { canUsePrivilegedTools } = usePermissions()
   const [lockMessage, setLockMessage] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
@@ -227,14 +229,18 @@ export function DeviceResetDialog({
             >
               {t('devices.reset.resetPassword')}
             </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={runMutation.isPending || deviceId == null}
-              onClick={() => setResetConfirmOpen(true)}
-            >
-              {t('devices.reset.factoryReset')}
-            </Button>
+            {/* Reboot, lock and password reset above are recoverable; wiping the
+                device is not, so it keeps the same level as the Windows wipe. */}
+            {canUsePrivilegedTools && (
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={runMutation.isPending || deviceId == null}
+                onClick={() => setResetConfirmOpen(true)}
+              >
+                {t('devices.reset.factoryReset')}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

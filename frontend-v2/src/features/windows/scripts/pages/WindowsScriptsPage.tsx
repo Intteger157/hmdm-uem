@@ -10,6 +10,7 @@ import type { PowerShellScript } from '@/features/windows/scripts/types/powershe
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
+import { usePermissions } from '@/features/auth/hooks/use-permissions'
 import { toast } from 'sonner'
 
 function formatTimestamp(value: string): string {
@@ -25,6 +26,7 @@ function formatTimestamp(value: string): string {
 
 export function WindowsScriptsPage() {
   const { t } = useTranslation()
+  const { canMutate, canDeleteCritical } = usePermissions()
   const { data, isLoading, error, refetch } = usePowerShellScriptsQuery()
   const deleteMutation = useDeletePowerShellScriptMutation()
 
@@ -52,16 +54,18 @@ export function WindowsScriptsPage() {
           <h1 className="text-2xl font-semibold tracking-tight">{t('windowsScripts.title')}</h1>
           <p className="text-sm text-muted-foreground">{t('windowsScripts.description')}</p>
         </div>
-        <Button
-          type="button"
-          onClick={() => {
-            setEditTarget(null)
-            setFormOpen(true)
-          }}
-        >
-          <Plus className="size-4" />
-          {t('windowsScripts.create')}
-        </Button>
+        {canMutate && (
+          <Button
+            type="button"
+            onClick={() => {
+              setEditTarget(null)
+              setFormOpen(true)
+            }}
+          >
+            <Plus className="size-4" />
+            {t('windowsScripts.create')}
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -89,7 +93,7 @@ export function WindowsScriptsPage() {
                     <th className="px-4 py-3 font-medium">{t('windowsScripts.columns.description')}</th>
                     <th className="px-4 py-3 font-medium">{t('windowsScripts.columns.context')}</th>
                     <th className="px-4 py-3 font-medium">{t('windowsScripts.columns.updated')}</th>
-                    <th className="px-4 py-3 font-medium" />
+                    {canMutate && <th className="px-4 py-3 font-medium" />}
                   </tr>
                 </thead>
                 <tbody>
@@ -103,32 +107,36 @@ export function WindowsScriptsPage() {
                           : t('windowsScripts.form.contextSystem')}
                       </td>
                       <td className="px-4 py-3">{formatTimestamp(script.updatedAt)}</td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label={t('common.edit')}
-                            onClick={() => {
-                              setEditTarget(script)
-                              setFormOpen(true)
-                            }}
-                          >
-                            <Pencil className="size-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            className="text-destructive hover:text-destructive"
-                            aria-label={t('common.delete')}
-                            onClick={() => setDeleteTarget(script)}
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </div>
-                      </td>
+                      {canMutate && (
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label={t('common.edit')}
+                              onClick={() => {
+                                setEditTarget(script)
+                                setFormOpen(true)
+                              }}
+                            >
+                              <Pencil className="size-4" />
+                            </Button>
+                            {canDeleteCritical && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                className="text-destructive hover:text-destructive"
+                                aria-label={t('common.delete')}
+                                onClick={() => setDeleteTarget(script)}
+                              >
+                                <Trash2 className="size-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

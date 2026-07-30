@@ -7,7 +7,7 @@ import { z } from 'zod'
 import { MOCK_AUTH } from '@/shared/api/mocks/auth'
 import { isMockApiEnabled } from '@/shared/api/mock-utils'
 import { fetchCurrentUser, loginWithJwt } from '@/features/auth/api/auth-api'
-import { fetchPlatformScope } from '@/features/auth/api/console-profile-api'
+import { fetchConsoleAccess } from '@/features/auth/api/console-profile-api'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { Button } from '@/components/ui/button'
 import {
@@ -51,11 +51,12 @@ export function LoginPage() {
     try {
       const jwt = await loginWithJwt(values.login, values.password)
       useAuthStore.setState({ jwt })
-      // The scope decides which half of the console is rendered, so it is
-      // resolved before the first page. fetchPlatformScope never rejects; an
-      // unreachable Go server yields null, which reads as unrestricted.
-      const [user, platformScope] = await Promise.all([fetchCurrentUser(), fetchPlatformScope()])
-      setAuth(jwt, user, platformScope)
+      // Scope and level decide which half of the console renders and which
+      // actions it offers, so both are resolved before the first page.
+      // fetchConsoleAccess never rejects; an unreachable Go server yields null,
+      // which reads as unrestricted.
+      const [user, access] = await Promise.all([fetchCurrentUser(), fetchConsoleAccess()])
+      setAuth(jwt, user, access)
       void navigate({ to: '/dashboard' })
     } catch (err) {
       const isUnauthorized =

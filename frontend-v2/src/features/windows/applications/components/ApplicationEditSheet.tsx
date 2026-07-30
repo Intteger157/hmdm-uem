@@ -37,6 +37,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
+import { usePermissions } from '@/features/auth/hooks/use-permissions'
 import { toast } from 'sonner'
 
 interface ApplicationEditSheetProps {
@@ -64,6 +65,7 @@ function formatTimestamp(value: string): string {
 
 export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationEditSheetProps) {
   const { t } = useTranslation()
+  const { canMutate } = usePermissions()
   const appQuery = useSoftwareAppQuery(appId, open && appId != null)
   const updateMutation = useUpdateSoftwareAppMutation()
   const versionUploadRef = useRef<HTMLInputElement>(null)
@@ -224,11 +226,13 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
                       </FormItem>
                     )}
                   />
-                  <SheetFooter className="px-0">
-                    <Button type="submit" disabled={updateMutation.isPending}>
-                      {t('common.save')}
-                    </Button>
-                  </SheetFooter>
+                  {canMutate && (
+                    <SheetFooter className="px-0">
+                      <Button type="submit" disabled={updateMutation.isPending}>
+                        {t('common.save')}
+                      </Button>
+                    </SheetFooter>
+                  )}
                 </form>
               </Form>
             </TabsContent>
@@ -277,37 +281,39 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
                   }
                 }}
               />
-              <div
-                role="button"
-                tabIndex={0}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault()
-                    versionUploadRef.current?.click()
-                  }
-                }}
-                onClick={() => versionUploadRef.current?.click()}
-                className={cn(
-                  'flex min-h-24 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed px-4 py-4 text-center',
-                  uploadingVersion && 'pointer-events-none opacity-70',
-                )}
-              >
-                {uploadingVersion && uploadProgress ? (
-                  <div className="w-full max-w-md px-4">
-                    <AppUploadProgress progress={uploadProgress} />
-                  </div>
-                ) : uploadingVersion ? (
-                  <>
-                    <Loader2 className="size-5 animate-spin text-muted-foreground" />
-                    <p className="text-sm">{t('windowsAppCatalog.form.uploading')}</p>
-                  </>
-                ) : (
-                  <>
-                    <Upload className="size-5 text-muted-foreground" />
-                    <p className="text-sm font-medium">{t('windowsAppCatalog.form.uploadNewVersion')}</p>
-                  </>
-                )}
-              </div>
+              {canMutate && (
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      versionUploadRef.current?.click()
+                    }
+                  }}
+                  onClick={() => versionUploadRef.current?.click()}
+                  className={cn(
+                    'flex min-h-24 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed px-4 py-4 text-center',
+                    uploadingVersion && 'pointer-events-none opacity-70',
+                  )}
+                >
+                  {uploadingVersion && uploadProgress ? (
+                    <div className="w-full max-w-md px-4">
+                      <AppUploadProgress progress={uploadProgress} />
+                    </div>
+                  ) : uploadingVersion ? (
+                    <>
+                      <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                      <p className="text-sm">{t('windowsAppCatalog.form.uploading')}</p>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="size-5 text-muted-foreground" />
+                      <p className="text-sm font-medium">{t('windowsAppCatalog.form.uploadNewVersion')}</p>
+                    </>
+                  )}
+                </div>
+              )}
 
               <VersionsTable appId={app.id} versions={app.versions} />
             </TabsContent>
@@ -320,6 +326,7 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
 
 function VersionsTable({ appId, versions }: { appId: number; versions: ApplicationVersion[] }) {
   const { t } = useTranslation()
+  const { canDeleteCritical } = usePermissions()
   const deleteMutation = useDeleteApplicationVersionMutation()
   const [deleteTarget, setDeleteTarget] = useState<ApplicationVersion | null>(null)
 
@@ -380,16 +387,18 @@ function VersionsTable({ appId, versions }: { appId: number; versions: Applicati
                   </p>
                 </div>
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                className="shrink-0 text-destructive hover:text-destructive"
-                aria-label={t('windowsAppCatalog.versions.deleteTitle')}
-                onClick={() => setDeleteTarget(version)}
-              >
-                <Trash2 className="size-4" />
-              </Button>
+              {canDeleteCritical && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="shrink-0 text-destructive hover:text-destructive"
+                  aria-label={t('windowsAppCatalog.versions.deleteTitle')}
+                  onClick={() => setDeleteTarget(version)}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              )}
             </li>
           ))}
         </ul>

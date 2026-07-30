@@ -7,16 +7,25 @@ import {
   isPlatformScope,
   type PlatformScope,
 } from '@/shared/lib/platform-scope'
+import {
+  ACCESS_LEVELS,
+  DEFAULT_ACCESS_LEVEL,
+  isAccessLevel,
+  type AccessLevel,
+} from '@/shared/lib/access-level'
 
-// Scope lives in shared/ because the auth layer needs it to hide navigation and
-// must not depend on the roles feature.
+// Both matrix columns live in shared/ because the auth layer needs them to hide
+// navigation and actions, and must not depend on the roles feature.
 export { DEFAULT_PLATFORM_SCOPE, PLATFORM_SCOPES, isPlatformScope }
 export type { PlatformScope }
+export { ACCESS_LEVELS, DEFAULT_ACCESS_LEVEL, isAccessLevel }
+export type { AccessLevel }
 
-export const ACCESS_LEVELS = ['high', 'mid', 'low'] as const
-export type AccessLevel = (typeof ACCESS_LEVELS)[number]
-
-export const DEFAULT_ACCESS_LEVEL: AccessLevel = 'high'
+/**
+ * Levels strongest first, for the role editor's dropdown. ACCESS_LEVELS itself is
+ * ordered weakest first because the rank comparison depends on it.
+ */
+export const ACCESS_LEVEL_OPTIONS = [...ACCESS_LEVELS].reverse()
 
 /** Role matrix row as served by the Go server from the shared userroles table. */
 export interface RoleMatrixEntry {
@@ -46,10 +55,6 @@ const matrixApi = axios.create({
 })
 
 setupAuthInterceptors(matrixApi)
-
-export function isAccessLevel(value: unknown): value is AccessLevel {
-  return ACCESS_LEVELS.includes(value as AccessLevel)
-}
 
 export async function fetchRoleMatrix(): Promise<RoleMatrixEntry[]> {
   const response = await matrixApi.get<RoleMatrixListResponse>('/roles')

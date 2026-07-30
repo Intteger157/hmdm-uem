@@ -4,7 +4,7 @@ import { attachAuthToken } from '@/shared/api/setup-auth-interceptors'
 import { isMockApiEnabled } from '@/shared/api/mock-utils'
 import { mockFetchConsoleProfile } from '@/shared/api/mocks/auth'
 import type { ConsoleProfile } from '@/shared/api/types/console-profile'
-import { isPlatformScope, type PlatformScope } from '@/shared/lib/platform-scope'
+import { toConsoleAccess, type ConsoleAccess } from '@/shared/lib/console-access'
 
 export type { ConsoleProfile }
 
@@ -21,10 +21,10 @@ const profileApi = axios.create({
 attachAuthToken(profileApi)
 
 /**
- * Reads the platform scope of the signed-in operator.
+ * Reads the RBAC dimensions of the signed-in operator's role.
  *
- * The Java /private/users/current payload has no scope columns, and the role
- * list is not a substitute because it exposes every other role too.
+ * The Java /private/users/current payload has no scope or level columns, and the
+ * role list is not a substitute because it exposes every other role too.
  */
 export async function fetchConsoleProfile(): Promise<ConsoleProfile> {
   if (isMockApiEnabled()) {
@@ -36,16 +36,15 @@ export async function fetchConsoleProfile(): Promise<ConsoleProfile> {
 }
 
 /**
- * Resolves the caller's scope, or null when it cannot be determined.
+ * Resolves the caller's scope and level, or null when they cannot be determined.
  *
  * Callers treat null as "unrestricted" so a transient Go outage does not blank
- * out the navigation. Go keeps rejecting out-of-scope calls to its own routes
- * either way.
+ * out the navigation or disable every button. Go keeps refusing out-of-scope and
+ * over-level calls to its own routes either way.
  */
-export async function fetchPlatformScope(): Promise<PlatformScope | null> {
+export async function fetchConsoleAccess(): Promise<ConsoleAccess | null> {
   try {
-    const profile = await fetchConsoleProfile()
-    return isPlatformScope(profile.platformScope) ? profile.platformScope : null
+    return toConsoleAccess(await fetchConsoleProfile())
   } catch {
     return null
   }

@@ -49,6 +49,7 @@ import { WindowsDeviceServicesTab } from '@/features/devices/components/WindowsD
 import { WindowsDeviceActionLogsTab } from '@/features/devices/components/WindowsDeviceActionLogsTab'
 import { WindowsAppliedConfigurationCard } from '@/features/windows/configurations/components/WindowsAppliedConfigurationCard'
 import { useDeviceDetailCommandToast } from '@/features/devices/context/device-detail-command-toast-context'
+import { usePermissions } from '@/features/auth/hooks/use-permissions'
 import { queueWindowsDeviceCommand } from '@/features/windows/api/windows-api'
 import { useDeviceByNumber } from '@/features/devices/hooks/use-device-by-number-query'
 import {
@@ -568,6 +569,7 @@ function BatteryMetricCard({
   const status = device.batteryStatus?.trim()
   const hasBattery = level != null
   const HeaderIcon = resolveBatteryHeaderIcon(level, status)
+  const { canMutate } = usePermissions()
   const { trackActionLogCommand } = useDeviceDetailCommandToast()
   const [isQueueingReport, setIsQueueingReport] = useState(false)
 
@@ -593,17 +595,20 @@ function BatteryMetricCard({
           {t('deviceDetail.metrics.battery')}
         </CardTitle>
         <div className="flex items-center gap-1">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-6"
-            disabled={isQueueingReport}
-            title={t('deviceDetail.battery.downloadReport')}
-            onClick={handleBatteryReport}
-          >
-            <FileText className="size-3" />
-          </Button>
+          {/* Generating the report queues a command on the device. */}
+          {canMutate && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-6"
+              disabled={isQueueingReport}
+              title={t('deviceDetail.battery.downloadReport')}
+              onClick={handleBatteryReport}
+            >
+              <FileText className="size-3" />
+            </Button>
+          )}
           <HeaderIcon className={TILE_HEADER_ICON_CLASS} />
         </div>
       </CardHeader>
@@ -783,6 +788,7 @@ function WindowsUpdateMetricCard({
   const lastChecked = formatWindowsUpdateCheck(device.lastUpdateCheck, na)
   const pendingList = device.pendingUpdatesList ?? []
   const installedList = device.installedUpdatesList ?? []
+  const { canMutate } = usePermissions()
   const { trackActionLogCommand } = useDeviceDetailCommandToast()
 
   const handleInstall = async (update: WindowsUpdateItem) => {
@@ -875,7 +881,7 @@ function WindowsUpdateMetricCard({
                 na={na}
                 onInstall={(update) => void handleInstall(update)}
                 rows={pendingList}
-                showInstallActions
+                showInstallActions={canMutate}
                 showInstalledOn={false}
                 t={t}
               />
@@ -887,7 +893,7 @@ function WindowsUpdateMetricCard({
                 onRollback={(update) => void handleRollback(update)}
                 rollingBackKb={rollingBackKb}
                 rows={installedList}
-                showActions
+                showActions={canMutate}
                 showInstalledOn
                 t={t}
               />

@@ -35,6 +35,7 @@ import {
   type WindowsEnrollmentSecuritySettings,
 } from '@/features/windows/api/windows-api'
 import { toast } from 'sonner'
+import { usePermissions } from '@/features/auth/hooks/use-permissions'
 
 const flatCardClassName = 'border border-border shadow-none ring-0'
 
@@ -122,6 +123,7 @@ function EnrollmentModeSegmentedControl({
 
 export function WindowsEnrollmentPage() {
   const { t } = useTranslation()
+  const { canMutate } = usePermissions()
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
@@ -374,19 +376,21 @@ export function WindowsEnrollmentPage() {
                   event.target.value = ''
                 }}
               />
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="gap-2"
-                disabled={uploading}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                {uploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
-                {agent?.configured
-                  ? t('windows.enrollmentPage.agentReplaceButton')
-                  : t('windows.enrollmentPage.agentUploadButton')}
-              </Button>
+              {canMutate && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="gap-2"
+                  disabled={uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {uploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+                  {agent?.configured
+                    ? t('windows.enrollmentPage.agentReplaceButton')
+                    : t('windows.enrollmentPage.agentUploadButton')}
+                </Button>
+              )}
               {agent?.publicUrl ? (
                 <Tooltip>
                   <TooltipTrigger
@@ -469,22 +473,24 @@ export function WindowsEnrollmentPage() {
                     <RefreshCw className="size-4" />
                     {t('windows.enrollmentPage.securityGenerate')}
                   </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="shrink-0"
-                    disabled={!securityIsDirty || securityMutation.isPending || securityQuery.isLoading}
-                    onClick={handleSaveSecurity}
-                  >
-                    {securityMutation.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 size-4 animate-spin" />
-                        {t('windows.enrollmentPage.securitySaving')}
-                      </>
-                    ) : (
-                      t('windows.enrollmentPage.securitySave')
-                    )}
-                  </Button>
+                  {canMutate && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="shrink-0"
+                      disabled={!securityIsDirty || securityMutation.isPending || securityQuery.isLoading}
+                      onClick={handleSaveSecurity}
+                    >
+                      {securityMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 size-4 animate-spin" />
+                          {t('windows.enrollmentPage.securitySaving')}
+                        </>
+                      ) : (
+                        t('windows.enrollmentPage.securitySave')
+                      )}
+                    </Button>
+                  )}
                 </div>
               </>
             )}
@@ -567,21 +573,23 @@ export function WindowsEnrollmentPage() {
                 ) : null}
 
                 <div className="flex flex-wrap items-center gap-3">
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={provisioningMutation.isPending || provisioningQuery.isLoading}
-                    onClick={handleSaveProvisioning}
-                  >
-                    {provisioningMutation.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 size-4 animate-spin" />
-                        {t('windows.enrollmentPage.provisioningSaving')}
-                      </>
-                    ) : (
-                      t('windows.enrollmentPage.provisioningSave')
-                    )}
-                  </Button>
+                  {canMutate && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={provisioningMutation.isPending || provisioningQuery.isLoading}
+                      onClick={handleSaveProvisioning}
+                    >
+                      {provisioningMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 size-4 animate-spin" />
+                          {t('windows.enrollmentPage.provisioningSaving')}
+                        </>
+                      ) : (
+                        t('windows.enrollmentPage.provisioningSave')
+                      )}
+                    </Button>
+                  )}
                   {provisioningDraft.provisioningEnabled ? (
                     <p className="text-xs text-muted-foreground">
                       {t('windows.enrollmentPage.provisioningRebootHint')}

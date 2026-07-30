@@ -20,6 +20,7 @@ import { NativeSelect } from '@/components/ui/native-select'
 import { OVERVIEW_FLAT_CARD_CLASS } from '@/features/devices/components/overview-card-styles'
 import { useDeviceDetailCommandToast } from '@/features/devices/context/device-detail-command-toast-context'
 import { useWindowsDeviceCommandMutation } from '@/features/windows/hooks/use-windows-device-command'
+import { usePermissions } from '@/features/auth/hooks/use-permissions'
 import { cn } from '@/lib/utils'
 
 const SUGGESTED_GROUPS = ['Administrators', 'Remote Desktop Users', 'Users', 'Power Users'] as const
@@ -36,6 +37,7 @@ export function WindowsDeviceLocalUsersTab({
   localUsers,
 }: WindowsDeviceLocalUsersTabProps) {
   const { t } = useTranslation()
+  const { canMutate } = usePermissions()
   const commandMutation = useWindowsDeviceCommandMutation(hardwareId)
   const { trackActionLogCommand } = useDeviceDetailCommandToast()
 
@@ -95,7 +97,9 @@ export function WindowsDeviceLocalUsersTab({
                 <th className="px-4 py-2.5 font-medium">{t('deviceDetail.users.username')}</th>
                 <th className="px-4 py-2.5 font-medium">{t('deviceDetail.users.admin')}</th>
                 <th className="px-4 py-2.5 font-medium">{t('deviceDetail.users.status')}</th>
-                <th className="px-4 py-2.5 font-medium">{t('deviceDetail.users.actions')}</th>
+                {canMutate && (
+                  <th className="px-4 py-2.5 font-medium">{t('deviceDetail.users.actions')}</th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -118,23 +122,28 @@ export function WindowsDeviceLocalUsersTab({
                       {user.status}
                     </Badge>
                   </td>
-                  <td className="px-4 py-2.5">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={commandMutation.isPending}
-                      onClick={() => handleOpenManage(user)}
-                    >
-                      <Settings2 className="size-3.5" />
-                      {t('deviceDetail.users.manageGroups.manage')}
-                    </Button>
-                  </td>
+                  {canMutate && (
+                    <td className="px-4 py-2.5">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={commandMutation.isPending}
+                        onClick={() => handleOpenManage(user)}
+                      >
+                        <Settings2 className="size-3.5" />
+                        {t('deviceDetail.users.manageGroups.manage')}
+                      </Button>
+                    </td>
+                  )}
                 </tr>
               ))}
               {localUsers.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
+                  <td
+                    colSpan={canMutate ? 4 : 3}
+                    className="px-4 py-8 text-center text-muted-foreground"
+                  >
                     {t('deviceDetail.users.empty')}
                   </td>
                 </tr>

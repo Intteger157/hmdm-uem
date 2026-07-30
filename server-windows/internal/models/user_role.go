@@ -78,6 +78,24 @@ func (r UserRole) EffectiveAccessLevel() string {
 	return level
 }
 
+// accessLevelRanks orders the levels so a route can demand a minimum. Higher
+// wins; unknown levels are absent from the map and rank as -1 via AccessLevelRank.
+var accessLevelRanks = map[string]int{
+	AccessLevelLow:  0,
+	AccessLevelMid:  1,
+	AccessLevelHigh: 2,
+}
+
+// AccessLevelRank converts a level into a comparable rank, or -1 when the value
+// is not a known level.
+func AccessLevelRank(level string) int {
+	rank, ok := accessLevelRanks[strings.ToLower(strings.TrimSpace(level))]
+	if !ok {
+		return -1
+	}
+	return rank
+}
+
 // AllowsPlatform reports whether the role may reach a route belonging to the
 // given ecosystem. An empty platform means the route is ecosystem agnostic.
 func (r UserRole) AllowsPlatform(platform string) bool {
@@ -86,6 +104,15 @@ func (r UserRole) AllowsPlatform(platform string) bool {
 	}
 	scope := r.EffectivePlatformScope()
 	return scope == PlatformScopeGlobal || scope == platform
+}
+
+// AllowsAccessLevel reports whether the role meets a route's minimum level. An
+// empty required level means the route places no demand on the access dimension.
+func (r UserRole) AllowsAccessLevel(required string) bool {
+	if required == "" || r.SuperAdmin {
+		return true
+	}
+	return AccessLevelRank(r.EffectiveAccessLevel()) >= AccessLevelRank(required)
 }
 
 // VisibleScope is the scope the console UI must apply when hiding sections.
@@ -98,4 +125,29 @@ func (r UserRole) VisibleScope() string {
 		return PlatformScopeGlobal
 	}
 	return r.EffectivePlatformScope()
+}
+
+// VisibleAccessLevel is the level the console UI must apply when hiding actions,
+// standing in the same relation to AllowsAccessLevel as VisibleScope does to
+// AllowsPlatform.
+func (r UserRole) VisibleAccessLevel() string {
+	if r.SuperAdmin {
+		return AccessLevelHigh
+	}
+	return r.EffectiveAccessLevel()
+}
+
+// IsConsoleAdministrator reports whether the role may administer the console
+// itself — users, roles and global settings — as opposed to the devices in one
+// ecosystem.
+//
+// Editing a role rewrites the very columns this package authorises against, so
+// anything less than an unrestricted operator would be able to widen its own
+// scope and level.
+func (r UserRole) IsConsoleAdministrator() bool {
+	if r.SuperAdmin {
+		return true
+	}
+	return r.EffectivePlatformScope() == PlatformScopeGlobal &&
+		r.EffectiveAccessLevel() == AccessLevelHigh
 }

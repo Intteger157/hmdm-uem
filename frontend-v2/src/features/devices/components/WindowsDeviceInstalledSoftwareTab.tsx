@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { OVERVIEW_FLAT_CARD_CLASS } from '@/features/devices/components/overview-card-styles'
+import { usePermissions } from '@/features/auth/hooks/use-permissions'
 import { cn } from '@/lib/utils'
 
 interface WindowsDeviceInstalledSoftwareTabProps {
@@ -28,6 +29,7 @@ export function WindowsDeviceInstalledSoftwareTab({
   software,
 }: WindowsDeviceInstalledSoftwareTabProps) {
   const { t } = useTranslation()
+  const { canMutate } = usePermissions()
   const { trackActionLogCommand } = useDeviceDetailCommandToast()
   const [pendingApp, setPendingApp] = useState<InstalledSoftware | null>(null)
   const [isQueueing, setIsQueueing] = useState(false)
@@ -69,7 +71,9 @@ export function WindowsDeviceInstalledSoftwareTab({
                   <th className="px-4 py-2.5 font-medium">{t('deviceDetail.software.version')}</th>
                   <th className="px-4 py-2.5 font-medium">{t('deviceDetail.software.publisher')}</th>
                   <th className="px-4 py-2.5 font-medium">{t('deviceDetail.software.installed')}</th>
-                  <th className="px-4 py-2.5 font-medium">{t('deviceDetail.software.actions')}</th>
+                  {canMutate && (
+                    <th className="px-4 py-2.5 font-medium">{t('deviceDetail.software.actions')}</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -81,33 +85,38 @@ export function WindowsDeviceInstalledSoftwareTab({
                       <td className="px-4 py-2.5 font-mono text-xs">{app.version}</td>
                       <td className="px-4 py-2.5 text-muted-foreground">{app.publisher}</td>
                       <td className="px-4 py-2.5 whitespace-nowrap">{app.installDate}</td>
-                      <td className="px-4 py-2.5">
-                        <Button
-                          type="button"
-                          size="icon-sm"
-                          variant="ghost"
-                          disabled={!canUninstall || isQueueing}
-                          title={
-                            canUninstall
-                              ? t('deviceDetail.software.uninstall')
-                              : t('deviceDetail.software.uninstallUnavailable')
-                          }
-                          className={cn(
-                            'text-muted-foreground hover:text-destructive',
-                            !canUninstall && 'opacity-40',
-                          )}
-                          onClick={() => setPendingApp(app)}
-                        >
-                          <Trash2 className="size-4" />
-                          <span className="sr-only">{t('deviceDetail.software.uninstall')}</span>
-                        </Button>
-                      </td>
+                      {canMutate && (
+                        <td className="px-4 py-2.5">
+                          <Button
+                            type="button"
+                            size="icon-sm"
+                            variant="ghost"
+                            disabled={!canUninstall || isQueueing}
+                            title={
+                              canUninstall
+                                ? t('deviceDetail.software.uninstall')
+                                : t('deviceDetail.software.uninstallUnavailable')
+                            }
+                            className={cn(
+                              'text-muted-foreground hover:text-destructive',
+                              !canUninstall && 'opacity-40',
+                            )}
+                            onClick={() => setPendingApp(app)}
+                          >
+                            <Trash2 className="size-4" />
+                            <span className="sr-only">{t('deviceDetail.software.uninstall')}</span>
+                          </Button>
+                        </td>
+                      )}
                     </tr>
                   )
                 })}
                 {software.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
+                    <td
+                      colSpan={canMutate ? 5 : 4}
+                      className="px-4 py-8 text-center text-muted-foreground"
+                    >
                       {t('deviceDetail.software.empty')}
                     </td>
                   </tr>

@@ -37,8 +37,7 @@ import {
   SidebarSeparator,
 } from '@/components/ui/sidebar'
 import { AndroidIcon, WindowsIcon } from '@/components/icons/platform-icons'
-import { useAuthStore } from '@/features/auth/store/auth-store'
-import { scopeAllowsPlatform, scopedPlatform } from '@/shared/lib/platform-scope'
+import { usePermissions } from '@/features/auth/hooks/use-permissions'
 
 function useNavState() {
   const pathname = useRouterState({ select: (state) => state.location.pathname })
@@ -78,7 +77,7 @@ type NavState = ReturnType<typeof useNavState>
 
 function DevicesGroup({ nav }: { nav: NavState }) {
   const { t } = useTranslation()
-  const lockedPlatform = useAuthStore((s) => scopedPlatform(s.platformScope))
+  const { lockedPlatform } = usePermissions()
 
   return (
     <SidebarGroup>
@@ -310,13 +309,15 @@ export function AppSidebar() {
   const { t } = useTranslation()
   const nav = useNavState()
 
-  // A role scoped to one ecosystem must not see the other one's navigation.
-  // Go enforces the same rule on the Windows routes; the Java-served Android
-  // routes do not check scope yet, so for those this is the only thing keeping
+  // A role scoped to one ecosystem must not see the other one's navigation, and
+  // only a role that administers the console sees the console's own settings.
+  //
+  // Go enforces both rules on the routes it serves; the Java-served Android and
+  // administration routes check neither, so there this is the only thing keeping
   // an operator out of screens they should not use.
-  const platformScope = useAuthStore((s) => s.platformScope)
-  const showAndroid = scopeAllowsPlatform(platformScope, 'android')
-  const showWindows = scopeAllowsPlatform(platformScope, 'windows')
+  const { allowsPlatform, isAdministrator } = usePermissions()
+  const showAndroid = allowsPlatform('android')
+  const showWindows = allowsPlatform('windows')
 
   return (
     <SidebarContent className="gap-0 p-0">
@@ -354,33 +355,36 @@ export function AppSidebar() {
         </>
       )}
 
-      <SidebarSeparator />
-
-      <SidebarGroup>
-        <SidebarGroupLabel>{t('nav.administration')}</SidebarGroupLabel>
-        <SidebarGroupContent>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton isActive={nav.isUsers} render={<Link to="/users" />}>
-                <Users />
-                <span>{t('nav.users')}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton isActive={nav.isRoles} render={<Link to="/roles" />}>
-                <Shield />
-                <span>{t('nav.roles')}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton isActive={nav.isSettings} render={<Link to="/settings" />}>
-                <Settings />
-                <span>{t('nav.settings')}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
+      {isAdministrator && (
+        <>
+          <SidebarSeparator />
+          <SidebarGroup>
+            <SidebarGroupLabel>{t('nav.administration')}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton isActive={nav.isUsers} render={<Link to="/users" />}>
+                    <Users />
+                    <span>{t('nav.users')}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton isActive={nav.isRoles} render={<Link to="/roles" />}>
+                    <Shield />
+                    <span>{t('nav.roles')}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton isActive={nav.isSettings} render={<Link to="/settings" />}>
+                    <Settings />
+                    <span>{t('nav.settings')}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </>
+      )}
     </SidebarContent>
   )
 }

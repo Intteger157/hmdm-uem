@@ -2,6 +2,7 @@ import type { ConsoleProfile } from '@/shared/api/types/console-profile'
 import type { User } from '@/shared/api/types/user'
 import { mockNetworkDelay } from '@/shared/api/mock-utils'
 import { DEFAULT_PLATFORM_SCOPE, isPlatformScope } from '@/shared/lib/platform-scope'
+import { DEFAULT_ACCESS_LEVEL, isAccessLevel } from '@/shared/lib/access-level'
 
 const ALL_PERMISSIONS = [
   'settings',
@@ -57,20 +58,27 @@ export async function mockFetchCurrentUser(): Promise<User> {
 }
 
 /**
- * Mock console profile. Set VITE_MOCK_PLATFORM_SCOPE to "windows" or "android"
- * to exercise the scoped navigation without running the Go server.
+ * Mock console profile.
+ *
+ * Set VITE_MOCK_PLATFORM_SCOPE to "windows" or "android" and
+ * VITE_MOCK_ACCESS_LEVEL to "low" or "mid" to exercise the scoped navigation and
+ * the gated actions without running the Go server. VITE_MOCK_SUPER_ADMIN=false
+ * is needed alongside them, because a super admin bypasses both dimensions.
  */
 export async function mockFetchConsoleProfile(): Promise<ConsoleProfile> {
   await mockNetworkDelay()
 
-  const configured = import.meta.env.VITE_MOCK_PLATFORM_SCOPE
+  const scope = import.meta.env.VITE_MOCK_PLATFORM_SCOPE
+  const level = import.meta.env.VITE_MOCK_ACCESS_LEVEL
+  const superAdmin = import.meta.env.VITE_MOCK_SUPER_ADMIN !== 'false'
+
   return {
     userId: MOCK_USER.id,
     login: MOCK_USER.login,
     roleId: MOCK_USER.userRole.id,
     roleName: MOCK_USER.userRole.name,
-    superAdmin: MOCK_USER.userRole.superAdmin,
-    platformScope: isPlatformScope(configured) ? configured : DEFAULT_PLATFORM_SCOPE,
-    accessLevel: 'high',
+    superAdmin: superAdmin && MOCK_USER.userRole.superAdmin,
+    platformScope: isPlatformScope(scope) ? scope : DEFAULT_PLATFORM_SCOPE,
+    accessLevel: isAccessLevel(level) ? level : DEFAULT_ACCESS_LEVEL,
   }
 }

@@ -19,13 +19,12 @@ import { DeviceLocationDialog } from '@/features/devices/components/DeviceLocati
 import { WindowsEnrollmentDialog } from '@/features/windows/components/WindowsEnrollmentDialog'
 import { getConfigurationQrCodeKey } from '@/features/devices/api/devices-api'
 import { useDevicesQuery } from '@/features/devices/hooks/use-devices-query'
-import { useAuthStore } from '@/features/auth/store/auth-store'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { isMockApiEnabled } from '@/shared/api/mock-utils'
 import { isPlatform } from '@/shared/api/types/platform'
-import { scopedPlatform } from '@/shared/lib/platform-scope'
+import { usePermissions } from '@/features/auth/hooks/use-permissions'
 import type { DeviceView } from '@/shared/api/types/device'
 
 const PAGE_SIZE = isMockApiEnabled() ? 5 : 50
@@ -42,7 +41,7 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
   // A role scoped to one ecosystem is pinned to it. Deriving the platform here
   // rather than waiting on a redirect keeps the very first render — and so the
   // device query — inside the operator's scope.
-  const lockedPlatform = useAuthStore((s) => scopedPlatform(s.platformScope))
+  const { lockedPlatform, canMutate } = usePermissions()
   const platform = lockedPlatform ?? requestedPlatform
 
   const [pageNum, setPageNum] = useState(1)
@@ -159,13 +158,13 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
             {t('devices.search')}
           </Button>
         </form>
-        {platform === 'android' && (
+        {canMutate && platform === 'android' && (
           <Button type="button" onClick={openAdd}>
             <Plus className="size-4" />
             {t('devices.add')}
           </Button>
         )}
-        {platform === 'windows' && (
+        {canMutate && platform === 'windows' && (
           <Button type="button" onClick={() => setWindowsEnrollmentOpen(true)}>
             <Plus className="size-4" />
             {t('devices.add')}

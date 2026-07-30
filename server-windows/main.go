@@ -93,6 +93,12 @@ func main() {
 func registerRoutes(router *gin.Engine, windowsHandler *handlers.WindowsHandler, jwtSecret string) {
 	adminOnly := middleware.AdminAuth(jwtSecret)
 	adminOrAgent := middleware.AdminOrAgent(jwtSecret)
+	// Ordered after adminOnly everywhere it is used: it authorises the role that
+	// AdminAuth resolves. The shared agent/console group is deliberately left
+	// out — its only route is a read, and an agent request carries no role for
+	// this to authorise.
+	accessLevel := middleware.RequireAccessLevel()
+	consoleAdmin := middleware.RequireConsoleAdministrator()
 
 	router.GET("/storage/files/*filepath", windowsHandler.ServeStoredFile)
 
@@ -112,7 +118,7 @@ func registerRoutes(router *gin.Engine, windowsHandler *handlers.WindowsHandler,
 
 	// Operator-side WebSocket relays. The browser cannot set headers on a
 	// handshake, so the console JWT arrives as the "token" query parameter.
-	adminSockets := router.Group("/api", adminOnly)
+	adminSockets := router.Group("/api", adminOnly, accessLevel)
 	{
 		adminSockets.GET("/terminal/operator", windowsHandler.HandleAdminTerminal)
 		adminSockets.GET("/terminal/admin", windowsHandler.HandleAdminTerminal)
@@ -160,8 +166,9 @@ func registerRoutes(router *gin.Engine, windowsHandler *handlers.WindowsHandler,
 		}
 
 		// Console API. Fail-closed: a valid console JWT whose role permits the
-		// Windows platform is required for every route below.
-		admin := rest.Group("/windows", adminOnly)
+		// Windows platform and meets the route's access level is required for
+		// every route below.
+		admin := rest.Group("/windows", adminOnly, accessLevel)
 		{
 			admin.GET("/devices", windowsHandler.ListDevices)
 			admin.GET("/devices/:hardwareId", windowsHandler.GetDevice)
@@ -220,18 +227,20 @@ func registerRoutes(router *gin.Engine, windowsHandler *handlers.WindowsHandler,
 			admin.POST("/devices/:hardwareId/apps/:appId/retry", windowsHandler.RetryDeviceApp)
 			admin.GET("/groups", windowsHandler.ListDeviceGroups)
 			admin.POST("/groups", windowsHandler.CreateDeviceGroup)
-			admin.GET("/roles", windowsHandler.ListRoleMatrix)
-			admin.PUT("/roles/:roleId", windowsHandler.UpdateRoleMatrix)
+			// Role administration writes the scope and level columns that every
+			// check above reads, so it takes the stricter console-admin guard.
+			admin.GET("/roles", consoleAdmin, windowsHandler.ListRoleMatrix)
+			admin.PUT("/roles/:roleId", consoleAdmin, windowsHandler.UpdateRoleMatrix)
 			admin.GET("/me", windowsHandler.GetConsoleProfile)
 		}
 	}
 
 	// Mirror the console-wide endpoints under /api/windows for gateways and SPA
 	// builds that prefix console calls with /api instead of /rest.
-	apiAdmin := router.Group("/api/windows", adminOnly)
+	apiAdmin := router.Group("/api/windows", adminOnly, accessLevel)
 	{
-		apiAdmin.GET("/roles", windowsHandler.ListRoleMatrix)
-		apiAdmin.PUT("/roles/:roleId", windowsHandler.UpdateRoleMatrix)
+		apiAdmin.GET("/roles", consoleAdmin, windowsHandler.ListRoleMatrix)
+		apiAdmin.PUT("/roles/:roleId", consoleAdmin, windowsHandler.UpdateRoleMatrix)
 		apiAdmin.GET("/me", windowsHandler.GetConsoleProfile)
 	}
 }

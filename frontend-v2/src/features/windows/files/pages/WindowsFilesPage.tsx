@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
 import { getWindowsApiErrorMessage } from '@/features/windows/applications/utils/app-catalog-errors'
+import { usePermissions } from '@/features/auth/hooks/use-permissions'
 import { toast } from 'sonner'
 
 function formatTimestamp(value: string): string {
@@ -30,6 +31,7 @@ function formatTimestamp(value: string): string {
 
 export function WindowsFilesPage() {
   const { t } = useTranslation()
+  const { canMutate } = usePermissions()
   const { data, isLoading, error, refetch } = useStoredFilesQuery()
   const uploadMutation = useUploadStoredFileMutation()
   const deleteMutation = useDeleteStoredFileMutation()
@@ -124,18 +126,20 @@ export function WindowsFilesPage() {
               }
             }}
           />
-          <Button
-            type="button"
-            disabled={isUploading}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            {isUploading ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Plus className="size-4" />
-            )}
-            {t('windowsFiles.upload.button')}
-          </Button>
+          {canMutate && (
+            <Button
+              type="button"
+              disabled={isUploading}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {isUploading ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Plus className="size-4" />
+              )}
+              {t('windowsFiles.upload.button')}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -175,7 +179,7 @@ export function WindowsFilesPage() {
                     <th className="px-4 py-3 font-medium">{t('windowsFiles.columns.size')}</th>
                     <th className="px-4 py-3 font-medium">{t('windowsFiles.columns.uploaded')}</th>
                     <th className="px-4 py-3 font-medium">{t('windowsFiles.columns.sha256')}</th>
-                    <th className="px-4 py-3 font-medium" />
+                    {canMutate && <th className="px-4 py-3 font-medium" />}
                   </tr>
                 </thead>
                 <tbody>
@@ -185,18 +189,22 @@ export function WindowsFilesPage() {
                       <td className="px-4 py-3 tabular-nums">{formatUploadBytes(file.sizeBytes)}</td>
                       <td className="px-4 py-3">{formatTimestamp(file.uploadDate)}</td>
                       <td className="px-4 py-3 font-mono text-xs">{file.sha256.slice(0, 12)}…</td>
-                      <td className="px-4 py-3 text-right">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          className="text-destructive hover:text-destructive"
-                          aria-label={t('windowsFiles.delete.title')}
-                          onClick={() => setDeleteTarget(file)}
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </td>
+                      {/* Unlike the catalog entities, a stored file can simply be
+                          uploaded again, so this stays with the Operator level. */}
+                      {canMutate && (
+                        <td className="px-4 py-3 text-right">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-destructive hover:text-destructive"
+                            aria-label={t('windowsFiles.delete.title')}
+                            onClick={() => setDeleteTarget(file)}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

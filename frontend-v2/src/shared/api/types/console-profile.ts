@@ -1,3 +1,4 @@
+import type { AccessLevel } from '@/shared/lib/access-level'
 import type { PlatformScope } from '@/shared/lib/platform-scope'
 
 /** Payload of GET /rest/windows/me on the Go server. */
@@ -8,5 +9,5 @@ export interface ConsoleProfile {
   roleName: string
   superAdmin: boolean
   platformScope: PlatformScope
-  accessLevel: string
+  accessLevel: AccessLevel
 }

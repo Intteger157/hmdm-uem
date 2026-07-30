@@ -32,6 +32,7 @@ import { WindowsFilesPage } from '@/features/windows/files/pages/WindowsFilesPag
 import { WindowsScriptsPage } from '@/features/windows/scripts/pages/WindowsScriptsPage'
 import { WindowsEnrollmentPage } from '@/features/windows/enrollment/pages/WindowsEnrollmentPage'
 import { useAuthStore } from '@/features/auth/store/auth-store'
+import { resolvePermissions } from '@/features/auth/hooks/use-permissions'
 import { isPlatform, type Platform } from '@/shared/api/types/platform'
 
 const rootRoute = createRootRoute({
@@ -61,6 +62,20 @@ function requireScopedDevicePlatform({ search }: { search: { platform: Platform 
   const locked = useAuthStore.getState().scopedPlatform()
   if (locked && search.platform !== locked) {
     throw redirect({ to: '/devices', search: { platform: locked } })
+  }
+}
+
+/**
+ * Keeps the console's own administration out of reach of the roles it governs.
+ *
+ * These pages are served by Java, which does not read the matrix columns, so
+ * every request from a non-administrator would come back 403 and the screens
+ * would render as a wall of errors. Redirecting is both the friendlier outcome
+ * and, on the Java side, the only one available today.
+ */
+function requireAdministrator() {
+  if (!resolvePermissions(useAuthStore.getState().access).isAdministrator) {
+    throw redirect({ to: '/dashboard' })
   }
 }
 
@@ -189,18 +204,21 @@ const groupsRoute = createRoute({
 const usersRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/users',
+  beforeLoad: requireAdministrator,
   component: UsersListPage,
 })
 
 const settingsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/settings',
+  beforeLoad: requireAdministrator,
   component: SettingsPage,
 })
 
 const rolesRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/roles',
+  beforeLoad: requireAdministrator,
   component: RolesListPage,
 })
 

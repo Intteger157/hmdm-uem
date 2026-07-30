@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
 import { ListPagination } from '@/shared/components/ListPagination'
 import { usePaginatedList } from '@/shared/hooks/use-paginated-list'
+import { usePermissions } from '@/features/auth/hooks/use-permissions'
 import { toast } from 'sonner'
 
 function matchProfile(profile: WindowsConfigProfile, query: string): boolean {
@@ -36,6 +37,7 @@ function formatTimestamp(value: string): string {
 
 export function WindowsConfigurationsPage() {
   const { t } = useTranslation()
+  const { canMutate, canDeleteCritical } = usePermissions()
   const { data, isLoading, error, refetch } = useWindowsConfigProfilesQuery()
   const deleteMutation = useDeleteWindowsConfigProfileMutation()
 
@@ -76,10 +78,12 @@ export function WindowsConfigurationsPage() {
           <h1 className="text-2xl font-semibold tracking-tight">{t('windowsConfigurations.title')}</h1>
           <p className="text-sm text-muted-foreground">{t('windowsConfigurations.subtitle')}</p>
         </div>
-        <Button type="button" render={<Link to="/windows/configurations/new" />}>
-          <Plus className="size-4" />
-          {t('windowsConfigurations.createProfile')}
-        </Button>
+        {canMutate && (
+          <Button type="button" render={<Link to="/windows/configurations/new" />}>
+            <Plus className="size-4" />
+            {t('windowsConfigurations.createProfile')}
+          </Button>
+        )}
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -120,7 +124,9 @@ export function WindowsConfigurationsPage() {
                     <th className="px-4 py-3 font-medium">{t('windowsConfigurations.columns.name')}</th>
                     <th className="px-4 py-3 font-medium">{t('windowsConfigurations.columns.status')}</th>
                     <th className="px-4 py-3 font-medium">{t('windowsConfigurations.columns.lastUpdated')}</th>
-                    <th className="px-4 py-3 font-medium">{t('windowsConfigurations.columns.actions')}</th>
+                    {canMutate && (
+                      <th className="px-4 py-3 font-medium">{t('windowsConfigurations.columns.actions')}</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -148,38 +154,47 @@ export function WindowsConfigurationsPage() {
                         </Badge>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">{formatTimestamp(profile.updatedAt)}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            render={
-                              <Link
-                                to="/windows/configurations/$profileId"
-                                params={{ profileId: String(profile.id) }}
-                              />
-                            }
-                          >
-                            <Pencil className="mr-1.5 size-3.5" />
-                            {t('common.edit')}
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setDeleteTarget(profile)}
-                          >
-                            <Trash2 className="mr-1.5 size-3.5" />
-                            {t('common.delete')}
-                          </Button>
-                        </div>
-                      </td>
+                      {canMutate && (
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              render={
+                                <Link
+                                  to="/windows/configurations/$profileId"
+                                  params={{ profileId: String(profile.id) }}
+                                />
+                              }
+                            >
+                              <Pencil className="mr-1.5 size-3.5" />
+                              {t('common.edit')}
+                            </Button>
+                            {/* Deleting a profile unassigns it from every device and
+                                group still using it. */}
+                            {canDeleteCritical && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setDeleteTarget(profile)}
+                              >
+                                <Trash2 className="mr-1.5 size-3.5" />
+                                {t('common.delete')}
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))}
                   {pageItems.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">
+                      <td
+                        colSpan={canMutate ? 4 : 3}
+                        className="px-4 py-10 text-center text-muted-foreground"
+                      >
                         {t('windowsConfigurations.empty')}
                       </td>
                     </tr>

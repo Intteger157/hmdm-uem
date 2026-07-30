@@ -102,6 +102,100 @@ func TestUserRoleVisibleScopeAgreesWithAllowsPlatform(t *testing.T) {
 	}
 }
 
+func TestAccessLevelRankOrdersTheMatrix(t *testing.T) {
+	if AccessLevelRank(AccessLevelLow) >= AccessLevelRank(AccessLevelMid) {
+		t.Error("low must rank below mid")
+	}
+	if AccessLevelRank(AccessLevelMid) >= AccessLevelRank(AccessLevelHigh) {
+		t.Error("mid must rank below high")
+	}
+	if got := AccessLevelRank(" HIGH "); got != AccessLevelRank(AccessLevelHigh) {
+		t.Errorf("AccessLevelRank(%q) = %d, want %d", " HIGH ", got, AccessLevelRank(AccessLevelHigh))
+	}
+	// An unknown level must not accidentally outrank a real one.
+	if got := AccessLevelRank("root"); got != -1 {
+		t.Errorf("AccessLevelRank(%q) = %d, want -1", "root", got)
+	}
+}
+
+func TestUserRoleAllowsAccessLevel(t *testing.T) {
+	tests := []struct {
+		name     string
+		role     UserRole
+		required string
+		want     bool
+	}{
+		{"high meets high", UserRole{AccessLevel: AccessLevelHigh}, AccessLevelHigh, true},
+		{"high meets mid", UserRole{AccessLevel: AccessLevelHigh}, AccessLevelMid, true},
+		{"mid meets mid", UserRole{AccessLevel: AccessLevelMid}, AccessLevelMid, true},
+		{"mid blocked from high", UserRole{AccessLevel: AccessLevelMid}, AccessLevelHigh, false},
+		{"low meets low", UserRole{AccessLevel: AccessLevelLow}, AccessLevelLow, true},
+		{"low blocked from mid", UserRole{AccessLevel: AccessLevelLow}, AccessLevelMid, false},
+		{"low blocked from high", UserRole{AccessLevel: AccessLevelLow}, AccessLevelHigh, false},
+		{"unrequired level always allowed", UserRole{AccessLevel: AccessLevelLow}, "", true},
+		{"superadmin bypasses level", UserRole{AccessLevel: AccessLevelLow, SuperAdmin: true}, AccessLevelHigh, true},
+		{"unclassified role stays unrestricted", UserRole{}, AccessLevelHigh, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.role.AllowsAccessLevel(tt.required); got != tt.want {
+				t.Errorf("AllowsAccessLevel(%q) = %v, want %v", tt.required, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUserRoleVisibleAccessLevelAgreesWithAllowsAccessLevel(t *testing.T) {
+	// The console hides actions from VisibleAccessLevel while the server enforces
+	// AllowsAccessLevel. If the two disagree the UI offers a button that 403s.
+	roles := []UserRole{
+		{AccessLevel: AccessLevelHigh},
+		{AccessLevel: AccessLevelMid},
+		{AccessLevel: AccessLevelLow},
+		{},
+		{AccessLevel: AccessLevelLow, SuperAdmin: true},
+	}
+
+	for _, role := range roles {
+		for _, required := range []string{AccessLevelLow, AccessLevelMid, AccessLevelHigh} {
+			uiAllows := AccessLevelRank(role.VisibleAccessLevel()) >= AccessLevelRank(required)
+
+			if uiAllows != role.AllowsAccessLevel(required) {
+				t.Errorf("role %+v required %q: UI allows %v but server allows %v",
+					role, required, uiAllows, role.AllowsAccessLevel(required))
+			}
+		}
+	}
+}
+
+func TestUserRoleIsConsoleAdministrator(t *testing.T) {
+	tests := []struct {
+		name string
+		role UserRole
+		want bool
+	}{
+		{"global high administers", UserRole{PlatformScope: PlatformScopeGlobal, AccessLevel: AccessLevelHigh}, true},
+		{"legacy blank role administers", UserRole{}, true},
+		{"superadmin administers whatever its columns say",
+			UserRole{PlatformScope: PlatformScopeWindows, AccessLevel: AccessLevelLow, SuperAdmin: true}, true},
+		// A Windows Engineer is unrestricted inside its own ecosystem, but role
+		// administration would let it grant itself the other one.
+		{"windows high does not administer", UserRole{PlatformScope: PlatformScopeWindows, AccessLevel: AccessLevelHigh}, false},
+		{"android high does not administer", UserRole{PlatformScope: PlatformScopeAndroid, AccessLevel: AccessLevelHigh}, false},
+		{"global mid does not administer", UserRole{PlatformScope: PlatformScopeGlobal, AccessLevel: AccessLevelMid}, false},
+		{"global low does not administer", UserRole{PlatformScope: PlatformScopeGlobal, AccessLevel: AccessLevelLow}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.role.IsConsoleAdministrator(); got != tt.want {
+				t.Errorf("IsConsoleAdministrator() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestUserRoleTableNameMatchesJavaSchema(t *testing.T) {
 	// Liquibase creates `userRoles` unquoted, which PostgreSQL folds to lowercase.
 	if got := (UserRole{}).TableName(); got != "userroles" {

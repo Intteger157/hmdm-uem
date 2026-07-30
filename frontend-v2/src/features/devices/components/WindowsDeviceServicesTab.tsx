@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { OVERVIEW_FLAT_CARD_CLASS } from '@/features/devices/components/overview-card-styles'
+import { usePermissions } from '@/features/auth/hooks/use-permissions'
 import { cn } from '@/lib/utils'
 
 interface WindowsDeviceServicesTabProps {
@@ -40,6 +41,7 @@ function extractRestartErrorMessage(error: unknown): string {
 
 export function WindowsDeviceServicesTab({ hardwareId }: WindowsDeviceServicesTabProps) {
   const { t } = useTranslation()
+  const { canMutate } = usePermissions()
   const queryClient = useQueryClient()
   const autoRefreshAttemptedRef = useRef(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -58,6 +60,12 @@ export function WindowsDeviceServicesTab({ hardwareId }: WindowsDeviceServicesTa
       return
     }
     if (services.length > 0) {
+      return
+    }
+    // Populating the list means asking the device for it, which the server
+    // refuses below the Operator level. Skipping keeps an Observer looking at an
+    // empty table instead of a permission error it can do nothing about.
+    if (!canMutate) {
       return
     }
 
@@ -90,7 +98,7 @@ export function WindowsDeviceServicesTab({ hardwareId }: WindowsDeviceServicesTa
     return () => {
       cancelled = true
     }
-  }, [hardwareId, isLoading, queryClient, services.length, t])
+  }, [canMutate, hardwareId, isLoading, queryClient, services.length, t])
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -158,16 +166,20 @@ export function WindowsDeviceServicesTab({ hardwareId }: WindowsDeviceServicesTa
       <CardContent className="p-0">
         <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
           <p className="text-sm text-muted-foreground">{t('deviceDetail.services.subtitle')}</p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={refreshing}
-            onClick={() => void handleRefresh()}
-          >
-            <RefreshCw className={cn('mr-2 size-4', refreshing && 'animate-spin')} />
-            {t('deviceDetail.services.refresh')}
-          </Button>
+          {/* Refreshing queues a get_services command on the device rather than
+              re-reading the console's cache, so it is a write. */}
+          {canMutate && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={refreshing}
+              onClick={() => void handleRefresh()}
+            >
+              <RefreshCw className={cn('mr-2 size-4', refreshing && 'animate-spin')} />
+              {t('deviceDetail.services.refresh')}
+            </Button>
+          )}
         </div>
 
         {queryError || actionError ? (
@@ -180,7 +192,9 @@ export function WindowsDeviceServicesTab({ hardwareId }: WindowsDeviceServicesTa
                 <th className="px-4 py-2.5 font-medium">{t('deviceDetail.services.displayName')}</th>
                 <th className="px-4 py-2.5 font-medium">{t('deviceDetail.services.serviceName')}</th>
                 <th className="px-4 py-2.5 font-medium">{t('deviceDetail.services.status')}</th>
-                <th className="px-4 py-2.5 font-medium">{t('deviceDetail.services.actions')}</th>
+                {canMutate && (
+                  <th className="px-4 py-2.5 font-medium">{t('deviceDetail.services.actions')}</th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -198,24 +212,29 @@ export function WindowsDeviceServicesTab({ hardwareId }: WindowsDeviceServicesTa
                           : t('deviceDetail.services.stopped')}
                       </Badge>
                     </td>
-                    <td className="px-4 py-2.5">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        disabled={isRestarting || refreshing}
-                        aria-label={t('deviceDetail.services.restart', { service: service.name })}
-                        onClick={() => void handleRestart(service.name)}
-                      >
-                        <RefreshCw className={cn('size-4', isRestarting && 'animate-spin')} />
-                      </Button>
-                    </td>
+                    {canMutate && (
+                      <td className="px-4 py-2.5">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          disabled={isRestarting || refreshing}
+                          aria-label={t('deviceDetail.services.restart', { service: service.name })}
+                          onClick={() => void handleRestart(service.name)}
+                        >
+                          <RefreshCw className={cn('size-4', isRestarting && 'animate-spin')} />
+                        </Button>
+                      </td>
+                    )}
                   </tr>
                 )
               })}
               {services.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
+                  <td
+                    colSpan={canMutate ? 4 : 3}
+                    className="px-4 py-8 text-center text-muted-foreground"
+                  >
                     {t('deviceDetail.services.empty')}
                   </td>
                 </tr>

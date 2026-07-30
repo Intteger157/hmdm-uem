@@ -10,6 +10,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import type { DeviceView } from '@/shared/api/types/device'
+import { usePermissions } from '@/features/auth/hooks/use-permissions'
+import type { AccessLevel } from '@/shared/lib/access-level'
 
 export type DeviceActionsMenuAction =
   | 'appSettings'
@@ -27,16 +29,21 @@ interface DeviceActionsMenuProps {
   onAction: (action: DeviceActionsMenuAction, device: DeviceView) => void
 }
 
-const MENU_ITEMS: DeviceActionsMenuAction[] = [
-  'appSettings',
-  'details',
-  'logs',
-  'messaging',
-  'push',
-  'reset',
-  'installedApps',
-  'location',
-  'remoteControl',
+/**
+ * Least access level allowed to open each entry, defaulting to the Operator
+ * level. Kept in step with ANDROID_ACTIONS in DeviceActionsPanel, which offers
+ * the same set of dialogs from the device detail page.
+ */
+const MENU_ITEMS: { action: DeviceActionsMenuAction; minLevel: AccessLevel }[] = [
+  { action: 'appSettings', minLevel: 'mid' },
+  { action: 'details', minLevel: 'low' },
+  { action: 'logs', minLevel: 'low' },
+  { action: 'messaging', minLevel: 'mid' },
+  { action: 'push', minLevel: 'mid' },
+  { action: 'reset', minLevel: 'mid' },
+  { action: 'installedApps', minLevel: 'low' },
+  { action: 'location', minLevel: 'low' },
+  { action: 'remoteControl', minLevel: 'high' },
 ]
 
 function DeviceActionsDropdownContent({
@@ -66,6 +73,7 @@ function DeviceActionsDropdownContent({
 
 export function DeviceActionsMenu({ device, onAction }: DeviceActionsMenuProps) {
   const { t } = useTranslation()
+  const { atLeast } = usePermissions()
 
   return (
     <DropdownMenu>
@@ -82,7 +90,7 @@ export function DeviceActionsMenu({ device, onAction }: DeviceActionsMenuProps) 
         <MoreHorizontal className="size-3.5" />
       </DropdownMenuTrigger>
       <DeviceActionsDropdownContent>
-        {MENU_ITEMS.map((action) => (
+        {MENU_ITEMS.filter(({ minLevel }) => atLeast(minLevel)).map(({ action }) => (
           <DropdownMenuItem key={action} onClick={() => onAction(action, device)}>
             {t(`devices.actionsMenu.${action}`)}
           </DropdownMenuItem>
