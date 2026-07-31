@@ -4,3 +4,6 @@ singularity-agent.exe
 agent-windows.exe
 singularity-agent.exe
 SingularityMDMAgent.exe
+node_modules/
+package-lock.json
+icon-*.png

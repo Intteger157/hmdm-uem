@@ -11,7 +11,7 @@ interface PublicDeviceInfoPageProps {
   deviceId: string
 }
 
-const laptopImageSrc = '/device-info-laptop.png'
+const logoSrc = '/logo.svg'
 
 function isNotFoundError(error: unknown): boolean {
   return (
@@ -51,9 +51,9 @@ export function PublicDeviceInfoPage({ deviceId }: PublicDeviceInfoPageProps) {
         <div className="overflow-hidden rounded-2xl border border-slate-800/80 shadow-2xl shadow-black/50 ring-1 ring-white/5">
           <div className="relative bg-black px-5 pt-5 pb-5 sm:px-6">
             <img
-              src={laptopImageSrc}
+              src={logoSrc}
               alt=""
-              className="mx-auto h-36 w-full max-w-[280px] object-contain object-center drop-shadow-[0_12px_24px_rgba(0,0,0,0.45)]"
+              className="mx-auto size-28 object-contain drop-shadow-[0_12px_24px_rgba(124,58,237,0.35)] sm:size-32"
             />
 
             <div className="mt-4 space-y-2 text-center sm:text-left">

@@ -20,7 +20,13 @@ Icons:
 - `icon.ico` — embedded into the binary for the **system tray** (`go:embed` + `systray.SetIcon`)
 - `rsrc.syso` — generated at build time so **Explorer / Task Manager** show the same icon on the `.exe`
 
-After replacing `icon.ico`, rerun `build-agent.ps1` (tray and file icon update together).
+The mark matches the console favicon (`frontend-v2/public/logo.svg`). After changing that SVG, regenerate the agent icon:
+
+```powershell
+.\agent-windows\scripts\sync-brand-icon.ps1
+```
+
+Then rebuild with `build-agent.ps1` (tray and file icon update together).
 
 ## Build (Windows)
 
