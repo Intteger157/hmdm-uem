@@ -241,6 +241,12 @@ if [[ -f "${SYNC_JWT_SCRIPT}" ]]; then
   bash "${SYNC_JWT_SCRIPT}"
 fi
 
+SYNC_REMOTE_SCRIPT="${DEPLOY_DIR}/scripts/sync-deviceremote-settings.sh"
+if [[ -f "${SYNC_REMOTE_SCRIPT}" ]]; then
+  log "Syncing aPuppet plugin settings (when REMOTE_* is set in deploy/.env)"
+  bash "${SYNC_REMOTE_SCRIPT}" || log "Remote control sync skipped or failed — see deploy/REMOTE-CONTROL.md"
+fi
+
 WINDOWS_PORT="$(grep '^SERVER_WINDOWS_PORT=' "${ENV_FILE}" | cut -d= -f2-)"
 WINDOWS_PORT="${WINDOWS_PORT:-8082}"
 

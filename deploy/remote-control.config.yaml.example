@@ -1,0 +1,14 @@
+# Reference config for Headwind Remote (aPuppet server).
+# deploy/scripts/install-remote-control.sh writes plugins/deviceremote/h-mdm-remote-control/config.yaml
+# from deploy/.env — edit .env, not this file, for normal deployments.
+---
+hostname: "remote.example.com"
+email: "admin@example.com"
+# 443 when remote has its own public IP; 9443 when sharing one VPS with MDM (single-port HAProxy)
+web_https_port: 9443
+# Bind HTTP/ACME on localhost when host nginx or HAProxy owns :80
+web_http_listen: "127.0.0.1:8080"
+nat: true
+public_ip: ""
+is_certbot_enabled: true
+is_nginx_enabled: true

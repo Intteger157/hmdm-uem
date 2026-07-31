@@ -1180,6 +1180,8 @@
   "plugins.deviceremote.start": "Запустить",
   "plugins.deviceremote.stop": "Остановить",
   "plugins.deviceremote.openViewer": "Открыть viewer",
+  "plugins.deviceremote.settingsMissing": "URL сервера удалённого управления не настроен.",
+  "plugins.deviceremote.settingsLink": "Открыть настройки",
   "plugins.deviceremote.settings.subtitle": "Настройка подключения к серверу aPuppet",
   "plugins.deviceremote.settings.title": "Настройки сервера",
   "plugins.deviceremote.settings.serverUrl": "URL сервера",

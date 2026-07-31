@@ -1180,6 +1180,8 @@
   "plugins.deviceremote.start": "Start",
   "plugins.deviceremote.stop": "Stop",
   "plugins.deviceremote.openViewer": "Open viewer",
+  "plugins.deviceremote.settingsMissing": "Remote control server URL is not configured.",
+  "plugins.deviceremote.settingsLink": "Open settings",
   "plugins.deviceremote.settings.subtitle": "Configure aPuppet remote control server connection",
   "plugins.deviceremote.settings.title": "Server settings",
   "plugins.deviceremote.settings.serverUrl": "Server URL",

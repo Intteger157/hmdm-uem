@@ -1,0 +1,24 @@
+# Headwind Remote (aPuppet) — optional compose overlay
+#
+# Janus WebRTC uses host networking and UDP ports 10000-10500, so the remote stack
+# cannot run inside the MDM bridge network. Install and start it on the Linux host:
+#
+#   1. Set REMOTE_* variables in deploy/.env (see deploy/.env.example)
+#   2. sudo ./deploy/scripts/install-remote-control.sh
+#   3. ./deploy/scripts/start-remote-control.sh
+#
+# The generated stack lives at:
+#   plugins/deviceremote/h-mdm-remote-control/deploy/dist/docker-compose.yaml
+#
+# It uses network_mode: host for nginx and janus (see upstream template).
+#
+# After install, seed MDM plugin settings from .env:
+#   ./deploy/scripts/sync-deviceremote-settings.sh
+#
+# Single public :443 (MDM + Remote on one VPS): see
+#   plugins/deviceremote/h-mdm-remote-control/scripts/single-port/README.md
+
+# This file intentionally contains no services — remote control is host-managed.
+# Keeping it in deploy/ documents the integration path next to docker-compose.yml.
+
+services: {}
