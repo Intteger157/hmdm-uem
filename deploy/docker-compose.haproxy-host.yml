@@ -1,0 +1,17 @@
+# Overlay for production VPS with host HAProxy (single public :443).
+#
+# Usage:
+#   docker compose --env-file deploy/.env \
+#     -f deploy/docker-compose.yml \
+#     -f deploy/docker-compose.haproxy-host.yml up -d
+#
+# HAProxy backend be_mdm must point to 127.0.0.1:8080 (HTTP, not :8443 Tomcat SSL).
+
+services:
+  gateway:
+    ports:
+      - "127.0.0.1:${GATEWAY_PORT:-8080}:80"
+
+  hmdm:
+    ports:
+      - "31000:31000"
