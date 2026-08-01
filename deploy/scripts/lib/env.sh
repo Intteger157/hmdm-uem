@@ -26,3 +26,31 @@ read_env() {
     printf '%s' "${default}"
   fi
 }
+
+env_bool() {
+  case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
+    1 | true | yes | on) printf 'true' ;;
+    *) printf 'false' ;;
+  esac
+}
+
+env_require_no_inline_comment() {
+  local key="$1"
+  local raw=""
+  local file="${ENV_FILE:-}"
+
+  if [[ -z "${file}" || ! -f "${file}" ]]; then
+    return 0
+  fi
+
+  raw="$(grep "^${key}=" "${file}" 2>/dev/null | head -n1 | cut -d= -f2- || true)"
+  if [[ "${raw}" == *"#"* ]]; then
+    printf '%s\n' "ERROR: ${key} in ${file} has an inline comment on the same line." >&2
+    printf '%s\n' "Put comments on the line above, e.g.:" >&2
+    printf '%s\n' "  # my note" >&2
+    printf '%s\n' "  ${key}=value" >&2
+    printf '%s\n' "Current line: ${key}=${raw}" >&2
+    return 1
+  fi
+  return 0
+}

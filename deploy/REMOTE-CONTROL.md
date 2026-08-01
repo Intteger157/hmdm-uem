@@ -72,7 +72,7 @@ The remote stack **does not run inside** `deploy/docker-compose.yml`. Janus need
 | `REMOTE_HTTP_LISTEN` | Optional | `127.0.0.1:8081` | ACME/HTTP when something else owns `:80` (avoid `8080` — MDM gateway uses it) |
 | `REMOTE_PUBLIC_IP` | If behind NAT | `203.0.113.10` | Janus ICE candidate |
 | `REMOTE_NAT` | Optional | `true` | Set `true` when server is behind NAT |
-| `REMOTE_CUSTOMER_ID` | Optional | `1` | PostgreSQL `customerId` for settings row |
+| `REMOTE_CERTBOT_ENABLED` | Layout B | `false` | Set `false` when TLS/certbot run on edge nginx, not on fleet-vm |
 | `BASE_DOMAIN` | For co-host hint | `mdm.example.com` | MDM hostname (single-port setup) |
 | `PUBLIC_PROTOCOL` | Optional | `https` | Used when building `REMOTE_SERVER_URL` |
 
@@ -104,6 +104,38 @@ After remote install, `REMOTE_SERVER_SECRET` is appended automatically. Re-sync 
 ```
 
 **`.env` format:** use `#` comments on separate lines only. Do not write `REMOTE_DOMAIN=host  # comment` — put the comment above the variable.
+
+## Layout B — edge nginx + certbot on a separate proxy (your setup)
+
+MDM already uses a **public reverse proxy**; `:80`/`:443` are **not** on `fleet-vm`. Do **not** run certbot on the MDM/remote host.
+
+On `fleet-vm` `deploy/.env`:
+
+```env
+REMOTE_DOMAIN=remote-dev-mdm.intteger.uk
+REMOTE_CERTBOT_ENABLED=false
+REMOTE_HTTPS_PORT=9443
+REMOTE_SERVER_URL=https://remote-dev-mdm.intteger.uk/web-admin/
+REMOTE_CERTBOT_EMAIL=admin@intteger.uk
+REMOTE_NAT=true
+REMOTE_PUBLIC_IP=94.143.43.204
+```
+
+Then:
+
+```bash
+sudo bash deploy/scripts/install-remote-control.sh
+./deploy/scripts/start-remote-control.sh
+./deploy/scripts/sync-deviceremote-settings.sh
+```
+
+On the **edge proxy** server:
+
+1. Add vhost from [`deploy/nginx/edge-remote-reverse-proxy.conf.example`](nginx/edge-remote-reverse-proxy.conf.example)
+2. `certbot certonly --webroot … -d remote-dev-mdm.intteger.uk` on the **proxy** (where `:80` is public)
+3. Allow proxy → `192.168.31.247:9443` (HTTP backend), plus `8089`, `8989`, UDP `10000–10500` for Janus/WebRTC
+
+Remote nginx listens **HTTP** on `:9443` locally; the browser uses **HTTPS** on the edge `:443`.
 
 ## Firewall / security group
 

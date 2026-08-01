@@ -1,0 +1,75 @@
+# Edge nginx: remote control (aPuppet) behind the same public proxy as MDM (Layout B).
+#
+# Add to your PROXY server (the machine with public :80/:443), alongside MDM vhost.
+# Certbot runs HERE — not on fleet-vm (192.168.31.247).
+#
+# On fleet-vm deploy/.env:
+#   REMOTE_CERTBOT_ENABLED=false
+#   REMOTE_HTTPS_PORT=9443
+#   REMOTE_SERVER_URL=https://remote-dev-mdm.intteger.uk/web-admin/
+#
+# Firewall on fleet-vm: allow PROXY IP → 9443/tcp, 8089/tcp, 8989/tcp, 10000-10500/udp
+
+upstream hmdm_remote {
+    server 192.168.31.247:9443;
+    keepalive 8;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name remote-dev-mdm.intteger.uk;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        allow all;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name remote-dev-mdm.intteger.uk;
+
+    ssl_certificate     /etc/letsencrypt/live/remote-dev-mdm.intteger.uk/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/remote-dev-mdm.intteger.uk/privkey.pem;
+    include             /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
+
+    client_max_body_size 64m;
+
+    location / {
+        proxy_pass http://hmdm_remote;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header Upgrade           $http_upgrade;
+        proxy_set_header Connection        $connection_upgrade;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+}
+
+# Certbot on PROXY (after nginx serves :80 for this server_name):
+#   sudo certbot certonly --webroot -w /var/www/certbot \
+#     -d remote-dev-mdm.intteger.uk --email admin@intteger.uk --agree-tos --no-eff-email
+#
+# Janus WSS (8989) and UDP 10000-10500 must reach fleet-vm directly or via stream {}.
+# Add to /etc/nginx/nginx.conf outside http {} if you cannot expose 8989 publicly:
+#
+# stream {
+#     upstream janus_wss {
+#         server 192.168.31.247:8989;
+#     }
+#     server {
+#         listen 8989;
+#         proxy_pass janus_wss;
+#     }
+# }

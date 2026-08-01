@@ -38,6 +38,7 @@ REMOTE_SERVER_SECRET="$(read_env REMOTE_SERVER_SECRET)"
 REMOTE_HTTPS_PORT="$(read_env REMOTE_HTTPS_PORT 9443)"
 PUBLIC_PROTOCOL="$(read_env PUBLIC_PROTOCOL)"
 PROTOCOL="$(read_env PROTOCOL http)"
+REMOTE_CERTBOT_ENABLED="$(env_bool "$(read_env REMOTE_CERTBOT_ENABLED false)")"
 
 if [[ -z "${PUBLIC_PROTOCOL}" ]]; then
   if [[ "${PROTOCOL}" == "http" && -n "${REMOTE_DOMAIN}" && "${REMOTE_DOMAIN}" != "localhost" ]]; then
@@ -48,7 +49,9 @@ if [[ -z "${PUBLIC_PROTOCOL}" ]]; then
 fi
 
 if [[ -z "${REMOTE_SERVER_URL}" && -n "${REMOTE_DOMAIN}" ]]; then
-  if [[ "${PUBLIC_PROTOCOL}" == "https" && "${REMOTE_HTTPS_PORT}" != "443" ]]; then
+  if [[ "${REMOTE_CERTBOT_ENABLED}" == "false" ]]; then
+    REMOTE_SERVER_URL="${PUBLIC_PROTOCOL}://${REMOTE_DOMAIN}/web-admin/"
+  elif [[ "${PUBLIC_PROTOCOL}" == "https" && "${REMOTE_HTTPS_PORT}" != "443" ]]; then
     REMOTE_SERVER_URL="${PUBLIC_PROTOCOL}://${REMOTE_DOMAIN}:${REMOTE_HTTPS_PORT}/web-admin/"
   else
     REMOTE_SERVER_URL="${PUBLIC_PROTOCOL}://${REMOTE_DOMAIN}/web-admin/"

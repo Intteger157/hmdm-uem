@@ -41,15 +41,13 @@ REMOTE_PUBLIC_IP="$(read_env REMOTE_PUBLIC_IP)"
 REMOTE_NAT="$(read_env REMOTE_NAT true)"
 REMOTE_HTTPS_PORT="$(read_env REMOTE_HTTPS_PORT 9443)"
 REMOTE_HTTP_LISTEN="$(read_env REMOTE_HTTP_LISTEN '127.0.0.1:8081')"
+REMOTE_CERTBOT_ENABLED="$(env_bool "$(read_env REMOTE_CERTBOT_ENABLED false)")"
 BASE_DOMAIN="$(read_env BASE_DOMAIN)"
 
-raw_remote_domain_line="$(grep "^REMOTE_DOMAIN=" "${ENV_FILE}" 2>/dev/null | head -n1 | cut -d= -f2- || true)"
-if [[ "${raw_remote_domain_line}" == *"#"* ]]; then
-  die "REMOTE_DOMAIN in ${ENV_FILE} has an inline comment on the same line. Use:
-  # DNS A-запись на VPS
-  REMOTE_DOMAIN=remote-dev-mdm.intteger.uk
-Current line value: ${raw_remote_domain_line}"
-fi
+for _remote_key in REMOTE_DOMAIN REMOTE_CERTBOT_EMAIL REMOTE_SERVER_URL REMOTE_SERVER_SECRET REMOTE_HTTPS_PORT REMOTE_HTTP_LISTEN REMOTE_PUBLIC_IP REMOTE_NAT REMOTE_CUSTOMER_ID REMOTE_CERTBOT_ENABLED; do
+  env_require_no_inline_comment "${_remote_key}" || die "Fix deploy/.env and re-run."
+done
+unset _remote_key
 
 if [[ -z "${REMOTE_DOMAIN}" ]]; then
   die "Set REMOTE_DOMAIN in ${ENV_FILE} (e.g. remote.example.com)"
@@ -59,16 +57,19 @@ if [[ ! "${REMOTE_DOMAIN}" =~ ^[A-Za-z0-9.-]+$ ]]; then
   die "REMOTE_DOMAIN must be a hostname only (no spaces or inline comments in .env): got '${REMOTE_DOMAIN}'"
 fi
 
-if [[ -z "${REMOTE_CERTBOT_EMAIL}" ]]; then
-  REMOTE_CERTBOT_EMAIL="$(read_env ADMIN_EMAIL)"
-fi
-
-if [[ -z "${REMOTE_CERTBOT_EMAIL}" ]]; then
-  die "Set REMOTE_CERTBOT_EMAIL or ADMIN_EMAIL in ${ENV_FILE}"
-fi
-
-if [[ "${REMOTE_CERTBOT_EMAIL}" != *@* ]]; then
-  die "REMOTE_CERTBOT_EMAIL must be an email address, not a domain: got '${REMOTE_CERTBOT_EMAIL}'"
+if [[ "${REMOTE_CERTBOT_ENABLED}" == "true" ]]; then
+  if [[ -z "${REMOTE_CERTBOT_EMAIL}" ]]; then
+    REMOTE_CERTBOT_EMAIL="$(read_env ADMIN_EMAIL)"
+  fi
+  if [[ -z "${REMOTE_CERTBOT_EMAIL}" ]]; then
+    die "Set REMOTE_CERTBOT_EMAIL or ADMIN_EMAIL in ${ENV_FILE}"
+  fi
+  if [[ "${REMOTE_CERTBOT_EMAIL}" != *@* ]]; then
+    die "REMOTE_CERTBOT_EMAIL must be an email address, not a domain: got '${REMOTE_CERTBOT_EMAIL}'"
+  fi
+else
+  log "REMOTE_CERTBOT_ENABLED=false — TLS must terminate on your edge reverse proxy (Layout B)."
+  REMOTE_CERTBOT_EMAIL="${REMOTE_CERTBOT_EMAIL:-$(read_env ADMIN_EMAIL noreply@localhost)}"
 fi
 
 if [[ ! -d "${REMOTE_REPO}/deploy" ]]; then
@@ -82,16 +83,19 @@ log "Writing ${REMOTE_REPO}/config.yaml"
 log "  hostname=${REMOTE_DOMAIN}"
 log "  email=${REMOTE_CERTBOT_EMAIL}"
 log "  web_https_port=${REMOTE_HTTPS_PORT}"
+log "  web_http_port=${REMOTE_HTTPS_PORT} (HTTP backend for edge proxy when certbot disabled)"
 log "  web_http_listen=${REMOTE_HTTP_LISTEN}"
+log "  is_certbot_enabled=${REMOTE_CERTBOT_ENABLED}"
 cat > "${REMOTE_REPO}/config.yaml" <<EOF
 ---
 hostname: "${REMOTE_DOMAIN}"
 email: "${REMOTE_CERTBOT_EMAIL}"
+web_http_port: ${REMOTE_HTTPS_PORT}
 web_https_port: ${REMOTE_HTTPS_PORT}
 web_http_listen: "${REMOTE_HTTP_LISTEN}"
 nat: ${REMOTE_NAT}
 public_ip: "${REMOTE_PUBLIC_IP}"
-is_certbot_enabled: true
+is_certbot_enabled: ${REMOTE_CERTBOT_ENABLED}
 is_nginx_enabled: true
 EOF
 
@@ -139,8 +143,14 @@ cat <<EOF
 
 Remote control server is installed.
 
-Viewer URL (after TLS):
-  https://${REMOTE_DOMAIN}$( [[ "${REMOTE_HTTPS_PORT}" != "443" ]] && printf ':%s' "${REMOTE_HTTPS_PORT}" )/web-admin/
+Viewer URL:
+$( if [[ "${REMOTE_CERTBOT_ENABLED}" == "true" ]]; then
+  printf '  https://%s' "${REMOTE_DOMAIN}"
+  [[ "${REMOTE_HTTPS_PORT}" != "443" ]] && printf ':%s' "${REMOTE_HTTPS_PORT}"
+  printf '/web-admin/\n'
+else
+  printf '  https://%s/web-admin/  (TLS on edge nginx → http://%s:%s)\n' "${REMOTE_DOMAIN}" "${REMOTE_DOMAIN}" "${REMOTE_HTTPS_PORT}"
+fi )
 
 Start / restart remote containers:
   ${DEPLOY_DIR}/scripts/start-remote-control.sh
