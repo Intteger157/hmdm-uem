@@ -151,6 +151,220 @@ body {
     overflow: hidden;
   }
 
+  /* Login page — premium motion & atmosphere (dark-only auth shell) */
+  @keyframes login-gradient-drift {
+    0%,
+    100% {
+      transform: translate(0, 0) scale(1);
+      opacity: 0.75;
+    }
+    50% {
+      transform: translate(2%, -1.5%) scale(1.04);
+      opacity: 1;
+    }
+  }
+
+  @keyframes login-gradient-drift-reverse {
+    0%,
+    100% {
+      transform: translate(0, 0) scale(1);
+      opacity: 0.7;
+    }
+    50% {
+      transform: translate(-2%, 1%) scale(1.03);
+      opacity: 0.95;
+    }
+  }
+
+  @keyframes login-orbit-slow {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes login-orbit-ring {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes login-flow-dash {
+    to {
+      stroke-dashoffset: -24;
+    }
+  }
+
+  @keyframes login-pulse-soft {
+    0%,
+    100% {
+      opacity: 0.55;
+    }
+    50% {
+      opacity: 0.85;
+    }
+  }
+
+  @keyframes login-pulse-core {
+    0%,
+    100% {
+      opacity: 0.75;
+      r: 10;
+    }
+    50% {
+      opacity: 1;
+      r: 11;
+    }
+  }
+
+  @keyframes login-node-pulse {
+    0%,
+    100% {
+      opacity: 0.82;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes login-fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes login-card-enter {
+    from {
+      opacity: 0;
+      transform: translateY(22px) scale(0.985);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .login-gradient-drift {
+    animation: login-gradient-drift 28s ease-in-out infinite;
+  }
+
+  .login-gradient-drift-reverse {
+    animation: login-gradient-drift-reverse 34s ease-in-out infinite;
+  }
+
+  .login-noise {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .login-orbit-slow {
+    animation: login-orbit-slow 140s linear infinite;
+  }
+
+  .login-orbit-ring {
+    transform-origin: 260px 260px;
+    animation: login-orbit-ring 90s linear infinite;
+  }
+
+  .login-orbit-ring-reverse {
+    transform-origin: 260px 260px;
+    animation: login-orbit-ring 120s linear infinite reverse;
+  }
+
+  .login-flow-line {
+    stroke-dasharray: 6 10;
+    animation: login-flow-dash 8s linear infinite;
+  }
+
+  .login-pulse-soft {
+    animation: login-pulse-soft 6s ease-in-out infinite;
+  }
+
+  .login-pulse-core {
+    animation: login-pulse-core 4s ease-in-out infinite;
+  }
+
+  .login-node-pulse {
+    animation: login-node-pulse 5s ease-in-out infinite;
+  }
+
+  .login-fade-in {
+    animation: login-fade-in 700ms ease-out both;
+  }
+
+  .login-card-enter {
+    animation: login-card-enter 650ms ease-out both;
+  }
+
+  .login-submit-btn {
+    background: linear-gradient(135deg, #2563eb 0%, #4f46e5 48%, #7c3aed 100%);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.08) inset,
+      0 4px 24px rgba(37, 99, 235, 0.32),
+      0 0 40px rgba(79, 70, 229, 0.12);
+  }
+
+  .login-submit-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.14) 0%,
+      transparent 42%,
+      transparent 100%
+    );
+    opacity: 0;
+    transition: opacity 300ms ease-out;
+  }
+
+  .login-submit-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.1) inset,
+      0 8px 32px rgba(37, 99, 235, 0.42),
+      0 0 56px rgba(124, 58, 237, 0.16);
+  }
+
+  .login-submit-btn:hover:not(:disabled)::before {
+    opacity: 1;
+  }
+
+  .login-submit-btn:active:not(:disabled) {
+    transform: translateY(0) scale(0.992);
+    transition-duration: 120ms;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .login-gradient-drift,
+    .login-gradient-drift-reverse,
+    .login-orbit-slow,
+    .login-orbit-ring,
+    .login-orbit-ring-reverse,
+    .login-flow-line,
+    .login-pulse-soft,
+    .login-pulse-core,
+    .login-node-pulse,
+    .login-fade-in,
+    .login-card-enter {
+      animation: none !important;
+    }
+
+    .login-submit-btn:hover:not(:disabled),
+    .login-submit-btn:active:not(:disabled) {
+      transform: none;
+    }
+  }
+
   select[data-slot='native-select'] {
     color-scheme: light dark;
   }
