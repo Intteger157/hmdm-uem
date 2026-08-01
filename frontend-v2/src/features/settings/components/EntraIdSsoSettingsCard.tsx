@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import {
   fetchEntraIdSsoSettings,
+  getSsoSettingsErrorMessage,
   saveEntraIdSsoSettings,
   type EntraIdSsoSettings,
 } from '@/features/settings/api/sso-settings-api'
@@ -40,9 +41,10 @@ export function EntraIdSsoSettingsCard() {
         if (!cancelled) {
           setDraft(settings)
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          toast.error(t('settings.sso.loadError'))
+          const detail = getSsoSettingsErrorMessage(error)
+          toast.error(detail ?? t('settings.sso.loadError'))
         }
       } finally {
         if (!cancelled) {
@@ -77,8 +79,9 @@ export function EntraIdSsoSettingsCard() {
       const saved = await saveEntraIdSsoSettings(draft)
       setDraft(saved)
       toast.success(t('settings.sso.saved'))
-    } catch {
-      toast.error(t('settings.sso.saveError'))
+    } catch (error) {
+      const detail = getSsoSettingsErrorMessage(error)
+      toast.error(detail ?? t('settings.sso.saveError'))
     } finally {
       setSaving(false)
     }

@@ -91,6 +91,10 @@ func TestAdminRoutesAreGuarded(t *testing.T) {
 		{http.MethodPut, "/rest/sso/settings"},
 		{http.MethodGet, "/api/sso/settings"},
 		{http.MethodPut, "/api/sso/settings"},
+		{http.MethodGet, "/rest/windows/sso-settings"},
+		{http.MethodPut, "/rest/windows/sso-settings"},
+		{http.MethodGet, "/api/windows/sso-settings"},
+		{http.MethodPut, "/api/windows/sso-settings"},
 	}
 
 	for _, route := range guarded {

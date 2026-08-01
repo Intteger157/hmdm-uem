@@ -83,6 +83,8 @@ func TestMinimumAccessLevelForRelaysIgnoresReadOnlyMethod(t *testing.T) {
 		"/rest/windows/devices/:hardwareId/terminal",
 		"/rest/sso/settings",
 		"/api/sso/settings",
+		"/rest/windows/sso-settings",
+		"/api/windows/sso-settings",
 	}
 
 	for _, pattern := range relays {

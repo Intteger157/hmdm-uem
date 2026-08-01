@@ -36,6 +36,8 @@ var highOnlyRoutes = []string{
 	"/rest/windows/devices/:hardwareId/terminal",
 	"/rest/sso/settings",
 	"/api/sso/settings",
+	"/rest/windows/sso-settings",
+	"/api/windows/sso-settings",
 }
 
 // methodRoute pairs an HTTP method with a gin route pattern.

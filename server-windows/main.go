@@ -232,6 +232,8 @@ func registerRoutes(router *gin.Engine, windowsHandler *handlers.WindowsHandler,
 			admin.GET("/roles", consoleAdmin, windowsHandler.ListRoleMatrix)
 			admin.PUT("/roles/:roleId", consoleAdmin, windowsHandler.UpdateRoleMatrix)
 			admin.GET("/me", windowsHandler.GetConsoleProfile)
+			admin.GET("/sso-settings", windowsHandler.GetSSOSettings)
+			admin.PUT("/sso-settings", windowsHandler.UpdateSSOSettings)
 		}
 
 		// Console-wide SSO settings. High access level is enforced by the route
@@ -258,5 +260,7 @@ func registerRoutes(router *gin.Engine, windowsHandler *handlers.WindowsHandler,
 		apiAdmin.GET("/roles", consoleAdmin, windowsHandler.ListRoleMatrix)
 		apiAdmin.PUT("/roles/:roleId", consoleAdmin, windowsHandler.UpdateRoleMatrix)
 		apiAdmin.GET("/me", windowsHandler.GetConsoleProfile)
+		apiAdmin.GET("/sso-settings", windowsHandler.GetSSOSettings)
+		apiAdmin.PUT("/sso-settings", windowsHandler.UpdateSSOSettings)
 	}
 }
