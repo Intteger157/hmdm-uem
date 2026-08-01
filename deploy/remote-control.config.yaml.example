@@ -7,7 +7,7 @@ email: "admin@example.com"
 # 443 when remote has its own public IP; 9443 when sharing one VPS with MDM (single-port HAProxy)
 web_https_port: 9443
 # Bind HTTP/ACME on localhost when host nginx or HAProxy owns :80
-web_http_listen: "127.0.0.1:8080"
+web_http_listen: "127.0.0.1:8081"
 nat: true
 public_ip: ""
 is_certbot_enabled: true

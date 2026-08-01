@@ -69,7 +69,7 @@ The remote stack **does not run inside** `deploy/docker-compose.yml`. Janus need
 | `REMOTE_SERVER_URL` | Optional | `https://remote.example.com/web-admin/` | Plugin `serverUrl` (auto-built from domain if empty) |
 | `REMOTE_SERVER_SECRET` | After install | `(from janus_api_secret)` | Plugin `serverSecret`; must match Android agent |
 | `REMOTE_HTTPS_PORT` | Optional | `9443` or `443` | nginx HTTPS listen port on host |
-| `REMOTE_HTTP_LISTEN` | Optional | `127.0.0.1:8080` | ACME/HTTP when something else owns `:80` |
+| `REMOTE_HTTP_LISTEN` | Optional | `127.0.0.1:8081` | ACME/HTTP when something else owns `:80` (avoid `8080` — MDM gateway uses it) |
 | `REMOTE_PUBLIC_IP` | If behind NAT | `203.0.113.10` | Janus ICE candidate |
 | `REMOTE_NAT` | Optional | `true` | Set `true` when server is behind NAT |
 | `REMOTE_CUSTOMER_ID` | Optional | `1` | PostgreSQL `customerId` for settings row |
@@ -92,7 +92,7 @@ BASE_DOMAIN=mdm.example.com
 REMOTE_DOMAIN=remote.example.com
 REMOTE_CERTBOT_EMAIL=admin@example.com
 REMOTE_HTTPS_PORT=9443
-REMOTE_HTTP_LISTEN=127.0.0.1:8080
+REMOTE_HTTP_LISTEN=127.0.0.1:8081
 REMOTE_NAT=true
 REMOTE_PUBLIC_IP=203.0.113.10
 ```

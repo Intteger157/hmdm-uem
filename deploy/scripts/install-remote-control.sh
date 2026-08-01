@@ -40,8 +40,16 @@ REMOTE_CERTBOT_EMAIL="$(read_env REMOTE_CERTBOT_EMAIL)"
 REMOTE_PUBLIC_IP="$(read_env REMOTE_PUBLIC_IP)"
 REMOTE_NAT="$(read_env REMOTE_NAT true)"
 REMOTE_HTTPS_PORT="$(read_env REMOTE_HTTPS_PORT 9443)"
-REMOTE_HTTP_LISTEN="$(read_env REMOTE_HTTP_LISTEN '127.0.0.1:8080')"
+REMOTE_HTTP_LISTEN="$(read_env REMOTE_HTTP_LISTEN '127.0.0.1:8081')"
 BASE_DOMAIN="$(read_env BASE_DOMAIN)"
+
+raw_remote_domain_line="$(grep "^REMOTE_DOMAIN=" "${ENV_FILE}" 2>/dev/null | head -n1 | cut -d= -f2- || true)"
+if [[ "${raw_remote_domain_line}" == *"#"* ]]; then
+  die "REMOTE_DOMAIN in ${ENV_FILE} has an inline comment on the same line. Use:
+  # DNS A-запись на VPS
+  REMOTE_DOMAIN=remote-dev-mdm.intteger.uk
+Current line value: ${raw_remote_domain_line}"
+fi
 
 if [[ -z "${REMOTE_DOMAIN}" ]]; then
   die "Set REMOTE_DOMAIN in ${ENV_FILE} (e.g. remote.example.com)"
@@ -71,6 +79,10 @@ require_cmd docker
 require_cmd sudo
 
 log "Writing ${REMOTE_REPO}/config.yaml"
+log "  hostname=${REMOTE_DOMAIN}"
+log "  email=${REMOTE_CERTBOT_EMAIL}"
+log "  web_https_port=${REMOTE_HTTPS_PORT}"
+log "  web_http_listen=${REMOTE_HTTP_LISTEN}"
 cat > "${REMOTE_REPO}/config.yaml" <<EOF
 ---
 hostname: "${REMOTE_DOMAIN}"
