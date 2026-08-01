@@ -512,6 +512,8 @@
   "login.username": "Username",
   "login.password": "Password",
   "login.submit": "Sign in",
+  "login.orContinueWith": "or continue with",
+  "login.signInWithMicrosoft": "Sign in with Microsoft",
   "login.error": "Invalid username or password",
   "login.loading": "Signing in…",
   "login.mockHint": "Mock mode: use {{login}} / {{password}} (no backend required)",

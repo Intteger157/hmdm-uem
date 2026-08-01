@@ -119,3 +119,75 @@ func TestUpdateSSOSettingsRequiresSecretWhenEnabling(t *testing.T) {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusBadRequest)
 	}
 }
+
+func newPublicSSOStatusRouter() *gin.Engine {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	handler := NewWindowsHandler()
+	router.GET("/rest/auth/sso-status", handler.GetPublicSSOStatus)
+	return router
+}
+
+func TestGetPublicSSOStatusNeverExposesSecrets(t *testing.T) {
+	setupSSOSettingsFixture(t)
+	router := newSSOSettingsRouter()
+	publicRouter := newPublicSSOStatusRouter()
+
+	payload := `{
+		"provider":"entra",
+		"enabled":true,
+		"tenantId":"11111111-1111-1111-1111-111111111111",
+		"clientId":"22222222-2222-2222-2222-222222222222",
+		"clientSecret":"super-secret-value"
+	}`
+
+	putRecorder := httptest.NewRecorder()
+	putRequest := httptest.NewRequest(http.MethodPut, "/rest/sso/settings", strings.NewReader(payload))
+	putRequest.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(putRecorder, putRequest)
+	if putRecorder.Code != http.StatusOK {
+		t.Fatalf("PUT status = %d, want %d", putRecorder.Code, http.StatusOK)
+	}
+
+	recorder := httptest.NewRecorder()
+	publicRouter.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/rest/auth/sso-status", nil))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+
+	var body map[string]interface{}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	if len(body) != 1 {
+		t.Fatalf("response keys = %d, want 1: %v", len(body), body)
+	}
+	if body["entraEnabled"] != true {
+		t.Fatalf("entraEnabled = %v, want true", body["entraEnabled"])
+	}
+	for _, forbidden := range []string{"tenantId", "clientId", "clientSecret", "provider", "enabled"} {
+		if _, ok := body[forbidden]; ok {
+			t.Fatalf("response must not include %q", forbidden)
+		}
+	}
+}
+
+func TestGetPublicSSOStatusDisabledByDefault(t *testing.T) {
+	setupSSOSettingsFixture(t)
+	publicRouter := newPublicSSOStatusRouter()
+
+	recorder := httptest.NewRecorder()
+	publicRouter.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/rest/auth/sso-status", nil))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)
+	}
+
+	var body models.SSOStatusResponse
+	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if body.EntraEnabled {
+		t.Fatal("entraEnabled = true, want false")
+	}
+}

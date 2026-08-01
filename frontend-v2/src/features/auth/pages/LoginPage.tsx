@@ -11,7 +11,9 @@ import { Logo } from '@/components/Logo'
 import { MOCK_AUTH } from '@/shared/api/mocks/auth'
 import { isMockApiEnabled } from '@/shared/api/mock-utils'
 import { fetchCurrentUser, loginWithJwt } from '@/features/auth/api/auth-api'
+import { fetchPublicSsoStatus } from '@/features/auth/api/sso-status-api'
 import { fetchConsoleAccess } from '@/features/auth/api/console-profile-api'
+import { MicrosoftIcon } from '@/features/auth/components/MicrosoftIcon'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import {
   Form,
@@ -42,6 +44,7 @@ export function LoginPage() {
   const navigate = useNavigate()
   const setAuth = useAuthStore((s) => s.setAuth)
   const [showPassword, setShowPassword] = useState(false)
+  const [isEntraEnabled, setIsEntraEnabled] = useState(false)
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -59,6 +62,33 @@ export function LoginPage() {
       form.setValue('rememberMe', true)
     }
   }, [form])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadSsoStatus() {
+      try {
+        const status = await fetchPublicSsoStatus()
+        if (!cancelled) {
+          setIsEntraEnabled(status.entraEnabled)
+        }
+      } catch {
+        if (!cancelled) {
+          setIsEntraEnabled(false)
+        }
+      }
+    }
+
+    void loadSsoStatus()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const handleMicrosoftSignIn = () => {
+    window.location.href = '/api/auth/login/microsoft'
+  }
 
   const onSubmit = async (values: LoginFormValues) => {
     try {
@@ -241,6 +271,25 @@ export function LoginPage() {
                 {form.formState.isSubmitting ? t('login.loading') : t('login.submit')}
               </span>
             </button>
+
+            {isEntraEnabled && (
+              <div className="space-y-4 pt-1">
+                <div className="flex items-center gap-3">
+                  <div className="h-px flex-1 bg-white/[0.08]" />
+                  <span className="text-sm text-slate-500">{t('login.orContinueWith')}</span>
+                  <div className="h-px flex-1 bg-white/[0.08]" />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleMicrosoftSignIn}
+                  className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-[#111] text-[0.9375rem] font-medium text-white transition-all duration-300 ease-out hover:border-white/15 hover:bg-[#1a1a1a] active:scale-[0.992]"
+                >
+                  <MicrosoftIcon className="size-5 shrink-0" />
+                  {t('login.signInWithMicrosoft')}
+                </button>
+              </div>
+            )}
           </form>
         </Form>
       </div>

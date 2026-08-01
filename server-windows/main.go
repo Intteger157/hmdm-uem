@@ -106,6 +106,8 @@ func registerRoutes(router *gin.Engine, windowsHandler *handlers.WindowsHandler,
 	router.GET("/api/windows/enroll", windowsHandler.GetEnrollBootstrapScript)
 	router.GET("/rest/windows/enroll", windowsHandler.GetEnrollBootstrapScript)
 	router.GET("/api/public/device-info/:deviceId", windowsHandler.GetPublicDeviceInfo)
+	router.GET("/api/auth/sso-status", windowsHandler.GetPublicSSOStatus)
+	router.GET("/rest/auth/sso-status", windowsHandler.GetPublicSSOStatus)
 	router.POST("/api/windows/register", windowsHandler.RegisterBootstrap)
 	router.GET(appstorage.AgentPublicPath(), windowsHandler.DownloadAgentBinary)
 

@@ -512,6 +512,8 @@
   "login.username": "Логин",
   "login.password": "Пароль",
   "login.submit": "Войти",
+  "login.orContinueWith": "или продолжить через",
+  "login.signInWithMicrosoft": "Войти через Microsoft",
   "login.error": "Неверный логин или пароль",
   "login.loading": "Вход…",
   "login.mockHint": "Mock-режим: {{login}} / {{password}} (бэкенд не нужен)",

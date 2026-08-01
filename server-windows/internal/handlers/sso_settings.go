@@ -91,6 +91,34 @@ func (h *WindowsHandler) UpdateSSOSettings(c *gin.Context) {
 	c.JSON(http.StatusOK, toSSOSettingsResponse(settings))
 }
 
+// GetPublicSSOStatus reports whether Microsoft Entra sign-in is configured.
+// Unauthenticated — safe for the login page; never returns credentials.
+func (h *WindowsHandler) GetPublicSSOStatus(c *gin.Context) {
+	settings, err := getOrCreateSSOSettings()
+	if err != nil {
+		log.Printf("[sso-status] load failed: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load SSO status"})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.SSOStatusResponse{
+		EntraEnabled: isEntraSsoConfigured(settings),
+	})
+}
+
+func isEntraSsoConfigured(settings *models.SSOSettings) bool {
+	if settings == nil || !settings.Enabled {
+		return false
+	}
+	provider := normalizeSSOProvider(settings.Provider)
+	if provider != models.SSOProviderEntra {
+		return false
+	}
+	return strings.TrimSpace(settings.TenantID) != "" &&
+		strings.TrimSpace(settings.ClientID) != "" &&
+		strings.TrimSpace(settings.ClientSecret) != ""
+}
+
 func toSSOSettingsResponse(settings *models.SSOSettings) models.SSOSettingsResponse {
 	return models.SSOSettingsResponse{
 		Provider:     settings.Provider,

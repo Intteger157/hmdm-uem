@@ -38,3 +38,9 @@ type UpdateSSOSettingsRequest struct {
 	ClientID     string `json:"clientId"`
 	ClientSecret string `json:"clientSecret"`
 }
+
+// SSOStatusResponse is returned by the public GET /rest/auth/sso-status endpoint.
+// It exposes only whether Microsoft Entra sign-in is offered — never secrets.
+type SSOStatusResponse struct {
+	EntraEnabled bool `json:"entraEnabled"`
+}
