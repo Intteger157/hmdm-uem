@@ -198,6 +198,6 @@ The control APK must use the same secret as `REMOTE_SERVER_SECRET`. In the upstr
 | TLS errors | DNS → remote host; certbot logs in remote compose |
 
 ```bash
-docker compose -f plugins/deviceremote/h-mdm-remote-control/deploy/dist/docker-compose.yaml ps
-docker compose -f plugins/deviceremote/h-mdm-remote-control/deploy/dist/docker-compose.yaml logs -f nginx janus
+docker compose -f plugins/deviceremote/h-mdm-remote-control/docker-compose.yaml ps
+docker compose -f plugins/deviceremote/h-mdm-remote-control/docker-compose.yaml logs -f nginx janus
 ```
