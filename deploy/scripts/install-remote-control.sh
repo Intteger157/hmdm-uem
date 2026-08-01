@@ -32,36 +32,35 @@ if [[ ! -f "${ENV_FILE}" ]]; then
   die "${ENV_FILE} not found — copy deploy/.env.example first"
 fi
 
-read_env() {
-  local key="$1"
-  local default="${2:-}"
-  local value
-  value="$(grep "^${key}=" "${ENV_FILE}" 2>/dev/null | cut -d= -f2- || true)"
-  printf '%s' "${value:-$default}"
-}
+# shellcheck source=lib/env.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/env.sh"
 
-trim() {
-  tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
-}
-
-REMOTE_DOMAIN="$(read_env REMOTE_DOMAIN | trim)"
-REMOTE_CERTBOT_EMAIL="$(read_env REMOTE_CERTBOT_EMAIL | trim)"
-REMOTE_PUBLIC_IP="$(read_env REMOTE_PUBLIC_IP | trim)"
-REMOTE_NAT="$(read_env REMOTE_NAT true | trim)"
-REMOTE_HTTPS_PORT="$(read_env REMOTE_HTTPS_PORT 9443 | trim)"
-REMOTE_HTTP_LISTEN="$(read_env REMOTE_HTTP_LISTEN '127.0.0.1:8080' | trim)"
-BASE_DOMAIN="$(read_env BASE_DOMAIN | trim)"
+REMOTE_DOMAIN="$(read_env REMOTE_DOMAIN)"
+REMOTE_CERTBOT_EMAIL="$(read_env REMOTE_CERTBOT_EMAIL)"
+REMOTE_PUBLIC_IP="$(read_env REMOTE_PUBLIC_IP)"
+REMOTE_NAT="$(read_env REMOTE_NAT true)"
+REMOTE_HTTPS_PORT="$(read_env REMOTE_HTTPS_PORT 9443)"
+REMOTE_HTTP_LISTEN="$(read_env REMOTE_HTTP_LISTEN '127.0.0.1:8080')"
+BASE_DOMAIN="$(read_env BASE_DOMAIN)"
 
 if [[ -z "${REMOTE_DOMAIN}" ]]; then
   die "Set REMOTE_DOMAIN in ${ENV_FILE} (e.g. remote.example.com)"
 fi
 
+if [[ ! "${REMOTE_DOMAIN}" =~ ^[A-Za-z0-9.-]+$ ]]; then
+  die "REMOTE_DOMAIN must be a hostname only (no spaces or inline comments in .env): got '${REMOTE_DOMAIN}'"
+fi
+
 if [[ -z "${REMOTE_CERTBOT_EMAIL}" ]]; then
-  REMOTE_CERTBOT_EMAIL="$(read_env ADMIN_EMAIL | trim)"
+  REMOTE_CERTBOT_EMAIL="$(read_env ADMIN_EMAIL)"
 fi
 
 if [[ -z "${REMOTE_CERTBOT_EMAIL}" ]]; then
   die "Set REMOTE_CERTBOT_EMAIL or ADMIN_EMAIL in ${ENV_FILE}"
+fi
+
+if [[ "${REMOTE_CERTBOT_EMAIL}" != *@* ]]; then
+  die "REMOTE_CERTBOT_EMAIL must be an email address, not a domain: got '${REMOTE_CERTBOT_EMAIL}'"
 fi
 
 if [[ ! -d "${REMOTE_REPO}/deploy" ]]; then
@@ -92,7 +91,10 @@ log "Installing Headwind Remote (Ansible — may take several minutes) ..."
 
 SECRET_FILE="${REMOTE_REPO}/deploy/dist/credentials/janus_api_secret"
 if [[ -f "${SECRET_FILE}" ]]; then
-  SECRET="$(trim < "${SECRET_FILE}")"
+  SECRET="$(read_env REMOTE_SERVER_SECRET)"
+  if [[ -z "${SECRET}" ]]; then
+    SECRET="$(cat "${SECRET_FILE}" | env_trim)"
+  fi
   log "Janus API secret: ${SECRET_FILE}"
   if ! grep -q '^REMOTE_SERVER_SECRET=.' "${ENV_FILE}"; then
     if grep -q '^REMOTE_SERVER_SECRET=' "${ENV_FILE}"; then

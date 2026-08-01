@@ -25,28 +25,19 @@ if [[ ! -f "${ENV_FILE}" ]]; then
   die "${ENV_FILE} not found"
 fi
 
-read_env() {
-  local key="$1"
-  local default="${2:-}"
-  local value
-  value="$(grep "^${key}=" "${ENV_FILE}" 2>/dev/null | cut -d= -f2- || true)"
-  printf '%s' "${value:-$default}"
-}
-
-trim() {
-  tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
-}
+# shellcheck source=lib/env.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/env.sh"
 
 sql_escape() {
   printf "%s" "$1" | sed "s/'/''/g"
 }
 
-REMOTE_DOMAIN="$(read_env REMOTE_DOMAIN | trim)"
-REMOTE_SERVER_URL="$(read_env REMOTE_SERVER_URL | trim)"
-REMOTE_SERVER_SECRET="$(read_env REMOTE_SERVER_SECRET | trim)"
-REMOTE_HTTPS_PORT="$(read_env REMOTE_HTTPS_PORT 9443 | trim)"
-PUBLIC_PROTOCOL="$(read_env PUBLIC_PROTOCOL | trim)"
-PROTOCOL="$(read_env PROTOCOL http | trim)"
+REMOTE_DOMAIN="$(read_env REMOTE_DOMAIN)"
+REMOTE_SERVER_URL="$(read_env REMOTE_SERVER_URL)"
+REMOTE_SERVER_SECRET="$(read_env REMOTE_SERVER_SECRET)"
+REMOTE_HTTPS_PORT="$(read_env REMOTE_HTTPS_PORT 9443)"
+PUBLIC_PROTOCOL="$(read_env PUBLIC_PROTOCOL)"
+PROTOCOL="$(read_env PROTOCOL http)"
 
 if [[ -z "${PUBLIC_PROTOCOL}" ]]; then
   if [[ "${PROTOCOL}" == "http" && -n "${REMOTE_DOMAIN}" && "${REMOTE_DOMAIN}" != "localhost" ]]; then
@@ -65,7 +56,7 @@ if [[ -z "${REMOTE_SERVER_URL}" && -n "${REMOTE_DOMAIN}" ]]; then
 fi
 
 if [[ -z "${REMOTE_SERVER_SECRET}" && -f "${JANUS_SECRET_FILE}" ]]; then
-  REMOTE_SERVER_SECRET="$(trim < "${JANUS_SECRET_FILE}")"
+  REMOTE_SERVER_SECRET="$(cat "${JANUS_SECRET_FILE}" | env_trim)"
   log "Using janus_api_secret from ${JANUS_SECRET_FILE}"
 fi
 
@@ -78,9 +69,9 @@ if [[ -z "${REMOTE_SERVER_SECRET}" ]]; then
   die "REMOTE_SERVER_SECRET is empty and ${JANUS_SECRET_FILE} was not found. Install remote control first or set the secret in ${ENV_FILE}."
 fi
 
-SQL_USER="$(read_env SQL_USER hmdm | trim)"
-SQL_BASE="$(read_env SQL_BASE hmdm | trim)"
-CUSTOMER_ID="$(read_env REMOTE_CUSTOMER_ID 1 | trim)"
+SQL_USER="$(read_env SQL_USER hmdm)"
+SQL_BASE="$(read_env SQL_BASE hmdm)"
+CUSTOMER_ID="$(read_env REMOTE_CUSTOMER_ID 1)"
 
 SERVER_URL_SQL="$(sql_escape "${REMOTE_SERVER_URL}")"
 SERVER_SECRET_SQL="$(sql_escape "${REMOTE_SERVER_SECRET}")"

@@ -65,7 +65,7 @@ The remote stack **does not run inside** `deploy/docker-compose.yml`. Janus need
 | Variable | Required | Example | Purpose |
 |----------|----------|---------|---------|
 | `REMOTE_DOMAIN` | Yes (for install script) | `remote.example.com` | DNS hostname for TLS and viewer |
-| `REMOTE_CERTBOT_EMAIL` | Yes | `admin@example.com` | Let's Encrypt (defaults to `ADMIN_EMAIL`) |
+| `REMOTE_CERTBOT_EMAIL` | Yes | `admin@example.com` | Let's Encrypt (defaults to `ADMIN_EMAIL`; must be an **email**, not a domain) |
 | `REMOTE_SERVER_URL` | Optional | `https://remote.example.com/web-admin/` | Plugin `serverUrl` (auto-built from domain if empty) |
 | `REMOTE_SERVER_SECRET` | After install | `(from janus_api_secret)` | Plugin `serverSecret`; must match Android agent |
 | `REMOTE_HTTPS_PORT` | Optional | `9443` or `443` | nginx HTTPS listen port on host |
@@ -102,6 +102,8 @@ After remote install, `REMOTE_SERVER_SECRET` is appended automatically. Re-sync 
 ```bash
 ./deploy/scripts/sync-deviceremote-settings.sh
 ```
+
+**`.env` format:** use `#` comments on separate lines only. Do not write `REMOTE_DOMAIN=host  # comment` — put the comment above the variable.
 
 ## Firewall / security group
 
