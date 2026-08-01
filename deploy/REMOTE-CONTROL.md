@@ -41,8 +41,12 @@ The remote stack **does not run inside** `deploy/docker-compose.yml`. Janus need
 4. Install remote control on the **Linux host** (requires root for Ansible):
 
    ```bash
-   sudo ./deploy/scripts/install-remote-control.sh
+   sudo bash deploy/scripts/install-remote-control.sh
    ```
+
+   If `./deploy/scripts/install-remote-control.sh` fails with `command not found`, the script
+   likely has Windows line endings — run `sed -i 's/\r$//' deploy/scripts/*.sh && chmod +x deploy/scripts/*.sh`
+   or `git pull` after the `.gitattributes` fix in this repo.
 
    This writes `config.yaml`, runs upstream `install.sh`, saves `REMOTE_SERVER_SECRET` to `.env`, and syncs PostgreSQL.
 
