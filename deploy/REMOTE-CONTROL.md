@@ -73,6 +73,7 @@ The remote stack **does not run inside** `deploy/docker-compose.yml`. Janus need
 | `REMOTE_PUBLIC_IP` | If behind NAT | `203.0.113.10` | Janus ICE candidate |
 | `REMOTE_NAT` | Optional | `true` | Set `true` when server is behind NAT |
 | `REMOTE_CERTBOT_ENABLED` | Layout B | `false` | Set `false` when TLS/certbot run on edge nginx, not on fleet-vm |
+| `REMOTE_CUSTOMER_ID` | Optional | `1` | PostgreSQL `customerId` for settings row |
 | `BASE_DOMAIN` | For co-host hint | `mdm.example.com` | MDM hostname (single-port setup) |
 | `PUBLIC_PROTOCOL` | Optional | `https` | Used when building `REMOTE_SERVER_URL` |
 
