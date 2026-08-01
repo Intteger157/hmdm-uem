@@ -139,6 +139,15 @@ On the **edge proxy** server:
 
 Remote nginx listens **HTTP** on `:9443` locally; the browser uses **HTTPS** on the edge `:443`.
 
+**Janus / viewer error** (`Is the server down?`): with `REMOTE_CERTBOT_ENABLED=false`, Janus does not expose TLS on `:8989`/`:8089`. Run:
+
+```bash
+./deploy/scripts/patch-remote-edge-janus.sh
+docker compose -f plugins/deviceremote/h-mdm-remote-control/docker-compose.yaml restart nginx
+```
+
+Then hard-refresh the viewer (`Ctrl+Shift+R`). Janus connects via `https://<remote-domain>/janus` through edge → `:9443`.
+
 ## Firewall / security group
 
 Open on the **remote host** (or forward from edge):

@@ -105,6 +105,11 @@ log "Installing Headwind Remote (Ansible — may take several minutes) ..."
   sudo ./install.sh
 )
 
+PATCH_JANUS_SCRIPT="${DEPLOY_DIR}/scripts/patch-remote-edge-janus.sh"
+if [[ -f "${PATCH_JANUS_SCRIPT}" ]]; then
+  bash "${PATCH_JANUS_SCRIPT}"
+fi
+
 SECRET_FILE="${REMOTE_REPO}/deploy/dist/credentials/janus_api_secret"
 if [[ -f "${SECRET_FILE}" ]]; then
   SECRET="$(read_env REMOTE_SERVER_SECRET)"
