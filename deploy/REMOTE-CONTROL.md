@@ -132,9 +132,10 @@ sudo bash deploy/scripts/install-remote-control.sh
 
 On the **edge proxy** server:
 
-1. Add vhost from [`deploy/nginx/edge-remote-reverse-proxy.conf.example`](nginx/edge-remote-reverse-proxy.conf.example)
-2. `certbot certonly --webroot … -d remote-dev-mdm.intteger.uk` on the **proxy** (where `:80` is public)
-3. Allow proxy → `192.168.31.247:9443` (HTTP backend), plus `8089`, `8989`, UDP `10000–10500` for Janus/WebRTC
+1. Use combined vhost [`deploy/nginx/edge-intteger.conf.example`](nginx/edge-intteger.conf.example) (MDM + remote on one proxy)
+2. Add `stream {}` for MQTT `:31000`, Janus WSS `:8989`, Janus REST `:8089` (see file footer)
+3. `certbot certonly --webroot … -d remote-dev-mdm.intteger.uk` on the **proxy** (where `:80` is public)
+4. Allow proxy → `192.168.31.247:9443` (HTTP backend), plus `8089`, `8989`, UDP `10000–10500` for Janus/WebRTC
 
 Remote nginx listens **HTTP** on `:9443` locally; the browser uses **HTTPS** on the edge `:443`.
 
