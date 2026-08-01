@@ -16,6 +16,7 @@ import {
 import { useUserRolesQuery } from '@/features/users/hooks/use-users'
 import { BackgroundImageUrlField } from '@/shared/components/BackgroundImageUrlField'
 import { BoolField } from '@/shared/components/BoolField'
+import { EntraIdSsoSettingsCard } from '@/features/settings/components/EntraIdSsoSettingsCard'
 import { FormSelect } from '@/shared/components/FormSelect'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -113,6 +114,7 @@ export function SettingsPage() {
           <TabsTrigger value="language">{t('settings.tabs.language')}</TabsTrigger>
           <TabsTrigger value="misc">{t('settings.tabs.misc')}</TabsTrigger>
           <TabsTrigger value="security">{t('settings.tabs.security')}</TabsTrigger>
+          <TabsTrigger value="sso">{t('settings.tabs.sso')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="design">
@@ -276,6 +278,10 @@ export function SettingsPage() {
               </Button>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="sso">
+          <EntraIdSsoSettingsCard />
         </TabsContent>
       </Tabs>
     </div>
