@@ -11,13 +11,6 @@ import { fetchConsoleAccess } from '@/features/auth/api/console-profile-api'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { Button } from '@/components/ui/button'
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import {
   Form,
   FormControl,
   FormField,
@@ -51,10 +44,6 @@ export function LoginPage() {
     try {
       const jwt = await loginWithJwt(values.login, values.password)
       useAuthStore.setState({ jwt })
-      // Scope and level decide which half of the console renders and which
-      // actions it offers, so both are resolved before the first page.
-      // fetchConsoleAccess never rejects; an unreachable Go server yields null,
-      // which reads as unrestricted.
       const [user, access] = await Promise.all([fetchCurrentUser(), fetchConsoleAccess()])
       setAuth(jwt, user, access)
       void navigate({ to: '/dashboard' })
@@ -71,55 +60,70 @@ export function LoginPage() {
   }
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle>{t('login.title')}</CardTitle>
-        <CardDescription>
+    <div className="w-full">
+      <div className="mb-8 space-y-2">
+        <h2 className="text-2xl font-semibold tracking-tight text-white">{t('login.title')}</h2>
+        <p className="text-sm text-slate-400">
           {isMockApiEnabled()
             ? t('login.mockHint', { login: MOCK_AUTH.login, password: MOCK_AUTH.password })
-            : t('app.title')}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="login"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('login.username')}</FormLabel>
-                  <FormControl>
-                    <Input autoComplete="username" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('login.password')}</FormLabel>
-                  <FormControl>
-                    <Input type="password" autoComplete="current-password" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {form.formState.errors.root && (
-              <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
-                {form.formState.errors.root.message}
-              </p>
+            : t('login.subtitle')}
+        </p>
+      </div>
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+          <FormField
+            control={form.control}
+            name="login"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-slate-200">{t('login.username')}</FormLabel>
+                <FormControl>
+                  <Input
+                    autoComplete="username"
+                    className="h-11 border-slate-700 bg-slate-900/60 px-4 py-3 text-base text-white placeholder:text-slate-500 focus-visible:border-[#1c40e3] focus-visible:ring-[#1c40e3]/30"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage className="text-red-400" />
+              </FormItem>
             )}
-            <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? t('login.loading') : t('login.submit')}
-            </Button>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+          />
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-slate-200">{t('login.password')}</FormLabel>
+                <FormControl>
+                  <Input
+                    type="password"
+                    autoComplete="current-password"
+                    className="h-11 border-slate-700 bg-slate-900/60 px-4 py-3 text-base text-white placeholder:text-slate-500 focus-visible:border-[#1c40e3] focus-visible:ring-[#1c40e3]/30"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage className="text-red-400" />
+              </FormItem>
+            )}
+          />
+          {form.formState.errors.root && (
+            <p
+              className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400"
+              role="alert"
+            >
+              {form.formState.errors.root.message}
+            </p>
+          )}
+          <Button
+            type="submit"
+            className="h-11 w-full border-0 bg-[#1c40e3] text-base text-white hover:bg-[#3355f0]"
+            disabled={form.formState.isSubmitting}
+          >
+            {form.formState.isSubmitting ? t('login.loading') : t('login.submit')}
+          </Button>
+        </form>
+      </Form>
+    </div>
   )
 }
