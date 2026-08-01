@@ -34,6 +34,8 @@ var agnosticRoutes = []string{
 	"/api/windows/roles",
 	"/rest/windows/me",
 	"/api/windows/me",
+	"/rest/sso/settings",
+	"/api/sso/settings",
 }
 
 // coversPath reports whether route is an exact match for path or one of its

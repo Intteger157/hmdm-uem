@@ -81,6 +81,8 @@ func TestMinimumAccessLevelForRelaysIgnoresReadOnlyMethod(t *testing.T) {
 		"/api/taskmgr/admin",
 		"/api/filexplorer/admin",
 		"/rest/windows/devices/:hardwareId/terminal",
+		"/rest/sso/settings",
+		"/api/sso/settings",
 	}
 
 	for _, pattern := range relays {

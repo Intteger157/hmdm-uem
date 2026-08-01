@@ -233,6 +233,22 @@ func registerRoutes(router *gin.Engine, windowsHandler *handlers.WindowsHandler,
 			admin.PUT("/roles/:roleId", consoleAdmin, windowsHandler.UpdateRoleMatrix)
 			admin.GET("/me", windowsHandler.GetConsoleProfile)
 		}
+
+		// Console-wide SSO settings. High access level is enforced by the route
+		// policy table; these routes are platform-agnostic like /roles and /me.
+		ssoAdmin := rest.Group("/sso", adminOnly, accessLevel)
+		{
+			ssoAdmin.GET("/settings", windowsHandler.GetSSOSettings)
+			ssoAdmin.PUT("/settings", windowsHandler.UpdateSSOSettings)
+		}
+	}
+
+	// Mirror SSO settings under /api/sso for gateways that prefix console calls
+	// with /api instead of /rest.
+	apiSSO := router.Group("/api/sso", adminOnly, accessLevel)
+	{
+		apiSSO.GET("/settings", windowsHandler.GetSSOSettings)
+		apiSSO.PUT("/settings", windowsHandler.UpdateSSOSettings)
 	}
 
 	// Mirror the console-wide endpoints under /api/windows for gateways and SPA

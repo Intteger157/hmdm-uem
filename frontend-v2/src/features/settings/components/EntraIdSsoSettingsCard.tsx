@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Copy } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -7,7 +7,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { saveEntraIdSsoSettings, type EntraIdSsoSettings } from '@/features/settings/api/sso-settings-api'
+import {
+  fetchEntraIdSsoSettings,
+  saveEntraIdSsoSettings,
+  type EntraIdSsoSettings,
+} from '@/features/settings/api/sso-settings-api'
 import { buildMicrosoftSsoRedirectUri } from '@/features/settings/lib/microsoft-redirect-uri'
 import { copyTextToClipboard } from '@/shared/lib/copy-to-clipboard'
 
@@ -21,9 +25,38 @@ const defaultDraft: EntraIdSsoSettings = {
 export function EntraIdSsoSettingsCard() {
   const { t } = useTranslation()
   const [draft, setDraft] = useState<EntraIdSsoSettings>(defaultDraft)
+  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
   const redirectUri = useMemo(() => buildMicrosoftSsoRedirectUri(), [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadSettings() {
+      setLoading(true)
+      try {
+        const settings = await fetchEntraIdSsoSettings()
+        if (!cancelled) {
+          setDraft(settings)
+        }
+      } catch {
+        if (!cancelled) {
+          toast.error(t('settings.sso.loadError'))
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    }
+
+    void loadSettings()
+
+    return () => {
+      cancelled = true
+    }
+  }, [t])
 
   const update = (patch: Partial<EntraIdSsoSettings>) => {
     setDraft((current) => ({ ...current, ...patch }))
@@ -41,7 +74,8 @@ export function EntraIdSsoSettingsCard() {
   const handleSave = async () => {
     setSaving(true)
     try {
-      await saveEntraIdSsoSettings(draft)
+      const saved = await saveEntraIdSsoSettings(draft)
+      setDraft(saved)
       toast.success(t('settings.sso.saved'))
     } catch {
       toast.error(t('settings.sso.saveError'))
@@ -69,6 +103,7 @@ export function EntraIdSsoSettingsCard() {
             checked={draft.enabled}
             onCheckedChange={(checked) => update({ enabled: checked })}
             className="mt-0.5 shrink-0"
+            disabled={loading}
           />
         </div>
 
@@ -81,7 +116,7 @@ export function EntraIdSsoSettingsCard() {
               onChange={(e) => update({ tenantId: e.target.value })}
               placeholder="00000000-0000-0000-0000-000000000000"
               autoComplete="off"
-              disabled={!draft.enabled}
+              disabled={loading || !draft.enabled}
             />
           </div>
           <div className="space-y-2 sm:col-span-2">
@@ -92,7 +127,7 @@ export function EntraIdSsoSettingsCard() {
               onChange={(e) => update({ clientId: e.target.value })}
               placeholder="00000000-0000-0000-0000-000000000000"
               autoComplete="off"
-              disabled={!draft.enabled}
+              disabled={loading || !draft.enabled}
             />
           </div>
           <div className="space-y-2 sm:col-span-2">
@@ -103,7 +138,7 @@ export function EntraIdSsoSettingsCard() {
               value={draft.clientSecret}
               onChange={(e) => update({ clientSecret: e.target.value })}
               autoComplete="new-password"
-              disabled={!draft.enabled}
+              disabled={loading || !draft.enabled}
             />
           </div>
         </div>
@@ -130,7 +165,7 @@ export function EntraIdSsoSettingsCard() {
           </div>
         </div>
 
-        <Button type="button" onClick={() => void handleSave()} disabled={saving}>
+        <Button type="button" onClick={() => void handleSave()} disabled={loading || saving}>
           {t('settings.sso.saveConfiguration')}
         </Button>
       </CardContent>

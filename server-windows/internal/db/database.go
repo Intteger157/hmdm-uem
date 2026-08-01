@@ -40,6 +40,7 @@ func InitDB(dsn string) (*gorm.DB, error) {
 		&models.StoredFile{},
 		&models.ProfileFileDeployment{},
 		&models.PowerShellScript{},
+		&models.SSOSettings{},
 	); err != nil {
 		return nil, fmt.Errorf("migrate database: %w", err)
 	}
