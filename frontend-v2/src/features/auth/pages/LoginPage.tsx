@@ -25,8 +25,10 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { clearCookie, readCookie } from '@/shared/lib/cookies'
 
 const REMEMBER_LOGIN_KEY = 'singularity-mdm-remember-login'
+const SSO_JWT_COOKIE = 'singularity_sso_jwt'
 
 const loginSchema = z.object({
   login: z.string().min(1),
@@ -85,6 +87,62 @@ export function LoginPage() {
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const error = params.get('error')
+
+    if (error) {
+      window.history.replaceState({}, '', '/login')
+      const messages: Record<string, string> = {
+        user_not_found: t('login.ssoUserNotFound'),
+        invalid_state: t('login.ssoInvalidState'),
+        provider_error: t('login.ssoProviderError'),
+        sso_not_configured: t('login.ssoNotConfigured'),
+      }
+      toast.error(messages[error] ?? t('login.ssoProviderError'))
+      return
+    }
+
+    if (params.get('sso') !== 'success') {
+      return
+    }
+
+    const jwt = readCookie(SSO_JWT_COOKIE)
+    clearCookie(SSO_JWT_COOKIE)
+    window.history.replaceState({}, '', '/login')
+
+    if (!jwt) {
+      toast.error(t('login.ssoProviderError'))
+      return
+    }
+
+    const sessionJwt = jwt
+    let cancelled = false
+
+    async function completeSsoLogin() {
+      try {
+        useAuthStore.setState({ jwt: sessionJwt })
+        const [user, access] = await Promise.all([fetchCurrentUser(), fetchConsoleAccess()])
+        if (cancelled) {
+          return
+        }
+        setAuth(sessionJwt, user, access)
+        void navigate({ to: '/dashboard' })
+      } catch {
+        if (!cancelled) {
+          useAuthStore.getState().logout()
+          toast.error(t('login.ssoProviderError'))
+        }
+      }
+    }
+
+    void completeSsoLogin()
+
+    return () => {
+      cancelled = true
+    }
+  }, [navigate, setAuth, t])
 
   const handleMicrosoftSignIn = () => {
     window.location.href = '/api/auth/login/microsoft'

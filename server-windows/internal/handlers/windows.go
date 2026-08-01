@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -18,6 +19,7 @@ const mockAuthToken = "mock-jwt-token-777"
 
 // WindowsHandler serves REST endpoints for the Windows MDM agent.
 type WindowsHandler struct {
+	jwtSecret         string
 	terminalRelay     *terminalRelay
 	taskManagerRelay  *taskManagerRelay
 	fileExplorerRelay *fileExplorerRelay
@@ -26,6 +28,7 @@ type WindowsHandler struct {
 // NewWindowsHandler creates a Windows agent API handler.
 func NewWindowsHandler() *WindowsHandler {
 	return &WindowsHandler{
+		jwtSecret:         strings.TrimSpace(os.Getenv("JWT_SECRET")),
 		terminalRelay:     newTerminalRelay(),
 		taskManagerRelay:  newTaskManagerRelay(),
 		fileExplorerRelay: newFileExplorerRelay(),

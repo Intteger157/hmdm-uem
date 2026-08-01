@@ -108,6 +108,10 @@ func registerRoutes(router *gin.Engine, windowsHandler *handlers.WindowsHandler,
 	router.GET("/api/public/device-info/:deviceId", windowsHandler.GetPublicDeviceInfo)
 	router.GET("/api/auth/sso-status", windowsHandler.GetPublicSSOStatus)
 	router.GET("/rest/auth/sso-status", windowsHandler.GetPublicSSOStatus)
+	router.GET("/api/auth/login/microsoft", windowsHandler.StartMicrosoftOAuth)
+	router.GET("/rest/auth/login/microsoft", windowsHandler.StartMicrosoftOAuth)
+	router.GET("/api/auth/callback/microsoft", windowsHandler.MicrosoftOAuthCallback)
+	router.GET("/rest/auth/callback/microsoft", windowsHandler.MicrosoftOAuthCallback)
 	router.POST("/api/windows/register", windowsHandler.RegisterBootstrap)
 	router.GET(appstorage.AgentPublicPath(), windowsHandler.DownloadAgentBinary)
 
