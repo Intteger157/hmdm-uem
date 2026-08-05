@@ -2,7 +2,7 @@ package auth
 
 import (
 	"crypto/rand"
-	"encoding/hex"
+	"encoding/binary"
 	"fmt"
 	"os"
 	"strconv"
@@ -14,25 +14,42 @@ import (
 
 const defaultJWTValiditySeconds = 86400
 
+// ConsoleJWTSubject carries the two fields Java TokenProvider.createToken reads from
+// the users table. Java JWTFilter resolves the operator by subject (login) and then
+// compares the "token" claim to users.authtoken — it does not read userId or role
+// from the JWT payload.
+type ConsoleJWTSubject struct {
+	Login     string
+	AuthToken string
+}
+
 // MintConsoleJWT issues an HS512 token compatible with the Java TokenProvider.
 func MintConsoleJWT(secret, login, authToken string, rememberMe bool) (string, error) {
+	return MintConsoleJWTForUser(secret, ConsoleJWTSubject{
+		Login:     login,
+		AuthToken: authToken,
+	}, rememberMe)
+}
+
+// MintConsoleJWTForUser mirrors com.hmdm.security.jwt.TokenProvider#createToken.
+func MintConsoleJWTForUser(secret string, subject ConsoleJWTSubject, rememberMe bool) (string, error) {
 	secret = strings.TrimSpace(secret)
 	if secret == "" {
 		return "", fmt.Errorf("JWT secret is not configured")
 	}
-	login = strings.TrimSpace(login)
+
+	login := strings.TrimSpace(subject.Login)
 	if login == "" {
 		return "", fmt.Errorf("login is required")
 	}
 
 	validity := time.Duration(jwtValiditySeconds(rememberMe)) * time.Second
-	now := time.Now().UTC()
+	expiresAt := time.Now().UTC().Add(validity)
 
 	claims := jwt.MapClaims{
 		"sub":   login,
-		"token": strings.TrimSpace(authToken),
-		"exp":   now.Add(validity).Unix(),
-		"iat":   now.Unix(),
+		"token": strings.TrimSpace(subject.AuthToken),
+		"exp":   expiresAt.Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
@@ -62,11 +79,13 @@ func jwtValiditySeconds(rememberMe bool) int64 {
 	return defaultJWTValiditySeconds
 }
 
-// GenerateAuthToken creates a rotating console auth token stored in users.authtoken.
-func GenerateAuthToken() (string, error) {
-	buf := make([]byte, 20)
-	if _, err := rand.Read(buf); err != nil {
-		return "", fmt.Errorf("generate auth token: %w", err)
+func randomIndex(limit int) (int, error) {
+	if limit <= 0 {
+		return 0, fmt.Errorf("invalid random limit")
 	}
-	return hex.EncodeToString(buf), nil
+	var buf [8]byte
+	if _, err := rand.Read(buf[:]); err != nil {
+		return 0, err
+	}
+	return int(binary.BigEndian.Uint64(buf[:]) % uint64(limit)), nil
 }

@@ -10,9 +10,12 @@ import (
 const testJWTSecret = "20c68f0d9185b1d18cf6add1e8b491fd89529a44"
 
 func TestMintConsoleJWTMatchesJavaShape(t *testing.T) {
-	token, err := MintConsoleJWT(testJWTSecret, "global.admin", "auth-global", false)
+	token, err := MintConsoleJWTForUser(testJWTSecret, ConsoleJWTSubject{
+		Login:     "global.admin",
+		AuthToken: "auth-global",
+	}, false)
 	if err != nil {
-		t.Fatalf("MintConsoleJWT() error = %v", err)
+		t.Fatalf("MintConsoleJWTForUser() error = %v", err)
 	}
 
 	claims := jwt.MapClaims{}
@@ -32,6 +35,9 @@ func TestMintConsoleJWTMatchesJavaShape(t *testing.T) {
 	if claims["token"] != "auth-global" {
 		t.Fatalf("token claim = %v, want auth-global", claims["token"])
 	}
+	if _, hasIAT := claims["iat"]; hasIAT {
+		t.Fatalf("iat claim should be omitted to match Java TokenProvider, got %v", claims["iat"])
+	}
 
 	exp, ok := claims["exp"].(float64)
 	if !ok {
@@ -47,7 +53,21 @@ func TestGenerateAuthTokenLength(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GenerateAuthToken() error = %v", err)
 	}
-	if len(token) != 40 {
-		t.Fatalf("token length = %d, want 40", len(token))
+	if len(token) != 20 {
+		t.Fatalf("token length = %d, want 20", len(token))
 	}
+	for _, ch := range token {
+		if !stringsContainsRune(javaAuthTokenCharset, ch) {
+			t.Fatalf("token contains non-Java charset rune %q", ch)
+		}
+	}
+}
+
+func stringsContainsRune(value string, ch rune) bool {
+	for _, candidate := range value {
+		if candidate == ch {
+			return true
+		}
+	}
+	return false
 }

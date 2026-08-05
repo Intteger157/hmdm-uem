@@ -126,6 +126,12 @@ func (h *WindowsHandler) MicrosoftOAuthCallback(c *gin.Context) {
 		return
 	}
 
+	if err := db.DB.First(&user, user.ID).Error; err != nil {
+		log.Printf("[oauth-microsoft] reload user id=%d failed: %v", user.ID, err)
+		redirectLoginError(c, ssoErrorProvider)
+		return
+	}
+
 	jwtSecret := strings.TrimSpace(h.jwtSecret)
 	if jwtSecret == "" {
 		jwtSecret = strings.TrimSpace(os.Getenv("JWT_SECRET"))
@@ -136,7 +142,10 @@ func (h *WindowsHandler) MicrosoftOAuthCallback(c *gin.Context) {
 		return
 	}
 
-	token, err := auth.MintConsoleJWT(jwtSecret, user.Login, authToken, false)
+	token, err := auth.MintConsoleJWTForUser(jwtSecret, auth.ConsoleJWTSubject{
+		Login:     user.Login,
+		AuthToken: authToken,
+	}, false)
 	if err != nil {
 		log.Printf("[oauth-microsoft] mint jwt failed: %v", err)
 		redirectLoginError(c, ssoErrorProvider)
@@ -199,6 +208,9 @@ func ensureConsoleAuthToken(user *models.User) (string, error) {
 		return "", fmt.Errorf("user is nil")
 	}
 
+	// Mirror JWTAuthResource.login: only generate a new auth token when the DB
+	// row does not have one yet. Java JWTFilter rejects requests when the JWT
+	// "token" claim does not exactly match users.authtoken.
 	current := ""
 	if user.AuthToken != nil {
 		current = strings.TrimSpace(*user.AuthToken)

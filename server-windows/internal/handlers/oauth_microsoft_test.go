@@ -173,8 +173,8 @@ func TestEnsureConsoleAuthTokenGeneratesWhenMissing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ensureConsoleAuthToken() error = %v", err)
 	}
-	if len(token) != 40 {
-		t.Fatalf("token length = %d, want 40", len(token))
+	if len(token) != 20 {
+		t.Fatalf("token length = %d, want 20", len(token))
 	}
 
 	var stored models.User
