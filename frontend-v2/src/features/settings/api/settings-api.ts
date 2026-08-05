@@ -1,4 +1,5 @@
 import { api } from '@/shared/api/client'
+import { consoleAdminApi, shouldFallbackFromGo } from '@/features/auth/api/console-admin-api'
 import type { ApiResponse } from '@/shared/api/types/api-response'
 import { unwrapApiResponse } from '@/shared/api/types/api-response'
 
@@ -64,8 +65,16 @@ export interface UserRoleSettings {
 }
 
 export async function fetchSettings(): Promise<Settings> {
-  const response = await api.get<ApiResponse<Settings>>('/private/settings')
-  return unwrapApiResponse(response.data)
+  try {
+    const response = await consoleAdminApi.get<Settings>('/console/settings')
+    return response.data
+  } catch (error) {
+    if (!shouldFallbackFromGo(error)) {
+      throw error
+    }
+    const response = await api.get<ApiResponse<Settings>>('/private/settings')
+    return unwrapApiResponse(response.data)
+  }
 }
 
 export async function fetchUserRoleSettings(roleId: number): Promise<UserRoleSettings> {
