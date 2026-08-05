@@ -17,10 +17,12 @@ var windowsPathPrefixes = []string{
 	"/api/filexplorer",
 }
 
-// androidPathPrefixes are reserved for the Android side of the console, which
-// the Java server still serves. They are listed so a Windows-scoped operator is
-// rejected consistently once those routes move here.
+// androidPathPrefixes are Android console routes. /rest/windows/android is mounted
+// under the Windows gateway prefix so deployments that only proxy /rest/windows/
+// to Go can still reach Android list APIs without a separate nginx location.
 var androidPathPrefixes = []string{
+	"/rest/windows/android",
+	"/api/windows/android",
 	"/rest/android",
 	"/api/android",
 }
@@ -38,6 +40,8 @@ var agnosticRoutes = []string{
 	"/api/sso/settings",
 	"/rest/windows/sso-settings",
 	"/api/windows/sso-settings",
+	"/rest/windows/console",
+	"/api/windows/console",
 }
 
 // coversPath reports whether route is an exact match for path or one of its
@@ -58,14 +62,14 @@ func PlatformForPath(path string) string {
 		}
 	}
 
-	for _, prefix := range windowsPathPrefixes {
-		if coversPath(normalized, prefix) {
-			return models.PlatformScopeWindows
-		}
-	}
 	for _, prefix := range androidPathPrefixes {
 		if coversPath(normalized, prefix) {
 			return models.PlatformScopeAndroid
+		}
+	}
+	for _, prefix := range windowsPathPrefixes {
+		if coversPath(normalized, prefix) {
+			return models.PlatformScopeWindows
 		}
 	}
 

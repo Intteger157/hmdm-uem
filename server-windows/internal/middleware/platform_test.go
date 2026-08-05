@@ -18,6 +18,8 @@ func TestPlatformForPath(t *testing.T) {
 		{"/api/taskmgr/admin", models.PlatformScopeWindows},
 		{"/api/filexplorer/admin", models.PlatformScopeWindows},
 		{"/rest/android/devices", models.PlatformScopeAndroid},
+		{"/rest/windows/android/devices/search", models.PlatformScopeAndroid},
+		{"/api/windows/android/devices/search", models.PlatformScopeAndroid},
 		{"/api/android/enroll", models.PlatformScopeAndroid},
 		// Role administration spans both ecosystems despite its Windows prefix.
 		{"/rest/windows/roles", ""},
