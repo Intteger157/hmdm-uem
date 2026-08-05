@@ -289,4 +289,17 @@ func registerRoutes(router *gin.Engine, windowsHandler *handlers.WindowsHandler,
 		apiAdmin.GET("/sso-settings", windowsHandler.GetSSOSettings)
 		apiAdmin.PUT("/sso-settings", windowsHandler.UpdateSSOSettings)
 	}
+
+	// Android console routes served by Go so SSO sessions do not depend on Java JWT.
+	androidAdmin := router.Group("/rest/android", adminOnly, accessLevel)
+	{
+		androidAdmin.POST("/devices/search", windowsHandler.SearchAndroidDevices)
+		androidAdmin.GET("/devices/number/:number", windowsHandler.GetAndroidDeviceByNumber)
+	}
+
+	apiAndroid := router.Group("/api/android", adminOnly, accessLevel)
+	{
+		apiAndroid.POST("/devices/search", windowsHandler.SearchAndroidDevices)
+		apiAndroid.GET("/devices/number/:number", windowsHandler.GetAndroidDeviceByNumber)
+	}
 }

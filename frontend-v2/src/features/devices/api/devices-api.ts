@@ -1,5 +1,7 @@
 import { API_BASE } from '@/shared/api/config'
 import { api } from '@/shared/api/client'
+import { shouldFallbackFromGo } from '@/features/auth/api/console-admin-api'
+import { androidApi } from '@/features/devices/api/android-api'
 import { isMockApiEnabled, mockNetworkDelay } from '@/shared/api/mock-utils'
 import { mockGetDeviceById, mockSearchDevices } from '@/shared/api/mocks/devices'
 import type { ApiResponse } from '@/shared/api/types/api-response'
@@ -117,8 +119,16 @@ export async function searchDevices(params: DeviceSearchParams): Promise<DeviceL
     body.value = params.value.trim()
   }
 
-  const response = await api.post<ApiResponse<DeviceListView>>('/private/devices/search', body)
-  return normalizeDeviceListView(unwrapApiResponse(response.data))
+  try {
+    const response = await androidApi.post<DeviceListView>('/devices/search', body)
+    return normalizeDeviceListView(response.data)
+  } catch (error) {
+    if (!shouldFallbackFromGo(error)) {
+      throw error
+    }
+    const response = await api.post<ApiResponse<DeviceListView>>('/private/devices/search', body)
+    return normalizeDeviceListView(unwrapApiResponse(response.data))
+  }
 }
 
 export async function getDeviceByNumber(number: string): Promise<DeviceView> {
@@ -134,8 +144,16 @@ export async function getDeviceByNumber(number: string): Promise<DeviceView> {
   }
 
   const encoded = encodeURIComponent(number)
-  const response = await api.get<ApiResponse<DeviceView>>(`/private/devices/number/${encoded}`)
-  return normalizeDeviceView(unwrapApiResponse(response.data))
+  try {
+    const response = await androidApi.get<DeviceView>(`/devices/number/${encoded}`)
+    return normalizeDeviceView(response.data)
+  } catch (error) {
+    if (!shouldFallbackFromGo(error)) {
+      throw error
+    }
+    const response = await api.get<ApiResponse<DeviceView>>(`/private/devices/number/${encoded}`)
+    return normalizeDeviceView(unwrapApiResponse(response.data))
+  }
 }
 
 export async function getDeviceById(id: number): Promise<DeviceView> {
