@@ -18,7 +18,6 @@ import (
 
 const (
 	loginPath                = "/login"
-	ssoSuccessQuery          = "sso=success"
 	ssoErrorUserNotFound     = "user_not_found"
 	ssoErrorInvalidState     = "invalid_state"
 	ssoErrorProvider         = "provider_error"
@@ -144,8 +143,15 @@ func (h *WindowsHandler) MicrosoftOAuthCallback(c *gin.Context) {
 		return
 	}
 
+	redirectLoginSuccess(c, token)
+}
+
+func redirectLoginSuccess(c *gin.Context, token string) {
+	// Pass the JWT in the URL fragment so the SPA can read it without relying on
+	// Set-Cookie surviving the nginx → Go → browser redirect chain.
 	auth.SetSSOJWTCookie(c, token)
-	c.Redirect(http.StatusFound, loginPath+"?"+ssoSuccessQuery)
+	target := loginPath + "#sso_jwt=" + url.QueryEscape(token)
+	c.Redirect(http.StatusFound, target)
 }
 
 var (

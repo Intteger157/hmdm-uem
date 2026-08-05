@@ -39,3 +39,17 @@ export async function fetchCurrentUser(): Promise<User> {
   const response = await api.get<ApiResponse<User>>('/private/users/current')
   return unwrapApiResponse(response.data)
 }
+
+/** Loads the console user without triggering the logout-on-401 interceptor loop. */
+export async function fetchCurrentUserWithToken(jwt: string): Promise<User> {
+  if (isMockApiEnabled()) {
+    return mockFetchCurrentUser()
+  }
+
+  const response = await publicApi.get<ApiResponse<User>>('/private/users/current', {
+    headers: {
+      Authorization: `Bearer ${jwt}`,
+    },
+  })
+  return unwrapApiResponse(response.data)
+}

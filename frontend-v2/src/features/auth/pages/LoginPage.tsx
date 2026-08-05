@@ -10,7 +10,7 @@ import { z } from 'zod'
 import { Logo } from '@/components/Logo'
 import { MOCK_AUTH } from '@/shared/api/mocks/auth'
 import { isMockApiEnabled } from '@/shared/api/mock-utils'
-import { fetchCurrentUser, loginWithJwt } from '@/features/auth/api/auth-api'
+import { fetchCurrentUser, fetchCurrentUserWithToken, loginWithJwt } from '@/features/auth/api/auth-api'
 import { fetchPublicSsoStatus, MICROSOFT_LOGIN_PATH } from '@/features/auth/api/sso-status-api'
 import { fetchConsoleAccess } from '@/features/auth/api/console-profile-api'
 import { MicrosoftIcon } from '@/features/auth/components/MicrosoftIcon'
@@ -90,6 +90,7 @@ export function LoginPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
     const error = params.get('error')
 
     if (error) {
@@ -104,30 +105,31 @@ export function LoginPage() {
       return
     }
 
-    if (params.get('sso') !== 'success') {
+    const hashJwt = hashParams.get('sso_jwt')
+    const cookieJwt = params.get('sso') === 'success' ? readCookie(SSO_JWT_COOKIE) : null
+    const sessionJwt = hashJwt ?? cookieJwt
+
+    if (!sessionJwt) {
       return
     }
 
-    const jwt = readCookie(SSO_JWT_COOKIE)
+    const jwt = sessionJwt
     clearCookie(SSO_JWT_COOKIE)
     window.history.replaceState({}, '', '/login')
 
-    if (!jwt) {
-      toast.error(t('login.ssoProviderError'))
-      return
-    }
-
-    const sessionJwt = jwt
     let cancelled = false
 
     async function completeSsoLogin() {
       try {
-        useAuthStore.setState({ jwt: sessionJwt })
-        const [user, access] = await Promise.all([fetchCurrentUser(), fetchConsoleAccess()])
+        useAuthStore.setState({ jwt })
+        const [user, access] = await Promise.all([
+          fetchCurrentUserWithToken(jwt),
+          fetchConsoleAccess(),
+        ])
         if (cancelled) {
           return
         }
-        setAuth(sessionJwt, user, access)
+        setAuth(jwt, user, access)
         void navigate({ to: '/dashboard' })
       } catch {
         if (!cancelled) {
