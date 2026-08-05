@@ -86,7 +86,17 @@ func PublicBaseURL(c *gin.Context) string {
 	return scheme + "://" + host
 }
 
+// MicrosoftOAuthCallbackPath is the public callback path reachable via /rest/windows/ on
+// gateways that do not yet proxy /api/auth/ to Go.
+const MicrosoftOAuthCallbackPath = "/rest/windows/public/auth/callback/microsoft"
+
 // MicrosoftRedirectURI returns the callback URL registered in Entra ID.
 func MicrosoftRedirectURI(c *gin.Context) string {
-	return PublicBaseURL(c) + "/api/auth/callback/microsoft"
+	if configured := strings.TrimSpace(os.Getenv("OAUTH_CALLBACK_PATH")); configured != "" {
+		if strings.HasPrefix(configured, "http://") || strings.HasPrefix(configured, "https://") {
+			return strings.TrimRight(configured, "/")
+		}
+		return PublicBaseURL(c) + configured
+	}
+	return PublicBaseURL(c) + MicrosoftOAuthCallbackPath
 }

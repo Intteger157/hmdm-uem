@@ -11,7 +11,7 @@ import { Logo } from '@/components/Logo'
 import { MOCK_AUTH } from '@/shared/api/mocks/auth'
 import { isMockApiEnabled } from '@/shared/api/mock-utils'
 import { fetchCurrentUser, loginWithJwt } from '@/features/auth/api/auth-api'
-import { fetchPublicSsoStatus } from '@/features/auth/api/sso-status-api'
+import { fetchPublicSsoStatus, MICROSOFT_LOGIN_PATH } from '@/features/auth/api/sso-status-api'
 import { fetchConsoleAccess } from '@/features/auth/api/console-profile-api'
 import { MicrosoftIcon } from '@/features/auth/components/MicrosoftIcon'
 import { useAuthStore } from '@/features/auth/store/auth-store'
@@ -145,7 +145,7 @@ export function LoginPage() {
   }, [navigate, setAuth, t])
 
   const handleMicrosoftSignIn = () => {
-    window.location.href = '/api/auth/login/microsoft'
+    window.location.href = MICROSOFT_LOGIN_PATH
   }
 
   const onSubmit = async (values: LoginFormValues) => {

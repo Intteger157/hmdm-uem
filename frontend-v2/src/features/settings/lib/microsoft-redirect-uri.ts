@@ -1,4 +1,4 @@
-const MICROSOFT_CALLBACK_PATH = '/api/auth/callback/microsoft'
+const MICROSOFT_CALLBACK_PATH = '/rest/windows/public/auth/callback/microsoft'
 
 export function buildMicrosoftSsoRedirectUri(origin?: string): string {
   const base =

@@ -112,6 +112,9 @@ func registerRoutes(router *gin.Engine, windowsHandler *handlers.WindowsHandler,
 	router.GET("/rest/auth/login/microsoft", windowsHandler.StartMicrosoftOAuth)
 	router.GET("/api/auth/callback/microsoft", windowsHandler.MicrosoftOAuthCallback)
 	router.GET("/rest/auth/callback/microsoft", windowsHandler.MicrosoftOAuthCallback)
+	router.GET("/api/windows/public/sso-status", windowsHandler.GetPublicSSOStatus)
+	router.GET("/api/windows/public/auth/login/microsoft", windowsHandler.StartMicrosoftOAuth)
+	router.GET("/api/windows/public/auth/callback/microsoft", windowsHandler.MicrosoftOAuthCallback)
 	router.POST("/api/windows/register", windowsHandler.RegisterBootstrap)
 	router.GET(appstorage.AgentPublicPath(), windowsHandler.DownloadAgentBinary)
 
@@ -142,6 +145,9 @@ func registerRoutes(router *gin.Engine, windowsHandler *handlers.WindowsHandler,
 				c.JSON(http.StatusOK, gin.H{"status": "ok"})
 			})
 			public.GET("/downloads/:downloadToken", windowsHandler.DownloadInstaller)
+			public.GET("/public/sso-status", windowsHandler.GetPublicSSOStatus)
+			public.GET("/public/auth/login/microsoft", windowsHandler.StartMicrosoftOAuth)
+			public.GET("/public/auth/callback/microsoft", windowsHandler.MicrosoftOAuthCallback)
 		}
 
 		// Windows agent protocol. These routes keep their existing enrollment
