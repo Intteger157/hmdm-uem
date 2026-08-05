@@ -10,9 +10,14 @@ import { z } from 'zod'
 import { Logo } from '@/components/Logo'
 import { MOCK_AUTH } from '@/shared/api/mocks/auth'
 import { isMockApiEnabled } from '@/shared/api/mock-utils'
-import { fetchCurrentUser, fetchCurrentUserWithToken, loginWithJwt } from '@/features/auth/api/auth-api'
+import { fetchCurrentUser, loginWithJwt } from '@/features/auth/api/auth-api'
 import { fetchPublicSsoStatus, MICROSOFT_LOGIN_PATH } from '@/features/auth/api/sso-status-api'
-import { fetchConsoleAccess } from '@/features/auth/api/console-profile-api'
+import {
+  fetchConsoleAccess,
+  fetchConsoleProfileWithToken,
+  userFromConsoleProfile,
+} from '@/features/auth/api/console-profile-api'
+import { toConsoleAccess } from '@/shared/lib/console-access'
 import { MicrosoftIcon } from '@/features/auth/components/MicrosoftIcon'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import {
@@ -122,14 +127,11 @@ export function LoginPage() {
     async function completeSsoLogin() {
       try {
         useAuthStore.setState({ jwt })
-        const [user, access] = await Promise.all([
-          fetchCurrentUserWithToken(jwt),
-          fetchConsoleAccess(),
-        ])
+        const profile = await fetchConsoleProfileWithToken(jwt)
         if (cancelled) {
           return
         }
-        setAuth(jwt, user, access)
+        setAuth(jwt, userFromConsoleProfile(profile), toConsoleAccess(profile))
         void navigate({ to: '/dashboard' })
       } catch {
         if (!cancelled) {

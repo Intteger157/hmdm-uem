@@ -4,6 +4,7 @@ import { attachAuthToken } from '@/shared/api/setup-auth-interceptors'
 import { isMockApiEnabled } from '@/shared/api/mock-utils'
 import { mockFetchConsoleProfile } from '@/shared/api/mocks/auth'
 import type { ConsoleProfile } from '@/shared/api/types/console-profile'
+import type { User } from '@/shared/api/types/user'
 import { toConsoleAccess, type ConsoleAccess } from '@/shared/lib/console-access'
 
 export type { ConsoleProfile }
@@ -20,6 +21,22 @@ const profileApi = axios.create({
 
 attachAuthToken(profileApi)
 
+/** Builds the minimal User shape the auth store needs from Go /me. */
+export function userFromConsoleProfile(profile: ConsoleProfile): User {
+  return {
+    id: profile.userId,
+    login: profile.login,
+    name: profile.login,
+    customerId: 0,
+    userRole: {
+      id: profile.roleId,
+      name: profile.roleName,
+      superAdmin: profile.superAdmin,
+      permissions: [],
+    },
+  }
+}
+
 /**
  * Reads the RBAC dimensions of the signed-in operator's role.
  *
@@ -32,6 +49,21 @@ export async function fetchConsoleProfile(): Promise<ConsoleProfile> {
   }
 
   const response = await profileApi.get<ConsoleProfile>('/me')
+  return response.data
+}
+
+/** Loads /me with an explicit JWT — used for SSO bootstrap before the store is set. */
+export async function fetchConsoleProfileWithToken(jwt: string): Promise<ConsoleProfile> {
+  if (isMockApiEnabled()) {
+    return mockFetchConsoleProfile()
+  }
+
+  const response = await axios.get<ConsoleProfile>(`${WINDOWS_API_BASE}/me`, {
+    headers: {
+      Authorization: `Bearer ${jwt}`,
+      'Content-Type': 'application/json',
+    },
+  })
   return response.data
 }
 
