@@ -19,10 +19,11 @@ export function setupAuthInterceptors(instance: AxiosInstance): void {
   instance.interceptors.response.use(
     (response) => response,
     (error: unknown) => {
-      if (
-        axios.isAxiosError(error) &&
-        (error.response?.status === 401 || error.response?.status === 403)
-      ) {
+      // 401 means the session is invalid. 403 means the caller is authenticated but
+      // not allowed — common when Go SSO JWT is accepted by server-windows but a
+      // Java /rest/private route still rejects the call. Logging out on 403 would
+      // kick SSO users back to /login after the dashboard mounts.
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
         useAuthStore.getState().logout()
         window.location.assign('/login')
       }
