@@ -55,5 +55,9 @@ func migrateRoleMatrix(database *gorm.DB) error {
 		return err
 	}
 
-	return seedPlatformRoles(database)
+	if err := seedPlatformRoles(database); err != nil {
+		return err
+	}
+
+	return seedLegacyRolePermissions(database)
 }

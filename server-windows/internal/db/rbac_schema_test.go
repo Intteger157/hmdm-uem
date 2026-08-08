@@ -39,7 +39,7 @@ CREATE TABLE userRolePermissions (
 INSERT INTO userRoles (id, name, description, superadmin) VALUES (1, 'Super-Admin', 'Sees everything', TRUE);
 INSERT INTO userRoles (id, name, description) VALUES (2, 'Admin', 'Full control panel access');
 INSERT INTO userRoles (id, name, description) VALUES (3, 'User', 'Limited access');
-INSERT INTO userRolePermissions (roleId, permissionId) VALUES (1, 1), (2, 3);
+INSERT INTO userRolePermissions (roleId, permissionId) VALUES (1, 1), (2, 2), (2, 3), (2, 4), (3, 3), (3, 4);
 INSERT INTO users (login, name, password, userRoleId) VALUES ('admin', 'admin', 'x', 2);
 ALTER SEQUENCE userroles_id_seq RESTART WITH 100;
 `
@@ -105,13 +105,13 @@ func TestMigrateRoleMatrixAgainstLegacySchema(t *testing.T) {
 		}
 	})
 
-	t.Run("preserves foreign keys and permission rows", func(t *testing.T) {
-		var permissions int64
-		if err := database.Table("userrolepermissions").Count(&permissions).Error; err != nil {
-			t.Fatalf("count permissions: %v", err)
+	t.Run("preserves foreign keys and legacy permission rows", func(t *testing.T) {
+		var adminPermissions int64
+		if err := database.Table("userrolepermissions").Where("roleid = ?", 2).Count(&adminPermissions).Error; err != nil {
+			t.Fatalf("count admin permissions: %v", err)
 		}
-		if permissions != 2 {
-			t.Errorf("userrolepermissions rows = %d, want 2", permissions)
+		if adminPermissions != 3 {
+			t.Errorf("legacy Admin permissions = %d, want 3", adminPermissions)
 		}
 
 		var constraints int64
@@ -125,6 +125,22 @@ func TestMigrateRoleMatrixAgainstLegacySchema(t *testing.T) {
 		if constraints == 0 {
 			t.Error("foreign keys on userrolepermissions were dropped")
 		}
+	})
+
+	t.Run("seeds legacy Java permissions for platform roles", func(t *testing.T) {
+		var globalAdmin models.UserRole
+		if err := database.Where("name = ?", "Global Administrator").First(&globalAdmin).Error; err != nil {
+			t.Fatalf("load Global Administrator: %v", err)
+		}
+
+		assertRoleHasPermissions(t, database, globalAdmin.ID, []uint{2, 3, 4})
+
+		var androidObserver models.UserRole
+		if err := database.Where("name = ?", "Android Observer").First(&androidObserver).Error; err != nil {
+			t.Fatalf("load Android Observer: %v", err)
+		}
+		assertRoleHasPermissions(t, database, androidObserver.ID, []uint{3, 4})
+		assertRoleLacksPermissions(t, database, androidObserver.ID, []uint{2})
 	})
 
 	t.Run("seeds the platform role matrix", func(t *testing.T) {
@@ -161,6 +177,53 @@ func TestMigrateRoleMatrixIsIdempotent(t *testing.T) {
 	want := int64(3 + len(platformRoleSeeds))
 	if total != want {
 		t.Errorf("role count = %d, want %d (seeding duplicated rows)", total, want)
+	}
+
+	var globalAdmin models.UserRole
+	if err := database.Where("name = ?", "Global Administrator").First(&globalAdmin).Error; err != nil {
+		t.Fatalf("load Global Administrator: %v", err)
+	}
+
+	var permRows int64
+	if err := database.Table("userrolepermissions").Where("roleid = ?", globalAdmin.ID).Count(&permRows).Error; err != nil {
+		t.Fatalf("count Global Administrator permissions: %v", err)
+	}
+	if permRows != 3 {
+		t.Errorf("Global Administrator permission rows after 3 runs = %d, want 3 (duplicates inserted)", permRows)
+	}
+}
+
+func assertRoleHasPermissions(t *testing.T, database *gorm.DB, roleID uint, permissionIDs []uint) {
+	t.Helper()
+
+	for _, permissionID := range permissionIDs {
+		var count int64
+		err := database.Table("userrolepermissions").
+			Where("roleid = ? AND permissionid = ?", roleID, permissionID).
+			Count(&count).Error
+		if err != nil {
+			t.Fatalf("check permission %d for role %d: %v", permissionID, roleID, err)
+		}
+		if count != 1 {
+			t.Errorf("role %d permission %d rows = %d, want 1", roleID, permissionID, count)
+		}
+	}
+}
+
+func assertRoleLacksPermissions(t *testing.T, database *gorm.DB, roleID uint, permissionIDs []uint) {
+	t.Helper()
+
+	for _, permissionID := range permissionIDs {
+		var count int64
+		err := database.Table("userrolepermissions").
+			Where("roleid = ? AND permissionid = ?", roleID, permissionID).
+			Count(&count).Error
+		if err != nil {
+			t.Fatalf("check missing permission %d for role %d: %v", permissionID, roleID, err)
+		}
+		if count != 0 {
+			t.Errorf("role %d permission %d rows = %d, want 0", roleID, permissionID, count)
+		}
 	}
 }
 
