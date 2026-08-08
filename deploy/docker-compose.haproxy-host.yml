@@ -9,9 +9,6 @@
 
 services:
   gateway:
-    ports:
+    # Replace base "0.0.0.0:8080" — merged lists would bind 8080 twice and fail.
+    ports: !override
       - "127.0.0.1:${GATEWAY_PORT:-8080}:80"
-
-  hmdm:
-    ports:
-      - "31000:31000"

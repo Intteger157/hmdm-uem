@@ -102,9 +102,14 @@ REMOTE_HTTPS_PORT=9443
 
 ## Step 3 — Copy file volumes
 
+Legacy `hmdm-docker` stores uploaded APKs under **`volumes/work/files/`** (Tomcat `files.directory`), not `volumes/files/`.
+
 ```bash
-mkdir -p ~/hmdm-uem/deploy/volumes/files
-rsync -a ~/hmdm-docker/volumes/files/ ~/hmdm-uem/deploy/volumes/files/
+mkdir -p ~/hmdm-uem/deploy/volumes/work/files ~/hmdm-uem/deploy/volumes/files
+rsync -a ~/hmdm-docker/volumes/work/files/ ~/hmdm-uem/deploy/volumes/work/files/ 2>/dev/null || true
+# Or from backup tarball:
+# tar xzf ~/backup-volumes-*.tgz -C /tmp/volrestore volumes/work/files/
+# rsync -a /tmp/volrestore/volumes/work/files/ ~/hmdm-uem/deploy/volumes/work/files/
 
 # Optional: reuse Tomcat config snippets
 mkdir -p ~/hmdm-uem/deploy/volumes/hmdm-config
@@ -128,11 +133,10 @@ docker compose down
 ```bash
 cd ~/hmdm-uem/deploy
 
-# Gateway only on localhost (HAProxy is the public edge)
-# Edit docker-compose.yml gateway ports temporarily if needed:
-#   - "127.0.0.1:8080:80"
+# Production: always include the HAProxy overlay (binds gateway to 127.0.0.1 only).
+COMPOSE="-f docker-compose.yml -f docker-compose.haproxy-host.yml"
 
-docker compose --env-file .env up -d postgresql
+docker compose --env-file .env $COMPOSE up -d postgresql
 
 # wait until healthy
 gunzip -c ~/backup-hmdm-*.sql.gz | docker compose --env-file .env exec -T postgresql \
@@ -159,7 +163,9 @@ Or step-by-step:
 
 ```bash
 ./deploy/install.sh --skip-docker
-docker compose --env-file deploy/.env -f deploy/docker-compose.yml up -d --build
+docker compose --env-file deploy/.env \
+  -f deploy/docker-compose.yml \
+  -f deploy/docker-compose.haproxy-host.yml up -d --build
 ```
 
 Verify locally:
@@ -204,6 +210,29 @@ curl -I https://mdm.intermark.global/
 curl -I https://mdm.intermark.global/rest/public/sync/info
 ```
 
+### Gateway won't start: `address already in use` on `:8080`
+
+Compose **merges** `ports` from both YAML files unless the overlay uses `ports: !override`.
+Without it you get both `8080:80` and `127.0.0.1:8080:80` — the second bind fails.
+
+Verify merged config (should show **one** gateway port on `127.0.0.1`):
+
+```bash
+cd ~/hmdm-uem/deploy
+docker compose --env-file .env \
+  -f docker-compose.yml -f docker-compose.haproxy-host.yml config \
+  | grep -A3 'gateway:' | grep -A2 ports
+```
+
+Fix: `git pull` (overlay uses `!override`), then recreate gateway:
+
+```bash
+docker rm -f deploy-gateway-1 2>/dev/null || true
+docker compose --env-file .env \
+  -f docker-compose.yml -f docker-compose.haproxy-host.yml \
+  up -d --force-recreate gateway
+```
+
 ---
 
 ## Step 8 — Post-migration scripts
@@ -212,7 +241,16 @@ curl -I https://mdm.intermark.global/rest/public/sync/info
 cd ~/hmdm-uem
 ./deploy/scripts/fix-hmdm-base-url.sh
 ./deploy/scripts/sync-jwt-secret.sh
+./deploy/scripts/sync-file-urls.sh
+./deploy/scripts/restore-launcher-apk.sh
 ./deploy/scripts/sync-deviceremote-settings.sh
+```
+
+If QR enrollment fails with **Tomcat 404** on `/files/app-opensource-release.apk`, APKs were not copied to **`deploy/volumes/work/files/`** (check `files.directory` in `ROOT.xml`). Run `restore-launcher-apk.sh` or:
+
+```bash
+cp /tmp/volrestore/volumes/work/files/app-opensource-release*.apk ~/hmdm-uem/deploy/volumes/work/files/
+chmod 644 ~/hmdm-uem/deploy/volumes/work/files/*.apk
 ```
 
 Console: **Devices** — all phones should appear. Check 2–3 devices online.

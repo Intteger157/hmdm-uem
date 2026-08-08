@@ -115,19 +115,19 @@ export function DeviceTable({
   if (platform === 'windows') {
     return (
       <div className="overflow-x-auto rounded-lg border bg-card">
-        <table className="w-full min-w-[960px] text-left text-sm">
-          <thead className="border-b bg-muted/40 text-muted-foreground">
+        <table className="w-full min-w-full table-auto text-left text-base">
+          <thead className="border-b bg-muted/40 text-sm text-muted-foreground">
             <tr>
-              <th className="px-4 py-3 font-medium">{t('devices.columns.status')}</th>
-              <th className="px-4 py-3 font-medium">{t('devices.columns.hostname')}</th>
-              <th className="px-4 py-3 font-medium">{t('devices.columns.description')}</th>
-              <th className="px-4 py-3 font-medium">{t('devices.columns.configuration')}</th>
-              <th className="px-4 py-3 font-medium">{t('devices.columns.os')}</th>
-              <th className="px-4 py-3 font-medium">{t('devices.columns.bitlocker')}</th>
-              <th className="px-4 py-3 font-medium">{t('devices.columns.currentUser')}</th>
-              <th className="px-4 py-3 font-medium">{t('devices.columns.lastUpdate')}</th>
+              <th className="px-3 py-3.5 font-medium">{t('devices.columns.status')}</th>
+              <th className="px-3 py-3.5 font-medium">{t('devices.columns.hostname')}</th>
+              <th className="px-3 py-3.5 font-medium">{t('devices.columns.description')}</th>
+              <th className="px-3 py-3.5 font-medium">{t('devices.columns.configuration')}</th>
+              <th className="px-3 py-3.5 font-medium">{t('devices.columns.os')}</th>
+              <th className="px-3 py-3.5 font-medium">{t('devices.columns.bitlocker')}</th>
+              <th className="px-3 py-3.5 font-medium">{t('devices.columns.currentUser')}</th>
+              <th className="px-3 py-3.5 font-medium whitespace-nowrap">{t('devices.columns.lastUpdate')}</th>
               {showWindowsActions && (
-                <th className="px-4 py-3 font-medium text-right">{t('devices.columns.actions')}</th>
+                <th className="px-3 py-3.5 font-medium text-right">{t('devices.columns.actions')}</th>
               )}
             </tr>
           </thead>
@@ -151,22 +151,22 @@ export function DeviceTable({
 
   return (
     <div className="overflow-x-auto rounded-lg border bg-card">
-      <table className="w-full min-w-[1200px] text-left text-sm">
-        <thead className="border-b bg-muted/40 text-muted-foreground">
+      <table className="w-full min-w-full table-auto text-left text-base">
+        <thead className="border-b bg-muted/40 text-sm text-muted-foreground">
           <tr>
-            <th className="px-4 py-3 font-medium">{t('devices.columns.status')}</th>
-            <th className="px-4 py-3 font-medium">{t('devices.columns.date')}</th>
-            <th className="px-4 py-3 font-medium">{t('devices.columns.number')}</th>
-            <th className="px-4 py-3 font-medium">{t('devices.columns.model')}</th>
-            <th className="px-4 py-3 font-medium">{t('devices.columns.permissions')}</th>
-            <th className="px-4 py-3 font-medium">{t('devices.columns.installations')}</th>
-            <th className="px-4 py-3 font-medium">{t('devices.columns.files')}</th>
-            <th className="px-4 py-3 font-medium">{t('devices.columns.configuration')}</th>
-            <th className="px-4 py-3 font-medium">{t('devices.columns.battery')}</th>
-            <th className="px-4 py-3 font-medium">{t('devices.columns.androidVersion')}</th>
-            <th className="px-4 py-3 font-medium">{t('devices.columns.publicIp')}</th>
+            <th className="px-3 py-3.5 font-medium">{t('devices.columns.status')}</th>
+            <th className="px-3 py-3.5 font-medium whitespace-nowrap">{t('devices.columns.date')}</th>
+            <th className="px-3 py-3.5 font-medium whitespace-nowrap">{t('devices.columns.number')}</th>
+            <th className="px-3 py-3.5 font-medium">{t('devices.columns.model')}</th>
+            <th className="px-3 py-3.5 font-medium">{t('devices.columns.permissions')}</th>
+            <th className="px-3 py-3.5 font-medium">{t('devices.columns.installations')}</th>
+            <th className="px-3 py-3.5 font-medium">{t('devices.columns.files')}</th>
+            <th className="px-3 py-3.5 font-medium">{t('devices.columns.configuration')}</th>
+            <th className="px-3 py-3.5 font-medium">{t('devices.columns.battery')}</th>
+            <th className="px-3 py-3.5 font-medium">{t('devices.columns.androidVersion')}</th>
+            <th className="px-3 py-3.5 font-medium whitespace-nowrap">{t('devices.columns.publicIp')}</th>
             {showAndroidActions && (
-              <th className="px-4 py-3 font-medium text-right">{t('devices.columns.actions')}</th>
+              <th className="px-3 py-3.5 font-medium text-right whitespace-nowrap">{t('devices.columns.actions')}</th>
             )}
           </tr>
         </thead>
@@ -200,7 +200,7 @@ function StatusDot({
   const statusClass = STATUS_COLORS[statusCode ?? 'grey'] ?? STATUS_COLORS.grey
   return (
     <span className="inline-flex items-center gap-2" title={title}>
-      <span className={cn('size-2.5 rounded-full', statusClass)} aria-hidden />
+      <span className={cn('size-3 rounded-full', statusClass)} aria-hidden />
       <span className="sr-only">{title ?? statusCode}</span>
     </span>
   )
@@ -216,7 +216,7 @@ function ComplianceDot({
   return (
     <span title={title} aria-label={title}>
       <span
-        className={cn('inline-block size-2.5 rounded-full', INDICATOR_COLORS[indicator])}
+        className={cn('inline-block size-3 rounded-full', INDICATOR_COLORS[indicator])}
         aria-hidden
       />
     </span>
@@ -361,16 +361,16 @@ function AndroidDeviceRow({
 
   return (
     <tr className="border-b last:border-b-0 hover:bg-muted/20">
-      <td className="px-4 py-3">
+      <td className="px-3 py-3.5">
         <StatusDot
           statusCode={onlineStatus}
           title={t(`devices.status.${onlineStatus}`)}
         />
       </td>
-      <td className="px-4 py-3 whitespace-nowrap">
+      <td className="px-3 py-3.5 whitespace-nowrap tabular-nums">
         {device.lastUpdate ? formatTimestamp(device.lastUpdate) : t('devices.date.unknown')}
       </td>
-      <td className="px-4 py-3 font-medium">
+      <td className="px-3 py-3.5 font-medium whitespace-nowrap">
         <Link
           to="/devices/$deviceNumber"
           params={{ deviceNumber: device.number }}
@@ -380,29 +380,29 @@ function AndroidDeviceRow({
           {device.number}
         </Link>
       </td>
-      <td className="px-4 py-3">{model ?? t('devices.model.unknown')}</td>
-      <td className="px-4 py-3">
+      <td className="px-3 py-3.5">{model ?? t('devices.model.unknown')}</td>
+      <td className="px-3 py-3.5">
         <ComplianceDot
           indicator={permissionIndicator}
           title={t(`devices.compliance.${permissionIndicator}`)}
         />
       </td>
-      <td className="px-4 py-3">
+      <td className="px-3 py-3.5">
         <ComplianceDot
           indicator={installIndicator}
           title={t(`devices.compliance.${installIndicator}`)}
         />
       </td>
-      <td className="px-4 py-3">
+      <td className="px-3 py-3.5">
         <ComplianceDot
           indicator={filesIndicator}
           title={t(`devices.compliance.${filesIndicator}`)}
         />
       </td>
-      <td className="px-4 py-3">
+      <td className="px-3 py-3.5">
         <ConfigurationCell device={device} configurations={configurations} />
       </td>
-      <td className="px-4 py-3">
+      <td className="px-3 py-3.5 tabular-nums">
         {battery != null ? (
           <span
             className={cn(
@@ -417,10 +417,10 @@ function AndroidDeviceRow({
           '—'
         )}
       </td>
-      <td className="px-4 py-3">{device.androidVersion ?? device.info?.androidVersion ?? '—'}</td>
-      <td className="px-4 py-3 font-mono text-xs">{device.publicIp ?? '—'}</td>
+      <td className="px-3 py-3.5 tabular-nums">{device.androidVersion ?? device.info?.androidVersion ?? '—'}</td>
+      <td className="px-3 py-3.5 font-mono text-sm whitespace-nowrap">{device.publicIp ?? '—'}</td>
       {showActions && (
-        <td className="px-4 py-3">
+        <td className="px-3 py-3.5">
           <DeviceRowActions
             device={device}
             configurations={configurations}
