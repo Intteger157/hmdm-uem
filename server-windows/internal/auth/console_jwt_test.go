@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"encoding/base64"
 	"testing"
 	"time"
 
@@ -8,6 +9,21 @@ import (
 )
 
 const testJWTSecret = "20c68f0d9185b1d18cf6add1e8b491fd89529a44"
+
+func TestJavaJJWTSigningKeyMatchesJJWTStringOverload(t *testing.T) {
+	key, err := javaJJWTSigningKey(testJWTSecret)
+	if err != nil {
+		t.Fatalf("javaJJWTSigningKey() error = %v", err)
+	}
+
+	want, err := base64.StdEncoding.DecodeString(testJWTSecret)
+	if err != nil {
+		t.Fatalf("decode secret: %v", err)
+	}
+	if string(key) != string(want) {
+		t.Fatalf("signing key = %q, want Base64-decoded %q", key, want)
+	}
+}
 
 func TestMintConsoleJWTMatchesJavaShape(t *testing.T) {
 	token, err := MintConsoleJWTForUser(testJWTSecret, ConsoleJWTSubject{
@@ -18,9 +34,14 @@ func TestMintConsoleJWTMatchesJavaShape(t *testing.T) {
 		t.Fatalf("MintConsoleJWTForUser() error = %v", err)
 	}
 
+	javaKey, err := javaJJWTSigningKey(testJWTSecret)
+	if err != nil {
+		t.Fatalf("javaJJWTSigningKey() error = %v", err)
+	}
+
 	claims := jwt.MapClaims{}
 	parsed, err := jwt.ParseWithClaims(token, claims, func(*jwt.Token) (any, error) {
-		return []byte(testJWTSecret), nil
+		return javaKey, nil
 	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS512.Alg()}))
 	if err != nil {
 		t.Fatalf("parse token: %v", err)

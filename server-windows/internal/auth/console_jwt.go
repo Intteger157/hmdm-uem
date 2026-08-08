@@ -2,6 +2,7 @@ package auth
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/binary"
 	"fmt"
 	"os"
@@ -53,12 +54,27 @@ func MintConsoleJWTForUser(secret string, subject ConsoleJWTSubject, rememberMe 
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
-	signed, err := token.SignedString([]byte(secret))
+	signingKey, err := javaJJWTSigningKey(secret)
+	if err != nil {
+		return "", fmt.Errorf("derive console JWT signing key: %w", err)
+	}
+	signed, err := token.SignedString(signingKey)
 	if err != nil {
 		return "", fmt.Errorf("sign console JWT: %w", err)
 	}
 
 	return signed, nil
+}
+
+// javaJJWTSigningKey mirrors io.jsonwebtoken 0.9.x: TokenProvider passes the
+// configured jwt.secretkey string to signWith(HS512, secret), which Base64-
+// decodes it before HMAC. Signing with raw UTF-8 bytes makes Java log
+// "Invalid JWT signature" even when JWT_SECRET matches ROOT.xml.
+func javaJJWTSigningKey(secret string) ([]byte, error) {
+	if decoded, err := base64.StdEncoding.DecodeString(secret); err == nil && len(decoded) > 0 {
+		return decoded, nil
+	}
+	return []byte(secret), nil
 }
 
 func jwtValiditySeconds(rememberMe bool) int64 {

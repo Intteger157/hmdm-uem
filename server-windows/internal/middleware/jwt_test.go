@@ -13,10 +13,15 @@ import (
 // build.properties, kept here so the interop assumption is pinned by a test.
 const javaSecret = "20c68f0d9185b1d18cf6add1e8b491fd89529a44"
 
-// signLikeJava mints a token the way the Java TokenProvider does for the
-// shipped hex secret: HS512 over the raw UTF-8 bytes of jwt.secretkey.
+// signLikeJava mints a token the way jjwt 0.9.x signs when jwt.secretkey is
+// passed to signWith(HS512, secret): the string is Base64-decoded first.
 func signLikeJava(t *testing.T, secret, login, authToken string, expiry time.Time) string {
 	t.Helper()
+
+	key, err := base64.StdEncoding.DecodeString(secret)
+	if err != nil {
+		t.Fatalf("decode secret: %v", err)
+	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.MapClaims{
 		"sub":   login,
@@ -24,7 +29,7 @@ func signLikeJava(t *testing.T, secret, login, authToken string, expiry time.Tim
 		"exp":   expiry.Unix(),
 	})
 
-	signed, err := token.SignedString([]byte(secret))
+	signed, err := token.SignedString(key)
 	if err != nil {
 		t.Fatalf("sign token: %v", err)
 	}

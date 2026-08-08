@@ -1,6 +1,7 @@
 package auth_test
 
 import (
+	"encoding/base64"
 	"testing"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -9,7 +10,7 @@ import (
 
 // Simulates com.hmdm.security.jwt.JWTFilter#doFilter auth-token validation.
 func TestSSOJWTMatchesJavaJWTFilterExpectations(t *testing.T) {
-	const secret = "shared-console-secret"
+	const secret = "20c68f0d9185b1d18cf6add1e8b491fd89529a44"
 	const login = "operator@example.com"
 	const authToken = "Ab12Cd34Ef56Gh78Ij90"
 
@@ -21,9 +22,14 @@ func TestSSOJWTMatchesJavaJWTFilterExpectations(t *testing.T) {
 		t.Fatalf("MintConsoleJWTForUser() error = %v", err)
 	}
 
+	key, err := base64.StdEncoding.DecodeString(secret)
+	if err != nil {
+		t.Fatalf("decode secret: %v", err)
+	}
+
 	claims := jwt.MapClaims{}
 	_, err = jwt.ParseWithClaims(signed, claims, func(*jwt.Token) (any, error) {
-		return []byte(secret), nil
+		return key, nil
 	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS512.Alg()}))
 	if err != nil {
 		t.Fatalf("parse token like Java TokenProvider.validateToken: %v", err)
