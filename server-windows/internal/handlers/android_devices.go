@@ -67,8 +67,9 @@ type androidDeviceView struct {
 }
 
 type androidConfigurationView struct {
-	ID   uint   `json:"id"`
-	Name string `json:"name"`
+	ID        uint   `json:"id"`
+	Name      string `json:"name"`
+	QrCodeKey string `json:"qrCodeKey,omitempty"`
 }
 
 type androidDeviceListResponse struct {
@@ -86,6 +87,7 @@ type androidDeviceSearchRow struct {
 	LastUpdate        *int64  `gorm:"column:lastupdate"`
 	ConfigurationID   *uint   `gorm:"column:configurationid"`
 	ConfigName        *string `gorm:"column:configname"`
+	ConfigQrCodeKey   *string `gorm:"column:configqrcodekey"`
 	Info              *string `gorm:"column:info"`
 	InfoJSON          []byte  `gorm:"column:infojson"`
 	IMEI              *string `gorm:"column:imei"`
@@ -228,7 +230,7 @@ func androidDeviceSortExpr(sortBy, sortDir string) string {
 
 func androidDeviceFilterSQL(user models.User, customerID int, search string, countOnly bool) (string, []any) {
 	selectClause := `SELECT d.id, d.number, d.description, d.lastupdate, d.configurationid,
-		c.name AS configname, d.info, d.infojson, d.imei, d.phone, d.enrolltime, d.publicip,
+		c.name AS configname, c.qrcodekey AS configqrcodekey, d.info, d.infojson, d.imei, d.phone, d.enrolltime, d.publicip,
 		d.custom1, d.custom2, d.custom3, d.oldnumber,
 		applications.pkg AS launcherpkg, applicationversions.version AS launcherversion,
 		groups.id AS groupid, groups.name AS groupname`
@@ -285,9 +287,14 @@ func buildAndroidDeviceListResponse(rows []androidDeviceSearchRow) androidDevice
 			if row.ConfigName != nil {
 				name = strings.TrimSpace(*row.ConfigName)
 			}
+			qrCodeKey := ""
+			if row.ConfigQrCodeKey != nil {
+				qrCodeKey = strings.TrimSpace(*row.ConfigQrCodeKey)
+			}
 			configurations[configKey] = androidConfigurationView{
-				ID:   configID,
-				Name: name,
+				ID:        configID,
+				Name:      name,
+				QrCodeKey: qrCodeKey,
 			}
 		}
 
