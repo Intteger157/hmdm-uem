@@ -194,6 +194,7 @@ server mdm 127.0.0.1:8443 ssl verify none sni str(mdm.intermark.global) ...
 backend be_mdm
     mode http
     option http-server-close
+    option forwardfor
     http-response set-header Strict-Transport-Security "max-age=31536000"
     server mdm 127.0.0.1:8080 check inter 10s fall 3 rise 2
 ```
