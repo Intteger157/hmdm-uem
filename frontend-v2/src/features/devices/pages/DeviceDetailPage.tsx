@@ -1,196 +1,32 @@
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
-import {
-  Activity,
-  AppWindow,
-  ArrowLeft,
-  Barcode,
-  Battery,
-  BatteryCharging,
-  BatteryLow,
-  BatteryMedium,
-  ChevronRight,
-  Clock,
-  Cpu,
-  Download,
-  FileText,
-  Globe,
-  HardDrive,
-  Hash,
-  Layers,
-  Lock,
-  LockKeyhole,
-  LockOpen,
-  MemoryStick,
-  Monitor,
-  RefreshCcw,
-  Shield,
-  ShieldOff,
-  User,
-} from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
+import { useState } from 'react'
 import { DeviceActionsPanel } from '@/features/devices/components/DeviceActionsPanel'
 import { DeviceDetailCommandToastProvider } from '@/features/devices/context/device-detail-command-toast-context'
-import { WindowsAppDeploymentsCard } from '@/features/devices/components/WindowsAppDeploymentsCard'
+import { AndroidDeviceOverview } from '@/features/devices/components/device-overview/AndroidDeviceOverview'
+import { DeviceDetailHeader } from '@/features/devices/components/device-overview/DeviceDetailHeader'
+import { WindowsDeviceOverview } from '@/features/devices/components/device-overview/WindowsDeviceOverview'
 import {
-  METRIC_TILE_CARD_CLASS,
-  METRIC_TILE_CLASS,
-  METRIC_TILE_CONTENT_CLASS,
-  METRIC_TILE_FULL_WIDTH_CLASS,
-  METRIC_TILE_HEADER_CLASS,
-  METRIC_TILE_LABEL_CLASS,
-  METRIC_TILE_VALUE_CLASS,
-  OVERVIEW_FLAT_CARD_CLASS,
-  OVERVIEW_STATS_GRID_CLASS,
-  DEVICE_DETAIL_PAGE_CONTAINER_CLASS,
-} from '@/features/devices/components/overview-card-styles'
+  DEVICE_DETAIL_CONTAINER_CLASS,
+  TAB_CONTENT_CLASS,
+  TAB_LIST_CLASS,
+} from '@/features/devices/components/device-overview/device-detail-layout-styles'
+import { WindowsAppDeploymentsCard } from '@/features/devices/components/WindowsAppDeploymentsCard'
 import { WindowsDeviceBitLockerTab } from '@/features/devices/components/WindowsDeviceBitLockerTab'
 import { WindowsDeviceInstalledSoftwareTab } from '@/features/devices/components/WindowsDeviceInstalledSoftwareTab'
 import { WindowsDeviceLocalUsersTab } from '@/features/devices/components/WindowsDeviceLocalUsersTab'
 import { WindowsDeviceServicesTab } from '@/features/devices/components/WindowsDeviceServicesTab'
 import { WindowsDeviceActionLogsTab } from '@/features/devices/components/WindowsDeviceActionLogsTab'
-import { WindowsAppliedConfigurationCard } from '@/features/windows/configurations/components/WindowsAppliedConfigurationCard'
-import { useDeviceDetailCommandToast } from '@/features/devices/context/device-detail-command-toast-context'
-import { usePermissions } from '@/features/auth/hooks/use-permissions'
-import { queueWindowsDeviceCommand } from '@/features/windows/api/windows-api'
 import { useDeviceByNumber } from '@/features/devices/hooks/use-device-by-number-query'
-import {
-  formatDeviceEnrollTime,
-  formatDeviceTimestamp,
-  formatUptime,
-  formatWindowsCurrentUser,
-  formatWindowsUpdateCheck,
-  resolveEnrollTime,
-  resolveLauncherVersion,
-  resolvePublicIp,
-} from '@/features/devices/utils/device-detail-formatters'
 import { resolveDeviceOnlineStatusCode } from '@/features/devices/utils/device-online-status'
 import { usePeriodicNow } from '@/shared/hooks/use-periodic-now'
-import { ANDROID_BRAND_COLOR, AndroidIcon, BatteryLevelIcon, WindowsIcon } from '@/components/icons/platform-icons'
-import { Badge } from '@/components/ui/badge'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Progress, ProgressIndicator, ProgressLabel, ProgressTrack, ProgressValue } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { Platform } from '@/shared/api/types/platform'
-import type { DeviceView } from '@/shared/api/types/device'
-import type { DeviceDiskVolume, WindowsUpdateItem } from '@/shared/api/types/device-detail'
-import type { TFunction } from 'i18next'
 import { cn } from '@/lib/utils'
-import { toast } from 'sonner'
-import { useState, type ReactNode } from 'react'
-
-const STATUS_BADGE: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  green: 'default',
-  yellow: 'outline',
-  red: 'destructive',
-  brown: 'secondary',
-  grey: 'secondary',
-}
-
-const NA = 'N/A'
-const METRIC_ICON_CLASS = 'size-6'
-const TILE_HEADER_ICON_CLASS = 'size-4 text-muted-foreground/70'
-const METRIC_CARD_HEADER_CLASS = METRIC_TILE_HEADER_CLASS
-const METRIC_CARD_CONTENT_CLASS = METRIC_TILE_CONTENT_CLASS
-const METRIC_VALUE_CLASS = METRIC_TILE_VALUE_CLASS
-const INTERACTIVE_TILE_CLASS = 'cursor-pointer hover:bg-accent/50 transition-colors'
-const TAB_CONTENT_CLASS = 'mt-0 h-auto w-full flex-none overflow-visible focus-visible:outline-none'
-
-function deviceTitle(device: DeviceView): string {
-  const pick = (...values: (string | null | undefined)[]) => {
-    for (const value of values) {
-      const trimmed = value?.trim()
-      if (trimmed) {
-        return trimmed
-      }
-    }
-    return device.number
-  }
-
-  if (device.platform === 'windows') {
-    return pick(device.hostname, device.model, device.number)
-  }
-  return pick(device.description, device.hostname, device.number)
-}
-
-function deviceDetailSubtitle(
-  device: DeviceView,
-  isWindows: boolean,
-  t: TFunction,
-): string {
-  const managedLabel = isWindows ? t('devices.subtitleWindows') : t('devices.subtitle')
-  return `${managedLabel} · ${device.number}`
-}
-
-function DeviceDetailPageHeader({
-  device,
-  title,
-  onlineStatus,
-  isWindows,
-  t,
-}: {
-  device: DeviceView
-  title: string
-  onlineStatus: string
-  isWindows: boolean
-  t: TFunction
-}) {
-  return (
-    <header className="space-y-4 border-b border-border pb-6">
-      <nav
-        aria-label={t('deviceDetail.breadcrumbLabel')}
-        className="flex flex-wrap items-center gap-x-1 gap-y-2 text-sm text-muted-foreground"
-      >
-        <Link to="/devices" search={{ platform: device.platform }} className="hover:text-foreground">
-          {t('nav.devices')}
-        </Link>
-        <ChevronRight className="size-3.5 shrink-0" aria-hidden="true" />
-        <span className="truncate">{title}</span>
-      </nav>
-
-      <div className="flex flex-wrap items-start gap-4">
-        <div className="flex size-12 shrink-0 items-center justify-center rounded-xl border border-border bg-card shadow-sm">
-          {isWindows ? (
-            <WindowsIcon className="size-7 text-foreground" aria-hidden="true" />
-          ) : (
-            <AndroidIcon
-              className={cn('size-7', ANDROID_BRAND_COLOR)}
-              aria-hidden="true"
-            />
-          )}
-        </div>
-
-        <div className="min-w-0 flex-1 space-y-1.5">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant={STATUS_BADGE[onlineStatus] ?? 'secondary'}>
-                {t(`devices.status.${onlineStatus}`)}
-              </Badge>
-              <Badge variant="outline" className="capitalize">
-                {device.platform}
-              </Badge>
-              {device.kioskMode ? <Badge variant="secondary">Kiosk</Badge> : null}
-              {device.mdmMode ? <Badge variant="secondary">MDM</Badge> : null}
-            </div>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {deviceDetailSubtitle(device, isWindows, t)}
-          </p>
-        </div>
-      </div>
-    </header>
-  )
-}
 
 interface DeviceDetailPageProps {
   deviceNumber: string
@@ -201,7 +37,7 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
   const { t } = useTranslation()
   const now = usePeriodicNow()
   const [activeTab, setActiveTab] = useState('overview')
-  const { data: device, isLoading, error } = useDeviceByNumber(deviceNumber, platform)
+  const { data: device, isLoading, error, refetch, isFetching } = useDeviceByNumber(deviceNumber, platform)
 
   if (isLoading) {
     return <DeviceDetailSkeleton />
@@ -209,7 +45,7 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
 
   if (error || !device) {
     return (
-      <div className={DEVICE_DETAIL_PAGE_CONTAINER_CLASS}>
+      <div className={DEVICE_DETAIL_CONTAINER_CLASS}>
         <Card>
           <CardHeader>
             <CardTitle>{t('deviceDetail.notFound')}</CardTitle>
@@ -229,145 +65,62 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
     )
   }
 
-  const androidVersion = device.androidVersion ?? device.info?.androidVersion
-  const batteryLevel = device.info?.batteryLevel
-  const launcherVersion = resolveLauncherVersion(device)
-  const enrollTime = resolveEnrollTime(device)
-  const publicIp = resolvePublicIp(device)
   const onlineStatus = resolveDeviceOnlineStatusCode(device, now)
   const isWindows = device.platform === 'windows'
-  const title = deviceTitle(device)
 
   return (
     <DeviceDetailCommandToastProvider onGoToActionLogs={() => setActiveTab('action-logs')}>
-      <div className={cn(DEVICE_DETAIL_PAGE_CONTAINER_CLASS, 'space-y-6')}>
-        <DeviceDetailPageHeader
+      <div className={cn(DEVICE_DETAIL_CONTAINER_CLASS, 'space-y-5 pb-8')}>
+        <DeviceDetailHeader
           device={device}
-          title={title}
           onlineStatus={onlineStatus}
-          isWindows={isWindows}
-          t={t}
+          isFetching={isFetching}
+          onRefresh={() => void refetch()}
+          onOpenActions={() => setActiveTab('actions')}
         />
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="h-auto w-full space-y-3">
-        <TabsList
-          variant="line"
-          className="h-auto w-full flex-wrap justify-start gap-1 [&_[data-slot=tabs-trigger]]:flex-none"
-        >
-          <TabsTrigger value="overview">{t('deviceDetail.tabs.overview')}</TabsTrigger>
-          <TabsTrigger value="installed-software">{t('deviceDetail.tabs.software')}</TabsTrigger>
-          {isWindows ? (
-            <TabsTrigger value="local-users">{t('deviceDetail.tabs.users')}</TabsTrigger>
-          ) : null}
-          {isWindows ? (
-            <TabsTrigger value="services">{t('deviceDetail.tabs.services')}</TabsTrigger>
-          ) : null}
-          {isWindows ? (
-            <TabsTrigger value="bitlocker">{t('deviceDetail.tabs.bitlocker')}</TabsTrigger>
-          ) : null}
-          {isWindows ? (
-            <TabsTrigger value="action-logs">{t('deviceDetail.tabs.actionLogs')}</TabsTrigger>
-          ) : null}
-          <TabsTrigger value="actions">{t('deviceDetail.tabs.actions')}</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className={TAB_CONTENT_CLASS}>
-          <div className="space-y-3">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="h-auto w-full space-y-4">
+          <TabsList variant="line" className={TAB_LIST_CLASS}>
+            <TabsTrigger value="overview">{t('deviceDetail.tabs.overview')}</TabsTrigger>
+            <TabsTrigger value="installed-software">{t('deviceDetail.tabs.software')}</TabsTrigger>
             {isWindows ? (
-              <WindowsOverviewGrid device={device} na={NA} t={t} />
+              <TabsTrigger value="local-users">{t('deviceDetail.tabs.users')}</TabsTrigger>
+            ) : null}
+            {isWindows ? (
+              <TabsTrigger value="services">{t('deviceDetail.tabs.services')}</TabsTrigger>
+            ) : null}
+            {isWindows ? (
+              <TabsTrigger value="bitlocker">{t('deviceDetail.tabs.bitlocker')}</TabsTrigger>
+            ) : null}
+            {isWindows ? (
+              <TabsTrigger value="action-logs">{t('deviceDetail.tabs.actionLogs')}</TabsTrigger>
+            ) : null}
+            <TabsTrigger value="actions">{t('deviceDetail.tabs.actions')}</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className={TAB_CONTENT_CLASS}>
+            {isWindows ? (
+              <WindowsDeviceOverview device={device} />
             ) : (
-              <div className={OVERVIEW_STATS_GRID_CLASS}>
-                <MetricCard
-                  className={METRIC_TILE_CLASS}
-                  label={t('devices.columns.number')}
-                  value={device.number}
-                  mono
-                  headerIcon={Hash}
-                />
-                <MetricCard
-                  className={METRIC_TILE_CLASS}
-                  label={t('deviceDetail.metrics.model')}
-                  value={device.model ?? device.manufacturer ?? device.info?.model ?? NA}
-                  headerIcon={Layers}
-                />
-                <MetricCard
-                  className={METRIC_TILE_CLASS}
-                  label={t('deviceDetail.metrics.lastOnline')}
-                  value={formatDeviceTimestamp(device.lastUpdate)}
-                  headerIcon={Clock}
-                />
-                <MetricCard
-                  className={METRIC_TILE_CLASS}
-                  label={t('deviceDetail.metrics.serial')}
-                  value={device.serialNumber ?? device.serial ?? device.info?.serial ?? NA}
-                  mono
-                  headerIcon={Barcode}
-                />
-                <MetricCard
-                  className={METRIC_TILE_CLASS}
-                  label={t('devices.columns.imei')}
-                  value={device.imei ?? device.info?.imei ?? NA}
-                  mono
-                />
-                <MetricCard
-                  className={METRIC_TILE_CLASS}
-                  label={t('devices.columns.androidVersion')}
-                  value={androidVersion ?? NA}
-                  headerIcon={Monitor}
-                  leadingIcon={
-                    androidVersion ? (
-                      <AndroidIcon className={cn(METRIC_ICON_CLASS, ANDROID_BRAND_COLOR)} />
-                    ) : undefined
-                  }
-                />
-                <MetricCard
-                  className={METRIC_TILE_CLASS}
-                  label={t('devices.columns.battery')}
-                  value={batteryLevel != null ? `${batteryLevel}%` : NA}
-                  leadingIcon={
-                    batteryLevel != null ? (
-                      <BatteryLevelIcon level={batteryLevel} className={METRIC_ICON_CLASS} />
-                    ) : undefined
-                  }
-                />
-                <MetricCard
-                  className={METRIC_TILE_CLASS}
-                  label={t('devices.columns.launcherVersion')}
-                  value={launcherVersion ?? NA}
-                />
-                <MetricCard
-                  className={METRIC_TILE_CLASS}
-                  label={t('deviceDetail.metrics.enrolled')}
-                  value={
-                    enrollTime != null ? formatDeviceEnrollTime(enrollTime) : t('devices.date.unknown')
-                  }
-                />
-                <MetricCard
-                  className={METRIC_TILE_CLASS}
-                  label={t('deviceDetail.metrics.publicIp')}
-                  value={publicIp ?? NA}
-                  mono
+              <AndroidDeviceOverview device={device} />
+            )}
+          </TabsContent>
+
+          <TabsContent value="installed-software" className={TAB_CONTENT_CLASS}>
+            {isWindows ? (
+              <div className="space-y-4">
+                <WindowsAppDeploymentsCard hardwareId={device.number} />
+                <WindowsDeviceInstalledSoftwareTab
+                  hardwareId={device.number}
+                  software={device.installedSoftware ?? []}
                 />
               </div>
-            )}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="installed-software" className={TAB_CONTENT_CLASS}>
-          {isWindows ? (
-            <div className="space-y-4">
-              <WindowsAppDeploymentsCard hardwareId={device.number} />
-              <WindowsDeviceInstalledSoftwareTab
-                hardwareId={device.number}
-                software={device.installedSoftware ?? []}
-              />
-            </div>
-          ) : (
-            <Card className="w-full overflow-visible shadow-none ring-0">
-              <CardContent className="p-0">
-                <table className="w-full min-w-full text-left text-sm">
-                  <thead className="border-b bg-muted/80 text-muted-foreground">
-                      <tr className="text-muted-foreground">
+            ) : (
+              <Card className="w-full overflow-visible border-border/80 shadow-none ring-0 dark:border-[#242424] dark:bg-[#111111]">
+                <CardContent className="p-0">
+                  <table className="w-full min-w-full text-left text-sm">
+                    <thead className="border-b border-border/80 bg-muted/40 text-muted-foreground dark:border-[#242424]">
+                      <tr>
                         <th className="px-4 py-2.5 font-medium">{t('deviceDetail.software.name')}</th>
                         <th className="px-4 py-2.5 font-medium">{t('deviceDetail.software.version')}</th>
                         <th className="px-4 py-2.5 font-medium">{t('deviceDetail.software.publisher')}</th>
@@ -376,7 +129,7 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
                     </thead>
                     <tbody>
                       {(device.installedSoftware ?? []).map((app) => (
-                        <tr key={`${app.name}-${app.version}`} className="border-b last:border-0">
+                        <tr key={`${app.name}-${app.version}`} className="border-b border-border/50 last:border-0 dark:border-[#242424]/80">
                           <td className="px-4 py-2.5 font-medium">{app.name}</td>
                           <td className="px-4 py-2.5 font-mono text-xs">{app.version}</td>
                           <td className="px-4 py-2.5 text-muted-foreground">{app.publisher}</td>
@@ -391,910 +144,88 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
                         </tr>
                       )}
                     </tbody>
-                </table>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        {isWindows ? (
-          <TabsContent value="local-users" className={TAB_CONTENT_CLASS}>
-            <WindowsDeviceLocalUsersTab
-              hardwareId={device.number}
-              localUsers={device.localUsers ?? []}
-            />
+                  </table>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
-        ) : null}
 
-        {isWindows ? (
-          <TabsContent value="services" className={TAB_CONTENT_CLASS}>
-            <WindowsDeviceServicesTab hardwareId={device.number} />
+          {isWindows ? (
+            <TabsContent value="local-users" className={TAB_CONTENT_CLASS}>
+              <WindowsDeviceLocalUsersTab
+                hardwareId={device.number}
+                localUsers={device.localUsers ?? []}
+              />
+            </TabsContent>
+          ) : null}
+
+          {isWindows ? (
+            <TabsContent value="services" className={TAB_CONTENT_CLASS}>
+              <WindowsDeviceServicesTab hardwareId={device.number} />
+            </TabsContent>
+          ) : null}
+
+          {isWindows ? (
+            <TabsContent value="bitlocker" className={TAB_CONTENT_CLASS}>
+              <WindowsDeviceBitLockerTab device={device} />
+            </TabsContent>
+          ) : null}
+
+          {isWindows ? (
+            <TabsContent value="action-logs" className={TAB_CONTENT_CLASS}>
+              <WindowsDeviceActionLogsTab hardwareId={device.number} />
+            </TabsContent>
+          ) : null}
+
+          <TabsContent value="actions" className={TAB_CONTENT_CLASS}>
+            <DeviceActionsPanel device={device} platform={device.platform} />
           </TabsContent>
-        ) : null}
-
-        {isWindows ? (
-          <TabsContent value="bitlocker" className={TAB_CONTENT_CLASS}>
-            <WindowsDeviceBitLockerTab device={device} />
-          </TabsContent>
-        ) : null}
-
-        {isWindows ? (
-          <TabsContent value="action-logs" className={TAB_CONTENT_CLASS}>
-            <WindowsDeviceActionLogsTab hardwareId={device.number} />
-          </TabsContent>
-        ) : null}
-
-        <TabsContent value="actions" className={TAB_CONTENT_CLASS}>
-          <DeviceActionsPanel device={device} platform={device.platform} />
-        </TabsContent>
-      </Tabs>
+        </Tabs>
       </div>
     </DeviceDetailCommandToastProvider>
   )
 }
 
-function WindowsOverviewGrid({
-  device,
-  na,
-  t,
-}: {
-  device: DeviceView
-  na: string
-  t: TFunction
-}) {
-  return (
-    <div className="space-y-4">
-      <div className={OVERVIEW_STATS_GRID_CLASS}>
-        <MetricCard
-          className={METRIC_TILE_CLASS}
-          label={t('devices.columns.hostname')}
-          value={device.hostname ?? NA}
-          mono
-          headerIcon={Monitor}
-        />
-      <MetricCard
-        className={METRIC_TILE_CLASS}
-        label={t('deviceDetail.metrics.model')}
-        value={device.model ?? device.manufacturer ?? NA}
-        headerIcon={Layers}
-      />
-      <MetricCard
-        className={METRIC_TILE_CLASS}
-        label={t('devices.columns.number')}
-        value={device.number}
-        mono
-        headerIcon={Hash}
-      />
-      <MetricCard
-        className={METRIC_TILE_CLASS}
-        label={t('deviceDetail.metrics.serial')}
-        value={device.serialNumber ?? device.serial ?? NA}
-        mono
-        headerIcon={Barcode}
-      />
-      <MetricCard
-        className={METRIC_TILE_CLASS}
-        label={t('devices.columns.windowsBuild')}
-        value={device.windowsBuild ?? NA}
-        headerIcon={AppWindow}
-      />
-      <MetricCard
-        className={METRIC_TILE_CLASS}
-        label={t('deviceDetail.metrics.uptime')}
-        value={formatUptime(device.uptimeSeconds)}
-        headerIcon={Activity}
-      />
-      <NetworkMetricCard className={METRIC_TILE_CLASS} device={device} na={na} t={t} />
-      <MetricCard
-        className={METRIC_TILE_CLASS}
-        label={t('deviceDetail.metrics.currentUser')}
-        value={formatWindowsCurrentUser(device.currentUser, na, device.localUsers)}
-        mono
-        headerIcon={User}
-      />
-      <CpuMetricCard className={METRIC_TILE_CLASS} device={device} na={na} t={t} />
-      <MetricCard
-        className={METRIC_TILE_CLASS}
-        label={t('deviceDetail.metrics.ram')}
-        value={device.ramGb != null ? `${device.ramGb} GB` : NA}
-        headerIcon={MemoryStick}
-      />
-      <AntivirusMetricCard className={METRIC_TILE_CLASS} device={device} na={na} t={t} />
-      <BatteryMetricCard className={METRIC_TILE_CLASS} device={device} hardwareId={device.number} t={t} />
-      <WindowsUpdateMetricCard className={METRIC_TILE_CLASS} device={device} hardwareId={device.number} na={na} t={t} />
-      <WindowsDiskMetrics className={METRIC_TILE_FULL_WIDTH_CLASS} device={device} na={na} t={t} />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <WindowsAppliedConfigurationCard hardwareId={device.number} className="h-full" />
-        <WindowsAppDeploymentsCard hardwareId={device.number} className="h-full" />
-      </div>
-    </div>
-  )
-}
-
-function formatDriveEncryptStatus(status: DeviceDiskVolume['encryptStatus'], t: TFunction): string {
-  switch (status) {
-    case 'on':
-      return t('deviceDetail.encrypted')
-    case 'off':
-      return t('deviceDetail.notEncrypted')
-    default:
-      return t('deviceDetail.encryptionUnknown')
-  }
-}
-
-function formatCpuFrequency(ghz: number | undefined, na: string): string {
-  if (ghz == null || !Number.isFinite(ghz) || ghz <= 0) {
-    return na
-  }
-  return `${ghz.toFixed(2)} GHz`
-}
-
-function metricTileCardClass(className?: string) {
-  return cn(METRIC_TILE_CARD_CLASS, OVERVIEW_FLAT_CARD_CLASS, className)
-}
-
-function CpuMetricCard({
-  device,
-  na,
-  t,
-  className,
-}: {
-  device: DeviceView
-  na: string
-  t: TFunction
-  className?: string
-}) {
-  const [open, setOpen] = useState(false)
-  const cpuName = device.cpu?.trim() || na
-  const cores =
-    device.cpuCores != null && device.cpuCores > 0 ? String(device.cpuCores) : na
-  const threads =
-    device.cpuThreads != null && device.cpuThreads > 0 ? String(device.cpuThreads) : na
-  const frequency = formatCpuFrequency(device.cpuFrequencyGhz, na)
-
-  return (
-    <>
-      <Card
-        className={cn(metricTileCardClass(className), INTERACTIVE_TILE_CLASS)}
-        onClick={() => setOpen(true)}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault()
-            setOpen(true)
-          }
-        }}
-      >
-        <CardHeader className={METRIC_CARD_HEADER_CLASS}>
-          <CardTitle className={METRIC_TILE_LABEL_CLASS}>
-            {t('deviceDetail.metrics.cpu')}
-          </CardTitle>
-          <Cpu className={TILE_HEADER_ICON_CLASS} />
-        </CardHeader>
-        <CardContent className={METRIC_CARD_CONTENT_CLASS}>
-          <p className={cn('line-clamp-2', METRIC_VALUE_CLASS)}>{cpuName}</p>
-        </CardContent>
-      </Card>
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t('deviceDetail.cpuDialog.title')}</DialogTitle>
-          </DialogHeader>
-          <dl className="space-y-3 text-sm">
-            <div className="flex flex-col gap-1">
-              <dt className="text-muted-foreground">{t('deviceDetail.cpuDialog.name')}</dt>
-              <dd className="font-medium">{cpuName}</dd>
-            </div>
-            <div className="flex flex-col gap-1">
-              <dt className="text-muted-foreground">{t('deviceDetail.cpuDialog.physicalCores')}</dt>
-              <dd className="font-medium">{cores}</dd>
-            </div>
-            <div className="flex flex-col gap-1">
-              <dt className="text-muted-foreground">{t('deviceDetail.cpuDialog.logicalProcessors')}</dt>
-              <dd className="font-medium">{threads}</dd>
-            </div>
-            <div className="flex flex-col gap-1">
-              <dt className="text-muted-foreground">{t('deviceDetail.cpuDialog.frequency')}</dt>
-              <dd className="font-medium">{frequency}</dd>
-            </div>
-          </dl>
-        </DialogContent>
-      </Dialog>
-    </>
-  )
-}
-
-function resolveBatteryHeaderIcon(
-  level: number | undefined,
-  status: string | undefined,
-): LucideIcon {
-  if (status?.toLowerCase().includes('charging')) {
-    return BatteryCharging
-  }
-  if (level == null) {
-    return Battery
-  }
-  if (level >= 80) {
-    return Battery
-  }
-  if (level >= 40) {
-    return BatteryMedium
-  }
-  if (level >= 20) {
-    return Battery
-  }
-  return BatteryLow
-}
-
-function BatteryMetricCard({
-  device,
-  hardwareId,
-  t,
-  className,
-}: {
-  device: DeviceView
-  hardwareId: string
-  t: TFunction
-  className?: string
-}) {
-  const level = device.batteryLevel
-  const status = device.batteryStatus?.trim()
-  const hasBattery = level != null
-  const HeaderIcon = resolveBatteryHeaderIcon(level, status)
-  const { canMutate } = usePermissions()
-  const { trackActionLogCommand } = useDeviceDetailCommandToast()
-  const [isQueueingReport, setIsQueueingReport] = useState(false)
-
-  const handleBatteryReport = (event: React.MouseEvent) => {
-    event.stopPropagation()
-    void (async () => {
-      setIsQueueingReport(true)
-      try {
-        const response = await queueWindowsDeviceCommand(hardwareId, 'battery_report', '{}')
-        trackActionLogCommand(hardwareId, response.id)
-      } catch {
-        toast.error(t('deviceDetail.battery.reportFailed'))
-      } finally {
-        setIsQueueingReport(false)
-      }
-    })()
-  }
-
-  return (
-    <Card className={metricTileCardClass(className)}>
-      <CardHeader className={METRIC_CARD_HEADER_CLASS}>
-        <CardTitle className={METRIC_TILE_LABEL_CLASS}>
-          {t('deviceDetail.metrics.battery')}
-        </CardTitle>
-        <div className="flex items-center gap-1">
-          {/* Generating the report queues a command on the device. */}
-          {canMutate && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-6"
-              disabled={isQueueingReport}
-              title={t('deviceDetail.battery.downloadReport')}
-              onClick={handleBatteryReport}
-            >
-              <FileText className="size-3" />
-            </Button>
-          )}
-          <HeaderIcon className={TILE_HEADER_ICON_CLASS} />
-        </div>
-      </CardHeader>
-      <CardContent className={METRIC_CARD_CONTENT_CLASS}>
-        {hasBattery ? (
-          <div className="space-y-0.5">
-            <p className={METRIC_TILE_VALUE_CLASS}>{level}%</p>
-            {status ? <p className="text-xs text-muted-foreground">{status}</p> : null}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">{t('deviceDetail.battery.desktopNoBattery')}</p>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
-function AntivirusMetricCard({
-  device,
-  na,
-  t,
-  className,
-}: {
-  device: DeviceView
-  na: string
-  t: TFunction
-  className?: string
-}) {
-  const [open, setOpen] = useState(false)
-  const name = device.antivirusName?.trim() || t('deviceDetail.antivirus.unknown')
-  const active = device.antivirusActive === true
-  const StatusIcon = active ? Shield : ShieldOff
-  const definitionsUpdated = formatWindowsUpdateCheck(device.antivirusDefinitionsUpdated, na)
-
-  return (
-    <>
-      <Card
-        className={cn(metricTileCardClass(className), INTERACTIVE_TILE_CLASS)}
-        onClick={() => setOpen(true)}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault()
-            setOpen(true)
-          }
-        }}
-      >
-        <CardHeader className={METRIC_CARD_HEADER_CLASS}>
-          <CardTitle className={METRIC_TILE_LABEL_CLASS}>
-            {t('deviceDetail.metrics.antivirus')}
-          </CardTitle>
-          <Shield className={TILE_HEADER_ICON_CLASS} />
-        </CardHeader>
-        <CardContent className={METRIC_CARD_CONTENT_CLASS}>
-          <div className="flex items-start gap-2">
-            <StatusIcon
-              className={cn(
-                'mt-0.5 size-4 shrink-0',
-                active ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive',
-              )}
-              strokeWidth={2.25}
-            />
-            <div className="min-w-0">
-              <p className={cn('truncate', METRIC_VALUE_CLASS)}>{name}</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {active ? t('deviceDetail.antivirus.active') : t('deviceDetail.antivirus.inactive')}
-              </p>
-            </div>
-          </div>
-          {!device.antivirusName ? <span className="sr-only">{na}</span> : null}
-        </CardContent>
-      </Card>
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{t('deviceDetail.antivirusDialog.title')}</DialogTitle>
-          </DialogHeader>
-          <dl className="space-y-3 text-sm">
-            <div className="flex flex-col gap-1">
-              <dt className="text-muted-foreground">{t('deviceDetail.antivirusDialog.product')}</dt>
-              <dd className="font-medium">{name}</dd>
-            </div>
-            <div className="flex flex-col gap-1">
-              <dt className="text-muted-foreground">{t('deviceDetail.antivirusDialog.status')}</dt>
-              <dd className="font-medium">
-                {active ? t('deviceDetail.antivirus.active') : t('deviceDetail.antivirus.inactive')}
-              </dd>
-            </div>
-            <div className="flex flex-col gap-1">
-              <dt className="text-muted-foreground">
-                {t('deviceDetail.antivirusDialog.definitionsUpdated')}
-              </dt>
-              <dd className="font-medium">{definitionsUpdated}</dd>
-            </div>
-          </dl>
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium">{t('deviceDetail.antivirusDialog.historyTitle')}</h4>
-            <div className="overflow-x-auto rounded-md border">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/40 text-left">
-                    <th className="px-3 py-2 font-medium">{t('deviceDetail.antivirusDialog.historyEvent')}</th>
-                    <th className="px-3 py-2 font-medium">{t('deviceDetail.antivirusDialog.historyDate')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td className="px-3 py-3 text-muted-foreground" colSpan={2}>
-                      {t('deviceDetail.antivirusDialog.historyPlaceholder')}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
-  )
-}
-
-function NetworkMetricCard({
-  device,
-  na,
-  t,
-  className,
-}: {
-  device: DeviceView
-  na: string
-  t: TFunction
-  className?: string
-}) {
-  const localIp = device.localIp?.trim() || na
-  const publicIp = device.publicIp?.trim() || na
-
-  return (
-    <Card className={metricTileCardClass(className)}>
-      <CardHeader className={METRIC_CARD_HEADER_CLASS}>
-        <CardTitle className={METRIC_TILE_LABEL_CLASS}>
-          {t('deviceDetail.metrics.network')}
-        </CardTitle>
-        <Globe className={TILE_HEADER_ICON_CLASS} />
-      </CardHeader>
-      <CardContent className={cn('space-y-1', METRIC_CARD_CONTENT_CLASS)}>
-        <p className="text-xs text-muted-foreground">
-          {t('deviceDetail.network.localIp')}{' '}
-          <span className="font-mono text-sm font-medium text-foreground">{localIp}</span>
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {t('deviceDetail.network.publicIp')}{' '}
-          <span className="font-mono text-sm font-medium text-foreground">{publicIp}</span>
-        </p>
-      </CardContent>
-    </Card>
-  )
-}
-
-function WindowsUpdateMetricCard({
-  device,
-  hardwareId,
-  na,
-  t,
-  className,
-}: {
-  device: DeviceView
-  hardwareId: string
-  na: string
-  t: TFunction
-  className?: string
-}) {
-  const [open, setOpen] = useState(false)
-  const [rollingBackKb, setRollingBackKb] = useState<string | null>(null)
-  const [installingKb, setInstallingKb] = useState<string | null>(null)
-  const pending = device.pendingUpdates != null ? String(device.pendingUpdates) : na
-  const lastChecked = formatWindowsUpdateCheck(device.lastUpdateCheck, na)
-  const pendingList = device.pendingUpdatesList ?? []
-  const installedList = device.installedUpdatesList ?? []
-  const { canMutate } = usePermissions()
-  const { trackActionLogCommand } = useDeviceDetailCommandToast()
-
-  const handleInstall = async (update: WindowsUpdateItem) => {
-    const kb = update.kb?.trim()
-    if (!kb) {
-      toast.error(t('deviceDetail.windowsUpdateDialog.installMissingKb'))
-      return
-    }
-
-    setInstallingKb(kb)
-    try {
-      const response = await queueWindowsDeviceCommand(hardwareId, 'install_windows_update', kb)
-      trackActionLogCommand(hardwareId, response.id)
-      setOpen(false)
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : t('deviceDetail.windowsUpdateDialog.installFailed'))
-    } finally {
-      setInstallingKb(null)
-    }
-  }
-
-  const handleRollback = async (update: WindowsUpdateItem) => {
-    const kb = update.kb?.trim()
-    if (!kb) {
-      toast.error(t('deviceDetail.windowsUpdateDialog.rollbackMissingKb'))
-      return
-    }
-
-    setRollingBackKb(kb)
-    try {
-      const response = await queueWindowsDeviceCommand(hardwareId, 'UninstallUpdate', kb)
-      trackActionLogCommand(hardwareId, response.id)
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : t('deviceDetail.windowsUpdateDialog.rollbackFailed'))
-    } finally {
-      setRollingBackKb(null)
-    }
-  }
-
-  return (
-    <>
-      <Card
-        className={cn(metricTileCardClass(className), INTERACTIVE_TILE_CLASS)}
-        onClick={() => setOpen(true)}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault()
-            setOpen(true)
-          }
-        }}
-      >
-        <CardHeader className={METRIC_CARD_HEADER_CLASS}>
-          <CardTitle className={METRIC_TILE_LABEL_CLASS}>
-            {t('deviceDetail.metrics.windowsUpdate')}
-          </CardTitle>
-          <RefreshCcw className={TILE_HEADER_ICON_CLASS} />
-        </CardHeader>
-        <CardContent className={cn('space-y-1', METRIC_CARD_CONTENT_CLASS)}>
-          <p className="text-xs text-muted-foreground">
-            {t('deviceDetail.windowsUpdate.pending')}{' '}
-            <span className="text-sm font-medium text-foreground">{pending}</span>
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {t('deviceDetail.windowsUpdate.lastChecked')}{' '}
-            <span className="text-sm font-medium text-foreground">{lastChecked}</span>
-          </p>
-        </CardContent>
-      </Card>
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{t('deviceDetail.windowsUpdateDialog.title')}</DialogTitle>
-          </DialogHeader>
-          <Tabs defaultValue="pending">
-            <TabsList>
-              <TabsTrigger value="pending">
-                {t('deviceDetail.windowsUpdateDialog.pendingTab')}
-              </TabsTrigger>
-              <TabsTrigger value="installed">
-                {t('deviceDetail.windowsUpdateDialog.installedTab')}
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="pending" className="mt-4">
-              <WindowsUpdateTable
-                emptyLabel={t('deviceDetail.windowsUpdateDialog.noPending')}
-                installingKb={installingKb}
-                na={na}
-                onInstall={(update) => void handleInstall(update)}
-                rows={pendingList}
-                showInstallActions={canMutate}
-                showInstalledOn={false}
-                t={t}
-              />
-            </TabsContent>
-            <TabsContent value="installed" className="mt-4">
-              <WindowsUpdateTable
-                emptyLabel={t('deviceDetail.windowsUpdateDialog.noInstalled')}
-                na={na}
-                onRollback={(update) => void handleRollback(update)}
-                rollingBackKb={rollingBackKb}
-                rows={installedList}
-                showActions={canMutate}
-                showInstalledOn
-                t={t}
-              />
-            </TabsContent>
-          </Tabs>
-        </DialogContent>
-      </Dialog>
-    </>
-  )
-}
-
-function WindowsUpdateTable({
-  rows,
-  emptyLabel,
-  na,
-  t,
-  showInstalledOn = false,
-  showActions = false,
-  showInstallActions = false,
-  rollingBackKb = null,
-  installingKb = null,
-  onRollback,
-  onInstall,
-}: {
-  rows: WindowsUpdateItem[]
-  emptyLabel: string
-  na: string
-  t: TFunction
-  showInstalledOn?: boolean
-  showActions?: boolean
-  showInstallActions?: boolean
-  rollingBackKb?: string | null
-  installingKb?: string | null
-  onRollback?: (update: WindowsUpdateItem) => void
-  onInstall?: (update: WindowsUpdateItem) => void
-}) {
-  if (rows.length === 0) {
-    return <p className="text-sm text-muted-foreground">{emptyLabel}</p>
-  }
-
-  return (
-    <div className="max-h-80 overflow-auto rounded-md border">
-      <table className="w-full text-sm">
-        <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
-          <tr className="border-b text-left">
-            <th className="px-3 py-2 font-medium">{t('deviceDetail.windowsUpdateDialog.columnTitle')}</th>
-            <th className="px-3 py-2 font-medium">{t('deviceDetail.windowsUpdateDialog.columnKb')}</th>
-            {showInstalledOn ? (
-              <th className="px-3 py-2 font-medium">
-                {t('deviceDetail.windowsUpdateDialog.columnInstalledOn')}
-              </th>
-            ) : null}
-            {showActions || showInstallActions ? (
-              <th className="px-3 py-2 font-medium">{t('deviceDetail.windowsUpdateDialog.columnActions')}</th>
-            ) : null}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => (
-            <tr key={`${row.kb ?? row.title}-${index}`} className="border-b last:border-b-0">
-              <td className="px-3 py-2 align-top">{row.title || na}</td>
-              <td className="px-3 py-2 align-top font-mono">{row.kb || na}</td>
-              {showInstalledOn ? (
-                <td className="px-3 py-2 align-top whitespace-nowrap">
-                  {formatWindowsUpdateCheck(row.installedOn, na)}
-                </td>
-              ) : null}
-              {showActions ? (
-                <td className="px-3 py-2 align-top">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={!row.kb?.trim() || rollingBackKb === row.kb}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      onRollback?.(row)
-                    }}
-                  >
-                    {t('deviceDetail.windowsUpdateDialog.rollback')}
-                  </Button>
-                </td>
-              ) : null}
-              {showInstallActions ? (
-                <td className="px-3 py-2 align-top">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={!row.kb?.trim() || installingKb === row.kb}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      onInstall?.(row)
-                    }}
-                  >
-                    <Download className="mr-1.5 size-3.5" />
-                    {t('deviceDetail.windowsUpdateDialog.install')}
-                  </Button>
-                </td>
-              ) : null}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-function DriveEncryptionIcon({
-  status,
-  t,
-}: {
-  status: DeviceDiskVolume['encryptStatus']
-  t: TFunction
-}) {
-  const label = formatDriveEncryptStatus(status, t)
-
-  const iconConfig = {
-    on: {
-      Icon: Lock,
-      className: 'text-emerald-600 dark:text-emerald-400',
-    },
-    off: {
-      Icon: LockOpen,
-      className: 'text-muted-foreground',
-    },
-    unknown: {
-      Icon: LockKeyhole,
-      className: 'text-muted-foreground/50',
-    },
-  }[status === 'on' || status === 'off' ? status : 'unknown']
-
-  const { Icon, className } = iconConfig
-
-  return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <span
-            role="img"
-            aria-label={label}
-            className="inline-flex shrink-0 items-center"
-          >
-            <Icon className={cn('size-3.5', className)} strokeWidth={2.25} />
-          </span>
-        }
-      />
-      <TooltipContent side="top">{label}</TooltipContent>
-    </Tooltip>
-  )
-}
-
-function WindowsDiskMetrics({
-  device,
-  na,
-  t,
-  className,
-}: {
-  device: DeviceView
-  na: string
-  t: TFunction
-  className?: string
-}) {
-  const disks = device.disks ?? []
-
-  if (disks.length === 0) {
-    const diskPercent =
-      device.diskTotalGb && device.diskUsedGb != null
-        ? Math.round((device.diskUsedGb / device.diskTotalGb) * 100)
-        : undefined
-
-    return (
-      <Card className={metricTileCardClass(className)}>
-        <CardHeader className={METRIC_CARD_HEADER_CLASS}>
-          <CardTitle className={METRIC_TILE_LABEL_CLASS}>
-            {t('deviceDetail.metrics.disk')}
-          </CardTitle>
-          <HardDrive className={TILE_HEADER_ICON_CLASS} />
-        </CardHeader>
-        <CardContent className={METRIC_CARD_CONTENT_CLASS}>
-          {diskPercent != null ? (
-            <Progress value={diskPercent} className="gap-1">
-              <ProgressLabel className="text-xs">
-                {device.diskUsedGb} / {device.diskTotalGb} GB
-              </ProgressLabel>
-              <ProgressTrack className="h-1.5">
-                <ProgressIndicator />
-              </ProgressTrack>
-              <ProgressValue className="text-xs" />
-            </Progress>
-          ) : (
-            <span className={METRIC_VALUE_CLASS}>{na}</span>
-          )}
-        </CardContent>
-      </Card>
-    )
-  }
-
-  return (
-    <Card className={metricTileCardClass(className)}>
-      <CardHeader className={METRIC_CARD_HEADER_CLASS}>
-        <CardTitle className={METRIC_TILE_LABEL_CLASS}>
-          {t('deviceDetail.metrics.disks')}
-        </CardTitle>
-        <HardDrive className={TILE_HEADER_ICON_CLASS} />
-      </CardHeader>
-      <CardContent className={cn('space-y-2.5', METRIC_CARD_CONTENT_CLASS)}>
-        {disks.map((disk) => {
-          const percent =
-            disk.totalGb > 0 ? Math.round((disk.usedGb / disk.totalGb) * 100) : undefined
-
-          return (
-            <div key={disk.mountPoint} className="space-y-1">
-              <div className="flex items-center justify-between gap-2 text-xs">
-                <span className="inline-flex min-w-0 items-center gap-1.5 font-medium">
-                  <DriveEncryptionIcon status={disk.encryptStatus} t={t} />
-                  <span>{disk.mountPoint}</span>
-                  {disk.label ? (
-                    <span className="truncate font-normal text-muted-foreground">· {disk.label}</span>
-                  ) : null}
-                </span>
-                {percent != null ? (
-                  <span className="shrink-0 tabular-nums text-muted-foreground">
-                    {disk.usedGb} / {disk.totalGb} GB
-                  </span>
-                ) : (
-                  <span className="shrink-0">{na}</span>
-                )}
-              </div>
-              {percent != null ? (
-                <Progress value={percent} className="gap-0">
-                  <ProgressTrack className="h-1.5">
-                    <ProgressIndicator />
-                  </ProgressTrack>
-                </Progress>
-              ) : null}
-            </div>
-          )
-        })}
-      </CardContent>
-    </Card>
-  )
-}
-
 function DeviceDetailSkeleton() {
   return (
-    <div className={cn(DEVICE_DETAIL_PAGE_CONTAINER_CLASS, 'space-y-6')}>
-      <header className="space-y-4 border-b border-border pb-6">
+    <div className={cn(DEVICE_DETAIL_CONTAINER_CLASS, 'space-y-5 pb-8')}>
+      <header className="space-y-4 border-b border-border/80 pb-5 dark:border-[#242424]">
         <div className="flex flex-wrap items-center gap-2">
           <Skeleton className="h-4 w-24" />
           <Skeleton className="size-3.5 rounded-full" />
           <Skeleton className="h-4 w-40" />
         </div>
-        <div className="flex flex-wrap items-start gap-4">
-          <Skeleton className="size-12 shrink-0 rounded-xl" />
-          <div className="min-w-0 flex-1 space-y-2">
-            <div className="flex flex-wrap items-center gap-3">
-              <Skeleton className="h-8 w-56" />
-              <Skeleton className="h-5 w-16 rounded-full" />
-              <Skeleton className="h-5 w-16 rounded-full" />
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <Skeleton className="size-11 shrink-0 rounded-lg" />
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Skeleton className="h-7 w-56" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+              </div>
+              <Skeleton className="h-3 w-80" />
             </div>
-            <Skeleton className="h-4 w-72" />
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-8 w-20" />
+            <Skeleton className="h-8 w-8" />
           </div>
         </div>
       </header>
-      <Tabs defaultValue="overview" className="w-full space-y-3">
-        <TabsList variant="line" className="h-auto w-full flex-wrap justify-start gap-1">
-          <Skeleton className="h-9 w-20" />
-          <Skeleton className="h-9 w-32" />
-          <Skeleton className="h-9 w-28" />
-          <Skeleton className="h-9 w-24" />
+      <Tabs defaultValue="overview" className="w-full space-y-4">
+        <TabsList variant="line" className={TAB_LIST_CLASS}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-9 w-24" />
+          ))}
         </TabsList>
-        <div className={OVERVIEW_STATS_GRID_CLASS}>
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Card key={i} className={cn(METRIC_TILE_CLASS, metricTileCardClass())}>
-              <CardHeader className={METRIC_CARD_HEADER_CLASS}>
-                <Skeleton className="h-3 w-16" />
-                <Skeleton className="h-3.5 w-3.5 rounded-full" />
-              </CardHeader>
-              <CardContent className={METRIC_CARD_CONTENT_CLASS}>
-                <Skeleton className="h-5 w-24" />
-              </CardContent>
-            </Card>
+        <div className="grid gap-5 lg:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-56 rounded-xl" />
           ))}
         </div>
+        <Skeleton className="h-40 rounded-xl" />
       </Tabs>
     </div>
-  )
-}
-
-function MetricCard({
-  label,
-  value,
-  mono,
-  headerIcon: HeaderIcon,
-  leadingIcon,
-  className,
-  valueClassName,
-}: {
-  label: string
-  value: string
-  mono?: boolean
-  headerIcon?: LucideIcon
-  leadingIcon?: ReactNode
-  className?: string
-  valueClassName?: string
-}) {
-  return (
-    <Card className={metricTileCardClass(className)}>
-      <CardHeader className={METRIC_CARD_HEADER_CLASS}>
-        <CardTitle className={METRIC_TILE_LABEL_CLASS}>{label}</CardTitle>
-        {HeaderIcon ? <HeaderIcon className={TILE_HEADER_ICON_CLASS} /> : null}
-      </CardHeader>
-      <CardContent className={METRIC_CARD_CONTENT_CLASS}>
-        <div className="flex items-center gap-2">
-          {leadingIcon ? <span className="inline-flex shrink-0 items-center">{leadingIcon}</span> : null}
-          <p
-            className={cn(
-              METRIC_VALUE_CLASS,
-              mono && 'font-mono text-sm',
-              valueClassName,
-            )}
-          >
-            {value}
-          </p>
-        </div>
-      </CardContent>
-    </Card>
   )
 }
