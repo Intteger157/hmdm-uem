@@ -77,9 +77,13 @@ export function DashboardPage() {
 
       <DashboardOverviewRow metrics={metrics} platform={platform} />
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_280px]">
-        <DashboardFleetHealth buckets={metrics.fleetHealth} total={metrics.total} />
-        <DashboardQuickActions />
+      <div className="grid gap-6 xl:grid-cols-5">
+        <div className="xl:col-span-3">
+          <DashboardFleetHealth buckets={metrics.fleetHealth} total={metrics.total} />
+        </div>
+        <div className="xl:col-span-2">
+          <DashboardQuickActions />
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -124,9 +128,9 @@ function DashboardSkeleton() {
           />
         ))}
       </div>
-      <div className="grid gap-6 xl:grid-cols-[1fr_280px]">
-        <div className="h-72 animate-pulse rounded-xl border border-border/80 bg-card dark:border-[#242424] dark:bg-[#111111]" />
-        <div className="h-72 animate-pulse rounded-xl border border-border/80 bg-card dark:border-[#242424] dark:bg-[#111111]" />
+      <div className="grid gap-6 xl:grid-cols-5">
+        <div className="h-72 animate-pulse rounded-xl border border-border/80 bg-card dark:border-[#242424] dark:bg-[#111111] xl:col-span-3" />
+        <div className="h-72 animate-pulse rounded-xl border border-border/80 bg-card dark:border-[#242424] dark:bg-[#111111] xl:col-span-2" />
       </div>
       <div className="grid gap-6 lg:grid-cols-2">
         {Array.from({ length: 2 }).map((_, index) => (

@@ -1,71 +1,123 @@
+import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
-import { FileUp, PackagePlus, Plus, Settings2, UsersRound } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import { Box, Monitor, Settings, Upload, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { usePermissions } from '@/features/auth/hooks/use-permissions'
-import { useDashboardPlatform } from '@/features/dashboard/hooks/use-dashboard-fleet-devices'
 import { dashboardEnterClass, dashboardSectionClass } from '@/features/dashboard/lib/dashboard-styles'
-import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+
+const linkClassName =
+  'flex items-center gap-2 -ml-1.5 rounded-md p-1.5 text-sm text-slate-300 transition-colors hover:bg-white/5 hover:text-white'
+
+interface QuickActionLinkProps {
+  to: string
+  icon: LucideIcon
+  label: string
+}
+
+function QuickActionLink({ to, icon: Icon, label }: QuickActionLinkProps) {
+  return (
+    <Link to={to} className={linkClassName}>
+      <Icon className="size-4 shrink-0 text-slate-400" aria-hidden />
+      <span>{label}</span>
+    </Link>
+  )
+}
+
+interface QuickActionColumnProps {
+  title: string
+  children: ReactNode
+}
+
+function QuickActionColumn({ title, children }: QuickActionColumnProps) {
+  return (
+    <div className="min-w-0">
+      <span className="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500">{title}</span>
+      <div className="flex flex-col gap-0.5">{children}</div>
+    </div>
+  )
+}
 
 export function DashboardQuickActions() {
   const { t } = useTranslation()
-  const { canMutate } = usePermissions()
-  const platform = useDashboardPlatform()
+  const { canMutate, allowsPlatform } = usePermissions()
 
   if (!canMutate) {
     return null
   }
 
-  const actions =
-    platform === 'windows'
-      ? [
-          { label: t('dashboard.quickActions.enrollDevice'), icon: Plus, to: '/windows/enrollment' },
-          {
-            label: t('dashboard.quickActions.createConfiguration'),
-            icon: Settings2,
-            to: '/windows/configurations/new',
-          },
-          {
-            label: t('dashboard.quickActions.addApplication'),
-            icon: PackagePlus,
-            to: '/windows/applications',
-          },
-          { label: t('dashboard.quickActions.uploadFile'), icon: FileUp, to: '/windows/files' },
-        ]
-      : [
-          {
-            label: t('dashboard.quickActions.createConfiguration'),
-            icon: Settings2,
-            to: '/configurations/new',
-          },
-          { label: t('dashboard.quickActions.addApplication'), icon: PackagePlus, to: '/applications' },
-          { label: t('dashboard.quickActions.uploadFile'), icon: FileUp, to: '/files' },
-          { label: t('dashboard.quickActions.createGroup'), icon: UsersRound, to: '/groups' },
-        ]
+  const showAndroid = allowsPlatform('android')
+  const showWindows = allowsPlatform('windows')
+
+  if (!showAndroid && !showWindows) {
+    return null
+  }
+
+  const columnCount = showAndroid && showWindows ? 2 : 1
 
   return (
-    <section className={cn(dashboardSectionClass(), dashboardEnterClass(3))}>
+    <section className={cn(dashboardSectionClass(), dashboardEnterClass(3), 'h-full')}>
       <div className="mb-4">
         <h2 className="text-base font-semibold tracking-tight">{t('dashboard.quickActions.title')}</h2>
         <p className="mt-1 text-xs text-muted-foreground">{t('dashboard.quickActions.description')}</p>
       </div>
-      <div className="flex flex-col gap-2">
-        {actions.map((action) => {
-          const Icon = action.icon
-          return (
-            <Button
-              key={action.to}
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-9 justify-start gap-2 px-2 text-sm font-normal text-muted-foreground hover:text-foreground"
-              render={<Link to={action.to} />}
-            >
-              <Icon className="size-4 shrink-0" />
-              {action.label}
-            </Button>
-          )
-        })}
+
+      <div
+        className={cn(
+          'grid gap-4 sm:gap-6',
+          columnCount === 2 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1',
+        )}
+      >
+        {showAndroid ? (
+          <QuickActionColumn title={t('dashboard.quickActions.androidSection')}>
+            <QuickActionLink
+              to="/configurations/new"
+              icon={Settings}
+              label={t('dashboard.quickActions.createConfiguration')}
+            />
+            <QuickActionLink
+              to="/applications"
+              icon={Box}
+              label={t('dashboard.quickActions.addApplication')}
+            />
+            <QuickActionLink
+              to="/files"
+              icon={Upload}
+              label={t('dashboard.quickActions.uploadFile')}
+            />
+            <QuickActionLink
+              to="/groups"
+              icon={Users}
+              label={t('dashboard.quickActions.createGroup')}
+            />
+          </QuickActionColumn>
+        ) : null}
+
+        {showWindows ? (
+          <QuickActionColumn title={t('dashboard.quickActions.windowsSection')}>
+            <QuickActionLink
+              to="/windows/configurations/new"
+              icon={Settings}
+              label={t('dashboard.quickActions.createConfiguration')}
+            />
+            <QuickActionLink
+              to="/windows/applications"
+              icon={Box}
+              label={t('dashboard.quickActions.addApplication')}
+            />
+            <QuickActionLink
+              to="/windows/files"
+              icon={Upload}
+              label={t('dashboard.quickActions.uploadFile')}
+            />
+            <QuickActionLink
+              to="/windows/enrollment"
+              icon={Monitor}
+              label={t('dashboard.quickActions.enrollment')}
+            />
+          </QuickActionColumn>
+        ) : null}
       </div>
     </section>
   )
@@ -73,32 +125,40 @@ export function DashboardQuickActions() {
 
 export function DashboardQuickActionsInline() {
   const { t } = useTranslation()
-  const { canMutate } = usePermissions()
-  const platform = useDashboardPlatform()
+  const { canMutate, allowsPlatform } = usePermissions()
 
   if (!canMutate) {
     return null
   }
 
-  const enrollPath = platform === 'windows' ? '/windows/enrollment' : '/devices'
-  const configPath =
-    platform === 'windows' ? '/windows/configurations/new' : '/configurations/new'
+  const showAndroid = allowsPlatform('android')
+  const showWindows = allowsPlatform('windows')
 
   return (
     <div className={cn('flex flex-wrap gap-2', dashboardEnterClass(1))}>
-      <Button type="button" variant="outline" size="sm" className="h-8" render={<Link to={enrollPath} />}>
-        <Plus className="size-3.5" />
-        {t('dashboard.quickActions.enrollDevice')}
-      </Button>
-      <Button type="button" variant="outline" size="sm" className="h-8" render={<Link to={configPath} />}>
-        <Settings2 className="size-3.5" />
-        {t('dashboard.quickActions.createConfiguration')}
-      </Button>
-      {platform === 'android' ? (
-        <Button type="button" variant="outline" size="sm" className="h-8" render={<Link to="/groups" />}>
-          <UsersRound className="size-3.5" />
+      {showWindows ? (
+        <Link to="/windows/enrollment" className={cn(linkClassName, 'inline-flex px-2.5 py-1')}>
+          <Monitor className="size-3.5 shrink-0" aria-hidden />
+          {t('dashboard.quickActions.enrollment')}
+        </Link>
+      ) : null}
+      {showAndroid ? (
+        <Link to="/configurations/new" className={cn(linkClassName, 'inline-flex px-2.5 py-1')}>
+          <Settings className="size-3.5 shrink-0" aria-hidden />
+          {t('dashboard.quickActions.createConfiguration')}
+        </Link>
+      ) : null}
+      {showWindows ? (
+        <Link to="/windows/configurations/new" className={cn(linkClassName, 'inline-flex px-2.5 py-1')}>
+          <Settings className="size-3.5 shrink-0" aria-hidden />
+          {t('dashboard.quickActions.createConfiguration')}
+        </Link>
+      ) : null}
+      {showAndroid ? (
+        <Link to="/groups" className={cn(linkClassName, 'inline-flex px-2.5 py-1')}>
+          <Users className="size-3.5 shrink-0" aria-hidden />
           {t('dashboard.quickActions.createGroup')}
-        </Button>
+        </Link>
       ) : null}
     </div>
   )
