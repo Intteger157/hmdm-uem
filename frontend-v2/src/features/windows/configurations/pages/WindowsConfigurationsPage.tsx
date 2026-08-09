@@ -79,7 +79,7 @@ export function WindowsConfigurationsPage() {
   }
 
   return (
-    <PageContainer>
+    <PageContainer size="wide">
       <PageHeader title={t('windowsConfigurations.title')} description={t('windowsConfigurations.subtitle')}>
         {canMutate && (
           <Button type="button" render={<Link to="/windows/configurations/new" />}>

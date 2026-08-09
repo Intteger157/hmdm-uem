@@ -108,7 +108,7 @@ export function WindowsFilesPage() {
   }
 
   return (
-    <PageContainer>
+    <PageContainer size="wide">
       <PageHeader title={t('windowsFiles.title')} description={t('windowsFiles.description')}>
         <div className="flex items-center gap-2">
           <input

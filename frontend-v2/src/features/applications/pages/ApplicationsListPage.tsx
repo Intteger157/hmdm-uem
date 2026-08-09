@@ -102,7 +102,7 @@ export function ApplicationsListPage() {
   }
 
   return (
-    <PageContainer>
+    <PageContainer size="wide">
       <PageHeader title={t('applications.title')} description={t('applications.subtitle')}>
         <Button type="button" onClick={() => setAddOpen(true)}>
           <Plus className="size-4" />

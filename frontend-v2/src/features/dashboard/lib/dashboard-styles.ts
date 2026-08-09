@@ -1,7 +1,7 @@
 import { pageContainerClass } from '@/shared/layout/page-layout'
 import { cn } from '@/lib/utils'
 
-export const DASHBOARD_CONTAINER_CLASS = pageContainerClass('wide')
+export const DASHBOARD_CONTAINER_CLASS = pageContainerClass('full')
 
 export const dashboardPanelClass = (className?: string) =>
   cn(

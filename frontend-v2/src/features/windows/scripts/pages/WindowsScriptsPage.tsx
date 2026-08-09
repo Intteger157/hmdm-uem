@@ -49,7 +49,7 @@ export function WindowsScriptsPage() {
   }
 
   return (
-    <PageContainer>
+    <PageContainer size="wide">
       <PageHeader title={t('windowsScripts.title')} description={t('windowsScripts.description')}>
         {canMutate && (
           <Button

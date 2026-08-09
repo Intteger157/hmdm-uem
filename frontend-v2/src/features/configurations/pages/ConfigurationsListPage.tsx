@@ -58,7 +58,7 @@ export function ConfigurationsListPage() {
   }
 
   return (
-    <PageContainer>
+    <PageContainer size="wide">
       <PageHeader title={t('configurations.title')} description={t('configurations.subtitle')} />
 
       <PageToolbar>

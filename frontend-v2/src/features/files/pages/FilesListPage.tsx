@@ -76,7 +76,7 @@ export function FilesListPage() {
   }
 
   return (
-    <PageContainer>
+    <PageContainer size="wide">
       <PageHeader title={t('files.title')} description={t('files.subtitle')}>
         <Button
           type="button"

@@ -83,7 +83,7 @@ export function WindowsAppCatalogPage() {
   }
 
   return (
-    <PageContainer>
+    <PageContainer size="wide">
       <PageHeader title={t('windowsAppCatalog.title')} description={t('windowsAppCatalog.subtitle')}>
         {canMutate && (
           <Button type="button" onClick={() => setCreateOpen(true)}>

@@ -118,7 +118,7 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
       : undefined
 
   return (
-    <PageContainer>
+    <PageContainer size="wide">
       <PageHeader
         title={t('devices.title')}
         description={platform === 'android' ? t('devices.subtitle') : t('devices.subtitleWindows')}

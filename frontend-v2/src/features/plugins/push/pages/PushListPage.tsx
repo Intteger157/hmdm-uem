@@ -57,7 +57,7 @@ export function PushListPage() {
   }
 
   return (
-    <PageContainer>
+    <PageContainer size="wide">
       <PageHeader title={t('plugins.push.title')} description={t('plugins.push.subtitle')}>
         <Button type="button" onClick={() => setSendOpen(true)}>
           <Plus className="mr-1 size-4" />

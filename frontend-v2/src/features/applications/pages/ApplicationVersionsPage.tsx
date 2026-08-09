@@ -118,7 +118,7 @@ export function ApplicationVersionsPage({ applicationId }: ApplicationVersionsPa
   })
 
   return (
-    <PageContainer>
+    <PageContainer size="wide">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex items-center gap-3">
           <Button type="button" variant="ghost" size="icon-sm" render={<Link to="/applications" />}>

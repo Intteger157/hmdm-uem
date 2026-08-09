@@ -67,7 +67,7 @@ export function UsersListPage() {
   }
 
   return (
-    <PageContainer>
+    <PageContainer size="wide">
       <PageHeader title={t('users.title')} description={t('users.subtitle')} />
 
       <PageToolbar>

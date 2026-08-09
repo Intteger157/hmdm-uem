@@ -64,7 +64,7 @@ export function GroupsListPage() {
   }
 
   return (
-    <PageContainer>
+    <PageContainer size="wide">
       <PageHeader title={t('groups.title')} description={t('groups.subtitle')} />
 
       <PageToolbar>

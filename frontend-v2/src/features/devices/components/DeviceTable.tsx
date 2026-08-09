@@ -33,7 +33,8 @@ import type { Platform } from '@/shared/api/types/platform'
 import {
   DATA_TABLE_CLASS,
   DATA_TABLE_COL_COMPACT,
-  DATA_TABLE_COL_GROW,
+  DATA_TABLE_COL_FLEX,
+  DATA_TABLE_COL_MEDIUM,
   DATA_TABLE_WRAPPER_CLASS,
 } from '@/shared/layout/page-layout'
 import { cn } from '@/lib/utils'
@@ -125,13 +126,13 @@ export function DeviceTable({
           <thead className="border-b bg-muted/40 text-sm text-muted-foreground">
             <tr>
               <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.status')}</th>
-              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_GROW)}>{t('devices.columns.hostname')}</th>
-              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_GROW)}>{t('devices.columns.description')}</th>
-              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_GROW)}>{t('devices.columns.configuration')}</th>
-              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.os')}</th>
-              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.bitlocker')}</th>
-              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_GROW)}>{t('devices.columns.currentUser')}</th>
-              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.lastUpdate')}</th>
+              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_FLEX)}>{t('devices.columns.hostname')}</th>
+              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_FLEX)}>{t('devices.columns.description')}</th>
+              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_FLEX)}>{t('devices.columns.configuration')}</th>
+              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_MEDIUM)}>{t('devices.columns.os')}</th>
+              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_MEDIUM)}>{t('devices.columns.bitlocker')}</th>
+              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_FLEX)}>{t('devices.columns.currentUser')}</th>
+              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_MEDIUM)}>{t('devices.columns.lastUpdate')}</th>
               {showWindowsActions && (
                 <th className={cn('px-3 py-3.5 font-medium text-right', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.actions')}</th>
               )}
@@ -161,16 +162,16 @@ export function DeviceTable({
         <thead className="border-b bg-muted/40 text-sm text-muted-foreground">
           <tr>
             <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.status')}</th>
-            <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.date')}</th>
-            <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.number')}</th>
-            <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_GROW)}>{t('devices.columns.model')}</th>
+            <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_MEDIUM)}>{t('devices.columns.date')}</th>
+            <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_MEDIUM)}>{t('devices.columns.number')}</th>
+            <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_FLEX)}>{t('devices.columns.model')}</th>
             <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.permissions')}</th>
             <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.installations')}</th>
             <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.files')}</th>
-            <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_GROW)}>{t('devices.columns.configuration')}</th>
+            <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_FLEX)}>{t('devices.columns.configuration')}</th>
             <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.battery')}</th>
-            <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.androidVersion')}</th>
-            <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.publicIp')}</th>
+            <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_MEDIUM)}>{t('devices.columns.androidVersion')}</th>
+            <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_MEDIUM)}>{t('devices.columns.publicIp')}</th>
             {showAndroidActions && (
               <th className={cn('px-3 py-3.5 font-medium text-right', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.actions')}</th>
             )}

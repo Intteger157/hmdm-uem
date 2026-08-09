@@ -32,7 +32,7 @@ export function RolesListPage() {
   }
 
   return (
-    <PageContainer>
+    <PageContainer size="wide">
       <PageHeader title={t('roles.title')} description={t('roles.subtitle')}>
         <Button type="button" onClick={() => { setEditTarget(null); setFormOpen(true) }}>
           <Plus className="mr-1 size-4" />

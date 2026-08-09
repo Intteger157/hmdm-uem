@@ -46,7 +46,7 @@ export function DashboardPage() {
 
   if (summaryQuery.error || !summaryQuery.data || !metrics) {
     return (
-      <PageContainer size="wide">
+      <PageContainer size="full">
         <div className="rounded-xl border border-destructive/40 bg-card p-6 dark:bg-[#111111]">
           <h2 className="text-lg font-semibold text-destructive">{t('dashboard.errorTitle')}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t('dashboard.errorDescription')}</p>
@@ -64,7 +64,7 @@ export function DashboardPage() {
   }
 
   return (
-    <PageContainer size="wide" className="pb-8">
+    <PageContainer size="full" className="pb-8">
       <DashboardHeader
         dataUpdatedAt={summaryQuery.dataUpdatedAt}
         isFetching={summaryQuery.isFetching}
@@ -111,7 +111,7 @@ function DashboardSkeleton() {
   const { t } = useTranslation()
 
   return (
-    <PageContainer size="wide" className="pb-8">
+    <PageContainer size="full" className="pb-8">
       <div className="space-y-2">
         <div className="h-8 w-48 animate-pulse rounded-md bg-muted" />
         <div className="h-4 w-72 animate-pulse rounded-md bg-muted/70" />

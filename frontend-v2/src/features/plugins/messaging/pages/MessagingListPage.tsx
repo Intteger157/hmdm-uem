@@ -60,7 +60,7 @@ export function MessagingListPage() {
   }
 
   return (
-    <PageContainer>
+    <PageContainer size="wide">
       <PageHeader title={t('plugins.messaging.title')} description={t('plugins.messaging.subtitle')}>
         <Button type="button" onClick={() => setSendOpen(true)}>
           <Plus className="mr-1 size-4" />
