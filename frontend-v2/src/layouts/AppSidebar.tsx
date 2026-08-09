@@ -28,6 +28,7 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -36,6 +37,7 @@ import {
   SidebarMenuSubItem,
   SidebarSeparator,
 } from '@/components/ui/sidebar'
+import { Logo } from '@/components/Logo'
 import { AndroidIcon, WindowsIcon } from '@/components/icons/platform-icons'
 import { usePermissions } from '@/features/auth/hooks/use-permissions'
 
@@ -320,7 +322,20 @@ export function AppSidebar() {
   const showWindows = allowsPlatform('windows')
 
   return (
-    <SidebarContent className="gap-0 p-0">
+    <>
+      <SidebarHeader className="border-b border-sidebar-border px-4 py-4 md:hidden">
+        <Link
+          to="/dashboard"
+          className="flex items-center gap-3 rounded-md outline-none ring-sidebar-ring focus-visible:ring-2"
+        >
+          <Logo size="sm" alt="" />
+          <span className="truncate text-base font-semibold leading-tight text-sidebar-foreground">
+            {t('app.title')}
+          </span>
+        </Link>
+      </SidebarHeader>
+
+      <SidebarContent className="gap-0 p-0">
       <SidebarGroup>
         <SidebarGroupLabel>{t('nav.general')}</SidebarGroupLabel>
         <SidebarGroupContent>
@@ -386,5 +401,6 @@ export function AppSidebar() {
         </>
       )}
     </SidebarContent>
+    </>
   )
 }

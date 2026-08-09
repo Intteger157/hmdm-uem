@@ -43,7 +43,7 @@ function AppLayoutShell() {
       <AppTopBar userLabel={user?.name ?? user?.login} onLogout={handleLogout} />
 
       <div className="flex min-h-0 w-full flex-1 overflow-hidden bg-background text-foreground">
-        <Sidebar collapsible="offcanvas" className="border-r border-sidebar-border">
+        <Sidebar collapsible="none" className="min-h-0 shrink-0 border-r border-sidebar-border">
           <AppSidebar />
         </Sidebar>
 

@@ -1,5 +1,6 @@
 import { LogOut, Menu } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { Logo } from '@/components/Logo'
 import { ThemeIconToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
 import { useSidebar } from '@/components/ui/sidebar'
@@ -14,7 +15,7 @@ export function AppTopBar({ userLabel, onLogout }: AppTopBarProps) {
   const { toggleSidebar } = useSidebar()
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-card px-4 sm:px-6">
+    <header className="relative z-20 flex h-16 shrink-0 items-center justify-between border-b border-border bg-card px-4 sm:px-6">
       <div className="flex min-w-0 items-center gap-3">
         <Button
           type="button"
@@ -26,8 +27,10 @@ export function AppTopBar({ userLabel, onLogout }: AppTopBarProps) {
         >
           <Menu className="size-5" />
         </Button>
-        <img src="/logo.svg" alt="" className="size-9 shrink-0" />
-        <p className="truncate text-lg font-semibold leading-tight">{t('app.title')}</p>
+        <div className="flex shrink-0 items-center gap-3">
+          <Logo size="sm" alt="" />
+          <p className="text-lg font-semibold leading-tight text-foreground">{t('app.title')}</p>
+        </div>
       </div>
 
       <div className="flex items-center gap-3 sm:gap-4">
