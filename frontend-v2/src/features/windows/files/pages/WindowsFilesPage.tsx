@@ -2,14 +2,15 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import axios from 'axios'
 import { Loader2, Plus, Trash2, TriangleAlert, Upload } from 'lucide-react'
-import { AppUploadProgress } from '@/features/windows/applications/components/AppUploadProgress'
-import type { UploadProgressState } from '@/features/windows/applications/utils/installer-upload'
 import { formatUploadBytes } from '@/features/windows/applications/utils/installer-upload'
 import {
   useDeleteStoredFileMutation,
   useStoredFilesQuery,
-  useUploadStoredFileMutation,
 } from '@/features/windows/files/hooks/use-windows-files'
+import {
+  selectIsGlobalUploading,
+  useGlobalUploadStore,
+} from '@/features/upload/store/global-upload-store'
 import type { StoredFile } from '@/features/windows/files/types/stored-file'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -34,17 +35,14 @@ export function WindowsFilesPage() {
   const { t } = useTranslation()
   const { canMutate } = usePermissions()
   const { data, isLoading, error, refetch } = useStoredFilesQuery()
-  const uploadMutation = useUploadStoredFileMutation()
   const deleteMutation = useDeleteStoredFileMutation()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [isUploading, setIsUploading] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState<UploadProgressState | null>(null)
+  const startStoredFileUpload = useGlobalUploadStore((state) => state.startStoredFileUpload)
+  const isUploading = useGlobalUploadStore(selectIsGlobalUploading)
   const [deleteTarget, setDeleteTarget] = useState<StoredFile | null>(null)
   const [isForceDeleteRequired, setIsForceDeleteRequired] = useState(false)
 
-  const resetUploadState = () => {
-    setIsUploading(false)
-    setUploadProgress(null)
+  const resetFileInput = () => {
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -64,23 +62,6 @@ export function WindowsFilesPage() {
     }
     const message = getWindowsApiErrorMessage(error, '')
     return /configuration deployments?/i.test(message)
-  }
-
-  const handleUpload = async (file: File) => {
-    setIsUploading(true)
-    setUploadProgress({ percent: 0, loaded: 0, total: file.size })
-    try {
-      await uploadMutation.mutateAsync({
-        file,
-        onUploadProgress: setUploadProgress,
-      })
-      resetUploadState()
-      toast.success(t('windowsFiles.upload.success'))
-    } catch (error) {
-      toast.error(getWindowsApiErrorMessage(error, t('windowsFiles.upload.error')))
-    } finally {
-      resetUploadState()
-    }
   }
 
   const handleDelete = async () => {
@@ -119,7 +100,8 @@ export function WindowsFilesPage() {
             onChange={(event) => {
               const file = event.target.files?.[0]
               if (file) {
-                void handleUpload(file)
+                startStoredFileUpload(file)
+                resetFileInput()
               }
             }}
           />
@@ -139,14 +121,6 @@ export function WindowsFilesPage() {
           )}
         </div>
       </PageHeader>
-
-      {isUploading && uploadProgress ? (
-        <Card>
-          <CardContent className="py-6">
-            <AppUploadProgress progress={uploadProgress} />
-          </CardContent>
-        </Card>
-      ) : null}
 
       <Card>
         <CardContent className="p-0">

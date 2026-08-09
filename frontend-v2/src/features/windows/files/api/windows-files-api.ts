@@ -19,6 +19,7 @@ export async function fetchStoredFiles(): Promise<StoredFile[]> {
 
 export interface UploadStoredFileOptions {
   onUploadProgress?: (progress: UploadProgressState) => void
+  signal?: AbortSignal
 }
 
 export async function uploadStoredFile(
@@ -34,6 +35,7 @@ export async function uploadStoredFile(
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
     timeout: 0,
+    signal: options?.signal,
     onUploadProgress: (event) => {
       if (!options?.onUploadProgress) {
         return

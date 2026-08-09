@@ -12,6 +12,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { GlobalUploadManager } from '@/features/upload/components/GlobalUploadManager'
 
 /** Close the mobile drawer after route changes (sidebar link selected). */
 function CloseMobileSidebarOnNavigate() {
@@ -93,6 +94,8 @@ function AppLayoutShell() {
           </div>
         </SidebarInset>
       </div>
+
+      <GlobalUploadManager />
     </>
   )
 }
