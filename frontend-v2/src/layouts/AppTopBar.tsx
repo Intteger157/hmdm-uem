@@ -1,7 +1,8 @@
-import { LogOut } from 'lucide-react'
+import { LogOut, Menu } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ThemeIconToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
+import { useSidebar } from '@/components/ui/sidebar'
 
 type AppTopBarProps = {
   userLabel?: string
@@ -10,10 +11,21 @@ type AppTopBarProps = {
 
 export function AppTopBar({ userLabel, onLogout }: AppTopBarProps) {
   const { t } = useTranslation()
+  const { toggleSidebar } = useSidebar()
 
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-card px-4 sm:px-6">
       <div className="flex min-w-0 items-center gap-3">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="shrink-0 md:hidden"
+          onClick={toggleSidebar}
+          aria-label={t('nav.openMenu')}
+        >
+          <Menu className="size-5" />
+        </Button>
         <img src="/logo.svg" alt="" className="size-9 shrink-0" />
         <p className="truncate text-lg font-semibold leading-tight">{t('app.title')}</p>
       </div>

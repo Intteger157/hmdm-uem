@@ -244,8 +244,11 @@ cd ~/hmdm-uem
 ./deploy/scripts/sync-jwt-secret.sh
 ./deploy/scripts/sync-file-urls.sh
 ./deploy/scripts/restore-launcher-apk.sh
+./deploy/scripts/fix-hmdm-proxy-ips.sh
 ./deploy/scripts/sync-deviceremote-settings.sh
 ```
+
+If device **public IP** shows `172.18.x.x` (Docker) instead of the phone's real address, HAProxy must use `option forwardfor` on `be_mdm` and you must run `fix-hmdm-proxy-ips.sh` (sets Tomcat `proxy.addresses` + restarts gateway/hmdm). IPs refresh on the next device sync.
 
 If QR enrollment fails with **Tomcat 404** on `/files/app-opensource-release.apk`, APKs were not copied to **`deploy/volumes/work/files/`** (check `files.directory` in `ROOT.xml`). Run `restore-launcher-apk.sh` or:
 

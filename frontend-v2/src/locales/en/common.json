@@ -32,6 +32,7 @@
   "theme.usingLight": "Using light mode (system)",
   "theme.usingDark": "Using dark mode (system)",
   "nav.logout": "Log out",
+  "nav.openMenu": "Open menu",
   "common.comingSoon": "This section is coming in a future release.",
   "common.search": "Search",
   "common.actions": "Actions",

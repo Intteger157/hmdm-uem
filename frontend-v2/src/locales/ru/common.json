@@ -32,6 +32,7 @@
   "theme.usingLight": "Светлая (по системе)",
   "theme.usingDark": "Тёмная (по системе)",
   "nav.logout": "Выйти",
+  "nav.openMenu": "Открыть меню",
   "common.comingSoon": "Раздел будет доступен в следующих версиях.",
   "common.search": "Поиск",
   "common.actions": "Действия",
