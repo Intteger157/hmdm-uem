@@ -28,8 +28,25 @@ func (h *WindowsHandler) ListDeviceGroups(c *gin.Context) {
 	}
 
 	items := make([]models.DeviceGroupJSON, 0, len(groups))
+	groupIDs := make([]uint, 0, len(groups))
 	for _, group := range groups {
-		items = append(items, models.DeviceGroupJSON{ID: group.ID, Name: group.Name})
+		groupIDs = append(groupIDs, group.ID)
+	}
+	deviceCounts := countDevicesByGroup(groupIDs)
+	groupProfiles := lookupGroupProfiles(groupIDs)
+
+	for _, group := range groups {
+		item := models.DeviceGroupJSON{
+			ID:          group.ID,
+			Name:        group.Name,
+			Description: group.Description,
+			DeviceCount: deviceCounts[group.ID],
+		}
+		if profile, ok := groupProfiles[group.ID]; ok {
+			item.ConfigurationID = profile.ID
+			item.ConfigurationName = profile.Name
+		}
+		items = append(items, item)
 	}
 
 	c.JSON(http.StatusOK, models.DeviceGroupListResponse{
@@ -52,14 +69,131 @@ func (h *WindowsHandler) CreateDeviceGroup(c *gin.Context) {
 		return
 	}
 
-	group := models.WindowsDeviceGroup{Name: name}
+	group := models.WindowsDeviceGroup{
+		Name:        name,
+		Description: strings.TrimSpace(req.Description),
+	}
 	if err := db.DB.Create(&group).Error; err != nil {
 		log.Printf("[create-device-group] save failed: name=%q err=%v", name, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create device group"})
 		return
 	}
 
-	c.JSON(http.StatusCreated, models.DeviceGroupJSON{ID: group.ID, Name: group.Name})
+	c.JSON(http.StatusCreated, models.DeviceGroupJSON{
+		ID:          group.ID,
+		Name:        group.Name,
+		Description: group.Description,
+	})
+}
+
+// UpdateDeviceGroup updates a Windows device group.
+func (h *WindowsHandler) UpdateDeviceGroup(c *gin.Context) {
+	groupID, ok := parseUintParam(c.Param("id"))
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid group id"})
+		return
+	}
+
+	var req models.UpdateDeviceGroupRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "name is required"})
+		return
+	}
+
+	var group models.WindowsDeviceGroup
+	if err := db.DB.First(&group, groupID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "group not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup group"})
+		return
+	}
+
+	group.Name = name
+	group.Description = strings.TrimSpace(req.Description)
+	if err := db.DB.Save(&group).Error; err != nil {
+		log.Printf("[update-device-group] save failed: id=%d err=%v", groupID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update device group"})
+		return
+	}
+
+	item := models.DeviceGroupJSON{
+		ID:          group.ID,
+		Name:        group.Name,
+		Description: group.Description,
+		DeviceCount: countDevicesByGroup([]uint{group.ID})[group.ID],
+	}
+	if profile, ok := lookupGroupProfiles([]uint{group.ID})[group.ID]; ok {
+		item.ConfigurationID = profile.ID
+		item.ConfigurationName = profile.Name
+	}
+
+	c.JSON(http.StatusOK, item)
+}
+
+// DeleteDeviceGroup removes a Windows device group and clears memberships.
+func (h *WindowsHandler) DeleteDeviceGroup(c *gin.Context) {
+	groupID, ok := parseUintParam(c.Param("id"))
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid group id"})
+		return
+	}
+
+	var group models.WindowsDeviceGroup
+	if err := db.DB.First(&group, groupID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "group not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup group"})
+		return
+	}
+
+	if err := db.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&models.WindowsDevice{}).Where("group_id = ?", groupID).Update("group_id", nil).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("group_id = ?", groupID).Delete(&models.WindowsProfileGroup{}).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&group).Error
+	}); err != nil {
+		log.Printf("[delete-device-group] failed: id=%d err=%v", groupID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete device group"})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
+func countDevicesByGroup(groupIDs []uint) map[uint]int64 {
+	counts := make(map[uint]int64)
+	if len(groupIDs) == 0 {
+		return counts
+	}
+
+	var rows []struct {
+		GroupID uint
+		Count   int64
+	}
+	if err := db.DB.Model(&models.WindowsDevice{}).
+		Select("group_id, COUNT(*) AS count").
+		Where("group_id IN ?", groupIDs).
+		Group("group_id").
+		Scan(&rows).Error; err != nil {
+		return counts
+	}
+	for _, row := range rows {
+		counts[row.GroupID] = row.Count
+	}
+	return counts
 }
 
 // UpdateDeviceGroupMembership sets the group a Windows device belongs to.

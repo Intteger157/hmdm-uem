@@ -70,6 +70,7 @@ function useNavState() {
     isWindowsScripts: pathname.startsWith('/windows/scripts'),
     isWindowsApplications: pathname.startsWith('/windows/applications'),
     isWindowsFiles: pathname.startsWith('/windows/files'),
+    isWindowsGroups: pathname.startsWith('/windows/groups'),
   }
 }
 
@@ -297,6 +298,15 @@ function WindowsManagementGroup({ nav }: { nav: NavState }) {
             >
               <FolderOpen />
               <span>{t('nav.windowsFiles')}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              isActive={nav.isWindowsGroups}
+              render={<Link to="/windows/groups" />}
+            >
+              <UsersRound />
+              <span>{t('nav.windowsGroups')}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

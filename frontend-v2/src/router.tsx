@@ -29,6 +29,7 @@ import { WindowsConfigurationsPage } from '@/features/windows/configurations/pag
 import { WindowsConfigEditorPage } from '@/features/windows/configurations/pages/WindowsConfigEditorPage'
 import { WindowsAppCatalogPage } from '@/features/windows/applications/pages/WindowsAppCatalogPage'
 import { WindowsFilesPage } from '@/features/windows/files/pages/WindowsFilesPage'
+import { WindowsGroupsPage } from '@/features/windows/groups/pages/WindowsGroupsPage'
 import { WindowsScriptsPage } from '@/features/windows/scripts/pages/WindowsScriptsPage'
 import { WindowsEnrollmentPage } from '@/features/windows/enrollment/pages/WindowsEnrollmentPage'
 import { useAuthStore } from '@/features/auth/store/auth-store'
@@ -297,6 +298,13 @@ const windowsFilesRoute = createRoute({
   component: WindowsFilesPage,
 })
 
+const windowsGroupsRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/windows/groups',
+  beforeLoad: requirePlatform('windows'),
+  component: WindowsGroupsPage,
+})
+
 const publicDeviceInfoRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/device-info/$deviceId',
@@ -368,6 +376,7 @@ const routeTree = rootRoute.addChildren([
     windowsScriptsRoute,
     windowsApplicationsRoute,
     windowsFilesRoute,
+    windowsGroupsRoute,
   ]),
 ])
 
