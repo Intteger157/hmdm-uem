@@ -1,3 +1,11 @@
+import {
+  APP_PAGE_CONTAINER_CLASS,
+  PAGE_FLAT_CARD_CLASS,
+  pageContainerClass,
+} from '@/shared/layout/page-layout'
+
+export { APP_PAGE_CONTAINER_CLASS, PAGE_FLAT_CARD_CLASS, pageContainerClass }
+
 export const OVERVIEW_FLAT_CARD_CLASS = 'border border-border bg-card shadow-none ring-0'
 export const OVERVIEW_CARD_HEADER_CLASS =
   'flex flex-row items-center justify-between space-y-0 p-4 pb-2'
@@ -10,10 +18,10 @@ export const OVERVIEW_STATS_GRID_CLASS =
   'grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-4'
 export const ACTION_CARDS_GRID_CLASS =
   'grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-3'
-export const DEVICE_DETAIL_PAGE_CONTAINER_CLASS =
-  'mx-auto w-full max-w-[1280px] px-4 md:px-6 lg:px-8'
-/** Shared max-width page wrapper for console views (dashboard, device detail, …). */
-export const APP_PAGE_CONTAINER_CLASS = DEVICE_DETAIL_PAGE_CONTAINER_CLASS
+
+/** Device detail pages use a slightly wider column than standard admin pages. */
+export const DEVICE_DETAIL_PAGE_CONTAINER_CLASS = pageContainerClass('detail')
+
 export const METRIC_TILE_CARD_CLASS = 'gap-0 [--card-spacing:--spacing(3)]'
 export const METRIC_TILE_HEADER_CLASS =
   'flex flex-row items-center justify-between space-y-0 p-3 pb-1'

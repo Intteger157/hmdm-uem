@@ -7,7 +7,9 @@ import type { DeviceGroup } from '@/features/groups/api/groups-api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
+import { DataTable } from '@/shared/components/DataTable'
 import { ListPagination } from '@/shared/components/ListPagination'
+import { DATA_TABLE_COL_COMPACT, PageContainer, PageHeader, PageToolbar } from '@/shared/layout/page-layout'
 import { usePaginatedList } from '@/shared/hooks/use-paginated-list'
 import { toast } from 'sonner'
 
@@ -62,13 +64,10 @@ export function GroupsListPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t('groups.title')}</h1>
-        <p className="text-sm text-muted-foreground">{t('groups.subtitle')}</p>
-      </div>
+    <PageContainer>
+      <PageHeader title={t('groups.title')} description={t('groups.subtitle')} />
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <PageToolbar>
         <form onSubmit={handleSearch} className="flex max-w-xl flex-1 gap-2">
           <Input
             value={searchInput}
@@ -83,7 +82,7 @@ export function GroupsListPage() {
           <Plus className="size-4" />
           {t('groups.add')}
         </Button>
-      </div>
+      </PageToolbar>
 
       {error != null && (
         <div className="rounded-lg border border-destructive/40 bg-card p-6 text-center">
@@ -107,19 +106,20 @@ export function GroupsListPage() {
               {t('common.emptyList')}
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-lg border bg-card">
-              <table className="w-full min-w-[480px] text-left text-sm">
+            <DataTable tableClassName="min-w-[480px]">
                 <thead className="border-b bg-muted/40 text-muted-foreground">
                   <tr>
                     <th className="px-4 py-3 font-medium">{t('groups.columns.name')}</th>
-                    <th className="px-4 py-3 font-medium text-right">{t('common.actions')}</th>
+                    <th className={`px-4 py-3 font-medium text-right ${DATA_TABLE_COL_COMPACT}`}>
+                      {t('common.actions')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {pageItems.map((group) => (
                     <tr key={group.id} className="border-b last:border-b-0 hover:bg-muted/30">
                       <td className="px-4 py-3 font-medium">{group.name}</td>
-                      <td className="px-4 py-3">
+                      <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>
                         <div className="flex items-center justify-end gap-0.5">
                           <Button
                             type="button"
@@ -145,8 +145,7 @@ export function GroupsListPage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
-            </div>
+            </DataTable>
           )}
 
           <ListPagination
@@ -174,6 +173,6 @@ export function GroupsListPage() {
         isPending={deleteMutation.isPending}
         onConfirm={() => void handleDelete()}
       />
-    </div>
+    </PageContainer>
   )
 }

@@ -1,3 +1,9 @@
+import { PageContainer } from '@/shared/layout/page-layout'
+
 export function WindowsWorkInProgressPage() {
-  return <div className="p-8">Work in Progress</div>
+  return (
+    <PageContainer>
+      <p className="text-sm text-muted-foreground">Work in Progress</p>
+    </PageContainer>
+  )
 }

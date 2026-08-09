@@ -67,6 +67,7 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
+import { PageContainer } from '@/shared/layout/page-layout'
 import { toast } from 'sonner'
 import { getWindowsApiErrorMessage } from '@/features/windows/applications/utils/app-catalog-errors'
 import { usePermissions } from '@/features/auth/hooks/use-permissions'
@@ -312,15 +313,15 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
     : profileName.trim() || profileQuery.data?.name || t('windowsConfigurations.editor.newTitle')
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <PageContainer>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex items-center gap-3">
           <Button type="button" variant="ghost" size="icon-sm" render={<Link to="/windows/configurations" />}>
             <ArrowLeft className="size-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">{pageTitle}</h1>
-            <p className="text-sm text-muted-foreground">{t('windowsConfigurations.editor.subtitle')}</p>
+            <h1 className="text-xl font-semibold tracking-tight">{pageTitle}</h1>
+            <p className="mt-0.5 text-sm text-muted-foreground">{t('windowsConfigurations.editor.subtitle')}</p>
           </div>
         </div>
         {canMutate && (
@@ -565,6 +566,6 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
           </Tabs>
         </form>
       </Form>
-    </div>
+    </PageContainer>
   )
 }

@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
 import { usePermissions } from '@/features/auth/hooks/use-permissions'
+import { DATA_TABLE_CLASS, DATA_TABLE_COL_COMPACT, PageContainer, PageHeader } from '@/shared/layout/page-layout'
 import { toast } from 'sonner'
 
 function formatTimestamp(value: string): string {
@@ -48,12 +49,8 @@ export function WindowsScriptsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t('windowsScripts.title')}</h1>
-          <p className="text-sm text-muted-foreground">{t('windowsScripts.description')}</p>
-        </div>
+    <PageContainer>
+      <PageHeader title={t('windowsScripts.title')} description={t('windowsScripts.description')}>
         {canMutate && (
           <Button
             type="button"
@@ -66,7 +63,7 @@ export function WindowsScriptsPage() {
             {t('windowsScripts.create')}
           </Button>
         )}
-      </div>
+      </PageHeader>
 
       <Card>
         <CardContent className="p-0">
@@ -86,14 +83,18 @@ export function WindowsScriptsPage() {
             <div className="py-16 text-center text-sm text-muted-foreground">{t('windowsScripts.empty')}</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className={DATA_TABLE_CLASS}>
                 <thead>
                   <tr className="border-b bg-muted/30 text-left">
                     <th className="px-4 py-3 font-medium">{t('windowsScripts.columns.name')}</th>
                     <th className="px-4 py-3 font-medium">{t('windowsScripts.columns.description')}</th>
-                    <th className="px-4 py-3 font-medium">{t('windowsScripts.columns.context')}</th>
-                    <th className="px-4 py-3 font-medium">{t('windowsScripts.columns.updated')}</th>
-                    {canMutate && <th className="px-4 py-3 font-medium" />}
+                    <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
+                      {t('windowsScripts.columns.context')}
+                    </th>
+                    <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
+                      {t('windowsScripts.columns.updated')}
+                    </th>
+                    {canMutate && <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`} />}
                   </tr>
                 </thead>
                 <tbody>
@@ -101,14 +102,14 @@ export function WindowsScriptsPage() {
                     <tr key={script.id} className="border-b last:border-b-0">
                       <td className="px-4 py-3 font-medium">{script.name}</td>
                       <td className="max-w-md px-4 py-3 text-muted-foreground">{script.description || '—'}</td>
-                      <td className="px-4 py-3">
+                      <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>
                         {script.executionContext === 'User'
                           ? t('windowsScripts.form.contextUser')
                           : t('windowsScripts.form.contextSystem')}
                       </td>
-                      <td className="px-4 py-3">{formatTimestamp(script.updatedAt)}</td>
+                      <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>{formatTimestamp(script.updatedAt)}</td>
                       {canMutate && (
-                        <td className="px-4 py-3 text-right">
+                        <td className={`px-4 py-3 text-right ${DATA_TABLE_COL_COMPACT}`}>
                           <div className="flex justify-end gap-1">
                             <Button
                               type="button"
@@ -169,6 +170,6 @@ export function WindowsScriptsPage() {
         isPending={deleteMutation.isPending}
         onConfirm={() => void handleDelete()}
       />
-    </div>
+    </PageContainer>
   )
 }

@@ -15,6 +15,13 @@ import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
 import { ListPagination } from '@/shared/components/ListPagination'
 import { usePaginatedList } from '@/shared/hooks/use-paginated-list'
 import { usePermissions } from '@/features/auth/hooks/use-permissions'
+import {
+  DATA_TABLE_CLASS,
+  DATA_TABLE_COL_COMPACT,
+  PageContainer,
+  PageHeader,
+  PageToolbar,
+} from '@/shared/layout/page-layout'
 import { toast } from 'sonner'
 
 function matchProfile(profile: WindowsConfigProfile, query: string): boolean {
@@ -72,21 +79,17 @@ export function WindowsConfigurationsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t('windowsConfigurations.title')}</h1>
-          <p className="text-sm text-muted-foreground">{t('windowsConfigurations.subtitle')}</p>
-        </div>
+    <PageContainer>
+      <PageHeader title={t('windowsConfigurations.title')} description={t('windowsConfigurations.subtitle')}>
         {canMutate && (
           <Button type="button" render={<Link to="/windows/configurations/new" />}>
             <Plus className="size-4" />
             {t('windowsConfigurations.createProfile')}
           </Button>
         )}
-      </div>
+      </PageHeader>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <PageToolbar>
         <form onSubmit={handleSearch} className="flex max-w-xl flex-1 gap-2">
           <Input
             value={searchInput}
@@ -97,7 +100,7 @@ export function WindowsConfigurationsPage() {
             {t('common.search')}
           </Button>
         </form>
-      </div>
+      </PageToolbar>
 
       {error != null && (
         <div className="rounded-lg border border-destructive/40 bg-card p-6 text-center">
@@ -118,14 +121,20 @@ export function WindowsConfigurationsPage() {
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
+              <table className={DATA_TABLE_CLASS}>
                 <thead className="border-b bg-muted/50">
                   <tr className="text-muted-foreground">
                     <th className="px-4 py-3 font-medium">{t('windowsConfigurations.columns.name')}</th>
-                    <th className="px-4 py-3 font-medium">{t('windowsConfigurations.columns.status')}</th>
-                    <th className="px-4 py-3 font-medium">{t('windowsConfigurations.columns.lastUpdated')}</th>
+                    <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
+                      {t('windowsConfigurations.columns.status')}
+                    </th>
+                    <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
+                      {t('windowsConfigurations.columns.lastUpdated')}
+                    </th>
                     {canMutate && (
-                      <th className="px-4 py-3 font-medium">{t('windowsConfigurations.columns.actions')}</th>
+                      <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
+                        {t('windowsConfigurations.columns.actions')}
+                      </th>
                     )}
                   </tr>
                 </thead>
@@ -146,16 +155,18 @@ export function WindowsConfigurationsPage() {
                           <div className="mt-0.5 text-xs text-muted-foreground">{profile.description}</div>
                         ) : null}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>
                         <Badge variant={profile.isActive ? 'default' : 'outline'}>
                           {profile.isActive
                             ? t('windowsConfigurations.status.active')
                             : t('windowsConfigurations.status.draft')}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">{formatTimestamp(profile.updatedAt)}</td>
+                      <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>
+                        {formatTimestamp(profile.updatedAt)}
+                      </td>
                       {canMutate && (
-                        <td className="px-4 py-3">
+                        <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>
                           <div className="flex flex-wrap gap-2">
                             <Button
                               type="button"
@@ -231,6 +242,6 @@ export function WindowsConfigurationsPage() {
         isPending={deleteMutation.isPending}
         onConfirm={() => void handleDelete()}
       />
-    </div>
+    </PageContainer>
   )
 }

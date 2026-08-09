@@ -1,8 +1,8 @@
+import { pageContainerClass } from '@/shared/layout/page-layout'
 import { cn } from '@/lib/utils'
 
 /** Shared geometry for Windows and Android device detail pages. */
-export const DEVICE_DETAIL_CONTAINER_CLASS =
-  'mx-auto w-full max-w-[1280px] px-4 md:px-6 lg:px-8'
+export const DEVICE_DETAIL_CONTAINER_CLASS = pageContainerClass('detail')
 
 export const deviceDetailSectionClass = (className?: string) =>
   cn(

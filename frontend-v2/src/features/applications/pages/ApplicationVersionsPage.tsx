@@ -12,7 +12,10 @@ import type { ApplicationVersion } from '@/features/applications/api/application
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
+import { DataTable } from '@/shared/components/DataTable'
+import { DATA_TABLE_COL_COMPACT, PageContainer } from '@/shared/layout/page-layout'
 import { toast } from 'sonner'
 
 interface ApplicationVersionsPageProps {
@@ -115,15 +118,15 @@ export function ApplicationVersionsPage({ applicationId }: ApplicationVersionsPa
   })
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <PageContainer>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex items-center gap-3">
           <Button type="button" variant="ghost" size="icon-sm" render={<Link to="/applications" />}>
             <ArrowLeft className="size-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">{application.name}</h1>
-            <p className="font-mono text-sm text-muted-foreground">{application.pkg ?? '—'}</p>
+            <h1 className="text-xl font-semibold tracking-tight">{application.name}</h1>
+            <p className="mt-0.5 font-mono text-sm text-muted-foreground">{application.pkg ?? '—'}</p>
           </div>
         </div>
         {application.type !== 'web' && (
@@ -141,16 +144,15 @@ export function ApplicationVersionsPage({ applicationId }: ApplicationVersionsPa
           {t('applications.versions.empty')}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border bg-card">
-          <table className="w-full min-w-[720px] text-left text-sm">
-            <thead className="border-b bg-muted/40 text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3 font-medium">{t('applications.columns.version')}</th>
-                <th className="px-4 py-3 font-medium">{t('applications.versions.versionCode')}</th>
-                <th className="px-4 py-3 font-medium">{t('applications.versions.urlColumn')}</th>
-                <th className="px-4 py-3 font-medium text-right">{t('common.actions')}</th>
-              </tr>
-            </thead>
+        <DataTable tableClassName="min-w-[720px]">
+          <thead className="border-b bg-muted/40 text-muted-foreground">
+            <tr>
+              <th className="px-4 py-3 font-medium">{t('applications.columns.version')}</th>
+              <th className={cn('px-4 py-3 font-medium', DATA_TABLE_COL_COMPACT)}>{t('applications.versions.versionCode')}</th>
+              <th className="px-4 py-3 font-medium">{t('applications.versions.urlColumn')}</th>
+              <th className={cn('px-4 py-3 font-medium text-right', DATA_TABLE_COL_COMPACT)}>{t('common.actions')}</th>
+            </tr>
+          </thead>
             <tbody>
               {sortedVersions.map((version) => {
                 const isLatest = version.id != null && version.id === latestVersionId
@@ -200,8 +202,7 @@ export function ApplicationVersionsPage({ applicationId }: ApplicationVersionsPa
                 )
               })}
             </tbody>
-          </table>
-        </div>
+        </DataTable>
       )}
 
       <ApplicationFormDialog
@@ -232,6 +233,6 @@ export function ApplicationVersionsPage({ applicationId }: ApplicationVersionsPa
         isPending={deleteMutation.isPending}
         onConfirm={() => void handleDeleteVersion()}
       />
-    </div>
+    </PageContainer>
   )
 }

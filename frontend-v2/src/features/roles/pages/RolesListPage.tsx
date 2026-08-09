@@ -7,6 +7,8 @@ import { useDeleteRoleMutation, useRolesWithMatrixQuery } from '@/features/roles
 import type { RoleWithMatrix } from '@/features/roles/lib/role-matrix'
 import { Button } from '@/components/ui/button'
 import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
+import { DataTable } from '@/shared/components/DataTable'
+import { DATA_TABLE_COL_COMPACT, PageContainer, PageHeader } from '@/shared/layout/page-layout'
 import { toast } from 'sonner'
 
 export function RolesListPage() {
@@ -30,17 +32,13 @@ export function RolesListPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t('roles.title')}</h1>
-          <p className="text-sm text-muted-foreground">{t('roles.subtitle')}</p>
-        </div>
+    <PageContainer>
+      <PageHeader title={t('roles.title')} description={t('roles.subtitle')}>
         <Button type="button" onClick={() => { setEditTarget(null); setFormOpen(true) }}>
           <Plus className="mr-1 size-4" />
           {t('roles.add')}
         </Button>
-      </div>
+      </PageHeader>
 
       {matrixError != null && error == null && !isLoading && (
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4">
@@ -59,16 +57,23 @@ export function RolesListPage() {
       )}
 
       {!isLoading && error == null && (
-        <div className="overflow-x-auto rounded-lg border bg-card">
-          <table className="w-full text-left text-sm">
+        <DataTable>
             <thead className="border-b bg-muted/40 text-muted-foreground">
               <tr>
                 <th className="px-4 py-3 font-medium">{t('roles.columns.name')}</th>
                 <th className="px-4 py-3 font-medium">{t('roles.columns.description')}</th>
-                <th className="px-4 py-3 font-medium">{t('roles.columns.platform')}</th>
-                <th className="px-4 py-3 font-medium">{t('roles.columns.accessLevel')}</th>
-                <th className="px-4 py-3 font-medium">{t('roles.columns.permissions')}</th>
-                <th className="px-4 py-3 font-medium text-right">{t('common.actions')}</th>
+                <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
+                  {t('roles.columns.platform')}
+                </th>
+                <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
+                  {t('roles.columns.accessLevel')}
+                </th>
+                <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
+                  {t('roles.columns.permissions')}
+                </th>
+                <th className={`px-4 py-3 font-medium text-right ${DATA_TABLE_COL_COMPACT}`}>
+                  {t('common.actions')}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -76,14 +81,14 @@ export function RolesListPage() {
                 <tr key={role.id ?? role.name} className="border-b last:border-b-0">
                   <td className="px-4 py-3 font-medium">{role.name}</td>
                   <td className="px-4 py-3 text-muted-foreground">{role.description ?? '—'}</td>
-                  <td className="px-4 py-3">
+                  <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>
                     <PlatformScopeBadge scope={role.platformScope} />
                   </td>
-                  <td className="px-4 py-3">
+                  <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>
                     <AccessLevelBadge level={role.accessLevel} />
                   </td>
-                  <td className="px-4 py-3">{role.permissions?.length ?? 0}</td>
-                  <td className="px-4 py-3">
+                  <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>{role.permissions?.length ?? 0}</td>
+                  <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>
                     <div className="flex justify-end gap-1">
                       <Button type="button" variant="ghost" size="icon-xs" onClick={() => { setEditTarget(role); setFormOpen(true) }}>
                         <Pencil className="size-3.5" />
@@ -96,8 +101,7 @@ export function RolesListPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
-        </div>
+        </DataTable>
       )}
 
       <RoleFormDialog open={formOpen} onOpenChange={setFormOpen} role={editTarget} onSaved={() => void refetch()} />
@@ -109,6 +113,6 @@ export function RolesListPage() {
         isPending={deleteMutation.isPending}
         onConfirm={() => void handleDelete()}
       />
-    </div>
+    </PageContainer>
   )
 }

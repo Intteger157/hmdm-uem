@@ -11,7 +11,9 @@ import type { Configuration } from '@/features/configurations/api/configurations
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
+import { DataTable } from '@/shared/components/DataTable'
 import { ListPagination } from '@/shared/components/ListPagination'
+import { DATA_TABLE_COL_COMPACT, PageContainer, PageHeader, PageToolbar } from '@/shared/layout/page-layout'
 import { usePaginatedList } from '@/shared/hooks/use-paginated-list'
 import { toast } from 'sonner'
 
@@ -56,15 +58,10 @@ export function ConfigurationsListPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t('configurations.title')}</h1>
-          <p className="text-sm text-muted-foreground">{t('configurations.subtitle')}</p>
-        </div>
-      </div>
+    <PageContainer>
+      <PageHeader title={t('configurations.title')} description={t('configurations.subtitle')} />
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <PageToolbar>
         <form onSubmit={handleSearch} className="flex max-w-xl flex-1 gap-2">
           <Input
             value={searchInput}
@@ -79,7 +76,7 @@ export function ConfigurationsListPage() {
           <Plus className="size-4" />
           {t('configurations.add')}
         </Button>
-      </div>
+      </PageToolbar>
 
       {error != null && (
         <div className="rounded-lg border border-destructive/40 bg-card p-6 text-center">
@@ -103,8 +100,7 @@ export function ConfigurationsListPage() {
               {t('common.emptyList')}
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-lg border bg-card">
-              <table className="w-full min-w-[640px] text-left text-sm">
+            <DataTable tableClassName="min-w-[640px]">
                 <thead className="border-b bg-muted/40 text-muted-foreground">
                   <tr>
                     <th className="px-4 py-3 font-medium">{t('configurations.columns.name')}</th>
@@ -114,7 +110,9 @@ export function ConfigurationsListPage() {
                     <th className="px-4 py-3 font-medium">
                       {t('configurations.columns.qrCodeKey')}
                     </th>
-                    <th className="px-4 py-3 font-medium text-right">{t('common.actions')}</th>
+                    <th className={`px-4 py-3 font-medium text-right ${DATA_TABLE_COL_COMPACT}`}>
+                      {t('common.actions')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -135,7 +133,7 @@ export function ConfigurationsListPage() {
                       <td className="px-4 py-3 font-mono text-xs">
                         {configuration.qrCodeKey ?? '—'}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>
                         <div className="flex items-center justify-end gap-0.5">
                           <Button
                             type="button"
@@ -175,8 +173,7 @@ export function ConfigurationsListPage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
-            </div>
+            </DataTable>
           )}
 
           <ListPagination
@@ -212,6 +209,6 @@ export function ConfigurationsListPage() {
         isPending={deleteMutation.isPending}
         onConfirm={() => void handleDelete()}
       />
-    </div>
+    </PageContainer>
   )
 }

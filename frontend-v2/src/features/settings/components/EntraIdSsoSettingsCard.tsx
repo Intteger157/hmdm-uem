@@ -15,6 +15,7 @@ import {
 } from '@/features/settings/api/sso-settings-api'
 import { buildMicrosoftSsoRedirectUri } from '@/features/settings/lib/microsoft-redirect-uri'
 import { copyTextToClipboard } from '@/shared/lib/copy-to-clipboard'
+import { PAGE_FLAT_CARD_CLASS } from '@/shared/layout/page-layout'
 
 const defaultDraft: EntraIdSsoSettings = {
   enabled: false,
@@ -88,12 +89,12 @@ export function EntraIdSsoSettingsCard() {
   }
 
   return (
-    <Card>
-      <CardHeader>
+    <Card size="sm" className={PAGE_FLAT_CARD_CLASS}>
+      <CardHeader className="pb-2">
         <CardTitle>{t('settings.sso.entraTitle')}</CardTitle>
-        <CardDescription>{t('settings.sso.entraDescription')}</CardDescription>
+        <CardDescription className="text-xs">{t('settings.sso.entraDescription')}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-4 pb-4">
         <div className="flex items-start justify-between gap-4 rounded-lg border border-border px-3 py-3">
           <div className="min-w-0 space-y-1">
             <Label htmlFor="sso-entra-enabled" className="text-sm font-medium">

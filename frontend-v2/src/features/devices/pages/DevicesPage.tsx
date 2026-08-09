@@ -26,6 +26,7 @@ import { isMockApiEnabled } from '@/shared/api/mock-utils'
 import { isPlatform } from '@/shared/api/types/platform'
 import { usePermissions } from '@/features/auth/hooks/use-permissions'
 import type { DeviceView } from '@/shared/api/types/device'
+import { PageContainer, PageHeader, PageToolbar } from '@/shared/layout/page-layout'
 
 const PAGE_SIZE = isMockApiEnabled() ? 5 : 50
 
@@ -117,14 +118,11 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
       : undefined
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t('devices.title')}</h1>
-          <p className="text-sm text-muted-foreground">
-            {platform === 'android' ? t('devices.subtitle') : t('devices.subtitleWindows')}
-          </p>
-        </div>
+    <PageContainer>
+      <PageHeader
+        title={t('devices.title')}
+        description={platform === 'android' ? t('devices.subtitle') : t('devices.subtitleWindows')}
+      >
         {lockedPlatform == null && (
           <div className="flex rounded-lg border p-1">
             <Button
@@ -145,9 +143,9 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
             </Button>
           </div>
         )}
-      </div>
+      </PageHeader>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <PageToolbar>
         <form onSubmit={handleSearch} className="flex max-w-xl flex-1 gap-2">
           <Input
             value={searchInput}
@@ -170,7 +168,7 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
             {t('devices.add')}
           </Button>
         )}
-      </div>
+      </PageToolbar>
 
       {error && (
         <Card className="border-destructive/40">
@@ -358,6 +356,6 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
         open={windowsEnrollmentOpen}
         onOpenChange={setWindowsEnrollmentOpen}
       />
-    </div>
+    </PageContainer>
   )
 }

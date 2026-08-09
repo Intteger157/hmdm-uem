@@ -27,6 +27,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { PageContainer } from '@/shared/layout/page-layout'
 import { toast } from 'sonner'
 
 interface ConfigurationEditorPageProps {
@@ -170,15 +171,15 @@ export function ConfigurationEditorPage({ configId, isNew = false }: Configurati
     : draft.name.trim() || t('configurations.editor.newTitle')
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <PageContainer>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex items-center gap-3">
           <Button type="button" variant="ghost" size="icon-sm" render={<Link to="/configurations" />}>
             <ArrowLeft className="size-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">{pageTitle}</h1>
-            <p className="text-sm text-muted-foreground">
+            <h1 className="text-xl font-semibold tracking-tight">{pageTitle}</h1>
+            <p className="mt-0.5 text-sm text-muted-foreground">
               {isNew ? t('configurations.editor.newSubtitle') : t('configurations.editor.subtitle')}
             </p>
             {!mainApp && (
@@ -244,6 +245,6 @@ export function ConfigurationEditorPage({ configId, isNew = false }: Configurati
           <ConfigurationFilesTab draft={draft} onChange={handleChange} />
         </TabsContent>
       </Tabs>
-    </div>
+    </PageContainer>
   )
 }

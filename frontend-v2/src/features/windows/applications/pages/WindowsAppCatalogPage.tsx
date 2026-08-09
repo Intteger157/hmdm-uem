@@ -16,6 +16,7 @@ import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
 import { ListPagination } from '@/shared/components/ListPagination'
 import { usePaginatedList } from '@/shared/hooks/use-paginated-list'
 import { usePermissions } from '@/features/auth/hooks/use-permissions'
+import { DATA_TABLE_CLASS, DATA_TABLE_COL_COMPACT, PageContainer, PageHeader } from '@/shared/layout/page-layout'
 import { toast } from 'sonner'
 
 function matchApp(app: SoftwareApp, query: string): boolean {
@@ -82,19 +83,15 @@ export function WindowsAppCatalogPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t('windowsAppCatalog.title')}</h1>
-          <p className="text-sm text-muted-foreground">{t('windowsAppCatalog.subtitle')}</p>
-        </div>
+    <PageContainer>
+      <PageHeader title={t('windowsAppCatalog.title')} description={t('windowsAppCatalog.subtitle')}>
         {canMutate && (
           <Button type="button" onClick={() => setCreateOpen(true)}>
             <Plus className="size-4" />
             {t('windowsAppCatalog.createApp')}
           </Button>
         )}
-      </div>
+      </PageHeader>
 
       <form onSubmit={handleSearch} className="flex max-w-xl gap-2">
         <Input
@@ -126,15 +123,23 @@ export function WindowsAppCatalogPage() {
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
+              <table className={DATA_TABLE_CLASS}>
                 <thead className="border-b bg-muted/50">
                   <tr className="text-muted-foreground">
                     <th className="px-4 py-3 font-medium">{t('windowsAppCatalog.columns.name')}</th>
-                    <th className="px-4 py-3 font-medium">{t('windowsAppCatalog.columns.version')}</th>
-                    <th className="px-4 py-3 font-medium">{t('windowsAppCatalog.columns.versionsCount')}</th>
-                    <th className="px-4 py-3 font-medium">{t('windowsAppCatalog.columns.updated')}</th>
+                    <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
+                      {t('windowsAppCatalog.columns.version')}
+                    </th>
+                    <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
+                      {t('windowsAppCatalog.columns.versionsCount')}
+                    </th>
+                    <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
+                      {t('windowsAppCatalog.columns.updated')}
+                    </th>
                     {canMutate && (
-                      <th className="px-4 py-3 font-medium">{t('windowsAppCatalog.columns.actions')}</th>
+                      <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
+                        {t('windowsAppCatalog.columns.actions')}
+                      </th>
                     )}
                   </tr>
                 </thead>
@@ -155,13 +160,13 @@ export function WindowsAppCatalogPage() {
                               : '—'}
                           </div>
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap">{formatLatestVersionLabel(app)}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">{app.versions.length}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">
+                        <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>{formatLatestVersionLabel(app)}</td>
+                        <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>{app.versions.length}</td>
+                        <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>
                           {formatTimestamp(latest?.uploadedAt ?? app.createdAt)}
                         </td>
                         {canMutate && (
-                          <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
+                          <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`} onClick={(event) => event.stopPropagation()}>
                             <div className="flex flex-wrap gap-2">
                               <Button type="button" size="sm" variant="outline" onClick={() => setEditAppId(app.id)}>
                                 <Pencil className="mr-1.5 size-3.5" />
@@ -230,6 +235,6 @@ export function WindowsAppCatalogPage() {
         isPending={deleteMutation.isPending}
         onConfirm={() => void handleDelete()}
       />
-    </div>
+    </PageContainer>
   )
 }

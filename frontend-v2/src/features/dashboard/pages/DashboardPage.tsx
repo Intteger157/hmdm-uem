@@ -14,15 +14,14 @@ import {
 import { DashboardRecentActivity } from '@/features/dashboard/components/DashboardRecentActivity'
 import { rankAttentionDevices } from '@/features/dashboard/lib/dashboard-attention'
 import { deriveDashboardMetrics } from '@/features/dashboard/lib/dashboard-metrics'
-import { DASHBOARD_CONTAINER_CLASS } from '@/features/dashboard/lib/dashboard-styles'
 import {
   useDashboardFleetDevices,
   useDashboardPlatform,
 } from '@/features/dashboard/hooks/use-dashboard-fleet-devices'
 import { useDeviceSummaryQuery } from '@/features/dashboard/hooks/use-device-summary-query'
 import { Button } from '@/components/ui/button'
+import { PageContainer } from '@/shared/layout/page-layout'
 import { usePeriodicNow } from '@/shared/hooks/use-periodic-now'
-import { cn } from '@/lib/utils'
 
 export function DashboardPage() {
   const { t } = useTranslation()
@@ -47,7 +46,7 @@ export function DashboardPage() {
 
   if (summaryQuery.error || !summaryQuery.data || !metrics) {
     return (
-      <div className={DASHBOARD_CONTAINER_CLASS}>
+      <PageContainer size="wide">
         <div className="rounded-xl border border-destructive/40 bg-card p-6 dark:bg-[#111111]">
           <h2 className="text-lg font-semibold text-destructive">{t('dashboard.errorTitle')}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t('dashboard.errorDescription')}</p>
@@ -60,12 +59,12 @@ export function DashboardPage() {
             {t('dashboard.retry')}
           </Button>
         </div>
-      </div>
+      </PageContainer>
     )
   }
 
   return (
-    <div className={cn(DASHBOARD_CONTAINER_CLASS, 'space-y-6 pb-8')}>
+    <PageContainer size="wide" className="pb-8">
       <DashboardHeader
         dataUpdatedAt={summaryQuery.dataUpdatedAt}
         isFetching={summaryQuery.isFetching}
@@ -104,7 +103,7 @@ export function DashboardPage() {
           <p className="mt-1 text-sm text-muted-foreground">{t('dashboard.empty.noDevicesDescription')}</p>
         </div>
       ) : null}
-    </div>
+    </PageContainer>
   )
 }
 
@@ -112,7 +111,7 @@ function DashboardSkeleton() {
   const { t } = useTranslation()
 
   return (
-    <div className={cn(DASHBOARD_CONTAINER_CLASS, 'space-y-6 pb-8')}>
+    <PageContainer size="wide" className="pb-8">
       <div className="space-y-2">
         <div className="h-8 w-48 animate-pulse rounded-md bg-muted" />
         <div className="h-4 w-72 animate-pulse rounded-md bg-muted/70" />
@@ -138,6 +137,6 @@ function DashboardSkeleton() {
         ))}
       </div>
       <p className="sr-only">{t('dashboard.loading')}</p>
-    </div>
+    </PageContainer>
   )
 }

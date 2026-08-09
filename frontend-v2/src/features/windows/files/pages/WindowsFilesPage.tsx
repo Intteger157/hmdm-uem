@@ -16,6 +16,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
 import { getWindowsApiErrorMessage } from '@/features/windows/applications/utils/app-catalog-errors'
 import { usePermissions } from '@/features/auth/hooks/use-permissions'
+import { DATA_TABLE_CLASS, DATA_TABLE_COL_COMPACT, PageContainer, PageHeader } from '@/shared/layout/page-layout'
 import { toast } from 'sonner'
 
 function formatTimestamp(value: string): string {
@@ -107,12 +108,8 @@ export function WindowsFilesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t('windowsFiles.title')}</h1>
-          <p className="text-sm text-muted-foreground">{t('windowsFiles.description')}</p>
-        </div>
+    <PageContainer>
+      <PageHeader title={t('windowsFiles.title')} description={t('windowsFiles.description')}>
         <div className="flex items-center gap-2">
           <input
             ref={fileInputRef}
@@ -141,7 +138,7 @@ export function WindowsFilesPage() {
             </Button>
           )}
         </div>
-      </div>
+      </PageHeader>
 
       {isUploading && uploadProgress ? (
         <Card>
@@ -172,27 +169,33 @@ export function WindowsFilesPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className={DATA_TABLE_CLASS}>
                 <thead>
                   <tr className="border-b bg-muted/30 text-left">
                     <th className="px-4 py-3 font-medium">{t('windowsFiles.columns.name')}</th>
-                    <th className="px-4 py-3 font-medium">{t('windowsFiles.columns.size')}</th>
-                    <th className="px-4 py-3 font-medium">{t('windowsFiles.columns.uploaded')}</th>
+                    <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
+                      {t('windowsFiles.columns.size')}
+                    </th>
+                    <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
+                      {t('windowsFiles.columns.uploaded')}
+                    </th>
                     <th className="px-4 py-3 font-medium">{t('windowsFiles.columns.sha256')}</th>
-                    {canMutate && <th className="px-4 py-3 font-medium" />}
+                    {canMutate && <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`} />}
                   </tr>
                 </thead>
                 <tbody>
                   {data.map((file) => (
                     <tr key={file.id} className="border-b last:border-b-0">
                       <td className="px-4 py-3 font-medium">{file.originalName}</td>
-                      <td className="px-4 py-3 tabular-nums">{formatUploadBytes(file.sizeBytes)}</td>
-                      <td className="px-4 py-3">{formatTimestamp(file.uploadDate)}</td>
+                      <td className={`px-4 py-3 tabular-nums ${DATA_TABLE_COL_COMPACT}`}>
+                        {formatUploadBytes(file.sizeBytes)}
+                      </td>
+                      <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>{formatTimestamp(file.uploadDate)}</td>
                       <td className="px-4 py-3 font-mono text-xs">{file.sha256.slice(0, 12)}…</td>
                       {/* Unlike the catalog entities, a stored file can simply be
                           uploaded again, so this stays with the Operator level. */}
                       {canMutate && (
-                        <td className="px-4 py-3 text-right">
+                        <td className={`px-4 py-3 text-right ${DATA_TABLE_COL_COMPACT}`}>
                           <Button
                             type="button"
                             variant="ghost"
@@ -237,6 +240,6 @@ export function WindowsFilesPage() {
         isPending={deleteMutation.isPending}
         onConfirm={() => void handleDelete()}
       />
-    </div>
+    </PageContainer>
   )
 }

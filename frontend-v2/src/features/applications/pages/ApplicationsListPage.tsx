@@ -16,7 +16,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
+import { DataTable } from '@/shared/components/DataTable'
 import { ListPagination } from '@/shared/components/ListPagination'
+import { DATA_TABLE_COL_COMPACT, PageContainer, PageHeader } from '@/shared/layout/page-layout'
 import { usePaginatedList } from '@/shared/hooks/use-paginated-list'
 import { toast } from 'sonner'
 
@@ -100,17 +102,13 @@ export function ApplicationsListPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t('applications.title')}</h1>
-          <p className="text-sm text-muted-foreground">{t('applications.subtitle')}</p>
-        </div>
+    <PageContainer>
+      <PageHeader title={t('applications.title')} description={t('applications.subtitle')}>
         <Button type="button" onClick={() => setAddOpen(true)}>
           <Plus className="size-4" />
           {t('applications.add')}
         </Button>
-      </div>
+      </PageHeader>
 
       <form onSubmit={handleSearch} className="flex max-w-xl gap-2">
         <Input
@@ -154,15 +152,18 @@ export function ApplicationsListPage() {
               {t('common.emptyList')}
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-lg border bg-card">
-              <table className="w-full min-w-[760px] text-left text-sm">
+            <DataTable tableClassName="min-w-[760px]">
                 <thead className="border-b bg-muted/40 text-muted-foreground">
                   <tr>
                     <th className="px-4 py-3 font-medium">{t('applications.columns.name')}</th>
                     <th className="px-4 py-3 font-medium">{t('applications.columns.pkg')}</th>
                     <th className="px-4 py-3 font-medium">{t('applications.columns.version')}</th>
-                    <th className="px-4 py-3 font-medium">{t('applications.columns.type')}</th>
-                    <th className="px-4 py-3 font-medium text-right">{t('common.actions')}</th>
+                    <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
+                      {t('applications.columns.type')}
+                    </th>
+                    <th className={`px-4 py-3 font-medium text-right ${DATA_TABLE_COL_COMPACT}`}>
+                      {t('common.actions')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -201,7 +202,7 @@ export function ApplicationsListPage() {
                           application.version ?? '—'
                         )}
                       </td>
-                        <td className="px-4 py-3">
+                        <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>
                           {application.system ? (
                             <Badge variant="secondary">{t('applications.badges.system')}</Badge>
                           ) : application.commonApplication ? (
@@ -210,7 +211,7 @@ export function ApplicationsListPage() {
                             '—'
                           )}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>
                           <div className="flex items-center justify-end gap-1">
                             {application.id != null && (
                               <Button
@@ -268,8 +269,7 @@ export function ApplicationsListPage() {
                     )
                   })}
                 </tbody>
-              </table>
-            </div>
+            </DataTable>
           )}
 
           <ListPagination
@@ -318,6 +318,6 @@ export function ApplicationsListPage() {
         isPending={deleteMutation.isPending}
         onConfirm={() => void handleDelete()}
       />
-    </div>
+    </PageContainer>
   )
 }

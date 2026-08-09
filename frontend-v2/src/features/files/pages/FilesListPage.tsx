@@ -10,7 +10,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
+import { DataTable } from '@/shared/components/DataTable'
 import { ListPagination } from '@/shared/components/ListPagination'
+import { DATA_TABLE_COL_COMPACT, PageContainer, PageHeader } from '@/shared/layout/page-layout'
 import { usePaginatedList } from '@/shared/hooks/use-paginated-list'
 import { toast } from 'sonner'
 
@@ -74,12 +76,8 @@ export function FilesListPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t('files.title')}</h1>
-          <p className="text-sm text-muted-foreground">{t('files.subtitle')}</p>
-        </div>
+    <PageContainer>
+      <PageHeader title={t('files.title')} description={t('files.subtitle')}>
         <Button
           type="button"
           onClick={() => {
@@ -90,7 +88,7 @@ export function FilesListPage() {
           <Plus className="mr-1 size-4" />
           {t('files.add')}
         </Button>
-      </div>
+      </PageHeader>
 
       <form onSubmit={handleSearch} className="flex max-w-xl gap-2">
         <Input
@@ -125,16 +123,23 @@ export function FilesListPage() {
               {t('common.emptyList')}
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-lg border bg-card">
-              <table className="w-full min-w-[900px] text-left text-sm">
+            <DataTable tableClassName="min-w-[900px]">
                 <thead className="border-b bg-muted/40 text-muted-foreground">
                   <tr>
                     <th className="px-4 py-3 font-medium">{t('files.columns.path')}</th>
                     <th className="px-4 py-3 font-medium">{t('files.columns.description')}</th>
-                    <th className="px-4 py-3 font-medium">{t('files.columns.size')}</th>
-                    <th className="px-4 py-3 font-medium">{t('files.columns.uploaded')}</th>
-                    <th className="px-4 py-3 font-medium">{t('files.columns.type')}</th>
-                    <th className="px-4 py-3 font-medium text-right">{t('common.actions')}</th>
+                    <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
+                      {t('files.columns.size')}
+                    </th>
+                    <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
+                      {t('files.columns.uploaded')}
+                    </th>
+                    <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
+                      {t('files.columns.type')}
+                    </th>
+                    <th className={`px-4 py-3 font-medium text-right ${DATA_TABLE_COL_COMPACT}`}>
+                      {t('common.actions')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -147,11 +152,11 @@ export function FilesListPage() {
                       <tr key={file.id ?? file.filePath ?? file.url} className="border-b last:border-b-0 hover:bg-muted/30">
                         <td className="px-4 py-3 font-mono text-xs">{file.filePath ?? file.url ?? '—'}</td>
                         <td className="px-4 py-3">{file.description ?? '—'}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">{formatFileSize(file.size)}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
+                        <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>{formatFileSize(file.size)}</td>
+                        <td className={`px-4 py-3 text-muted-foreground ${DATA_TABLE_COL_COMPACT}`}>
                           {formatUploadTime(file.uploadTime)}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>
                           {file.external ? (
                             <Badge variant="secondary">{t('files.badges.external')}</Badge>
                           ) : (
@@ -163,7 +168,7 @@ export function FilesListPage() {
                             </Badge>
                           )}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>
                           <div className="flex items-center justify-end gap-1">
                             {file.url && (
                               <Button
@@ -215,8 +220,7 @@ export function FilesListPage() {
                     )
                   })}
                 </tbody>
-              </table>
-            </div>
+            </DataTable>
           )}
 
           <ListPagination
@@ -261,6 +265,6 @@ export function FilesListPage() {
         isPending={deleteMutation.isPending}
         onConfirm={() => void handleDelete()}
       />
-    </div>
+    </PageContainer>
   )
 }

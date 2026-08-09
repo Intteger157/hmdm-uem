@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PAGE_FLAT_CARD_CLASS, PageContainer, PageHeader } from '@/shared/layout/page-layout'
 import { toast } from 'sonner'
 
 export function RemoteControlSettingsPage() {
@@ -38,16 +39,20 @@ export function RemoteControlSettingsPage() {
   }
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+    return (
+      <PageContainer>
+        <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+      </PageContainer>
+    )
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t('nav.remoteControl')}</h1>
-        <p className="text-sm text-muted-foreground">{t('plugins.deviceremote.settings.subtitle')}</p>
-      </div>
-      <Card>
+    <PageContainer>
+      <PageHeader
+        title={t('nav.remoteControl')}
+        description={t('plugins.deviceremote.settings.subtitle')}
+      />
+      <Card className={PAGE_FLAT_CARD_CLASS}>
         <CardHeader><CardTitle>{t('plugins.deviceremote.settings.title')}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -63,6 +68,6 @@ export function RemoteControlSettingsPage() {
           </Button>
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   )
 }

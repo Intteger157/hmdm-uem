@@ -10,7 +10,9 @@ import type { MessagingMessage } from '@/features/plugins/messaging/api/messagin
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
+import { DataTable } from '@/shared/components/DataTable'
 import { ListPagination } from '@/shared/components/ListPagination'
+import { DATA_TABLE_COL_COMPACT, PageContainer, PageHeader } from '@/shared/layout/page-layout'
 import { toast } from 'sonner'
 
 function formatTime(ms?: number): string {
@@ -58,17 +60,13 @@ export function MessagingListPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t('plugins.messaging.title')}</h1>
-          <p className="text-sm text-muted-foreground">{t('plugins.messaging.subtitle')}</p>
-        </div>
+    <PageContainer>
+      <PageHeader title={t('plugins.messaging.title')} description={t('plugins.messaging.subtitle')}>
         <Button type="button" onClick={() => setSendOpen(true)}>
           <Plus className="mr-1 size-4" />
           {t('plugins.messaging.send')}
         </Button>
-      </div>
+      </PageHeader>
 
       <form onSubmit={handleSearch} className="flex flex-wrap gap-2">
         <Input
@@ -92,23 +90,26 @@ export function MessagingListPage() {
 
       {!isLoading && error == null && (
         <>
-          <div className="overflow-x-auto rounded-lg border bg-card">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b bg-muted/40 text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-3 font-medium">{t('plugins.messaging.columns.device')}</th>
-                  <th className="px-4 py-3 font-medium">{t('plugins.messaging.columns.message')}</th>
-                  <th className="px-4 py-3 font-medium">{t('plugins.messaging.columns.time')}</th>
-                  <th className="px-4 py-3 font-medium text-right">{t('common.actions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {messages.map((msg) => (
-                  <tr key={msg.id ?? `${msg.deviceNumber}-${msg.createTime}`} className="border-b last:border-b-0">
-                    <td className="px-4 py-3 font-mono text-xs">{msg.deviceNumber ?? '—'}</td>
-                    <td className="max-w-md truncate px-4 py-3">{msg.message ?? '—'}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">{formatTime(msg.createTime)}</td>
-                    <td className="px-4 py-3">
+          <DataTable>
+            <thead className="border-b bg-muted/40 text-muted-foreground">
+              <tr>
+                <th className="px-4 py-3 font-medium">{t('plugins.messaging.columns.device')}</th>
+                <th className="px-4 py-3 font-medium">{t('plugins.messaging.columns.message')}</th>
+                <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
+                  {t('plugins.messaging.columns.time')}
+                </th>
+                <th className={`px-4 py-3 font-medium text-right ${DATA_TABLE_COL_COMPACT}`}>
+                  {t('common.actions')}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {messages.map((msg) => (
+                <tr key={msg.id ?? `${msg.deviceNumber}-${msg.createTime}`} className="border-b last:border-b-0">
+                  <td className="px-4 py-3 font-mono text-xs">{msg.deviceNumber ?? '—'}</td>
+                  <td className="max-w-md truncate px-4 py-3">{msg.message ?? '—'}</td>
+                  <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>{formatTime(msg.createTime)}</td>
+                  <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>
                       <div className="flex justify-end">
                         <Button
                           type="button"
@@ -131,9 +132,8 @@ export function MessagingListPage() {
                     </td>
                   </tr>
                 )}
-              </tbody>
-            </table>
-          </div>
+            </tbody>
+          </DataTable>
           <ListPagination
             pageNum={pageNum}
             totalPages={totalPages}
@@ -154,6 +154,6 @@ export function MessagingListPage() {
         title={t('plugins.messaging.delete.title')}
         description={t('plugins.messaging.delete.confirm')}
       />
-    </div>
+    </PageContainer>
   )
 }

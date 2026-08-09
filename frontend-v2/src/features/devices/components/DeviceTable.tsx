@@ -30,6 +30,12 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import type { DeviceListView, DeviceView } from '@/shared/api/types/device'
 import type { Platform } from '@/shared/api/types/platform'
+import {
+  DATA_TABLE_CLASS,
+  DATA_TABLE_COL_COMPACT,
+  DATA_TABLE_COL_GROW,
+  DATA_TABLE_WRAPPER_CLASS,
+} from '@/shared/layout/page-layout'
 import { cn } from '@/lib/utils'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -114,20 +120,20 @@ export function DeviceTable({
 
   if (platform === 'windows') {
     return (
-      <div className="overflow-x-auto rounded-lg border bg-card">
-        <table className="w-full min-w-full table-auto text-left text-base">
+      <div className={DATA_TABLE_WRAPPER_CLASS}>
+        <table className={cn(DATA_TABLE_CLASS, 'text-base')}>
           <thead className="border-b bg-muted/40 text-sm text-muted-foreground">
             <tr>
-              <th className="px-3 py-3.5 font-medium">{t('devices.columns.status')}</th>
-              <th className="px-3 py-3.5 font-medium">{t('devices.columns.hostname')}</th>
-              <th className="px-3 py-3.5 font-medium">{t('devices.columns.description')}</th>
-              <th className="px-3 py-3.5 font-medium">{t('devices.columns.configuration')}</th>
-              <th className="px-3 py-3.5 font-medium">{t('devices.columns.os')}</th>
-              <th className="px-3 py-3.5 font-medium">{t('devices.columns.bitlocker')}</th>
-              <th className="px-3 py-3.5 font-medium">{t('devices.columns.currentUser')}</th>
-              <th className="px-3 py-3.5 font-medium whitespace-nowrap">{t('devices.columns.lastUpdate')}</th>
+              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.status')}</th>
+              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_GROW)}>{t('devices.columns.hostname')}</th>
+              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_GROW)}>{t('devices.columns.description')}</th>
+              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_GROW)}>{t('devices.columns.configuration')}</th>
+              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.os')}</th>
+              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.bitlocker')}</th>
+              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_GROW)}>{t('devices.columns.currentUser')}</th>
+              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.lastUpdate')}</th>
               {showWindowsActions && (
-                <th className="px-3 py-3.5 font-medium text-right">{t('devices.columns.actions')}</th>
+                <th className={cn('px-3 py-3.5 font-medium text-right', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.actions')}</th>
               )}
             </tr>
           </thead>
@@ -150,23 +156,23 @@ export function DeviceTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border bg-card">
-      <table className="w-full min-w-full table-auto text-left text-base">
+    <div className={DATA_TABLE_WRAPPER_CLASS}>
+      <table className={cn(DATA_TABLE_CLASS, 'text-base')}>
         <thead className="border-b bg-muted/40 text-sm text-muted-foreground">
           <tr>
-            <th className="px-3 py-3.5 font-medium">{t('devices.columns.status')}</th>
-            <th className="px-3 py-3.5 font-medium whitespace-nowrap">{t('devices.columns.date')}</th>
-            <th className="px-3 py-3.5 font-medium whitespace-nowrap">{t('devices.columns.number')}</th>
-            <th className="px-3 py-3.5 font-medium">{t('devices.columns.model')}</th>
-            <th className="px-3 py-3.5 font-medium">{t('devices.columns.permissions')}</th>
-            <th className="px-3 py-3.5 font-medium">{t('devices.columns.installations')}</th>
-            <th className="px-3 py-3.5 font-medium">{t('devices.columns.files')}</th>
-            <th className="px-3 py-3.5 font-medium">{t('devices.columns.configuration')}</th>
-            <th className="px-3 py-3.5 font-medium">{t('devices.columns.battery')}</th>
-            <th className="px-3 py-3.5 font-medium">{t('devices.columns.androidVersion')}</th>
-            <th className="px-3 py-3.5 font-medium whitespace-nowrap">{t('devices.columns.publicIp')}</th>
+            <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.status')}</th>
+            <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.date')}</th>
+            <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.number')}</th>
+            <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_GROW)}>{t('devices.columns.model')}</th>
+            <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.permissions')}</th>
+            <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.installations')}</th>
+            <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.files')}</th>
+            <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_GROW)}>{t('devices.columns.configuration')}</th>
+            <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.battery')}</th>
+            <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.androidVersion')}</th>
+            <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.publicIp')}</th>
             {showAndroidActions && (
-              <th className="px-3 py-3.5 font-medium text-right whitespace-nowrap">{t('devices.columns.actions')}</th>
+              <th className={cn('px-3 py-3.5 font-medium text-right', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.actions')}</th>
             )}
           </tr>
         </thead>

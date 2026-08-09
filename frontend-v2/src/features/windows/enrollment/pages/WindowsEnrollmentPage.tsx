@@ -24,6 +24,11 @@ import {
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import {
+  PAGE_FLAT_CARD_CLASS,
+  PageContainer,
+  PageHeader,
+} from '@/shared/layout/page-layout'
+import {
   getWindowsAutopilotAgent,
   getWindowsEnrollmentProvisioning,
   getWindowsEnrollmentSecurity,
@@ -37,7 +42,7 @@ import {
 import { toast } from 'sonner'
 import { usePermissions } from '@/features/auth/hooks/use-permissions'
 
-const flatCardClassName = 'border border-border shadow-none ring-0'
+const flatCardClassName = PAGE_FLAT_CARD_CLASS
 
 function buildBootstrapCommand(
   origin: string,
@@ -309,11 +314,11 @@ export function WindowsEnrollmentPage() {
 
   return (
     <TooltipProvider>
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">{t('windows.enrollmentPage.title')}</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">{t('windows.enrollmentPage.subtitle')}</p>
-        </div>
+      <PageContainer>
+        <PageHeader
+          title={t('windows.enrollmentPage.title')}
+          description={t('windows.enrollmentPage.subtitle')}
+        />
 
         <Card size="sm" className={flatCardClassName}>
           <CardHeader className="pb-2">
@@ -632,7 +637,7 @@ export function WindowsEnrollmentPage() {
             <p className="text-xs text-muted-foreground">{t('windows.enrollmentPage.agentBinaryHint')}</p>
           </CardContent>
         </Card>
-      </div>
+      </PageContainer>
     </TooltipProvider>
   )
 }
