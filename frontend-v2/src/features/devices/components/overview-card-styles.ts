@@ -12,6 +12,8 @@ export const ACTION_CARDS_GRID_CLASS =
   'grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-3'
 export const DEVICE_DETAIL_PAGE_CONTAINER_CLASS =
   'mx-auto w-full max-w-[1600px] px-4 md:px-8 xl:px-12'
+/** Shared max-width page wrapper for console views (dashboard, device detail, …). */
+export const APP_PAGE_CONTAINER_CLASS = DEVICE_DETAIL_PAGE_CONTAINER_CLASS
 export const METRIC_TILE_CARD_CLASS = 'gap-0 [--card-spacing:--spacing(3)]'
 export const METRIC_TILE_HEADER_CLASS =
   'flex flex-row items-center justify-between space-y-0 p-3 pb-1'
