@@ -1,7 +1,9 @@
 import axios from 'axios'
 import { create } from 'zustand'
 import type { UploadProgressState } from '@/features/windows/applications/utils/installer-upload'
+import type { StoredFile } from '@/features/windows/files/types/stored-file'
 import { uploadStoredFile } from '@/features/windows/files/api/windows-files-api'
+import { usePostUploadAssignmentStore } from '@/features/upload/store/post-upload-assignment-store'
 
 export type GlobalUploadStatus = 'uploading' | 'success' | 'error'
 
@@ -70,7 +72,7 @@ export const useGlobalUploadStore = create<GlobalUploadState>((set, get) => ({
         )
       },
     })
-      .then(() => {
+      .then((storedFile: StoredFile) => {
         if (abortController !== controller) {
           return
         }
@@ -89,6 +91,10 @@ export const useGlobalUploadStore = create<GlobalUploadState>((set, get) => ({
                 },
               }
             : state,
+        )
+        usePostUploadAssignmentStore.getState().openFileAssignment(
+          storedFile.id,
+          storedFile.originalName || file.name,
         )
         scheduleAutoDismiss(set)
       })

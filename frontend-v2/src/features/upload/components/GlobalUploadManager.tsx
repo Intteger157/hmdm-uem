@@ -32,7 +32,6 @@ export function GlobalUploadManager() {
     previousStatusRef.current = currentStatus
 
     if (currentStatus === 'success') {
-      toast.success(t('windowsFiles.upload.success'))
       void queryClient.invalidateQueries({ queryKey: windowsFilesQueryKeys.list() })
     } else if (currentStatus === 'error') {
       toast.error(t('windowsFiles.upload.error'))

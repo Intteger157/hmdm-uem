@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/sidebar'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { GlobalUploadManager } from '@/features/upload/components/GlobalUploadManager'
+import { PostUploadConfigAssignmentDialog } from '@/features/upload/components/PostUploadConfigAssignmentDialog'
 
 /** Close the mobile drawer after route changes (sidebar link selected). */
 function CloseMobileSidebarOnNavigate() {
@@ -96,6 +97,7 @@ function AppLayoutShell() {
       </div>
 
       <GlobalUploadManager />
+      <PostUploadConfigAssignmentDialog />
     </>
   )
 }

@@ -57,6 +57,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
+import { usePostUploadAssignmentStore } from '@/features/upload/store/post-upload-assignment-store'
 import { toast } from 'sonner'
 
 const softwareAppFormSchema = z
@@ -307,6 +308,7 @@ export function SoftwareAppFormSheet({ open, onOpenChange, onCreated }: Software
         ...versionPayload,
       })
       toast.success(t('windowsAppCatalog.form.created'))
+      usePostUploadAssignmentStore.getState().openApplicationAssignment(created.id, created.name)
       onOpenChange(false)
       onCreated?.(created.id)
     } catch (error) {
