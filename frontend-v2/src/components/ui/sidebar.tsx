@@ -28,7 +28,7 @@ import { PanelLeftIcon } from "lucide-react"
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "16rem"
-const SIDEBAR_WIDTH_MOBILE = "18rem"
+const SIDEBAR_WIDTH_MOBILE = "20rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
@@ -187,7 +187,8 @@ function Sidebar({
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
-          className="w-(--sidebar-width) bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden [&_[data-slot=sheet-overlay]]:bg-black/50 [&_[data-slot=sheet-overlay]]:backdrop-blur-sm"
+          showCloseButton={false}
+          className="w-(--sidebar-width)! max-w-[min(20rem,calc(100vw-1rem))] border-r border-sidebar-border bg-sidebar p-0 text-sidebar-foreground shadow-xl transition-transform duration-200 ease-out data-[side=left]:data-ending-style:-translate-x-full data-[side=left]:data-starting-style:-translate-x-full [&>button]:hidden [&_[data-slot=sheet-overlay]]:bg-black/60 [&_[data-slot=sheet-overlay]]:backdrop-blur-[2px]"
           style={
             {
               "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
