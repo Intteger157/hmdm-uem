@@ -71,7 +71,7 @@ type WindowsDevice struct {
 	Manufacturer      string
 	Model             string
 	SerialNumber      string
-	CurrentUser       string
+	CurrentUser       string `gorm:"column:current_user"`
 	DiskEncrypted     bool
 	EncryptionStatus  string
 	Disks             json.RawMessage `gorm:"type:jsonb"`
