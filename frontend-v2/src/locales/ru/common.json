@@ -845,6 +845,7 @@
   "deviceDetail.loading": "Загрузка устройства…",
   "deviceDetail.notFound": "Устройство не найдено",
   "deviceDetail.backToList": "К списку устройств",
+  "deviceDetail.breadcrumbLabel": "Навигация по странице устройства",
   "deviceDetail.deviceActions": "Действия",
   "deviceDetail.remoteControl": "Удалённое управление",
   "deviceDetail.encrypted": "Зашифрован",

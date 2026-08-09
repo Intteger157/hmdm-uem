@@ -845,6 +845,7 @@
   "deviceDetail.loading": "Loading device…",
   "deviceDetail.notFound": "Device not found",
   "deviceDetail.backToList": "Back to devices",
+  "deviceDetail.breadcrumbLabel": "Device detail navigation",
   "deviceDetail.deviceActions": "Device Actions",
   "deviceDetail.remoteControl": "Remote control",
   "deviceDetail.encrypted": "Encrypted",

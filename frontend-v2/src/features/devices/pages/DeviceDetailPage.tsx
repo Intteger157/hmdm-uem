@@ -66,7 +66,7 @@ import {
 } from '@/features/devices/utils/device-detail-formatters'
 import { resolveDeviceOnlineStatusCode } from '@/features/devices/utils/device-online-status'
 import { usePeriodicNow } from '@/shared/hooks/use-periodic-now'
-import { ANDROID_BRAND_COLOR, AndroidIcon, BatteryLevelIcon } from '@/components/icons/platform-icons'
+import { ANDROID_BRAND_COLOR, AndroidIcon, BatteryLevelIcon, WindowsIcon } from '@/components/icons/platform-icons'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -110,6 +110,73 @@ function deviceTitle(device: DeviceView): string {
     return device.hostname ?? device.model ?? device.number
   }
   return device.description ?? device.hostname ?? device.number
+}
+
+function deviceDetailSubtitle(
+  device: DeviceView,
+  isWindows: boolean,
+  t: TFunction,
+): string {
+  const managedLabel = isWindows ? t('devices.subtitleWindows') : t('devices.subtitle')
+  return `${managedLabel} · ${device.number}`
+}
+
+function DeviceDetailPageHeader({
+  device,
+  title,
+  onlineStatus,
+  isWindows,
+  t,
+}: {
+  device: DeviceView
+  title: string
+  onlineStatus: string
+  isWindows: boolean
+  t: TFunction
+}) {
+  return (
+    <>
+      <nav
+        aria-label={t('deviceDetail.breadcrumbLabel')}
+        className="mb-3 flex flex-wrap items-center gap-x-1 gap-y-2 text-sm text-muted-foreground"
+      >
+        <Link to="/devices" search={{ platform: device.platform }} className="hover:text-foreground">
+          {t('nav.devices')}
+        </Link>
+        <ChevronRight className="size-3.5 shrink-0" aria-hidden="true" />
+        <span className="truncate text-foreground">{title}</span>
+      </nav>
+
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        {isWindows ? (
+          <WindowsIcon className="size-8 shrink-0" aria-hidden="true" />
+        ) : (
+          <AndroidIcon
+            className={cn('size-8 shrink-0', ANDROID_BRAND_COLOR)}
+            aria-hidden="true"
+          />
+        )}
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant={STATUS_BADGE[onlineStatus] ?? 'secondary'}>
+                {t(`devices.status.${onlineStatus}`)}
+              </Badge>
+              <Badge variant="outline" className="capitalize">
+                {device.platform}
+              </Badge>
+              {device.kioskMode ? <Badge variant="secondary">Kiosk</Badge> : null}
+              {device.mdmMode ? <Badge variant="secondary">MDM</Badge> : null}
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {deviceDetailSubtitle(device, isWindows, t)}
+          </p>
+        </div>
+      </div>
+    </>
+  )
 }
 
 interface DeviceDetailPageProps {
@@ -161,21 +228,13 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
   return (
     <DeviceDetailCommandToastProvider onGoToActionLogs={() => setActiveTab('action-logs')}>
       <div className={cn(DEVICE_DETAIL_PAGE_CONTAINER_CLASS, 'space-y-3')}>
-      <div className="flex flex-wrap items-center gap-x-1 gap-y-2 border-b pb-3 text-sm text-muted-foreground">
-        <Link to="/devices" search={{ platform: device.platform }} className="hover:text-foreground">
-          {t('nav.devices')}
-        </Link>
-        <ChevronRight className="size-3.5 shrink-0" />
-        <span className="font-semibold text-foreground">{title}</span>
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={STATUS_BADGE[onlineStatus] ?? 'secondary'}>
-            {t(`devices.status.${onlineStatus}`)}
-          </Badge>
-          <Badge variant="outline">{device.platform}</Badge>
-          {device.kioskMode ? <Badge variant="secondary">Kiosk</Badge> : null}
-          {device.mdmMode ? <Badge variant="secondary">MDM</Badge> : null}
-        </div>
-      </div>
+        <DeviceDetailPageHeader
+          device={device}
+          title={title}
+          onlineStatus={onlineStatus}
+          isWindows={isWindows}
+          t={t}
+        />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="h-auto w-full space-y-3">
         <TabsList
@@ -1143,12 +1202,21 @@ function WindowsDiskMetrics({
 function DeviceDetailSkeleton() {
   return (
     <div className={cn(DEVICE_DETAIL_PAGE_CONTAINER_CLASS, 'space-y-3')}>
-      <div className="flex flex-wrap items-center gap-2 border-b pb-3">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
         <Skeleton className="h-4 w-24" />
         <Skeleton className="size-3.5 rounded-full" />
         <Skeleton className="h-4 w-40" />
-        <Skeleton className="h-5 w-16 rounded-full" />
-        <Skeleton className="h-5 w-16 rounded-full" />
+      </div>
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <Skeleton className="size-8 shrink-0 rounded-md" />
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-3">
+            <Skeleton className="h-8 w-56" />
+            <Skeleton className="h-5 w-16 rounded-full" />
+            <Skeleton className="h-5 w-16 rounded-full" />
+          </div>
+          <Skeleton className="h-4 w-72" />
+        </div>
       </div>
       <Tabs defaultValue="overview" className="w-full space-y-3">
         <TabsList variant="line" className="h-auto w-full flex-wrap justify-start gap-1">
