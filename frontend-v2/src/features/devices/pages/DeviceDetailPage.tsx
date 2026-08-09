@@ -106,10 +106,20 @@ const INTERACTIVE_TILE_CLASS = 'cursor-pointer hover:bg-accent/50 transition-col
 const TAB_CONTENT_CLASS = 'mt-0 h-auto w-full flex-none overflow-visible focus-visible:outline-none'
 
 function deviceTitle(device: DeviceView): string {
-  if (device.platform === 'windows') {
-    return device.hostname ?? device.model ?? device.number
+  const pick = (...values: (string | null | undefined)[]) => {
+    for (const value of values) {
+      const trimmed = value?.trim()
+      if (trimmed) {
+        return trimmed
+      }
+    }
+    return device.number
   }
-  return device.description ?? device.hostname ?? device.number
+
+  if (device.platform === 'windows') {
+    return pick(device.hostname, device.model, device.number)
+  }
+  return pick(device.description, device.hostname, device.number)
 }
 
 function deviceDetailSubtitle(
@@ -135,30 +145,33 @@ function DeviceDetailPageHeader({
   t: TFunction
 }) {
   return (
-    <>
+    <header className="space-y-4 border-b border-border pb-6">
       <nav
         aria-label={t('deviceDetail.breadcrumbLabel')}
-        className="mb-3 flex flex-wrap items-center gap-x-1 gap-y-2 text-sm text-muted-foreground"
+        className="flex flex-wrap items-center gap-x-1 gap-y-2 text-sm text-muted-foreground"
       >
         <Link to="/devices" search={{ platform: device.platform }} className="hover:text-foreground">
           {t('nav.devices')}
         </Link>
         <ChevronRight className="size-3.5 shrink-0" aria-hidden="true" />
-        <span className="truncate text-foreground">{title}</span>
+        <span className="truncate">{title}</span>
       </nav>
 
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        {isWindows ? (
-          <WindowsIcon className="size-8 shrink-0" aria-hidden="true" />
-        ) : (
-          <AndroidIcon
-            className={cn('size-8 shrink-0', ANDROID_BRAND_COLOR)}
-            aria-hidden="true"
-          />
-        )}
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
+      <div className="flex flex-wrap items-start gap-4">
+        <div className="flex size-12 shrink-0 items-center justify-center rounded-xl border border-border bg-card shadow-sm">
+          {isWindows ? (
+            <WindowsIcon className="size-7 text-foreground" aria-hidden="true" />
+          ) : (
+            <AndroidIcon
+              className={cn('size-7', ANDROID_BRAND_COLOR)}
+              aria-hidden="true"
+            />
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1 space-y-1.5">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant={STATUS_BADGE[onlineStatus] ?? 'secondary'}>
                 {t(`devices.status.${onlineStatus}`)}
@@ -175,7 +188,7 @@ function DeviceDetailPageHeader({
           </p>
         </div>
       </div>
-    </>
+    </header>
   )
 }
 
@@ -227,7 +240,7 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
 
   return (
     <DeviceDetailCommandToastProvider onGoToActionLogs={() => setActiveTab('action-logs')}>
-      <div className={cn(DEVICE_DETAIL_PAGE_CONTAINER_CLASS, 'space-y-3')}>
+      <div className={cn(DEVICE_DETAIL_PAGE_CONTAINER_CLASS, 'space-y-6')}>
         <DeviceDetailPageHeader
           device={device}
           title={title}
@@ -236,7 +249,7 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
           t={t}
         />
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="h-auto w-full space-y-3">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="h-auto w-full space-y-3">
         <TabsList
           variant="line"
           className="h-auto w-full flex-wrap justify-start gap-1 [&_[data-slot=tabs-trigger]]:flex-none"
@@ -1201,23 +1214,25 @@ function WindowsDiskMetrics({
 
 function DeviceDetailSkeleton() {
   return (
-    <div className={cn(DEVICE_DETAIL_PAGE_CONTAINER_CLASS, 'space-y-3')}>
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <Skeleton className="h-4 w-24" />
-        <Skeleton className="size-3.5 rounded-full" />
-        <Skeleton className="h-4 w-40" />
-      </div>
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <Skeleton className="size-8 shrink-0 rounded-md" />
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-3">
-            <Skeleton className="h-8 w-56" />
-            <Skeleton className="h-5 w-16 rounded-full" />
-            <Skeleton className="h-5 w-16 rounded-full" />
-          </div>
-          <Skeleton className="h-4 w-72" />
+    <div className={cn(DEVICE_DETAIL_PAGE_CONTAINER_CLASS, 'space-y-6')}>
+      <header className="space-y-4 border-b border-border pb-6">
+        <div className="flex flex-wrap items-center gap-2">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="size-3.5 rounded-full" />
+          <Skeleton className="h-4 w-40" />
         </div>
-      </div>
+        <div className="flex flex-wrap items-start gap-4">
+          <Skeleton className="size-12 shrink-0 rounded-xl" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex flex-wrap items-center gap-3">
+              <Skeleton className="h-8 w-56" />
+              <Skeleton className="h-5 w-16 rounded-full" />
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+            <Skeleton className="h-4 w-72" />
+          </div>
+        </div>
+      </header>
       <Tabs defaultValue="overview" className="w-full space-y-3">
         <TabsList variant="line" className="h-auto w-full flex-wrap justify-start gap-1">
           <Skeleton className="h-9 w-20" />
