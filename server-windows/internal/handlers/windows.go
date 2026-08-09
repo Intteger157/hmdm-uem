@@ -325,14 +325,7 @@ func (h *WindowsHandler) ListDevices(c *gin.Context) {
 
 	searchValue := strings.TrimSpace(c.Query("value"))
 	query := db.DB.Model(&models.WindowsDevice{})
-
-	if searchValue != "" {
-		like := "%" + searchValue + "%"
-		query = query.Where(
-			"hardware_id ILIKE ? OR hostname ILIKE ? OR os_version ILIKE ? OR cpu ILIKE ?",
-			like, like, like, like,
-		)
-	}
+	query = applyWindowsDeviceSearch(query, searchValue)
 
 	var totalItemsCount int64
 	if err := query.Count(&totalItemsCount).Error; err != nil {

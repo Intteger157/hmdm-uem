@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { Plus } from 'lucide-react'
+import { DeviceSearchInput } from '@/features/devices/components/DeviceSearchInput'
 import { DeviceDeleteDialog } from '@/features/devices/components/DeviceDeleteDialog'
 import { DeviceFormDialog } from '@/features/devices/components/DeviceFormDialog'
 import { DeviceQrDialog } from '@/features/devices/components/DeviceQrDialog'
@@ -21,8 +22,8 @@ import { getConfigurationQrCodeKey } from '@/features/devices/api/devices-api'
 import { useDevicesQuery } from '@/features/devices/hooks/use-devices-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { isMockApiEnabled } from '@/shared/api/mock-utils'
+import { useDebouncedValue } from '@/shared/hooks/use-debounced-value'
 import { isPlatform } from '@/shared/api/types/platform'
 import { usePermissions } from '@/features/auth/hooks/use-permissions'
 import type { DeviceView } from '@/shared/api/types/device'
@@ -47,7 +48,8 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
 
   const [pageNum, setPageNum] = useState(1)
   const [searchInput, setSearchInput] = useState('')
-  const [searchValue, setSearchValue] = useState<string | undefined>()
+  const debouncedSearch = useDebouncedValue(searchInput, 350)
+  const searchValue = debouncedSearch.trim() || undefined
 
   const [formOpen, setFormOpen] = useState(false)
   const [editingDevice, setEditingDevice] = useState<DeviceView | null>(null)
@@ -60,6 +62,10 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
   useEffect(() => {
     setPageNum(1)
   }, [platform])
+
+  useEffect(() => {
+    setPageNum(1)
+  }, [debouncedSearch])
 
   // Route guards catch this on navigation; this also covers the scope arriving
   // after mount, so a stale ?platform= does not linger in the address bar.
@@ -78,12 +84,8 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
 
   const totalItems = data?.devices.totalItemsCount ?? 0
   const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE))
-
-  const handleSearch = (event: React.FormEvent) => {
-    event.preventDefault()
-    setPageNum(1)
-    setSearchValue(searchInput.trim() || undefined)
-  }
+  const isSearchPending = searchInput.trim() !== debouncedSearch.trim()
+  const isSearching = isFetching && (isSearchPending || Boolean(searchValue))
 
   const handlePlatformChange = (next: 'android' | 'windows') => {
     void navigate({
@@ -146,16 +148,16 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
       </PageHeader>
 
       <PageToolbar>
-        <form onSubmit={handleSearch} className="flex max-w-xl flex-1 gap-2">
-          <Input
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder={t('devices.searchPlaceholder')}
-          />
-          <Button type="submit" variant="secondary">
-            {t('devices.search')}
-          </Button>
-        </form>
+        <DeviceSearchInput
+          value={searchInput}
+          onChange={setSearchInput}
+          placeholder={
+            platform === 'windows'
+              ? t('devices.searchPlaceholderWindows')
+              : t('devices.searchPlaceholder')
+          }
+          isSearching={isSearching}
+        />
         {canMutate && platform === 'android' && (
           <Button type="button" onClick={openAdd}>
             <Plus className="size-4" />
@@ -190,6 +192,7 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
             data={data}
             platform={platform}
             isLoading={isLoading || isFetching}
+            searchQuery={searchValue}
             onEditDevice={platform === 'android' ? openEdit : undefined}
             onQrDevice={platform === 'android' ? setQrDevice : undefined}
             onDeleteDevice={setDeleteDevice}

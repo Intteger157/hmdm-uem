@@ -78,6 +78,7 @@ interface DeviceTableProps {
   data: DeviceListView
   platform: Platform
   isLoading?: boolean
+  searchQuery?: string
   onEditDevice?: (device: DeviceView) => void
   onQrDevice?: (device: DeviceView) => void
   onDeleteDevice?: (device: DeviceView) => void
@@ -88,6 +89,7 @@ export function DeviceTable({
   data,
   platform,
   isLoading,
+  searchQuery,
   onEditDevice,
   onQrDevice,
   onDeleteDevice,
@@ -112,9 +114,12 @@ export function DeviceTable({
   }
 
   if (!isLoading && devices.length === 0) {
+    const trimmedQuery = searchQuery?.trim()
     return (
       <div className="rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
-        {t('devices.empty')}
+        {trimmedQuery
+          ? t('devices.emptySearch', { query: trimmedQuery })
+          : t('devices.empty')}
       </div>
     )
   }
