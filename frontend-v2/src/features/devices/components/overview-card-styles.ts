@@ -7,9 +7,11 @@ export const OVERVIEW_CARD_CONTENT_CLASS = 'p-4 pt-0'
 export const METRIC_TILE_CLASS = 'h-full'
 export const METRIC_TILE_FULL_WIDTH_CLASS = 'col-span-full h-full w-full'
 export const OVERVIEW_STATS_GRID_CLASS =
-  'grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4'
+  'grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-4'
+export const ACTION_CARDS_GRID_CLASS =
+  'grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-3'
 export const DEVICE_DETAIL_PAGE_CONTAINER_CLASS =
-  'mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8'
+  'mx-auto w-full max-w-[1600px] px-4 md:px-8 xl:px-12'
 export const METRIC_TILE_CARD_CLASS = 'gap-0 [--card-spacing:--spacing(3)]'
 export const METRIC_TILE_HEADER_CLASS =
   'flex flex-row items-center justify-between space-y-0 p-3 pb-1'

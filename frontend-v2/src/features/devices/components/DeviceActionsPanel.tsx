@@ -28,6 +28,7 @@ import { DeviceInstalledAppsDialog } from '@/features/devices/components/DeviceI
 import { DeviceLocationDialog } from '@/features/devices/components/DeviceLocationDialog'
 import { DeviceLogsDialog } from '@/features/devices/components/DeviceLogsDialog'
 import { DeviceResetDialog } from '@/features/devices/components/DeviceResetDialog'
+import { ACTION_CARDS_GRID_CLASS } from '@/features/devices/components/overview-card-styles'
 import {
   useDeviceConfigSyncMutation,
   useDeviceFactoryResetMutation,
@@ -341,7 +342,7 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
   if (platform === 'android') {
     return (
       <>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className={ACTION_CARDS_GRID_CLASS}>
           {ANDROID_ACTIONS.filter(allowsAction).map((action) => {
             const Icon = action.icon
             const label = t(action.labelKey)
@@ -448,7 +449,7 @@ export function DeviceActionsPanel({ device, platform = device.platform }: Devic
 
   return (
     <>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className={ACTION_CARDS_GRID_CLASS}>
         {WINDOWS_ACTIONS.filter(allowsAction).map((action) => {
           const Icon = action.icon
           const label = t(action.labelKey)
