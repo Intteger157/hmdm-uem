@@ -41,6 +41,8 @@ import {
   METRIC_TILE_LABEL_CLASS,
   METRIC_TILE_VALUE_CLASS,
   OVERVIEW_FLAT_CARD_CLASS,
+  OVERVIEW_STATS_GRID_CLASS,
+  DEVICE_DETAIL_PAGE_CONTAINER_CLASS,
 } from '@/features/devices/components/overview-card-styles'
 import { WindowsDeviceBitLockerTab } from '@/features/devices/components/WindowsDeviceBitLockerTab'
 import { WindowsDeviceInstalledSoftwareTab } from '@/features/devices/components/WindowsDeviceInstalledSoftwareTab'
@@ -127,21 +129,23 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
 
   if (error || !device) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('deviceDetail.notFound')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Link
-            to="/devices"
-            search={{ platform }}
-            className={buttonVariants({ variant: 'outline' })}
-          >
-            <ArrowLeft className="mr-2 size-4" />
-            {t('deviceDetail.backToList')}
-          </Link>
-        </CardContent>
-      </Card>
+      <div className={DEVICE_DETAIL_PAGE_CONTAINER_CLASS}>
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('deviceDetail.notFound')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Link
+              to="/devices"
+              search={{ platform }}
+              className={buttonVariants({ variant: 'outline' })}
+            >
+              <ArrowLeft className="mr-2 size-4" />
+              {t('deviceDetail.backToList')}
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
     )
   }
 
@@ -156,7 +160,7 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
 
   return (
     <DeviceDetailCommandToastProvider onGoToActionLogs={() => setActiveTab('action-logs')}>
-      <div className="space-y-3">
+      <div className={cn(DEVICE_DETAIL_PAGE_CONTAINER_CLASS, 'space-y-3')}>
       <div className="flex flex-wrap items-center gap-x-1 gap-y-2 border-b pb-3 text-sm text-muted-foreground">
         <Link to="/devices" search={{ platform: device.platform }} className="hover:text-foreground">
           {t('nav.devices')}
@@ -200,7 +204,7 @@ export function DeviceDetailPage({ deviceNumber, platform = 'android' }: DeviceD
             {isWindows ? (
               <WindowsOverviewGrid device={device} na={NA} t={t} />
             ) : (
-              <div className="flex flex-wrap gap-4">
+              <div className={OVERVIEW_STATS_GRID_CLASS}>
                 <MetricCard
                   className={METRIC_TILE_CLASS}
                   label={t('devices.columns.number')}
@@ -368,7 +372,7 @@ function WindowsOverviewGrid({
 }) {
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-4">
+      <div className={OVERVIEW_STATS_GRID_CLASS}>
         <MetricCard
           className={METRIC_TILE_CLASS}
           label={t('devices.columns.hostname')}
@@ -429,7 +433,7 @@ function WindowsOverviewGrid({
       <WindowsDiskMetrics className={METRIC_TILE_FULL_WIDTH_CLASS} device={device} na={na} t={t} />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <WindowsAppliedConfigurationCard hardwareId={device.number} className="h-full" />
         <WindowsAppDeploymentsCard hardwareId={device.number} className="h-full" />
       </div>
@@ -1138,7 +1142,7 @@ function WindowsDiskMetrics({
 
 function DeviceDetailSkeleton() {
   return (
-    <div className="space-y-3">
+    <div className={cn(DEVICE_DETAIL_PAGE_CONTAINER_CLASS, 'space-y-3')}>
       <div className="flex flex-wrap items-center gap-2 border-b pb-3">
         <Skeleton className="h-4 w-24" />
         <Skeleton className="size-3.5 rounded-full" />
@@ -1153,7 +1157,7 @@ function DeviceDetailSkeleton() {
           <Skeleton className="h-9 w-28" />
           <Skeleton className="h-9 w-24" />
         </TabsList>
-        <div className="flex flex-wrap gap-4">
+        <div className={OVERVIEW_STATS_GRID_CLASS}>
           {Array.from({ length: 8 }).map((_, i) => (
             <Card key={i} className={cn(METRIC_TILE_CLASS, metricTileCardClass())}>
               <CardHeader className={METRIC_CARD_HEADER_CLASS}>
