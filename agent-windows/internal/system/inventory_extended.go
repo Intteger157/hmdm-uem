@@ -116,10 +116,10 @@ func isGenericModel(value string) bool {
 
 func collectSerialNumber() string {
 	candidates := []func() string{
+		collectSerialFromBIOS,
 		collectSerialFromComputerSystemProduct,
 		collectSerialFromBaseBoard,
 		collectSerialFromSystemEnclosure,
-		collectSerialFromBIOS,
 	}
 
 	for _, source := range candidates {
@@ -180,19 +180,6 @@ func collectSerialFromBIOS() string {
 		}
 	}
 	return ""
-}
-
-func normalizeSerial(raw string) string {
-	serial := strings.TrimSpace(raw)
-	if serial == "" {
-		return ""
-	}
-	lower := strings.ToLower(serial)
-	switch lower {
-	case "to be filled by o.e.m.", "default string", "system serial number", "none", "0", "0123456789", "123456789":
-		return ""
-	}
-	return serial
 }
 
 func collectCurrentUser() string {
