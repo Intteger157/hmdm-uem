@@ -181,6 +181,32 @@ func upsertDeviceAppStatusPending(deviceID, appID uint) error {
 	return upsertDeviceAppStatus(deviceID, appID, models.AppStatusPending, "", nil)
 }
 
+const appDeploymentStaleAfter = 2 * time.Hour
+
+var staleAppDeploymentStatuses = []string{
+	models.AppStatusPending,
+	models.AppStatusDownloading,
+	models.AppStatusInstalling,
+}
+
+func expireStaleAppDeployments(deviceID uint) error {
+	cutoff := time.Now().Add(-appDeploymentStaleAfter)
+	result := db.DB.Model(&models.DeviceAppStatus{}).
+		Where("device_id = ? AND status IN ? AND updated_at < ?", deviceID, staleAppDeploymentStatuses, cutoff).
+		Updates(map[string]interface{}{
+			"status":        models.AppStatusTimeout,
+			"error_message": models.AppDeploymentTimeoutMessage,
+			"updated_at":    time.Now(),
+		})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected > 0 {
+		log.Printf("[app-deployments] marked %d stale deployment(s) as timeout for device_id=%d", result.RowsAffected, deviceID)
+	}
+	return nil
+}
+
 func upsertDeviceAppStatus(deviceID, appID uint, status, errorMessage string, attemptedCatalogUpdatedAt *time.Time) error {
 	now := time.Now()
 	record := models.DeviceAppStatus{

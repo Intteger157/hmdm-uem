@@ -1754,6 +1754,8 @@
   "deviceDetail.appDeployments.status.Installing": "Установка",
   "deviceDetail.appDeployments.status.Success": "Успех",
   "deviceDetail.appDeployments.status.Failed": "Ошибка",
+  "deviceDetail.appDeployments.status.Canceled": "Отменено",
+  "deviceDetail.appDeployments.status.Timeout": "Таймаут",
   "deviceDetail.appDeployments.deployAction": "Развернуть приложение",
   "deviceDetail.appDeployments.deployTitle": "Развернуть приложение",
   "deviceDetail.appDeployments.deployAppLabel": "Приложение",

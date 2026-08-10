@@ -9,7 +9,10 @@ const (
 	AppStatusSuccess     = "Success"
 	AppStatusFailed      = "Failed"
 	AppStatusCanceled    = "Canceled"
+	AppStatusTimeout     = "Timeout"
 )
+
+const AppDeploymentTimeoutMessage = "Deployment timed out waiting for agent progress"
 
 // DeviceAppStatus tracks deployment progress for one app on one device.
 type DeviceAppStatus struct {

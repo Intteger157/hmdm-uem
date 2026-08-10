@@ -3,7 +3,10 @@ import { Package, Shield } from 'lucide-react'
 import { useWindowsDeviceEffectiveConfigQuery } from '@/features/windows/configurations/hooks/use-windows-config-profiles'
 import type { WindowsConfigProfilePayload } from '@/features/windows/configurations/types/config-profile'
 import { useDeviceAppStatusesQuery } from '@/features/windows/applications/hooks/use-windows-software-apps'
-import type { AppDeploymentStatus } from '@/features/windows/applications/types/software-app'
+import {
+  appDeploymentStatusBadgeClassName,
+  appDeploymentStatusBadgeVariant,
+} from '@/features/windows/applications/utils/app-deployment-status'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { TFunction } from 'i18next'
@@ -37,20 +40,6 @@ function buildConfigurationTags(payload: WindowsConfigProfilePayload, t: TFuncti
       minutes: payload.screenLockTimeout ?? 0,
     }),
   ]
-}
-
-function statusBadgeClassName(status: AppDeploymentStatus) {
-  switch (status) {
-    case 'Pending':
-      return 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300'
-    case 'Success':
-      return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-    case 'Downloading':
-    case 'Installing':
-      return 'border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300'
-    default:
-      return ''
-  }
 }
 
 interface WindowsManagementSectionProps {
@@ -124,7 +113,10 @@ export function WindowsManagementSection({ hardwareId }: WindowsManagementSectio
                 className="flex items-center justify-between gap-3 rounded-md border border-border/50 px-3 py-2 text-sm dark:border-[#242424]/80"
               >
                 <span className="min-w-0 truncate font-medium">{item.appName}</span>
-                <Badge variant="outline" className={statusBadgeClassName(item.status)}>
+                <Badge
+                  variant={appDeploymentStatusBadgeVariant(item.status)}
+                  className={appDeploymentStatusBadgeClassName(item.status)}
+                >
                   {t(`deviceDetail.appDeployments.status.${item.status}`)}
                 </Badge>
               </li>

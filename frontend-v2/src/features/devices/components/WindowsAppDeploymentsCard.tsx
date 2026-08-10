@@ -1,7 +1,11 @@
 import { Package } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useDeviceAppStatusesQuery } from '@/features/windows/applications/hooks/use-windows-software-apps'
-import type { AppDeploymentStatus } from '@/features/windows/applications/types/software-app'
+import {
+  appDeploymentStatusBadgeClassName,
+  appDeploymentStatusBadgeVariant,
+  isAppDeploymentInProgress,
+} from '@/features/windows/applications/utils/app-deployment-status'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -15,36 +19,6 @@ import {
 interface WindowsAppDeploymentsCardProps {
   hardwareId: string
   className?: string
-}
-
-function statusBadgeVariant(status: AppDeploymentStatus) {
-  switch (status) {
-    case 'Success':
-      return 'default'
-    case 'Failed':
-      return 'destructive'
-    case 'Downloading':
-    case 'Installing':
-      return 'secondary'
-    default:
-      return 'outline'
-  }
-}
-
-function statusBadgeClassName(status: AppDeploymentStatus) {
-  switch (status) {
-    case 'Pending':
-      return 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300'
-    case 'Success':
-      return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-    case 'Downloading':
-    case 'Installing':
-      return 'border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300'
-    case 'Failed':
-      return ''
-    default:
-      return ''
-  }
 }
 
 export function WindowsAppDeploymentsCard({ hardwareId, className }: WindowsAppDeploymentsCardProps) {
@@ -71,9 +45,7 @@ export function WindowsAppDeploymentsCard({ hardwareId, className }: WindowsAppD
     return null
   }
 
-  const inProgress = items.some(
-    (item) => item.status === 'Pending' || item.status === 'Downloading' || item.status === 'Installing',
-  )
+  const inProgress = items.some((item) => isAppDeploymentInProgress(item.status))
   const hasActiveInstall = items.some(
     (item) => item.status === 'Downloading' || item.status === 'Installing',
   )
@@ -107,8 +79,8 @@ export function WindowsAppDeploymentsCard({ hardwareId, className }: WindowsAppD
           <div key={item.appId} className="flex items-center justify-between gap-3 py-1.5 first:pt-0 last:pb-0">
             <p className="min-w-0 truncate text-sm font-medium leading-tight">{item.appName}</p>
             <Badge
-              variant={statusBadgeVariant(item.status)}
-              className={cn('shrink-0 text-[10px]', statusBadgeClassName(item.status))}
+              variant={appDeploymentStatusBadgeVariant(item.status)}
+              className={cn('shrink-0 text-[10px]', appDeploymentStatusBadgeClassName(item.status))}
             >
               {t(`deviceDetail.appDeployments.status.${item.status}`)}
             </Badge>

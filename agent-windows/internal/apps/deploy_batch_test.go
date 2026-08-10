@@ -66,10 +66,11 @@ func TestReconcileStaleInstallStatusesReportsFailed(t *testing.T) {
 		{AppID: 1, AppName: "A", Status: InstallStatusInstalling},
 		{AppID: 2, AppName: "B", Status: InstallStatusSuccess},
 		{AppID: 3, AppName: "C", Status: InstallStatusDownloading},
+		{AppID: 4, AppName: "D", Status: InstallStatusPending},
 	})
 
-	if len(reports) != 2 {
-		t.Fatalf("expected 2 stale status reports, got %d", len(reports))
+	if len(reports) != 3 {
+		t.Fatalf("expected 3 stale status reports, got %d", len(reports))
 	}
 	for _, report := range reports {
 		if report.status != InstallStatusFailed {

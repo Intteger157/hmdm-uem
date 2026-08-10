@@ -664,7 +664,7 @@ func ReconcileStaleInstallStatuses(reporter StatusReporter, statuses []DeviceApp
 
 	for _, item := range statuses {
 		switch item.Status {
-		case InstallStatusInstalling, InstallStatusDownloading:
+		case InstallStatusPending, InstallStatusInstalling, InstallStatusDownloading:
 			log.Printf(
 				"app deploy: clearing stale %q status for app id=%d name=%q",
 				item.Status,

@@ -77,6 +77,8 @@ export type AppDeploymentStatus =
   | 'Installing'
   | 'Success'
   | 'Failed'
+  | 'Canceled'
+  | 'Timeout'
 
 export interface DeviceAppStatusItem {
   appId: number

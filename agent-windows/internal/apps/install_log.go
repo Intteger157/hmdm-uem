@@ -8,6 +8,7 @@ import (
 )
 
 const (
+	InstallStatusPending     = "Pending"
 	InstallStatusDownloading = "Downloading"
 	InstallStatusInstalling  = "Installing"
 	InstallStatusSuccess     = "Success"

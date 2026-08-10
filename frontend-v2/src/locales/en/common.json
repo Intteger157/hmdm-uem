@@ -1754,6 +1754,8 @@
   "deviceDetail.appDeployments.status.Installing": "Installing",
   "deviceDetail.appDeployments.status.Success": "Success",
   "deviceDetail.appDeployments.status.Failed": "Failed",
+  "deviceDetail.appDeployments.status.Canceled": "Canceled",
+  "deviceDetail.appDeployments.status.Timeout": "Timed out",
   "deviceDetail.appDeployments.deployAction": "Deploy Application",
   "deviceDetail.appDeployments.deployTitle": "Deploy Application",
   "deviceDetail.appDeployments.deployAppLabel": "Application",

@@ -228,6 +228,12 @@ func (h *WindowsHandler) GetDeviceAppStatuses(c *gin.Context) {
 		return
 	}
 
+	if err := expireStaleAppDeployments(device.ID); err != nil {
+		log.Printf("[get-app-statuses] stale deployment sweep failed: device_id=%d err=%v", device.ID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load app statuses"})
+		return
+	}
+
 	items, err := buildDeviceAppStatusList(device.ID, mergedApps)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load app statuses"})
