@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -58,65 +57,43 @@ func (h *WindowsHandler) UploadStoredFile(c *gin.Context) {
 		return
 	}
 
-	fileHeader, err := c.FormFile("file")
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "missing file upload"})
-		return
-	}
-	if fileHeader.Size > 0 && fileHeader.Size > maxFileUploadBytes {
-		c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "file exceeds upload size limit"})
-		return
-	}
-
-	originalName := filepath.Base(strings.TrimSpace(fileHeader.Filename))
-	if originalName == "" || originalName == "." {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid file name"})
-		return
-	}
-
-	ext := filepath.Ext(originalName)
+	ext := filepath.Ext("placeholder")
 	storedName := uuid.NewString() + ext
 	destPath := filepath.Join(uploadDir, storedName)
 
-	src, err := fileHeader.Open()
-	if err != nil {
-		log.Printf("[upload-file] open upload failed: name=%q err=%v", originalName, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file: " + err.Error()})
-		return
-	}
-	defer src.Close()
-
-	dest, err := os.Create(destPath)
-	if err != nil {
-		log.Printf("[upload-file] create destination failed: path=%q err=%v", destPath, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file: " + err.Error()})
-		return
-	}
-
 	hasher := sha256.New()
-	written, err := io.Copy(io.MultiWriter(dest, hasher), src)
-	closeErr := dest.Close()
+	originalName, _, written, err := streamMultipartUploadToFile(
+		c.Writer,
+		c.Request,
+		destPath,
+		maxFileUploadBytes,
+		hasher,
+	)
 	if err != nil {
 		os.Remove(destPath)
-		log.Printf("[upload-file] stream save failed: path=%q err=%v", destPath, err)
+		if status, message := multipartUploadErrorStatus(err); message != "" {
+			c.JSON(status, gin.H{"error": message})
+			return
+		}
+		log.Printf("[upload-file] stream read failed: err=%v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file: " + err.Error()})
 		return
 	}
-	if closeErr != nil {
-		os.Remove(destPath)
-		log.Printf("[upload-file] close destination failed: path=%q err=%v", destPath, closeErr)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file: " + closeErr.Error()})
-		return
-	}
-	if written == 0 {
-		os.Remove(destPath)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "empty file upload"})
-		return
-	}
-	if written > maxFileUploadBytes {
-		os.Remove(destPath)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "file exceeds upload size limit"})
-		return
+
+	ext = filepath.Ext(originalName)
+	if ext != "" {
+		finalStoredName := strings.TrimSuffix(storedName, filepath.Ext(storedName)) + ext
+		finalDestPath := filepath.Join(uploadDir, finalStoredName)
+		if finalDestPath != destPath {
+			if renameErr := os.Rename(destPath, finalDestPath); renameErr != nil {
+				os.Remove(destPath)
+				log.Printf("[upload-file] rename failed: from=%q to=%q err=%v", destPath, finalDestPath, renameErr)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file: " + renameErr.Error()})
+				return
+			}
+			destPath = finalDestPath
+			storedName = finalStoredName
+		}
 	}
 
 	now := time.Now()

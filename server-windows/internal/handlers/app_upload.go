@@ -3,7 +3,6 @@ package handlers
 import (
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -29,73 +28,45 @@ func (h *WindowsHandler) UploadApplication(c *gin.Context) {
 		return
 	}
 
-	fileHeader, err := c.FormFile("file")
+	destPath := filepath.Join(appstorage.AppsDirectory(), uuid.NewString()+".tmp")
+	originalName, fields, written, err := streamMultipartUploadToFile(
+		c.Writer,
+		c.Request,
+		destPath,
+		maxAppUploadBytes,
+	)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "missing file upload"})
-		return
-	}
-	if fileHeader.Size <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "empty file upload"})
-		return
-	}
-	if fileHeader.Size > maxAppUploadBytes {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "file exceeds upload size limit"})
-		return
-	}
-
-	targetAppID, ok := parseOptionalAppID(c.PostForm("appId"))
-	if !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid appId"})
+		os.Remove(destPath)
+		if status, message := multipartUploadErrorStatus(err); message != "" {
+			c.JSON(status, gin.H{"error": message})
+			return
+		}
+		log.Printf("[upload-application] stream read failed: err=%v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save uploaded file"})
 		return
 	}
 
-	originalName := filepath.Base(strings.TrimSpace(fileHeader.Filename))
 	ext := strings.ToLower(filepath.Ext(originalName))
 	if ext != ".exe" && ext != ".msi" {
+		os.Remove(destPath)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "only .exe and .msi files are supported"})
 		return
 	}
 
 	storedName := uuid.NewString() + ext
-	destPath := filepath.Join(appstorage.AppsDirectory(), storedName)
-
-	src, err := fileHeader.Open()
-	if err != nil {
-		log.Printf("[upload-application] open upload failed: name=%q err=%v", originalName, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to read uploaded file"})
-		return
-	}
-	defer src.Close()
-
-	dest, err := os.Create(destPath)
-	if err != nil {
-		log.Printf("[upload-application] create destination failed: path=%q err=%v", destPath, err)
+	finalPath := filepath.Join(appstorage.AppsDirectory(), storedName)
+	if err := os.Rename(destPath, finalPath); err != nil {
+		os.Remove(destPath)
+		log.Printf("[upload-application] rename failed: from=%q to=%q err=%v", destPath, finalPath, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save uploaded file"})
 		return
 	}
+	destPath = finalPath
 
-	written, err := io.Copy(dest, src)
-	closeErr := dest.Close()
-	if err != nil {
+	targetAppID, ok := parseOptionalAppID(fields["appId"])
+	if !ok {
 		os.Remove(destPath)
-		log.Printf("[upload-application] stream save failed: name=%q err=%v", storedName, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save uploaded file"})
-		return
-	}
-	if closeErr != nil {
-		os.Remove(destPath)
-		log.Printf("[upload-application] close destination failed: name=%q err=%v", storedName, closeErr)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save uploaded file"})
-		return
-	}
-	if written == 0 {
-		os.Remove(destPath)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "empty file upload"})
-		return
-	}
-	if written > maxAppUploadBytes {
-		os.Remove(destPath)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "file exceeds upload size limit"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid appId"})
 		return
 	}
 
@@ -106,8 +77,8 @@ func (h *WindowsHandler) UploadApplication(c *gin.Context) {
 		return
 	}
 
-	overrideVersion := strings.TrimSpace(c.PostForm("version"))
-	overridePublisher := strings.TrimSpace(c.PostForm("publisher"))
+	overrideVersion := strings.TrimSpace(fields["version"])
+	overridePublisher := strings.TrimSpace(fields["publisher"])
 	parsed := resolveUploadMetadata(destPath, originalName, overrideVersion, overridePublisher)
 	name := strings.TrimSpace(parsed.Name)
 	version := strings.TrimSpace(parsed.Version)
@@ -126,12 +97,12 @@ func (h *WindowsHandler) UploadApplication(c *gin.Context) {
 
 	// New catalog entries stage the uploaded file only; persist happens on POST /apps.
 	if targetAppID == 0 {
-		log.Printf("[upload-application] staged path=%q name=%q version=%q publisher=%q detectedArgs=%q", destPath, name, version, publisher, detectedArgs)
+		log.Printf("[upload-application] staged path=%q name=%q version=%q publisher=%q size=%d detectedArgs=%q", destPath, name, version, publisher, written, detectedArgs)
 		c.JSON(http.StatusOK, models.UploadApplicationResponse{
-			URL:          publicURL,
-			Name:         name,
-			Version:      version,
-			Publisher:    publisher,
+			URL:           publicURL,
+			Name:          name,
+			Version:       version,
+			Publisher:     publisher,
 			SuggestedArgs: detectedArgs,
 		})
 		return
@@ -139,6 +110,7 @@ func (h *WindowsHandler) UploadApplication(c *gin.Context) {
 
 	var app models.Application
 	if err := db.DB.First(&app, targetAppID).Error; err != nil {
+		os.Remove(destPath)
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "application not found"})
 			return
@@ -155,13 +127,14 @@ func (h *WindowsHandler) UploadApplication(c *gin.Context) {
 		}
 	}
 
-	installArgs := strings.TrimSpace(c.PostForm("installArgs"))
+	installArgs := strings.TrimSpace(fields["installArgs"])
 	if installArgs == "" {
 		installArgs = detectedArgs
 	}
 
 	appVersion, err := createUploadedApplicationVersion(app, false, version, publicURL, installArgs)
 	if err != nil {
+		os.Remove(destPath)
 		log.Printf("[upload-application] version create failed: app_id=%d err=%v", app.ID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save application version"})
 		return
@@ -171,15 +144,15 @@ func (h *WindowsHandler) UploadApplication(c *gin.Context) {
 		log.Printf("[upload-application] requeue failed: app_id=%d version_id=%d err=%v", app.ID, appVersion.ID, err)
 	}
 
-	log.Printf("[upload-application] stored path=%q app_id=%d version_id=%d name=%q version=%q publisher=%q detectedArgs=%q", destPath, app.ID, appVersion.ID, name, version, publisher, detectedArgs)
+	log.Printf("[upload-application] stored path=%q app_id=%d version_id=%d name=%q version=%q publisher=%q size=%d detectedArgs=%q", destPath, app.ID, appVersion.ID, name, version, publisher, written, detectedArgs)
 	c.JSON(http.StatusOK, models.UploadApplicationResponse{
-		URL:          publicURL,
-		Name:         name,
-		Version:      appVersion.Version,
-		Publisher:    app.Publisher,
+		URL:           publicURL,
+		Name:          name,
+		Version:       appVersion.Version,
+		Publisher:     app.Publisher,
 		SuggestedArgs: detectedArgs,
-		AppID:        app.ID,
-		VersionID:    appVersion.ID,
-		IsNewApp:     false,
+		AppID:         app.ID,
+		VersionID:     appVersion.ID,
+		IsNewApp:      false,
 	})
 }
