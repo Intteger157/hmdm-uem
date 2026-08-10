@@ -62,6 +62,7 @@ export interface WindowsDeviceDto {
   uninstalledAt?: string
   configurationId?: number
   configurationName?: string
+  enrollTime?: number
 }
 
 export interface WindowsDeviceListDto {
@@ -137,6 +138,7 @@ function mapWindowsDeviceToView(raw: WindowsDeviceDto): DeviceView {
     batteryLevel: raw.batteryLevel ?? undefined,
     batteryStatus: raw.batteryStatus || undefined,
     lastUpdate: Number.isFinite(lastUpdate) ? lastUpdate : undefined,
+    enrollTime: raw.enrollTime && raw.enrollTime > 0 ? raw.enrollTime : undefined,
   }
 }
 

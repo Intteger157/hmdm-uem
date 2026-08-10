@@ -46,6 +46,7 @@ func InitDB(dsn string) (*gorm.DB, error) {
 	}
 
 	ensureEnrollmentSettingsSchema(database)
+	backfillWindowsDeviceCreatedAt(database)
 
 	if err := migrateRoleMatrix(database); err != nil {
 		return nil, fmt.Errorf("migrate role matrix: %w", err)

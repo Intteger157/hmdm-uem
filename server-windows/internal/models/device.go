@@ -99,6 +99,7 @@ type WindowsDevice struct {
 	AgentStatus       string     `gorm:"not null;default:active"`
 	UninstalledAt     *time.Time
 	GroupID           *uint      `gorm:"column:group_id;index"`
+	CreatedAt         time.Time  `gorm:"not null;autoCreateTime"`
 }
 
 const (
@@ -157,6 +158,7 @@ type WindowsDeviceJSON struct {
 	GroupName         string                    `json:"groupName,omitempty"`
 	ConfigurationID   uint                      `json:"configurationId,omitempty"`
 	ConfigurationName string                    `json:"configurationName,omitempty"`
+	EnrollTime        *int64                    `json:"enrollTime,omitempty"`
 }
 
 // WindowsDeviceListResponse is returned by GET /rest/windows/devices.
@@ -208,7 +210,16 @@ func ToWindowsDeviceJSON(device WindowsDevice) WindowsDeviceJSON {
 		AgentStatus:       normalizeAgentStatus(device.AgentStatus),
 		UninstalledAt:     device.UninstalledAt,
 		GroupID:           device.GroupID,
+		EnrollTime:        windowsDeviceEnrollTimeMs(device),
 	}
+}
+
+func windowsDeviceEnrollTimeMs(device WindowsDevice) *int64 {
+	if device.CreatedAt.IsZero() {
+		return nil
+	}
+	ms := device.CreatedAt.UTC().UnixMilli()
+	return &ms
 }
 
 func normalizeAgentStatus(raw string) string {

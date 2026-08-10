@@ -13,7 +13,6 @@ import {
 } from '@/features/devices/components/device-overview/device-overview-widgets'
 import { WindowsManagementSection } from '@/features/devices/components/device-overview/WindowsManagementSection'
 import {
-  formatDeviceEnrollTime,
   formatDeviceTimestamp,
   formatUptime,
   formatWindowsCurrentUser,
@@ -86,7 +85,7 @@ export function WindowsDeviceOverview({ device }: WindowsDeviceOverviewProps) {
           <OverviewFieldRow
             label={t('deviceDetail.metrics.enrolled')}
             value={
-              enrollTime != null ? formatDeviceEnrollTime(enrollTime) : t('devices.date.unknown')
+              enrollTime != null ? formatDeviceTimestamp(enrollTime) : t('devices.date.unknown')
             }
           />
         </OverviewSection>
