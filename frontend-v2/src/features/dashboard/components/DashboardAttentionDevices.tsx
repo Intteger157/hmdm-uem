@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Monitor, Smartphone } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   deviceDisplayName,
@@ -21,6 +21,20 @@ const STATUS_BADGE: Record<AttentionDeviceRow['severity'], string> = {
   critical: 'text-rose-400 bg-rose-500/10 ring-rose-500/20',
   warning: 'text-amber-400 bg-amber-500/10 ring-amber-500/20',
   info: 'text-slate-400 bg-slate-500/10 ring-slate-500/20',
+}
+
+function PlatformIndicator({ platform }: { platform: Platform }) {
+  const { t } = useTranslation()
+  const Icon = platform === 'windows' ? Monitor : Smartphone
+  const label =
+    platform === 'windows' ? t('dashboard.attention.platformWindows') : t('dashboard.attention.platformAndroid')
+
+  return (
+    <span className="inline-flex items-center gap-1.5 text-muted-foreground" title={label}>
+      <Icon className="size-4 shrink-0" aria-hidden />
+      <span className="sr-only">{label}</span>
+    </span>
+  )
 }
 
 export function DashboardAttentionDevices({
@@ -65,10 +79,11 @@ export function DashboardAttentionDevices({
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[520px] text-left text-sm">
+          <table className="w-full min-w-[560px] text-left text-sm">
             <thead className="border-b border-border/80 text-xs uppercase tracking-wide text-muted-foreground dark:border-[#242424]">
               <tr>
                 <th className="px-6 py-3 font-medium">{t('dashboard.attention.columnDevice')}</th>
+                <th className="px-4 py-3 font-medium">{t('dashboard.attention.columnPlatform')}</th>
                 <th className="px-4 py-3 font-medium">{t('dashboard.attention.columnStatus')}</th>
                 <th className="px-6 py-3 font-medium">{t('dashboard.attention.columnIssue')}</th>
               </tr>
@@ -76,7 +91,7 @@ export function DashboardAttentionDevices({
             <tbody>
               {devices.map(({ device, severity, issueKey, lastSeenMs, status }) => (
                 <tr
-                  key={device.number}
+                  key={`${device.platform}-${device.number}`}
                   className="border-b border-border/50 transition-colors last:border-0 hover:bg-muted/20 dark:border-[#242424]"
                 >
                   <td className="px-6 py-3.5">
@@ -89,6 +104,9 @@ export function DashboardAttentionDevices({
                       {deviceDisplayName(device)}
                     </Link>
                     <p className="mt-0.5 font-mono text-xs text-muted-foreground">{device.number}</p>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <PlatformIndicator platform={device.platform} />
                   </td>
                   <td className="px-4 py-3.5">
                     <span

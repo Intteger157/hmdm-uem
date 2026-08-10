@@ -1,5 +1,6 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { DashboardAlerts } from '@/features/dashboard/components/DashboardAlerts'
 import { DashboardApplicationHealth } from '@/features/dashboard/components/DashboardApplicationHealth'
 import { DashboardAttentionDevices } from '@/features/dashboard/components/DashboardAttentionDevices'
@@ -12,39 +13,60 @@ import {
   DashboardQuickActionsInline,
 } from '@/features/dashboard/components/DashboardQuickActions'
 import { DashboardRecentActivity } from '@/features/dashboard/components/DashboardRecentActivity'
-import { rankAttentionDevices } from '@/features/dashboard/lib/dashboard-attention'
 import { deriveDashboardMetrics } from '@/features/dashboard/lib/dashboard-metrics'
 import {
-  useDashboardFleetDevices,
+  useDashboardAttentionDevicesQuery,
   useDashboardPlatform,
-} from '@/features/dashboard/hooks/use-dashboard-fleet-devices'
-import { useDeviceSummaryQuery } from '@/features/dashboard/hooks/use-device-summary-query'
+  useDeviceSummaryQuery,
+} from '@/features/dashboard/hooks/use-device-summary-query'
 import { Button } from '@/components/ui/button'
 import { PageContainer } from '@/shared/layout/page-layout'
 import { usePeriodicNow } from '@/shared/hooks/use-periodic-now'
 
 export function DashboardPage() {
   const { t } = useTranslation()
-  const now = usePeriodicNow()
+  usePeriodicNow()
   const platform = useDashboardPlatform()
   const summaryQuery = useDeviceSummaryQuery()
-  const fleetQuery = useDashboardFleetDevices()
+  const attentionQuery = useDashboardAttentionDevicesQuery(5)
 
+  const summary = summaryQuery.data?.summary
   const metrics = useMemo(
-    () => (summaryQuery.data ? deriveDashboardMetrics(summaryQuery.data) : null),
-    [summaryQuery.data],
+    () => (summary ? deriveDashboardMetrics(summary) : null),
+    [summary],
   )
 
-  const attentionDevices = useMemo(() => {
-    const items = fleetQuery.data?.devices.items ?? []
-    return rankAttentionDevices(items, now, 5)
-  }, [fleetQuery.data?.devices.items, now])
+  const partialWarnings = useMemo(() => {
+    const combined = [
+      ...(summaryQuery.data?.warnings ?? []),
+      ...(attentionQuery.data?.warnings ?? []),
+    ]
+    return [...new Set(combined)]
+  }, [summaryQuery.data?.warnings, attentionQuery.data?.warnings])
+
+  const warnedRef = useRef('')
+  useEffect(() => {
+    if (partialWarnings.length === 0) {
+      warnedRef.current = ''
+      return
+    }
+
+    const key = partialWarnings.join('|')
+    if (warnedRef.current === key) {
+      return
+    }
+    warnedRef.current = key
+    toast.warning(t('dashboard.partialData.title'), {
+      id: 'dashboard-partial-data',
+      description: partialWarnings.join(' '),
+    })
+  }, [partialWarnings, t])
 
   if (summaryQuery.isLoading) {
     return <DashboardSkeleton />
   }
 
-  if (summaryQuery.error || !summaryQuery.data || !metrics) {
+  if (summaryQuery.error || !summary || !metrics) {
     return (
       <PageContainer size="full">
         <div className="rounded-xl border border-destructive/40 bg-card p-6 dark:bg-[#111111]">
@@ -87,16 +109,16 @@ export function DashboardPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <DashboardEnrollmentTrend monthly={summaryQuery.data.devicesEnrolledMonthly} />
+        <DashboardEnrollmentTrend monthly={summary.devicesEnrolledMonthly} />
         <DashboardApplicationHealth metrics={metrics} platform={platform} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <DashboardAttentionDevices
-          devices={attentionDevices}
+          devices={attentionQuery.data?.devices ?? []}
           platform={platform}
           appIssueCount={metrics.installMismatch + metrics.installFailure}
-          isLoading={fleetQuery.isLoading}
+          isLoading={attentionQuery.isLoading}
         />
         <DashboardRecentActivity />
       </div>

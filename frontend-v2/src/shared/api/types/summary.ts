@@ -18,4 +18,14 @@ export interface SummaryResponse {
   appFailureByConfig: number[]
   appMismatchByConfig: number[]
   appSuccessByConfig: number[]
+  sources?: {
+    android: boolean
+    windows: boolean
+  }
+  warnings?: string[]
+}
+
+export interface SummaryFetchResult {
+  summary: SummaryResponse
+  warnings: string[]
 }
