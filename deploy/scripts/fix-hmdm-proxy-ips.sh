@@ -47,23 +47,24 @@ patch_context_file() {
     return 1
   fi
 
-  if grep -q 'name="proxy.addresses"' "${file}"; then
-    sed -i "s|<Parameter name=\"proxy.addresses\" value=\"[^\"]*\"|<Parameter name=\"proxy.addresses\" value=\"${PROXY_IPS}\"|" "${file}"
-  else
-    sed -i "s|<Parameter name=\"proxy.ip.header\"|<Parameter name=\"proxy.addresses\" value=\"${PROXY_IPS}\"/>\n    <Parameter name=\"proxy.ip.header\"|" "${file}"
-    if ! grep -q 'name="proxy.addresses"' "${file}"; then
-      sed -i "s|</Context>|    <Parameter name=\"proxy.addresses\" value=\"${PROXY_IPS}\"/>\n</Context>|" "${file}"
-    fi
-  fi
+  local tmp
+  tmp="$(mktemp)"
 
-  if grep -q 'name="proxy.ip.header"' "${file}"; then
-    sed -i 's|<Parameter name="proxy.ip.header" value="[^"]*"|<Parameter name="proxy.ip.header" value="X-Real-IP"|' "${file}"
-  else
-    sed -i "s|</Context>|    <Parameter name=\"proxy.ip.header\" value=\"X-Real-IP\"/>\n</Context>|" "${file}"
-  fi
+  # Drop commented or active proxy settings (ROOT.xml ships them inside <!-- -->).
+  grep -Ev 'proxy\.(addresses|ip\.header)' "${file}" > "${tmp}"
+
+  awk -v ips="${PROXY_IPS}" '
+    /<\/Context>/ {
+      print "    <Parameter name=\"proxy.addresses\" value=\"" ips "\"/>"
+      print "    <Parameter name=\"proxy.ip.header\" value=\"X-Real-IP\"/>"
+    }
+    { print }
+  ' "${tmp}" > "${file}"
+
+  rm -f "${tmp}"
 
   echo "[fix-hmdm-proxy-ips] Patched ${file}"
-  grep -E 'name="proxy\.(addresses|ip.header)"' "${file}" || true
+  grep -E '<Parameter name="proxy\.(addresses|ip.header)"' "${file}" || true
 }
 
 if [[ ! -f "${CONTEXT_FILE}" ]]; then
