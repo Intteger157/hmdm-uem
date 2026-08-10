@@ -99,7 +99,7 @@ type WindowsDevice struct {
 	AgentStatus       string     `gorm:"not null;default:active"`
 	UninstalledAt     *time.Time
 	GroupID           *uint      `gorm:"column:group_id;index"`
-	CreatedAt         time.Time  `gorm:"not null;autoCreateTime"`
+	CreatedAt         time.Time  `gorm:"column:created_at;autoCreateTime"`
 }
 
 const (

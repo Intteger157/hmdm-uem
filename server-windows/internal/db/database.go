@@ -20,6 +20,8 @@ func InitDB(dsn string) (*gorm.DB, error) {
 
 	normalizeEnrollmentDownloadTokens(database)
 
+	ensureWindowsDeviceCreatedAtSchema(database)
+
 	if err := database.AutoMigrate(
 		&models.WindowsDevice{},
 		&models.WindowsDeviceCommand{},
