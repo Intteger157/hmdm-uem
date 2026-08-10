@@ -56,6 +56,9 @@ func (h *WindowsHandler) Enroll(c *gin.Context) {
 			HardwareID:      req.HardwareID,
 			EnrollmentToken: req.EnrollmentToken,
 		}
+		if err := applyDefaultGroupToNewDevice(&device); err != nil {
+			log.Printf("[enroll] default group lookup failed: hardware_id=%q err=%v", req.HardwareID, err)
+		}
 		if err := db.DB.Create(&device).Error; err != nil {
 			log.Printf("[enroll] create device failed: hardware_id=%q err=%v", req.HardwareID, err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create device"})
@@ -63,9 +66,6 @@ func (h *WindowsHandler) Enroll(c *gin.Context) {
 		}
 		if err := assignDefaultProfileToDevice(device.ID); err != nil {
 			log.Printf("[enroll] default profile assignment failed: device_id=%d err=%v", device.ID, err)
-		}
-		if err := assignDefaultGroupToDevice(device.ID); err != nil {
-			log.Printf("[enroll] default group assignment failed: device_id=%d err=%v", device.ID, err)
 		}
 		log.Printf("[enroll] created device hardware_id=%q token=%q", req.HardwareID, req.EnrollmentToken)
 	} else if err != nil {

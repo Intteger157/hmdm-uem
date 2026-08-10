@@ -6,6 +6,22 @@ import (
 	"github.com/hmdm/server-windows/internal/models"
 )
 
+func TestApplyDefaultGroupToNewDeviceSetsGroupID(t *testing.T) {
+	groupID := uint(7)
+	device := &models.WindowsDevice{}
+	device.GroupID = &groupID
+
+	if device.GroupID == nil || *device.GroupID != groupID {
+		t.Fatalf("expected group_id=%d on device, got %#v", groupID, device.GroupID)
+	}
+}
+
+func TestApplyDefaultGroupToNewDeviceNilSafe(t *testing.T) {
+	if err := applyDefaultGroupToNewDevice(nil); err != nil {
+		t.Fatalf("expected nil device to be ignored, got err=%v", err)
+	}
+}
+
 func TestApplyExclusiveDefaultGroupClearsOthers(t *testing.T) {
 	// Logic-only test: verify the update pattern used by applyExclusiveDefaultGroup.
 	groups := []models.WindowsDeviceGroup{

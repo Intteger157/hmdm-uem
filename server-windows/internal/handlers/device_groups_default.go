@@ -34,7 +34,11 @@ func findDefaultDeviceGroup() (models.WindowsDeviceGroup, bool, error) {
 	return group, true, nil
 }
 
-func assignDefaultGroupToDevice(deviceID uint) error {
+func applyDefaultGroupToNewDevice(device *models.WindowsDevice) error {
+	if device == nil {
+		return nil
+	}
+
 	group, ok, err := findDefaultDeviceGroup()
 	if err != nil {
 		return err
@@ -43,12 +47,8 @@ func assignDefaultGroupToDevice(deviceID uint) error {
 		return nil
 	}
 
-	if err := db.DB.Model(&models.WindowsDevice{}).
-		Where("id = ?", deviceID).
-		Update("group_id", group.ID).Error; err != nil {
-		return err
-	}
-
-	log.Printf("[default-group] assigned group_id=%d name=%q to device_id=%d", group.ID, group.Name, deviceID)
+	groupID := group.ID
+	device.GroupID = &groupID
+	log.Printf("[default-group] will assign group_id=%d name=%q during device creation", group.ID, group.Name)
 	return nil
 }

@@ -98,7 +98,7 @@ type WindowsDevice struct {
 	LastCheckin       time.Time
 	AgentStatus       string     `gorm:"not null;default:active"`
 	UninstalledAt     *time.Time
-	GroupID           *uint      `gorm:"index"`
+	GroupID           *uint      `gorm:"column:group_id;index"`
 }
 
 const (
