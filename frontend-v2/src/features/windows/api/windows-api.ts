@@ -164,6 +164,12 @@ export async function searchWindowsDevices(params: DeviceSearchParams): Promise<
   if (params.value?.trim()) {
     query.set('value', params.value.trim())
   }
+  if (params.sortBy) {
+    query.set('sortBy', params.sortBy)
+  }
+  if (params.sortDir) {
+    query.set('sortDir', params.sortDir)
+  }
 
   const response = await windowsApi.get<WindowsDeviceListDto>(`/devices?${query.toString()}`)
   return toDeviceListView(response.data)

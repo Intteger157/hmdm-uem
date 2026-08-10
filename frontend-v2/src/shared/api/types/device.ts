@@ -174,6 +174,8 @@ export type DeviceListSortBy =
   | 'LAUNCHER_VERSION'
   | 'ENROLLMENT_DATE'
   | 'SERIAL'
+  | 'HOSTNAME'
+  | 'CURRENT_USER'
 
 export interface DeviceSearchRequest {
   value?: string

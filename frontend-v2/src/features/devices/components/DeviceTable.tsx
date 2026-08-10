@@ -127,19 +127,30 @@ export function DeviceTable({
   if (platform === 'windows') {
     return (
       <div className={DATA_TABLE_WRAPPER_CLASS}>
-        <table className={cn(DATA_TABLE_CLASS, 'text-base')}>
-          <thead className="border-b bg-muted/40 text-sm text-muted-foreground">
+        <table className={cn(DATA_TABLE_CLASS, 'table-fixed text-sm')}>
+          <colgroup>
+            <col className="w-10" />
+            <col className="w-[9.5rem]" />
+            <col className="w-[11rem]" />
+            <col className="w-[9rem]" />
+            <col className="w-[7.5rem]" />
+            <col className="w-[7.5rem]" />
+            <col className="w-[10rem]" />
+            <col className="w-[9rem]" />
+            {showWindowsActions ? <col className="w-16" /> : null}
+          </colgroup>
+          <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
             <tr>
-              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.status')}</th>
-              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_FLEX)}>{t('devices.columns.hostname')}</th>
-              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_FLEX)}>{t('devices.columns.description')}</th>
-              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_FLEX)}>{t('devices.columns.configuration')}</th>
-              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_MEDIUM)}>{t('devices.columns.os')}</th>
-              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_MEDIUM)}>{t('devices.columns.bitlocker')}</th>
-              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_FLEX)}>{t('devices.columns.currentUser')}</th>
-              <th className={cn('px-3 py-3.5 font-medium', DATA_TABLE_COL_MEDIUM)}>{t('devices.columns.lastUpdate')}</th>
+              <th className="px-3 py-2 font-medium">{t('devices.columns.status')}</th>
+              <th className="px-3 py-2 font-medium">{t('devices.columns.hostname')}</th>
+              <th className="px-3 py-2 font-medium">{t('devices.columns.description')}</th>
+              <th className="px-3 py-2 font-medium">{t('devices.columns.configuration')}</th>
+              <th className="px-3 py-2 font-medium">{t('devices.columns.os')}</th>
+              <th className="px-3 py-2 font-medium">{t('devices.columns.bitlocker')}</th>
+              <th className="px-3 py-2 font-medium">{t('devices.columns.currentUser')}</th>
+              <th className="px-3 py-2 font-medium">{t('devices.columns.lastUpdate')}</th>
               {showWindowsActions && (
-                <th className={cn('px-3 py-3.5 font-medium text-right', DATA_TABLE_COL_COMPACT)}>{t('devices.columns.actions')}</th>
+                <th className="px-3 py-2 text-right font-medium">{t('devices.columns.actions')}</th>
               )}
             </tr>
           </thead>
@@ -472,7 +483,7 @@ function WindowsDeviceRow({
         device.windowsAgentStatus === 'uninstalled' && 'bg-orange-500/10',
       )}
     >
-      <td className="px-4 py-3">
+      <td className="px-3 py-2">
         <StatusDot
           statusCode={onlineStatus}
           title={
@@ -482,35 +493,46 @@ function WindowsDeviceRow({
           }
         />
       </td>
-      <td className="px-4 py-3 font-mono text-xs font-medium">
-        <div className="flex flex-wrap items-center gap-2">
+      <td className="px-3 py-2 font-mono text-xs font-medium">
+        <div className="flex min-w-0 items-center gap-1.5">
           <Link
             to="/devices/$deviceNumber"
             params={{ deviceNumber: device.number }}
             search={{ platform: 'windows' }}
-            className="text-primary hover:underline"
+            className="truncate text-primary hover:underline"
+            title={device.hostname ?? device.number}
           >
             {device.hostname ?? device.number}
           </Link>
           {device.windowsAgentStatus === 'uninstalled' && (
-            <span className="rounded-md bg-orange-500/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-orange-700 dark:text-orange-300">
+            <span className="shrink-0 rounded-md bg-orange-500/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-orange-700 dark:text-orange-300">
               {t('devices.windowsAgent.uninstalled')}
             </span>
           )}
         </div>
       </td>
-      <td className="px-4 py-3 text-muted-foreground">{device.description || '—'}</td>
-      <td className="px-4 py-3">
-        <WindowsConfigurationCell device={device} />
+      <td className="px-3 py-2 text-muted-foreground">
+        <span className="block truncate" title={device.description || undefined}>
+          {device.description || '—'}
+        </span>
       </td>
-      <td className="px-4 py-3 text-xs">{formatWindowsOsLabel(device.windowsBuild)}</td>
-      <td className="px-4 py-3">
+      <td className="px-3 py-2">
+        <div className="truncate">
+          <WindowsConfigurationCell device={device} />
+        </div>
+      </td>
+      <td className="px-3 py-2 text-xs whitespace-nowrap">{formatWindowsOsLabel(device.windowsBuild)}</td>
+      <td className="px-3 py-2 text-xs whitespace-nowrap">
         {formatBitLockerStatus(device.bitlockerStatus, t)}
       </td>
-      <td className="px-4 py-3 font-mono text-xs">{device.currentUser?.trim() || '—'}</td>
-      <td className="px-4 py-3 whitespace-nowrap">{formatTimestamp(device.lastUpdate)}</td>
+      <td className="px-3 py-2 font-mono text-xs">
+        <span className="block truncate" title={device.currentUser?.trim() || undefined}>
+          {device.currentUser?.trim() || '—'}
+        </span>
+      </td>
+      <td className="px-3 py-2 text-xs whitespace-nowrap tabular-nums">{formatTimestamp(device.lastUpdate)}</td>
       {showActions && (
-        <td className="px-4 py-3">
+        <td className="px-3 py-2">
           <WindowsDeviceRowActions
             device={device}
             onDeleteDevice={onDeleteDevice}

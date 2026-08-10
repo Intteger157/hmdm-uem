@@ -333,6 +333,8 @@ func (h *WindowsHandler) ListDevices(c *gin.Context) {
 	}
 
 	searchValue := strings.TrimSpace(c.Query("value"))
+	sortBy := strings.TrimSpace(c.DefaultQuery("sortBy", "HOSTNAME"))
+	sortDir := strings.TrimSpace(c.DefaultQuery("sortDir", "ASC"))
 	query := db.DB.Model(&models.WindowsDevice{})
 	query = applyWindowsDeviceSearch(query, searchValue)
 
@@ -345,7 +347,7 @@ func (h *WindowsHandler) ListDevices(c *gin.Context) {
 
 	offset := (pageNum - 1) * pageSize
 	var devices []models.WindowsDevice
-	if err := query.Order("last_checkin DESC NULLS LAST, id DESC").
+	if err := query.Order(windowsDeviceSortExpr(sortBy, sortDir)).
 		Offset(offset).
 		Limit(pageSize).
 		Find(&devices).Error; err != nil {

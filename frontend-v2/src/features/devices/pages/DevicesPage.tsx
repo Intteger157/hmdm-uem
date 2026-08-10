@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { Plus } from 'lucide-react'
 import { DeviceSearchInput } from '@/features/devices/components/DeviceSearchInput'
+import { DeviceListSortSelect } from '@/features/devices/components/DeviceListSortSelect'
 import { DeviceDeleteDialog } from '@/features/devices/components/DeviceDeleteDialog'
 import { DeviceFormDialog } from '@/features/devices/components/DeviceFormDialog'
 import { DeviceQrDialog } from '@/features/devices/components/DeviceQrDialog'
@@ -28,6 +29,11 @@ import { isPlatform } from '@/shared/api/types/platform'
 import { usePermissions } from '@/features/auth/hooks/use-permissions'
 import type { DeviceView } from '@/shared/api/types/device'
 import { PageContainer, PageHeader, PageToolbar } from '@/shared/layout/page-layout'
+import {
+  loadSortPresetId,
+  resolveSortPreset,
+  saveSortPresetId,
+} from '@/features/devices/lib/device-list-sort'
 
 const PAGE_SIZE = isMockApiEnabled() ? 5 : 50
 
@@ -46,6 +52,9 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
   const { lockedPlatform, canMutate } = usePermissions()
   const platform = lockedPlatform ?? requestedPlatform
 
+  const [sortPresetId, setSortPresetId] = useState(() => loadSortPresetId(platform))
+  const sortPreset = resolveSortPreset(platform, sortPresetId)
+
   const [pageNum, setPageNum] = useState(1)
   const [searchInput, setSearchInput] = useState('')
   const debouncedSearch = useDebouncedValue(searchInput, 350)
@@ -60,12 +69,13 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
   const [windowsEnrollmentOpen, setWindowsEnrollmentOpen] = useState(false)
 
   useEffect(() => {
+    setSortPresetId(loadSortPresetId(platform))
     setPageNum(1)
   }, [platform])
 
   useEffect(() => {
     setPageNum(1)
-  }, [debouncedSearch])
+  }, [debouncedSearch, sortPresetId])
 
   // Route guards catch this on navigation; this also covers the scope arriving
   // after mount, so a stale ?platform= does not linger in the address bar.
@@ -80,6 +90,8 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
     pageNum,
     pageSize: PAGE_SIZE,
     value: searchValue,
+    sortBy: sortPreset.sortBy,
+    sortDir: sortPreset.sortDir,
   })
 
   const totalItems = data?.devices.totalItemsCount ?? 0
@@ -120,7 +132,7 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
       : undefined
 
   return (
-    <PageContainer size="wide">
+    <PageContainer size="default">
       <PageHeader
         title={t('devices.title')}
         description={platform === 'android' ? t('devices.subtitle') : t('devices.subtitleWindows')}
@@ -148,16 +160,26 @@ export function DevicesPage({ platform: platformParam }: DevicesPageProps) {
       </PageHeader>
 
       <PageToolbar>
-        <DeviceSearchInput
-          value={searchInput}
-          onChange={setSearchInput}
-          placeholder={
-            platform === 'windows'
-              ? t('devices.searchPlaceholderWindows')
-              : t('devices.searchPlaceholder')
-          }
-          isSearching={isSearching}
-        />
+        <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-2">
+          <DeviceSearchInput
+            value={searchInput}
+            onChange={setSearchInput}
+            placeholder={
+              platform === 'windows'
+                ? t('devices.searchPlaceholderWindows')
+                : t('devices.searchPlaceholder')
+            }
+            isSearching={isSearching}
+          />
+          <DeviceListSortSelect
+            platform={platform}
+            value={sortPresetId}
+            onChange={(next) => {
+              setSortPresetId(next)
+              saveSortPresetId(platform, next)
+            }}
+          />
+        </div>
         {canMutate && platform === 'android' && (
           <Button type="button" onClick={openAdd}>
             <Plus className="size-4" />
