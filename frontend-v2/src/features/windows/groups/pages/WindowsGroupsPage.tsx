@@ -156,7 +156,14 @@ export function WindowsGroupsPage() {
                     {pageItems.map((group) => (
                       <WindowsDataListRow key={group.id} gridClass={WINDOWS_GRID_GROUPS}>
                         <WindowsDataListCell>
-                          <div className="truncate font-medium text-foreground">{group.name}</div>
+                          <div className="flex min-w-0 flex-wrap items-center gap-2">
+                            <span className="truncate font-medium text-foreground">{group.name}</span>
+                            {group.isDefault ? (
+                              <span className="shrink-0 rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-400">
+                                {t('windowsGroups.badge.default')}
+                              </span>
+                            ) : null}
+                          </div>
                         </WindowsDataListCell>
                         <WindowsDataListCell className="text-muted-foreground">
                           <div className="line-clamp-2">{group.description?.trim() || '—'}</div>

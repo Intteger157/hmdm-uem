@@ -44,6 +44,7 @@ func buildDeviceGroupJSON(group models.WindowsDeviceGroup) (models.DeviceGroupJS
 		ID:          group.ID,
 		Name:        group.Name,
 		Description: group.Description,
+		IsDefault:   group.IsDefault,
 		DeviceCount: countDevicesByGroup([]uint{group.ID})[group.ID],
 	}
 	if profile, ok := lookupGroupProfiles([]uint{group.ID})[group.ID]; ok {

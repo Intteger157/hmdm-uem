@@ -40,6 +40,7 @@ func (h *WindowsHandler) ListDeviceGroups(c *gin.Context) {
 			ID:          group.ID,
 			Name:        group.Name,
 			Description: group.Description,
+			IsDefault:   group.IsDefault,
 			DeviceCount: deviceCounts[group.ID],
 		}
 		if profile, ok := groupProfiles[group.ID]; ok {
@@ -87,8 +88,11 @@ func saveDeviceGroupWithAssignments(
 	group *models.WindowsDeviceGroup,
 	configurationID *uint,
 	deviceIDs []uint,
+	isDefault bool,
 ) (models.DeviceGroupJSON, int, string) {
 	var result models.DeviceGroupJSON
+
+	group.IsDefault = isDefault
 
 	err := db.DB.Transaction(func(tx *gorm.DB) error {
 		if group.ID == 0 {
@@ -96,6 +100,9 @@ func saveDeviceGroupWithAssignments(
 				return err
 			}
 		} else if err := tx.Save(group).Error; err != nil {
+			return err
+		}
+		if err := applyExclusiveDefaultGroup(tx, group.ID, isDefault); err != nil {
 			return err
 		}
 		return applyGroupAssignments(tx, group.ID, configurationID, deviceIDs)
@@ -133,7 +140,7 @@ func (h *WindowsHandler) CreateDeviceGroup(c *gin.Context) {
 		Name:        name,
 		Description: strings.TrimSpace(req.Description),
 	}
-	item, status, message := saveDeviceGroupWithAssignments(&group, req.ConfigurationID, req.DeviceIDs)
+	item, status, message := saveDeviceGroupWithAssignments(&group, req.ConfigurationID, req.DeviceIDs, req.IsDefault)
 	if status != http.StatusOK {
 		if status >= 500 {
 			log.Printf("[create-device-group] save failed: name=%q err=%s", name, message)
@@ -177,7 +184,7 @@ func (h *WindowsHandler) UpdateDeviceGroup(c *gin.Context) {
 
 	group.Name = name
 	group.Description = strings.TrimSpace(req.Description)
-	item, status, message := saveDeviceGroupWithAssignments(&group, req.ConfigurationID, req.DeviceIDs)
+	item, status, message := saveDeviceGroupWithAssignments(&group, req.ConfigurationID, req.DeviceIDs, req.IsDefault)
 	if status != http.StatusOK {
 		if status >= 500 {
 			log.Printf("[update-device-group] save failed: id=%d err=%s", groupID, message)

@@ -25,6 +25,7 @@ import {
 import { FlatSelect } from '@/components/ui/flat-select'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -61,6 +62,7 @@ export function WindowsGroupFormDialog({ open, onOpenChange, group }: WindowsGro
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [configurationId, setConfigurationId] = useState('')
+  const [isDefault, setIsDefault] = useState(false)
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<number[]>([])
 
   useEffect(() => {
@@ -71,6 +73,7 @@ export function WindowsGroupFormDialog({ open, onOpenChange, group }: WindowsGro
     setName(group?.name ?? '')
     setDescription(group?.description ?? '')
     setConfigurationId(group?.configurationId ? String(group.configurationId) : '')
+    setIsDefault(group?.isDefault ?? false)
     setSelectedDeviceIds(group?.deviceIds ?? [])
   }, [open, group])
 
@@ -84,6 +87,7 @@ export function WindowsGroupFormDialog({ open, onOpenChange, group }: WindowsGro
     setConfigurationId(
       groupDetailQuery.data.configurationId ? String(groupDetailQuery.data.configurationId) : '',
     )
+    setIsDefault(groupDetailQuery.data.isDefault ?? false)
     setSelectedDeviceIds(groupDetailQuery.data.deviceIds ?? [])
   }, [open, isEdit, groupDetailQuery.data])
 
@@ -121,6 +125,7 @@ export function WindowsGroupFormDialog({ open, onOpenChange, group }: WindowsGro
     const payload = {
       name: trimmedName,
       description: description.trim() || undefined,
+      isDefault,
       configurationId:
         parsedConfigurationId != null && Number.isInteger(parsedConfigurationId) && parsedConfigurationId > 0
           ? parsedConfigurationId
@@ -197,6 +202,21 @@ export function WindowsGroupFormDialog({ open, onOpenChange, group }: WindowsGro
                   placeholder={t('windowsGroups.form.configurationPlaceholder')}
                 />
               )}
+            </div>
+
+            <div className="flex items-start justify-between gap-4 rounded-lg border border-white/10 bg-black/20 px-4 py-3">
+              <div className="space-y-1">
+                <Label htmlFor="windows-group-is-default" className="text-sm font-medium">
+                  {t('windowsGroups.form.isDefault')}
+                </Label>
+                <p className="text-xs text-muted-foreground">{t('windowsGroups.form.isDefaultHint')}</p>
+              </div>
+              <Switch
+                id="windows-group-is-default"
+                checked={isDefault}
+                onCheckedChange={setIsDefault}
+                className={isDefault ? 'bg-violet-600 hover:bg-violet-600' : undefined}
+              />
             </div>
 
             <WindowsGroupDevicePicker
