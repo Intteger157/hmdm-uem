@@ -7,20 +7,21 @@ import {
   useWindowsGroupsQuery,
 } from '@/features/windows/groups/hooks/use-windows-groups'
 import type { WindowsGroup } from '@/features/windows/groups/types/windows-group'
+import {
+  WINDOWS_GRID_GROUPS,
+  WindowsDataList,
+  WindowsDataListBody,
+  WindowsDataListCell,
+  WindowsDataListHeader,
+  WindowsDataListRow,
+} from '@/features/windows/components/WindowsDataList'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
 import { ListPagination } from '@/shared/components/ListPagination'
 import { usePermissions } from '@/features/auth/hooks/use-permissions'
-import {
-  DATA_TABLE_CLASS,
-  DATA_TABLE_COL_COMPACT,
-  DATA_TABLE_COL_MEDIUM,
-  PageContainer,
-  PageHeader,
-  PageToolbar,
-} from '@/shared/layout/page-layout'
+import { PageContainer, PageHeader, PageToolbar } from '@/shared/layout/page-layout'
 import { usePaginatedList } from '@/shared/hooks/use-paginated-list'
 import { toast } from 'sonner'
 
@@ -92,12 +93,11 @@ export function WindowsGroupsPage() {
       </PageHeader>
 
       <PageToolbar>
-        <form onSubmit={handleSearch} className="flex max-w-xl flex-1 gap-2">
+        <form onSubmit={handleSearch} className="flex w-full max-w-xl flex-1 gap-2">
           <Input
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
             placeholder={t('windowsGroups.searchPlaceholder')}
-            className="border-white/10 bg-black/20"
           />
           <Button type="submit" variant="secondary">
             {t('common.search')}
@@ -106,7 +106,7 @@ export function WindowsGroupsPage() {
       </PageToolbar>
 
       {error != null && (
-        <Card className="border-destructive/40 bg-[#111]">
+        <Card className="border-destructive/40 bg-card">
           <CardContent className="space-y-3 py-8 text-center">
             <p className="text-sm text-destructive">{t('windowsGroups.loadError')}</p>
             <Button type="button" variant="outline" onClick={() => void refetch()}>
@@ -117,7 +117,7 @@ export function WindowsGroupsPage() {
       )}
 
       {isLoading && (
-        <Card className="border-white/10 bg-[#111]">
+        <Card className="border-border bg-card">
           <CardContent className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" />
             {t('common.loading')}
@@ -128,7 +128,7 @@ export function WindowsGroupsPage() {
       {!isLoading && error == null && (
         <>
           {pageItems.length === 0 ? (
-            <Card className="border-white/10 bg-[#111]">
+            <Card className="border-border bg-card">
               <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
                 <UsersRound className="size-8 text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">
@@ -143,76 +143,66 @@ export function WindowsGroupsPage() {
               </CardContent>
             </Card>
           ) : (
-            <Card className="overflow-hidden border-white/10 bg-[#111]">
+            <Card className="overflow-hidden border-border bg-card shadow-none">
               <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className={DATA_TABLE_CLASS}>
-                    <thead>
-                      <tr className="border-b border-white/10 bg-white/[0.03] text-left text-sm text-muted-foreground">
-                        <th className="px-4 py-3 font-medium">{t('windowsGroups.columns.name')}</th>
-                        <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_MEDIUM}`}>
-                          {t('windowsGroups.columns.description')}
-                        </th>
-                        <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
-                          {t('windowsGroups.columns.devices')}
-                        </th>
-                        <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_MEDIUM}`}>
-                          {t('windowsGroups.columns.configuration')}
-                        </th>
-                        {canMutate && (
-                          <th className={`px-4 py-3 font-medium text-right ${DATA_TABLE_COL_COMPACT}`}>
-                            {t('common.actions')}
-                          </th>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pageItems.map((group) => (
-                        <tr
-                          key={group.id}
-                          className="border-b border-white/5 last:border-b-0 transition-colors hover:bg-white/[0.03]"
-                        >
-                          <td className="px-4 py-3 font-medium text-foreground">{group.name}</td>
-                          <td className={`px-4 py-3 text-sm text-muted-foreground ${DATA_TABLE_COL_MEDIUM}`}>
-                            {group.description?.trim() || '—'}
-                          </td>
-                          <td className={`px-4 py-3 tabular-nums ${DATA_TABLE_COL_COMPACT}`}>
-                            {group.deviceCount}
-                          </td>
-                          <td className={`px-4 py-3 text-sm ${DATA_TABLE_COL_MEDIUM}`}>
-                            {group.configurationName?.trim() || t('windowsGroups.noConfiguration')}
-                          </td>
-                          {canMutate && (
-                            <td className={`px-4 py-3 text-right ${DATA_TABLE_COL_COMPACT}`}>
-                              <div className="flex items-center justify-end gap-0.5">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon-sm"
-                                  aria-label={t('common.edit')}
-                                  className="text-muted-foreground hover:bg-white/10 hover:text-foreground"
-                                  onClick={() => openEdit(group)}
-                                >
-                                  <Pencil className="size-4" />
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon-sm"
-                                  aria-label={t('common.delete')}
-                                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                  onClick={() => setDeleteTarget(group)}
-                                >
-                                  <Trash2 className="size-4" />
-                                </Button>
-                              </div>
-                            </td>
-                          )}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <WindowsDataList aria-label={t('windowsGroups.title')}>
+                  <WindowsDataListHeader gridClass={WINDOWS_GRID_GROUPS}>
+                    <WindowsDataListCell role="columnheader">{t('windowsGroups.columns.name')}</WindowsDataListCell>
+                    <WindowsDataListCell role="columnheader">{t('windowsGroups.columns.description')}</WindowsDataListCell>
+                    <WindowsDataListCell role="columnheader">{t('windowsGroups.columns.devices')}</WindowsDataListCell>
+                    <WindowsDataListCell role="columnheader">
+                      {t('windowsGroups.columns.configuration')}
+                    </WindowsDataListCell>
+                    {canMutate ? (
+                      <WindowsDataListCell role="columnheader" className="text-right">
+                        {t('common.actions')}
+                      </WindowsDataListCell>
+                    ) : null}
+                  </WindowsDataListHeader>
+
+                  <WindowsDataListBody>
+                    {pageItems.map((group) => (
+                      <WindowsDataListRow key={group.id} gridClass={WINDOWS_GRID_GROUPS}>
+                        <WindowsDataListCell>
+                          <div className="truncate font-medium text-foreground">{group.name}</div>
+                        </WindowsDataListCell>
+                        <WindowsDataListCell className="text-muted-foreground">
+                          <div className="line-clamp-2">{group.description?.trim() || '—'}</div>
+                        </WindowsDataListCell>
+                        <WindowsDataListCell className="tabular-nums">{group.deviceCount}</WindowsDataListCell>
+                        <WindowsDataListCell className="truncate text-muted-foreground">
+                          {group.configurationName?.trim() || t('windowsGroups.noConfiguration')}
+                        </WindowsDataListCell>
+                        {canMutate ? (
+                          <WindowsDataListCell className="flex justify-end">
+                            <div className="flex items-center justify-end gap-0.5">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label={t('common.edit')}
+                                className="text-muted-foreground hover:text-foreground"
+                                onClick={() => openEdit(group)}
+                              >
+                                <Pencil className="size-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label={t('common.delete')}
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => setDeleteTarget(group)}
+                              >
+                                <Trash2 className="size-4" />
+                              </Button>
+                            </div>
+                          </WindowsDataListCell>
+                        ) : null}
+                      </WindowsDataListRow>
+                    ))}
+                  </WindowsDataListBody>
+                </WindowsDataList>
               </CardContent>
             </Card>
           )}

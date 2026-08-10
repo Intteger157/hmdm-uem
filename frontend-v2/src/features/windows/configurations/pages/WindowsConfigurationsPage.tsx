@@ -7,6 +7,15 @@ import {
   useWindowsConfigProfilesQuery,
 } from '@/features/windows/configurations/hooks/use-windows-config-profiles'
 import type { WindowsConfigProfile } from '@/features/windows/configurations/types/config-profile'
+import {
+  WINDOWS_GRID_CONFIGS,
+  WindowsDataList,
+  WindowsDataListBody,
+  WindowsDataListCell,
+  WindowsDataListEmpty,
+  WindowsDataListHeader,
+  WindowsDataListRow,
+} from '@/features/windows/components/WindowsDataList'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -15,13 +24,7 @@ import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
 import { ListPagination } from '@/shared/components/ListPagination'
 import { usePaginatedList } from '@/shared/hooks/use-paginated-list'
 import { usePermissions } from '@/features/auth/hooks/use-permissions'
-import {
-  DATA_TABLE_CLASS,
-  DATA_TABLE_COL_COMPACT,
-  PageContainer,
-  PageHeader,
-  PageToolbar,
-} from '@/shared/layout/page-layout'
+import { PageContainer, PageHeader, PageToolbar } from '@/shared/layout/page-layout'
 import { toast } from 'sonner'
 
 function matchProfile(profile: WindowsConfigProfile, query: string): boolean {
@@ -90,7 +93,7 @@ export function WindowsConfigurationsPage() {
       </PageHeader>
 
       <PageToolbar>
-        <form onSubmit={handleSearch} className="flex max-w-xl flex-1 gap-2">
+        <form onSubmit={handleSearch} className="flex w-full max-w-xl flex-1 gap-2">
           <Input
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
@@ -118,56 +121,55 @@ export function WindowsConfigurationsPage() {
       )}
 
       {!isLoading && error == null && (
-        <Card>
+        <Card className="overflow-hidden border-border bg-card shadow-none">
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className={DATA_TABLE_CLASS}>
-                <thead className="border-b bg-muted/50">
-                  <tr className="text-muted-foreground">
-                    <th className="px-4 py-3 font-medium">{t('windowsConfigurations.columns.name')}</th>
-                    <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
-                      {t('windowsConfigurations.columns.status')}
-                    </th>
-                    <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
-                      {t('windowsConfigurations.columns.lastUpdated')}
-                    </th>
-                    {canMutate && (
-                      <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
-                        {t('windowsConfigurations.columns.actions')}
-                      </th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {pageItems.map((profile) => (
-                    <tr key={profile.id} className="border-b last:border-0">
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-medium">{profile.name}</span>
+            <WindowsDataList aria-label={t('windowsConfigurations.title')}>
+              <WindowsDataListHeader gridClass={WINDOWS_GRID_CONFIGS}>
+                <WindowsDataListCell role="columnheader">{t('windowsConfigurations.columns.name')}</WindowsDataListCell>
+                <WindowsDataListCell role="columnheader">{t('windowsConfigurations.columns.status')}</WindowsDataListCell>
+                <WindowsDataListCell role="columnheader">
+                  {t('windowsConfigurations.columns.lastUpdated')}
+                </WindowsDataListCell>
+                {canMutate ? (
+                  <WindowsDataListCell role="columnheader" className="text-right">
+                    {t('windowsConfigurations.columns.actions')}
+                  </WindowsDataListCell>
+                ) : null}
+              </WindowsDataListHeader>
+
+              <WindowsDataListBody>
+                {pageItems.length === 0 ? (
+                  <WindowsDataListEmpty>{t('windowsConfigurations.empty')}</WindowsDataListEmpty>
+                ) : (
+                  pageItems.map((profile) => (
+                    <WindowsDataListRow key={profile.id} gridClass={WINDOWS_GRID_CONFIGS}>
+                      <WindowsDataListCell>
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <span className="truncate font-medium">{profile.name}</span>
                           {profile.isDefault ? (
-                            <Badge className="border-violet-500/30 bg-violet-600/90 text-white hover:bg-violet-600/90">
+                            <Badge className="shrink-0 border-violet-500/30 bg-violet-600/90 text-white hover:bg-violet-600/90">
                               <Star className="mr-1 size-3 fill-current" />
                               {t('windowsConfigurations.badge.default')}
                             </Badge>
                           ) : null}
                         </div>
                         {profile.description ? (
-                          <div className="mt-0.5 text-xs text-muted-foreground">{profile.description}</div>
+                          <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{profile.description}</div>
                         ) : null}
-                      </td>
-                      <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>
+                      </WindowsDataListCell>
+                      <WindowsDataListCell>
                         <Badge variant={profile.isActive ? 'default' : 'outline'}>
                           {profile.isActive
                             ? t('windowsConfigurations.status.active')
                             : t('windowsConfigurations.status.draft')}
                         </Badge>
-                      </td>
-                      <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>
+                      </WindowsDataListCell>
+                      <WindowsDataListCell className="whitespace-nowrap text-muted-foreground">
                         {formatTimestamp(profile.updatedAt)}
-                      </td>
-                      {canMutate && (
-                        <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>
-                          <div className="flex flex-wrap gap-2">
+                      </WindowsDataListCell>
+                      {canMutate ? (
+                        <WindowsDataListCell className="flex justify-end">
+                          <div className="flex flex-wrap justify-end gap-2">
                             <Button
                               type="button"
                               size="sm"
@@ -182,8 +184,6 @@ export function WindowsConfigurationsPage() {
                               <Pencil className="mr-1.5 size-3.5" />
                               {t('common.edit')}
                             </Button>
-                            {/* Deleting a profile unassigns it from every device and
-                                group still using it. */}
                             {canDeleteCritical && (
                               <Button
                                 type="button"
@@ -196,23 +196,13 @@ export function WindowsConfigurationsPage() {
                               </Button>
                             )}
                           </div>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                  {pageItems.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={canMutate ? 4 : 3}
-                        className="px-4 py-10 text-center text-muted-foreground"
-                      >
-                        {t('windowsConfigurations.empty')}
-                      </td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
+                        </WindowsDataListCell>
+                      ) : null}
+                    </WindowsDataListRow>
+                  ))
+                )}
+              </WindowsDataListBody>
+            </WindowsDataList>
           </CardContent>
         </Card>
       )}

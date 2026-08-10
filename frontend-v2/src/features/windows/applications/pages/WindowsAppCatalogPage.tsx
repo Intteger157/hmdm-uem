@@ -9,6 +9,15 @@ import {
 } from '@/features/windows/applications/hooks/use-windows-software-apps'
 import type { SoftwareApp } from '@/features/windows/applications/types/software-app'
 import { formatLatestVersionLabel, getLatestVersion } from '@/features/windows/applications/types/software-app'
+import {
+  WINDOWS_GRID_APPS,
+  WindowsDataList,
+  WindowsDataListBody,
+  WindowsDataListCell,
+  WindowsDataListEmpty,
+  WindowsDataListHeader,
+  WindowsDataListRow,
+} from '@/features/windows/components/WindowsDataList'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -16,7 +25,7 @@ import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
 import { ListPagination } from '@/shared/components/ListPagination'
 import { usePaginatedList } from '@/shared/hooks/use-paginated-list'
 import { usePermissions } from '@/features/auth/hooks/use-permissions'
-import { DATA_TABLE_CLASS, DATA_TABLE_COL_COMPACT, PageContainer, PageHeader } from '@/shared/layout/page-layout'
+import { PageContainer, PageHeader, PageToolbar } from '@/shared/layout/page-layout'
 import { toast } from 'sonner'
 
 function matchApp(app: SoftwareApp, query: string): boolean {
@@ -93,16 +102,18 @@ export function WindowsAppCatalogPage() {
         )}
       </PageHeader>
 
-      <form onSubmit={handleSearch} className="flex max-w-xl gap-2">
-        <Input
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          placeholder={t('windowsAppCatalog.searchPlaceholder')}
-        />
-        <Button type="submit" variant="secondary">
-          {t('common.search')}
-        </Button>
-      </form>
+      <PageToolbar>
+        <form onSubmit={handleSearch} className="flex w-full max-w-xl flex-1 gap-2">
+          <Input
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder={t('windowsAppCatalog.searchPlaceholder')}
+          />
+          <Button type="submit" variant="secondary">
+            {t('common.search')}
+          </Button>
+        </form>
+      </PageToolbar>
 
       {error != null && (
         <div className="rounded-lg border border-destructive/40 bg-card p-6 text-center">
@@ -120,60 +131,60 @@ export function WindowsAppCatalogPage() {
       )}
 
       {!isLoading && error == null && (
-        <Card>
+        <Card className="overflow-hidden border-border bg-card shadow-none">
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className={DATA_TABLE_CLASS}>
-                <thead className="border-b bg-muted/50">
-                  <tr className="text-muted-foreground">
-                    <th className="px-4 py-3 font-medium">{t('windowsAppCatalog.columns.name')}</th>
-                    <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
-                      {t('windowsAppCatalog.columns.version')}
-                    </th>
-                    <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
-                      {t('windowsAppCatalog.columns.versionsCount')}
-                    </th>
-                    <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
-                      {t('windowsAppCatalog.columns.updated')}
-                    </th>
-                    {canMutate && (
-                      <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
-                        {t('windowsAppCatalog.columns.actions')}
-                      </th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {pageItems.map((app) => {
+            <WindowsDataList aria-label={t('windowsAppCatalog.title')}>
+              <WindowsDataListHeader gridClass={WINDOWS_GRID_APPS}>
+                <WindowsDataListCell role="columnheader">{t('windowsAppCatalog.columns.name')}</WindowsDataListCell>
+                <WindowsDataListCell role="columnheader">{t('windowsAppCatalog.columns.version')}</WindowsDataListCell>
+                <WindowsDataListCell role="columnheader">
+                  {t('windowsAppCatalog.columns.versionsCount')}
+                </WindowsDataListCell>
+                <WindowsDataListCell role="columnheader">{t('windowsAppCatalog.columns.updated')}</WindowsDataListCell>
+                {canMutate ? (
+                  <WindowsDataListCell role="columnheader" className="text-right">
+                    {t('windowsAppCatalog.columns.actions')}
+                  </WindowsDataListCell>
+                ) : null}
+              </WindowsDataListHeader>
+
+              <WindowsDataListBody>
+                {pageItems.length === 0 ? (
+                  <WindowsDataListEmpty>{t('windowsAppCatalog.empty')}</WindowsDataListEmpty>
+                ) : (
+                  pageItems.map((app) => {
                     const latest = getLatestVersion(app)
                     return (
-                      <tr
+                      <WindowsDataListRow
                         key={app.id}
-                        className="cursor-pointer border-b last:border-0 hover:bg-muted/30"
+                        gridClass={WINDOWS_GRID_APPS}
                         onClick={() => setEditAppId(app.id)}
                       >
-                        <td className="px-4 py-3">
-                          <div className="font-medium">{app.name}</div>
-                          <div className="mt-0.5 text-xs text-muted-foreground">
+                        <WindowsDataListCell>
+                          <div className="truncate font-medium">{app.name}</div>
+                          <div className="mt-0.5 truncate text-xs text-muted-foreground">
                             {app.publisher || latest?.appType === 'winget'
                               ? app.publisher || latest?.wingetId || '—'
                               : '—'}
                           </div>
-                        </td>
-                        <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>{formatLatestVersionLabel(app)}</td>
-                        <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>{app.versions.length}</td>
-                        <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>
+                        </WindowsDataListCell>
+                        <WindowsDataListCell className="tabular-nums text-muted-foreground">
+                          {formatLatestVersionLabel(app)}
+                        </WindowsDataListCell>
+                        <WindowsDataListCell className="tabular-nums">{app.versions.length}</WindowsDataListCell>
+                        <WindowsDataListCell className="whitespace-nowrap text-muted-foreground">
                           {formatTimestamp(latest?.uploadedAt ?? app.createdAt)}
-                        </td>
-                        {canMutate && (
-                          <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`} onClick={(event) => event.stopPropagation()}>
-                            <div className="flex flex-wrap gap-2">
+                        </WindowsDataListCell>
+                        {canMutate ? (
+                          <WindowsDataListCell
+                            className="flex justify-end"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <div className="flex flex-wrap justify-end gap-2">
                               <Button type="button" size="sm" variant="outline" onClick={() => setEditAppId(app.id)}>
                                 <Pencil className="mr-1.5 size-3.5" />
                                 {t('common.edit')}
                               </Button>
-                              {/* Removing the app discards its uploaded installers
-                                  and breaks the configurations requiring it. */}
                               {canDeleteCritical && (
                                 <Button type="button" size="sm" variant="outline" onClick={() => setDeleteTarget(app)}>
                                   <Trash2 className="mr-1.5 size-3.5" />
@@ -181,24 +192,14 @@ export function WindowsAppCatalogPage() {
                                 </Button>
                               )}
                             </div>
-                          </td>
-                        )}
-                      </tr>
+                          </WindowsDataListCell>
+                        ) : null}
+                      </WindowsDataListRow>
                     )
-                  })}
-                  {pageItems.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={canMutate ? 5 : 4}
-                        className="px-4 py-10 text-center text-muted-foreground"
-                      >
-                        {t('windowsAppCatalog.empty')}
-                      </td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
+                  })
+                )}
+              </WindowsDataListBody>
+            </WindowsDataList>
           </CardContent>
         </Card>
       )}

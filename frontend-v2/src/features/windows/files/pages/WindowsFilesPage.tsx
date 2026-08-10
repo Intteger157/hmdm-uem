@@ -12,12 +12,20 @@ import {
   useGlobalUploadStore,
 } from '@/features/upload/store/global-upload-store'
 import type { StoredFile } from '@/features/windows/files/types/stored-file'
+import {
+  WINDOWS_GRID_FILES,
+  WindowsDataList,
+  WindowsDataListBody,
+  WindowsDataListCell,
+  WindowsDataListHeader,
+  WindowsDataListRow,
+} from '@/features/windows/components/WindowsDataList'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
 import { getWindowsApiErrorMessage } from '@/features/windows/applications/utils/app-catalog-errors'
 import { usePermissions } from '@/features/auth/hooks/use-permissions'
-import { DATA_TABLE_CLASS, DATA_TABLE_COL_COMPACT, PageContainer, PageHeader } from '@/shared/layout/page-layout'
+import { PageContainer, PageHeader } from '@/shared/layout/page-layout'
 import { toast } from 'sonner'
 
 function formatTimestamp(value: string): string {
@@ -122,7 +130,7 @@ export function WindowsFilesPage() {
         </div>
       </PageHeader>
 
-      <Card>
+      <Card className="overflow-hidden border-border bg-card shadow-none">
         <CardContent className="p-0">
           {isLoading ? (
             <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
@@ -142,51 +150,52 @@ export function WindowsFilesPage() {
               <p className="text-sm text-muted-foreground">{t('windowsFiles.empty')}</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className={DATA_TABLE_CLASS}>
-                <thead>
-                  <tr className="border-b bg-muted/30 text-left">
-                    <th className="px-4 py-3 font-medium">{t('windowsFiles.columns.name')}</th>
-                    <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
-                      {t('windowsFiles.columns.size')}
-                    </th>
-                    <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`}>
-                      {t('windowsFiles.columns.uploaded')}
-                    </th>
-                    <th className="px-4 py-3 font-medium">{t('windowsFiles.columns.sha256')}</th>
-                    {canMutate && <th className={`px-4 py-3 font-medium ${DATA_TABLE_COL_COMPACT}`} />}
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.map((file) => (
-                    <tr key={file.id} className="border-b last:border-b-0">
-                      <td className="px-4 py-3 font-medium">{file.originalName}</td>
-                      <td className={`px-4 py-3 tabular-nums ${DATA_TABLE_COL_COMPACT}`}>
-                        {formatUploadBytes(file.sizeBytes)}
-                      </td>
-                      <td className={`px-4 py-3 ${DATA_TABLE_COL_COMPACT}`}>{formatTimestamp(file.uploadDate)}</td>
-                      <td className="px-4 py-3 font-mono text-xs">{file.sha256.slice(0, 12)}…</td>
-                      {/* Unlike the catalog entities, a stored file can simply be
-                          uploaded again, so this stays with the Operator level. */}
-                      {canMutate && (
-                        <td className={`px-4 py-3 text-right ${DATA_TABLE_COL_COMPACT}`}>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            className="text-destructive hover:text-destructive"
-                            aria-label={t('windowsFiles.delete.title')}
-                            onClick={() => setDeleteTarget(file)}
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <WindowsDataList aria-label={t('windowsFiles.title')}>
+              <WindowsDataListHeader gridClass={WINDOWS_GRID_FILES}>
+                <WindowsDataListCell role="columnheader">{t('windowsFiles.columns.name')}</WindowsDataListCell>
+                <WindowsDataListCell role="columnheader">{t('windowsFiles.columns.size')}</WindowsDataListCell>
+                <WindowsDataListCell role="columnheader">{t('windowsFiles.columns.uploaded')}</WindowsDataListCell>
+                <WindowsDataListCell role="columnheader">{t('windowsFiles.columns.sha256')}</WindowsDataListCell>
+                {canMutate ? (
+                  <WindowsDataListCell role="columnheader" className="text-right" aria-hidden>
+                    {'\u00a0'}
+                  </WindowsDataListCell>
+                ) : null}
+              </WindowsDataListHeader>
+
+              <WindowsDataListBody>
+                {data.map((file) => (
+                  <WindowsDataListRow key={file.id} gridClass={WINDOWS_GRID_FILES}>
+                    <WindowsDataListCell>
+                      <div className="truncate font-medium">{file.originalName}</div>
+                    </WindowsDataListCell>
+                    <WindowsDataListCell className="tabular-nums text-muted-foreground">
+                      {formatUploadBytes(file.sizeBytes)}
+                    </WindowsDataListCell>
+                    <WindowsDataListCell className="whitespace-nowrap text-muted-foreground">
+                      {formatTimestamp(file.uploadDate)}
+                    </WindowsDataListCell>
+                    <WindowsDataListCell>
+                      <span className="font-mono text-xs text-muted-foreground">{file.sha256.slice(0, 12)}…</span>
+                    </WindowsDataListCell>
+                    {canMutate ? (
+                      <WindowsDataListCell className="flex justify-end">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-destructive hover:text-destructive"
+                          aria-label={t('windowsFiles.delete.title')}
+                          onClick={() => setDeleteTarget(file)}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </WindowsDataListCell>
+                    ) : null}
+                  </WindowsDataListRow>
+                ))}
+              </WindowsDataListBody>
+            </WindowsDataList>
           )}
         </CardContent>
       </Card>

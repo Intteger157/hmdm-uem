@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
  * |-----------|----------------------------------------------|-------------------------------|
  * | default   | Settings, forms, editors, enrollment cards   | max-w-[1280px], centered      |
  * | detail    | Device detail / overview                     | max-w-[1280px], centered      |
- * | wide      | Device lists, admin tables, data-heavy pages | w-full max-w-[1800px]         |
+ * | wide      | Device lists, admin tables, data-heavy pages | max-w-[1600px], centered      |
  * | full      | Dashboard, charts, fleet analytics           | w-full (no max-width cap)     |
  */
 export type PageContainerSize = 'default' | 'wide' | 'full' | 'detail'
@@ -16,7 +16,7 @@ export type PageContainerSize = 'default' | 'wide' | 'full' | 'detail'
 const PAGE_CONTAINER_SIZE_CLASS: Record<PageContainerSize, string> = {
   default: 'max-w-[1280px] gap-4',
   detail: 'max-w-[1280px] gap-5',
-  wide: 'w-full max-w-[1800px] gap-4',
+  wide: 'w-full max-w-[1600px] gap-4',
   full: 'w-full max-w-none gap-6',
 }
 
