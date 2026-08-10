@@ -18,10 +18,10 @@ import {
   WindowsDataListBody,
   WindowsDataListCell,
   WindowsDataListHeader,
+  WindowsDataListPanel,
   WindowsDataListRow,
 } from '@/features/windows/components/WindowsDataList'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
 import { getWindowsApiErrorMessage } from '@/features/windows/applications/utils/app-catalog-errors'
 import { usePermissions } from '@/features/auth/hooks/use-permissions'
@@ -130,75 +130,71 @@ export function WindowsFilesPage() {
         </div>
       </PageHeader>
 
-      <Card className="overflow-hidden border-border bg-card shadow-none">
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" />
-              {t('common.loading')}
-            </div>
-          ) : error ? (
-            <div className="space-y-3 py-12 text-center">
-              <p className="text-sm text-destructive">{t('windowsFiles.loadError')}</p>
-              <Button type="button" variant="outline" onClick={() => void refetch()}>
-                {t('common.retry')}
-              </Button>
-            </div>
-          ) : !data?.length ? (
-            <div className="flex flex-col items-center gap-3 py-16 text-center">
-              <Upload className="size-8 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">{t('windowsFiles.empty')}</p>
-            </div>
-          ) : (
-            <WindowsDataList aria-label={t('windowsFiles.title')}>
-              <WindowsDataListHeader gridClass={WINDOWS_GRID_FILES}>
-                <WindowsDataListCell role="columnheader">{t('windowsFiles.columns.name')}</WindowsDataListCell>
-                <WindowsDataListCell role="columnheader">{t('windowsFiles.columns.size')}</WindowsDataListCell>
-                <WindowsDataListCell role="columnheader">{t('windowsFiles.columns.uploaded')}</WindowsDataListCell>
-                <WindowsDataListCell role="columnheader">{t('windowsFiles.columns.sha256')}</WindowsDataListCell>
+      {isLoading ? (
+        <WindowsDataListPanel className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" />
+          {t('common.loading')}
+        </WindowsDataListPanel>
+      ) : error ? (
+        <WindowsDataListPanel className="space-y-3 py-12 text-center">
+          <p className="text-sm text-destructive">{t('windowsFiles.loadError')}</p>
+          <Button type="button" variant="outline" onClick={() => void refetch()}>
+            {t('common.retry')}
+          </Button>
+        </WindowsDataListPanel>
+      ) : !data?.length ? (
+        <WindowsDataListPanel className="flex flex-col items-center gap-3 py-16 text-center">
+          <Upload className="size-8 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">{t('windowsFiles.empty')}</p>
+        </WindowsDataListPanel>
+      ) : (
+        <WindowsDataList aria-label={t('windowsFiles.title')}>
+          <WindowsDataListHeader gridClass={WINDOWS_GRID_FILES}>
+            <WindowsDataListCell role="columnheader">{t('windowsFiles.columns.name')}</WindowsDataListCell>
+            <WindowsDataListCell role="columnheader">{t('windowsFiles.columns.size')}</WindowsDataListCell>
+            <WindowsDataListCell role="columnheader">{t('windowsFiles.columns.uploaded')}</WindowsDataListCell>
+            <WindowsDataListCell role="columnheader">{t('windowsFiles.columns.sha256')}</WindowsDataListCell>
+            {canMutate ? (
+              <WindowsDataListCell role="columnheader" className="text-right" aria-hidden>
+                {'\u00a0'}
+              </WindowsDataListCell>
+            ) : null}
+          </WindowsDataListHeader>
+
+          <WindowsDataListBody>
+            {data.map((file) => (
+              <WindowsDataListRow key={file.id} gridClass={WINDOWS_GRID_FILES}>
+                <WindowsDataListCell>
+                  <div className="truncate font-medium">{file.originalName}</div>
+                </WindowsDataListCell>
+                <WindowsDataListCell className="tabular-nums text-muted-foreground">
+                  {formatUploadBytes(file.sizeBytes)}
+                </WindowsDataListCell>
+                <WindowsDataListCell className="whitespace-nowrap text-muted-foreground">
+                  {formatTimestamp(file.uploadDate)}
+                </WindowsDataListCell>
+                <WindowsDataListCell>
+                  <span className="font-mono text-xs text-muted-foreground">{file.sha256.slice(0, 12)}…</span>
+                </WindowsDataListCell>
                 {canMutate ? (
-                  <WindowsDataListCell role="columnheader" className="text-right" aria-hidden>
-                    {'\u00a0'}
+                  <WindowsDataListCell className="flex justify-end">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-destructive hover:text-destructive"
+                      aria-label={t('windowsFiles.delete.title')}
+                      onClick={() => setDeleteTarget(file)}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
                   </WindowsDataListCell>
                 ) : null}
-              </WindowsDataListHeader>
-
-              <WindowsDataListBody>
-                {data.map((file) => (
-                  <WindowsDataListRow key={file.id} gridClass={WINDOWS_GRID_FILES}>
-                    <WindowsDataListCell>
-                      <div className="truncate font-medium">{file.originalName}</div>
-                    </WindowsDataListCell>
-                    <WindowsDataListCell className="tabular-nums text-muted-foreground">
-                      {formatUploadBytes(file.sizeBytes)}
-                    </WindowsDataListCell>
-                    <WindowsDataListCell className="whitespace-nowrap text-muted-foreground">
-                      {formatTimestamp(file.uploadDate)}
-                    </WindowsDataListCell>
-                    <WindowsDataListCell>
-                      <span className="font-mono text-xs text-muted-foreground">{file.sha256.slice(0, 12)}…</span>
-                    </WindowsDataListCell>
-                    {canMutate ? (
-                      <WindowsDataListCell className="flex justify-end">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          className="text-destructive hover:text-destructive"
-                          aria-label={t('windowsFiles.delete.title')}
-                          onClick={() => setDeleteTarget(file)}
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </WindowsDataListCell>
-                    ) : null}
-                  </WindowsDataListRow>
-                ))}
-              </WindowsDataListBody>
-            </WindowsDataList>
-          )}
-        </CardContent>
-      </Card>
+              </WindowsDataListRow>
+            ))}
+          </WindowsDataListBody>
+        </WindowsDataList>
+      )}
 
       <ConfirmDeleteDialog
         open={deleteTarget != null}

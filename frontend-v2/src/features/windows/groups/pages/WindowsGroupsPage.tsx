@@ -13,10 +13,10 @@ import {
   WindowsDataListBody,
   WindowsDataListCell,
   WindowsDataListHeader,
+  WindowsDataListPanel,
   WindowsDataListRow,
 } from '@/features/windows/components/WindowsDataList'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
 import { ListPagination } from '@/shared/components/ListPagination'
@@ -106,46 +106,38 @@ export function WindowsGroupsPage() {
       </PageToolbar>
 
       {error != null && (
-        <Card className="border-destructive/40 bg-card">
-          <CardContent className="space-y-3 py-8 text-center">
-            <p className="text-sm text-destructive">{t('windowsGroups.loadError')}</p>
-            <Button type="button" variant="outline" onClick={() => void refetch()}>
-              {t('common.retry')}
-            </Button>
-          </CardContent>
-        </Card>
+        <WindowsDataListPanel className="space-y-3 py-8 text-center">
+          <p className="text-sm text-destructive">{t('windowsGroups.loadError')}</p>
+          <Button type="button" variant="outline" onClick={() => void refetch()}>
+            {t('common.retry')}
+          </Button>
+        </WindowsDataListPanel>
       )}
 
       {isLoading && (
-        <Card className="border-border bg-card">
-          <CardContent className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            {t('common.loading')}
-          </CardContent>
-        </Card>
+        <WindowsDataListPanel className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" />
+          {t('common.loading')}
+        </WindowsDataListPanel>
       )}
 
       {!isLoading && error == null && (
         <>
           {pageItems.length === 0 ? (
-            <Card className="border-border bg-card">
-              <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
-                <UsersRound className="size-8 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  {searchValue.trim() ? t('windowsGroups.emptySearch') : t('windowsGroups.empty')}
-                </p>
-                {canMutate && !searchValue.trim() ? (
-                  <Button type="button" variant="outline" onClick={openCreate}>
-                    <Plus className="size-4" />
-                    {t('windowsGroups.create')}
-                  </Button>
-                ) : null}
-              </CardContent>
-            </Card>
+            <WindowsDataListPanel className="flex flex-col items-center gap-3 py-16 text-center">
+              <UsersRound className="size-8 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                {searchValue.trim() ? t('windowsGroups.emptySearch') : t('windowsGroups.empty')}
+              </p>
+              {canMutate && !searchValue.trim() ? (
+                <Button type="button" variant="outline" onClick={openCreate}>
+                  <Plus className="size-4" />
+                  {t('windowsGroups.create')}
+                </Button>
+              ) : null}
+            </WindowsDataListPanel>
           ) : (
-            <Card className="overflow-hidden border-border bg-card shadow-none">
-              <CardContent className="p-0">
-                <WindowsDataList aria-label={t('windowsGroups.title')}>
+            <WindowsDataList aria-label={t('windowsGroups.title')}>
                   <WindowsDataListHeader gridClass={WINDOWS_GRID_GROUPS}>
                     <WindowsDataListCell role="columnheader">{t('windowsGroups.columns.name')}</WindowsDataListCell>
                     <WindowsDataListCell role="columnheader">{t('windowsGroups.columns.description')}</WindowsDataListCell>
@@ -202,9 +194,7 @@ export function WindowsGroupsPage() {
                       </WindowsDataListRow>
                     ))}
                   </WindowsDataListBody>
-                </WindowsDataList>
-              </CardContent>
-            </Card>
+            </WindowsDataList>
           )}
 
           <ListPagination

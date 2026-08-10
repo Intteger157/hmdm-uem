@@ -16,10 +16,10 @@ import {
   WindowsDataListCell,
   WindowsDataListEmpty,
   WindowsDataListHeader,
+  WindowsDataListPanel,
   WindowsDataListRow,
 } from '@/features/windows/components/WindowsDataList'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
 import { ListPagination } from '@/shared/components/ListPagination'
@@ -125,16 +125,12 @@ export function WindowsAppCatalogPage() {
       )}
 
       {isLoading && (
-        <Card>
-          <CardContent className="p-6 text-sm text-muted-foreground">{t('common.loading')}</CardContent>
-        </Card>
+        <WindowsDataListPanel className="p-6 text-sm text-muted-foreground">{t('common.loading')}</WindowsDataListPanel>
       )}
 
       {!isLoading && error == null && (
-        <Card className="overflow-hidden border-border bg-card shadow-none">
-          <CardContent className="p-0">
-            <WindowsDataList aria-label={t('windowsAppCatalog.title')}>
-              <WindowsDataListHeader gridClass={WINDOWS_GRID_APPS}>
+        <WindowsDataList aria-label={t('windowsAppCatalog.title')}>
+          <WindowsDataListHeader gridClass={WINDOWS_GRID_APPS}>
                 <WindowsDataListCell role="columnheader">{t('windowsAppCatalog.columns.name')}</WindowsDataListCell>
                 <WindowsDataListCell role="columnheader">{t('windowsAppCatalog.columns.version')}</WindowsDataListCell>
                 <WindowsDataListCell role="columnheader">
@@ -199,9 +195,7 @@ export function WindowsAppCatalogPage() {
                   })
                 )}
               </WindowsDataListBody>
-            </WindowsDataList>
-          </CardContent>
-        </Card>
+        </WindowsDataList>
       )}
 
       {!isLoading && totalItems > 0 ? (

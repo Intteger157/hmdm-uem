@@ -14,11 +14,11 @@ import {
   WindowsDataListCell,
   WindowsDataListEmpty,
   WindowsDataListHeader,
+  WindowsDataListPanel,
   WindowsDataListRow,
 } from '@/features/windows/components/WindowsDataList'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { ConfirmDeleteDialog } from '@/shared/components/ConfirmDeleteDialog'
 import { ListPagination } from '@/shared/components/ListPagination'
@@ -115,15 +115,11 @@ export function WindowsConfigurationsPage() {
       )}
 
       {isLoading && (
-        <Card>
-          <CardContent className="p-6 text-sm text-muted-foreground">{t('common.loading')}</CardContent>
-        </Card>
+        <WindowsDataListPanel className="p-6 text-sm text-muted-foreground">{t('common.loading')}</WindowsDataListPanel>
       )}
 
       {!isLoading && error == null && (
-        <Card className="overflow-hidden border-border bg-card shadow-none">
-          <CardContent className="p-0">
-            <WindowsDataList aria-label={t('windowsConfigurations.title')}>
+        <WindowsDataList aria-label={t('windowsConfigurations.title')}>
               <WindowsDataListHeader gridClass={WINDOWS_GRID_CONFIGS}>
                 <WindowsDataListCell role="columnheader">{t('windowsConfigurations.columns.name')}</WindowsDataListCell>
                 <WindowsDataListCell role="columnheader">{t('windowsConfigurations.columns.status')}</WindowsDataListCell>
@@ -202,9 +198,7 @@ export function WindowsConfigurationsPage() {
                   ))
                 )}
               </WindowsDataListBody>
-            </WindowsDataList>
-          </CardContent>
-        </Card>
+        </WindowsDataList>
       )}
 
       {!isLoading && totalItems > 0 ? (

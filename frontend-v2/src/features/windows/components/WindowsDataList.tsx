@@ -1,6 +1,13 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
-import { DATA_TABLE_WRAPPER_CLASS } from '@/shared/layout/page-layout'
+
+/** Single outer shell for Windows admin lists — no nested borders inside. */
+export const WINDOWS_DATA_LIST_SHELL_CLASS =
+  'overflow-hidden rounded-xl border border-border/80 bg-card shadow-none ring-0 dark:border-white/10'
+
+const WINDOWS_DATA_LIST_SCROLL_CLASS = 'overflow-x-auto max-md:overflow-x-auto'
+
+const WINDOWS_DATA_LIST_ROW_DIVIDER = 'border-b border-border/40 dark:border-white/5'
 
 /** Applications: name · version · count · updated · actions */
 export const WINDOWS_GRID_APPS =
@@ -29,10 +36,22 @@ interface WindowsDataListProps {
 
 export function WindowsDataList({ children, className, 'aria-label': ariaLabel }: WindowsDataListProps) {
   return (
-    <div className={cn(DATA_TABLE_WRAPPER_CLASS, className)} role="table" aria-label={ariaLabel}>
-      {children}
+    <div className={cn(WINDOWS_DATA_LIST_SHELL_CLASS, className)}>
+      <div className={WINDOWS_DATA_LIST_SCROLL_CLASS} role="table" aria-label={ariaLabel}>
+        {children}
+      </div>
     </div>
   )
+}
+
+interface WindowsDataListPanelProps {
+  children: ReactNode
+  className?: string
+}
+
+/** Loading, empty, and error states using the same outer shell as WindowsDataList. */
+export function WindowsDataListPanel({ children, className }: WindowsDataListPanelProps) {
+  return <div className={cn(WINDOWS_DATA_LIST_SHELL_CLASS, className)}>{children}</div>
 }
 
 interface WindowsDataListHeaderProps {
@@ -47,7 +66,8 @@ export function WindowsDataListHeader({ gridClass, children, className }: Window
       role="row"
       className={cn(
         GRID_ROW_BASE,
-        'border-b bg-muted/50 py-3 font-medium text-muted-foreground',
+        WINDOWS_DATA_LIST_ROW_DIVIDER,
+        'py-3 font-medium text-muted-foreground',
         gridClass,
         className,
       )}
@@ -64,7 +84,7 @@ interface WindowsDataListBodyProps {
 
 export function WindowsDataListBody({ children, className }: WindowsDataListBodyProps) {
   return (
-    <div role="rowgroup" className={className}>
+    <div role="rowgroup" className={cn('[&>[role=row]:last-child]:border-b-0', className)}>
       {children}
     </div>
   )
@@ -95,8 +115,9 @@ export function WindowsDataListRow({ gridClass, children, className, onClick }: 
       }
       className={cn(
         GRID_ROW_BASE,
-        'border-b py-3 last:border-b-0',
-        onClick && 'cursor-pointer transition-colors hover:bg-muted/30',
+        WINDOWS_DATA_LIST_ROW_DIVIDER,
+        'py-3 last:border-b-0',
+        onClick && 'cursor-pointer transition-colors hover:bg-muted/20',
         gridClass,
         className,
       )}
