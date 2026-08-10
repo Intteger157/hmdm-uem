@@ -44,6 +44,9 @@ func TestBuildBootstrapScriptTokenMode(t *testing.T) {
 	if strings.Contains(script, "SkipMachineOOBE") {
 		t.Fatal("expected provisioning block to be omitted when settings are disabled")
 	}
+	if strings.Contains(strings.ToUpper(script), "HMDM") {
+		t.Fatal("expected bootstrap script to omit legacy HMDM references")
+	}
 }
 
 func TestBuildBootstrapScriptPasswordMode(t *testing.T) {
