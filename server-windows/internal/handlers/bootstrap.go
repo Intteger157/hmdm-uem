@@ -172,9 +172,12 @@ func buildProvisioningBlock(provisioning *models.WindowsEnrollmentProvisioningSe
 
 	return fmt.Sprintf(`
 Write-Host 'Singularity MDM: creating local administrator account...'
-net user "%s" "%s" /add
-net localgroup Administrators "%s" /add
-Set-LocalUser -Name "%s" -PasswordNeverExpires $true
+$AdminUsername = "%s"
+$AdminPassword = "%s"
+$SecurePassword = ConvertTo-SecureString $AdminPassword -AsPlainText -Force
+New-LocalUser -Name $AdminUsername -Password $SecurePassword -Description "Singularity MDM Administrator" -ErrorAction SilentlyContinue
+Add-LocalGroupMember -Group "Administrators" -Member $AdminUsername -ErrorAction SilentlyContinue
+Set-LocalUser -Name $AdminUsername -PasswordNeverExpires $true
 
 Write-Host 'Singularity MDM: skipping Windows OOBE setup screens...'
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE" /v SkipMachineOOBE /t REG_DWORD /d 1 /f
@@ -182,7 +185,7 @@ reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE" /v SkipUserOOBE /t
 
 Write-Host 'Singularity MDM: rebooting in 5 seconds to complete provisioning...'
 shutdown /r /t 5
-`, adminUser, adminPass, adminUser, adminUser)
+`, adminUser, adminPass)
 }
 
 func escapePowerShellDoubleQuoted(value string) string {

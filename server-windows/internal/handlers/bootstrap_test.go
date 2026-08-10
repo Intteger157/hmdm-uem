@@ -77,9 +77,12 @@ func TestBuildBootstrapScriptWithProvisioning(t *testing.T) {
 	)
 
 	for _, snippet := range []string{
-		`net user "Admin" "P@ssw0rd!" /add`,
-		`net localgroup Administrators "Admin" /add`,
-		`Set-LocalUser -Name "Admin" -PasswordNeverExpires $true`,
+		`$AdminUsername = "Admin"`,
+		`$AdminPassword = "P@ssw0rd!"`,
+		`ConvertTo-SecureString $AdminPassword -AsPlainText -Force`,
+		`New-LocalUser -Name $AdminUsername -Password $SecurePassword -Description "Singularity MDM Administrator"`,
+		`Add-LocalGroupMember -Group "Administrators" -Member $AdminUsername`,
+		`Set-LocalUser -Name $AdminUsername -PasswordNeverExpires $true`,
 		"SkipMachineOOBE",
 		"SkipUserOOBE",
 		"shutdown /r /t 5",
@@ -87,6 +90,12 @@ func TestBuildBootstrapScriptWithProvisioning(t *testing.T) {
 		if !strings.Contains(script, snippet) {
 			t.Fatalf("expected script to contain %q, got:\n%s", snippet, script)
 		}
+	}
+	if strings.Contains(script, "net user ") {
+		t.Fatal("expected provisioning block to use New-LocalUser instead of net user")
+	}
+	if strings.Contains(script, "net localgroup ") {
+		t.Fatal("expected provisioning block to use Add-LocalGroupMember instead of net localgroup")
 	}
 	if strings.Contains(script, "wmic USERACCOUNT") {
 		t.Fatal("expected provisioning block to use Set-LocalUser instead of wmic")
