@@ -81,7 +81,8 @@ func TestBuildBootstrapScriptWithProvisioning(t *testing.T) {
 
 	for _, snippet := range []string{
 		`$AdminUsername = "Admin"`,
-		`$AdminPassword = "P@ssw0rd!"`,
+		`$AdminPassword = $RegisterResponse.admin_password`,
+		`throw 'Registration failed: missing admin password.'`,
 		`ConvertTo-SecureString $AdminPassword -AsPlainText -Force`,
 		`New-LocalUser -Name $AdminUsername -Password $SecurePassword -Description "Singularity MDM Administrator"`,
 		`Add-LocalGroupMember -Group "Administrators" -Member $AdminUsername`,
@@ -93,6 +94,12 @@ func TestBuildBootstrapScriptWithProvisioning(t *testing.T) {
 		if !strings.Contains(script, snippet) {
 			t.Fatalf("expected script to contain %q, got:\n%s", snippet, script)
 		}
+	}
+	if strings.Contains(script, `AdminPassword = "P@ssw0rd!"`) {
+		t.Fatal("expected provisioning block to read admin password from register response")
+	}
+	if strings.Contains(script, "Write-Host $AdminPassword") || strings.Contains(script, "Write-Output $AdminPassword") {
+		t.Fatal("expected provisioning block to avoid logging admin password")
 	}
 	if strings.Contains(script, "net user ") {
 		t.Fatal("expected provisioning block to use New-LocalUser instead of net user")

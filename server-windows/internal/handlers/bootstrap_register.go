@@ -44,9 +44,20 @@ func (h *WindowsHandler) RegisterBootstrap(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.BootstrapRegisterResponse{
+	response := models.BootstrapRegisterResponse{
 		EnrollmentToken: orgToken,
-	})
+	}
+	provisioning, err := loadActiveEnrollmentProvisioning()
+	if err != nil {
+		log.Printf("[bootstrap-register] provisioning settings failed: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load enrollment provisioning settings"})
+		return
+	}
+	if provisioning != nil {
+		response.AdminPassword = provisioning.AdminPassword
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 func enrollmentSecretsMismatch(got, expected string) bool {

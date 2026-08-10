@@ -157,12 +157,14 @@ func buildProvisioningBlock(provisioning *models.WindowsEnrollmentProvisioningSe
 	}
 
 	adminUser := escapePowerShellDoubleQuoted(provisioning.AdminUsername)
-	adminPass := escapePowerShellDoubleQuoted(provisioning.AdminPassword)
 
 	return fmt.Sprintf(`
 Write-Host 'Singularity MDM: creating local administrator account...'
 $AdminUsername = "%s"
-$AdminPassword = "%s"
+$AdminPassword = $RegisterResponse.admin_password
+if ([string]::IsNullOrWhiteSpace($AdminPassword)) {
+    throw 'Registration failed: missing admin password.'
+}
 $SecurePassword = ConvertTo-SecureString $AdminPassword -AsPlainText -Force
 New-LocalUser -Name $AdminUsername -Password $SecurePassword -Description "Singularity MDM Administrator" -ErrorAction SilentlyContinue
 Add-LocalGroupMember -Group "Administrators" -Member $AdminUsername -ErrorAction SilentlyContinue
@@ -174,7 +176,7 @@ reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE" /v SkipUserOOBE /t
 
 Write-Host 'Singularity MDM: rebooting in 5 seconds to complete provisioning...'
 shutdown /r /t 5
-`, adminUser, adminPass)
+`, adminUser)
 }
 
 func escapePowerShellDoubleQuoted(value string) string {

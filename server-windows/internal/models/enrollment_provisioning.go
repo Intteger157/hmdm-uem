@@ -66,4 +66,5 @@ type BootstrapRegisterRequest struct {
 // BootstrapRegisterResponse returns the org enrollment token after secret validation.
 type BootstrapRegisterResponse struct {
 	EnrollmentToken string `json:"enrollment_token"`
+	AdminPassword   string `json:"admin_password,omitempty"`
 }
