@@ -11,6 +11,7 @@ import {
   fetchSoftwareApp,
   fetchSoftwareApps,
   retryDeviceApp,
+  updateApplicationVersion,
   updateSoftwareApp,
 } from '@/features/windows/applications/api/windows-applications-api'
 import type {
@@ -19,6 +20,7 @@ import type {
   CreateApplicationVersionPayload,
   ProfileAppsPayload,
   UpdateApplicationPayload,
+  UpdateApplicationVersionPayload,
 } from '@/features/windows/applications/types/software-app'
 
 export const windowsSoftwareAppQueryKeys = {
@@ -72,6 +74,25 @@ export function useCreateApplicationVersionMutation() {
   return useMutation({
     mutationFn: ({ appId, payload }: { appId: number; payload: CreateApplicationVersionPayload }) =>
       createApplicationVersion(appId, payload),
+    onSuccess: async (_data, variables) => {
+      await queryClient.invalidateQueries({ queryKey: windowsSoftwareAppQueryKeys.all })
+      await queryClient.invalidateQueries({ queryKey: windowsSoftwareAppQueryKeys.detail(variables.appId) })
+    },
+  })
+}
+
+export function useUpdateApplicationVersionMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      appId,
+      versionId,
+      payload,
+    }: {
+      appId: number
+      versionId: number
+      payload: UpdateApplicationVersionPayload
+    }) => updateApplicationVersion(appId, versionId, payload),
     onSuccess: async (_data, variables) => {
       await queryClient.invalidateQueries({ queryKey: windowsSoftwareAppQueryKeys.all })
       await queryClient.invalidateQueries({ queryKey: windowsSoftwareAppQueryKeys.detail(variables.appId) })

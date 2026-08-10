@@ -71,7 +71,12 @@ type CreateApplicationRequest struct {
 	CreateApplicationVersionRequest
 }
 
-// CreateApplicationVersionRequest creates a non-upload version (URL/winget).
+// UpdateApplicationVersionRequest updates deploy metadata for one version.
+type UpdateApplicationVersionRequest struct {
+	Version     string `json:"version"`
+	InstallArgs string `json:"installArgs"`
+}
+
 type CreateApplicationVersionRequest struct {
 	Version         string `json:"version"`
 	FileURL         string `json:"downloadUrl"`

@@ -38,6 +38,11 @@ export interface UpdateApplicationPayload {
   description?: string
 }
 
+export interface UpdateApplicationVersionPayload {
+  version: string
+  installArgs?: string
+}
+
 export interface CreateApplicationVersionPayload {
   version?: string
   downloadUrl?: string

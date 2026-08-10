@@ -231,6 +231,7 @@ func registerRoutes(router *gin.Engine, windowsHandler *handlers.WindowsHandler,
 			admin.GET("/apps/:id", windowsHandler.GetSoftwareApp)
 			admin.PUT("/apps/:id", windowsHandler.UpdateSoftwareApp)
 			admin.POST("/apps/:id/versions", windowsHandler.CreateApplicationVersion)
+			admin.PUT("/apps/:id/versions/:versionId", windowsHandler.UpdateApplicationVersion)
 			admin.DELETE("/apps/:id/versions/:versionId", windowsHandler.DeleteApplicationVersion)
 			admin.DELETE("/apps/:id", windowsHandler.DeleteSoftwareApp)
 			admin.GET("/devices/:hardwareId/apps/status", windowsHandler.GetDeviceAppStatuses)

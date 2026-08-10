@@ -86,7 +86,11 @@ func listProfileAssignedDeviceIDs(profileID uint) ([]uint, error) {
 }
 
 func requeueLatestAppVersionDeployments(appID uint, version models.ApplicationVersion) error {
-	deviceIDs, err := listDevicesWithLatestAppAssignment(appID)
+	return requeueAppVersionDeployments(appID, version)
+}
+
+func requeueAppVersionDeployments(appID uint, version models.ApplicationVersion) error {
+	deviceIDs, err := listDevicesWithAppVersionAssignment(appID, version.ID)
 	if err != nil {
 		return err
 	}
@@ -130,4 +134,49 @@ func requeueLatestAppVersionDeployments(appID uint, version models.ApplicationVe
 		)
 	}
 	return nil
+}
+
+func listDevicesWithAppVersionAssignment(appID, versionID uint) ([]uint, error) {
+	deviceIDs := make(map[uint]struct{})
+
+	var profileLinks []models.ProfileApp
+	if err := db.DB.Where("app_id = ? AND version_id = ?", appID, versionID).Find(&profileLinks).Error; err != nil {
+		return nil, err
+	}
+	for _, link := range profileLinks {
+		profileDeviceIDs, err := listProfileAssignedDeviceIDs(link.ProfileID)
+		if err != nil {
+			return nil, err
+		}
+		for _, deviceID := range profileDeviceIDs {
+			deviceIDs[deviceID] = struct{}{}
+		}
+	}
+
+	var directLinks []models.WindowsDeviceApp
+	if err := db.DB.Where("app_id = ? AND version_id = ?", appID, versionID).Find(&directLinks).Error; err != nil {
+		return nil, err
+	}
+	for _, link := range directLinks {
+		if link.DeviceID > 0 {
+			deviceIDs[link.DeviceID] = struct{}{}
+		}
+	}
+
+	latest, err := latestActiveApplicationVersion(appID)
+	if err == nil && latest.ID == versionID {
+		latestDeviceIDs, latestErr := listDevicesWithLatestAppAssignment(appID)
+		if latestErr != nil {
+			return nil, latestErr
+		}
+		for _, deviceID := range latestDeviceIDs {
+			deviceIDs[deviceID] = struct{}{}
+		}
+	}
+
+	ids := make([]uint, 0, len(deviceIDs))
+	for deviceID := range deviceIDs {
+		ids = append(ids, deviceID)
+	}
+	return ids, nil
 }

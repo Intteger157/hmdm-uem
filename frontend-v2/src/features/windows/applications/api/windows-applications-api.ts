@@ -3,6 +3,7 @@ import { WINDOWS_API_BASE } from '@/shared/api/config'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { setupAuthInterceptors } from '@/shared/api/setup-auth-interceptors'
 import type {
+  ApplicationVersion,
   AssignDeviceAppPayload,
   CreateApplicationPayload,
   CreateApplicationVersionPayload,
@@ -12,6 +13,7 @@ import type {
   SoftwareApp,
   SoftwareAppListResponse,
   UpdateApplicationPayload,
+  UpdateApplicationVersionPayload,
   UploadApplicationResponse,
 } from '@/features/windows/applications/types/software-app'
 import type { UploadProgressState } from '@/features/windows/applications/utils/installer-upload'
@@ -57,6 +59,15 @@ export async function createApplicationVersion(
 
 export async function deleteApplicationVersion(appId: number, versionId: number): Promise<void> {
   await windowsApi.delete(`/apps/${appId}/versions/${versionId}`)
+}
+
+export async function updateApplicationVersion(
+  appId: number,
+  versionId: number,
+  payload: UpdateApplicationVersionPayload,
+): Promise<ApplicationVersion> {
+  const response = await windowsApi.put<ApplicationVersion>(`/apps/${appId}/versions/${versionId}`, payload)
+  return response.data
 }
 
 export async function deleteSoftwareApp(id: number): Promise<void> {

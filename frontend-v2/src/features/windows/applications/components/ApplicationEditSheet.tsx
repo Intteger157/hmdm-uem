@@ -1,4 +1,4 @@
-import { Loader2, Trash2, Upload } from 'lucide-react'
+import { Loader2, Pencil, Trash2, Upload } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -11,11 +11,20 @@ import {
 import {
   useDeleteApplicationVersionMutation,
   useSoftwareAppQuery,
+  useUpdateApplicationVersionMutation,
   useUpdateSoftwareAppMutation,
 } from '@/features/windows/applications/hooks/use-windows-software-apps'
 import type { ApplicationVersion } from '@/features/windows/applications/types/software-app'
 import { formatLatestVersionLabel } from '@/features/windows/applications/types/software-app'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   Form,
   FormControl,
@@ -73,6 +82,7 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
   const [uploadProgress, setUploadProgress] = useState<UploadProgressState | null>(null)
   const [versionOverride, setVersionOverride] = useState('')
   const [publisherOverride, setPublisherOverride] = useState('')
+  const [installArgsOverride, setInstallArgsOverride] = useState('')
   const [activeTab, setActiveTab] = useState('general')
 
   const form = useForm<GeneralFormValues>({
@@ -84,6 +94,7 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
       setActiveTab('general')
       setVersionOverride('')
       setPublisherOverride('')
+      setInstallArgsOverride('')
       setUploadingVersion(false)
       setUploadProgress(null)
       return
@@ -128,14 +139,19 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
     try {
       const manualVersion = versionOverride.trim()
       const manualPublisher = publisherOverride.trim()
+      const manualInstallArgs = installArgsOverride.trim()
       const result = await uploadSoftwareApp(file, {
         appId,
         ...(manualVersion ? { version: manualVersion } : {}),
         ...(manualPublisher ? { publisher: manualPublisher } : {}),
+        ...(manualInstallArgs ? { installArgs: manualInstallArgs } : {}),
         onUploadProgress: setUploadProgress,
       })
       setVersionOverride(result.version)
       setPublisherOverride(result.publisher?.trim() ?? publisherOverride)
+      if (!manualInstallArgs && result.suggestedArgs?.trim()) {
+        setInstallArgsOverride(result.suggestedArgs.trim())
+      }
       await appQuery.refetch()
       toast.success(t('windowsAppCatalog.form.versionUploaded'))
     } catch {
@@ -268,6 +284,25 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
                   <p className="text-xs text-muted-foreground">{t('windowsAppCatalog.form.publisherHint')}</p>
                 </div>
               </div>
+              <div className="space-y-2">
+                <label htmlFor="edit-app-install-args" className="text-sm font-medium">
+                  {t('windowsAppCatalog.form.installArgs')}
+                </label>
+                <Textarea
+                  id="edit-app-install-args"
+                  value={installArgsOverride}
+                  placeholder="/VERYSILENT /SUPPRESSMSGBOXES"
+                  rows={2}
+                  autoComplete="off"
+                  disabled={uploadingVersion}
+                  onChange={(event) => setInstallArgsOverride(event.target.value)}
+                />
+                <div className="space-y-1 text-xs text-muted-foreground">
+                  <p>{t('windowsAppCatalog.form.installArgsHintMsi')}</p>
+                  <p>{t('windowsAppCatalog.form.installArgsHintExeNsis')}</p>
+                  <p>{t('windowsAppCatalog.form.installArgsHintExeInno')}</p>
+                </div>
+              </div>
               <input
                 ref={versionUploadRef}
                 type="file"
@@ -326,9 +361,46 @@ export function ApplicationEditSheet({ open, onOpenChange, appId }: ApplicationE
 
 function VersionsTable({ appId, versions }: { appId: number; versions: ApplicationVersion[] }) {
   const { t } = useTranslation()
-  const { canDeleteCritical } = usePermissions()
+  const { canMutate, canDeleteCritical } = usePermissions()
   const deleteMutation = useDeleteApplicationVersionMutation()
+  const updateMutation = useUpdateApplicationVersionMutation()
   const [deleteTarget, setDeleteTarget] = useState<ApplicationVersion | null>(null)
+  const [editTarget, setEditTarget] = useState<ApplicationVersion | null>(null)
+  const [editVersion, setEditVersion] = useState('')
+  const [editInstallArgs, setEditInstallArgs] = useState('')
+
+  const openEditDialog = (version: ApplicationVersion) => {
+    setEditTarget(version)
+    setEditVersion(version.version)
+    setEditInstallArgs(version.installArgs ?? '')
+  }
+
+  const handleSaveVersionEdit = async () => {
+    if (!editTarget) {
+      return
+    }
+
+    const version = editVersion.trim()
+    if (!version) {
+      toast.error(t('windowsAppCatalog.versions.editVersionRequired'))
+      return
+    }
+
+    try {
+      await updateMutation.mutateAsync({
+        appId,
+        versionId: editTarget.id,
+        payload: {
+          version,
+          installArgs: editInstallArgs.trim(),
+        },
+      })
+      toast.success(t('windowsAppCatalog.versions.editSuccess'))
+      setEditTarget(null)
+    } catch {
+      toast.error(t('windowsAppCatalog.versions.editError'))
+    }
+  }
 
   const sortedVersions = [...versions].sort(
     (left, right) => Date.parse(right.uploadedAt) - Date.parse(left.uploadedAt),
@@ -387,22 +459,85 @@ function VersionsTable({ appId, versions }: { appId: number; versions: Applicati
                   </p>
                 </div>
               </div>
-              {canDeleteCritical && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="shrink-0 text-destructive hover:text-destructive"
-                  aria-label={t('windowsAppCatalog.versions.deleteTitle')}
-                  onClick={() => setDeleteTarget(version)}
-                >
-                  <Trash2 className="size-4" />
-                </Button>
-              )}
+              <div className="flex shrink-0 items-start gap-1">
+                {canMutate && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={t('windowsAppCatalog.versions.editTitle')}
+                    onClick={() => openEditDialog(version)}
+                  >
+                    <Pencil className="size-4" />
+                  </Button>
+                )}
+                {canDeleteCritical && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-destructive hover:text-destructive"
+                    aria-label={t('windowsAppCatalog.versions.deleteTitle')}
+                    onClick={() => setDeleteTarget(version)}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                )}
+              </div>
             </li>
           ))}
         </ul>
       </div>
+
+      <Dialog
+        open={editTarget != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditTarget(null)
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('windowsAppCatalog.versions.editTitle')}</DialogTitle>
+            <DialogDescription>{t('windowsAppCatalog.versions.editDescription')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label htmlFor="edit-version-number" className="text-sm font-medium">
+                {t('windowsAppCatalog.form.version')}
+              </label>
+              <Input
+                id="edit-version-number"
+                value={editVersion}
+                autoComplete="off"
+                onChange={(event) => setEditVersion(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="edit-version-install-args" className="text-sm font-medium">
+                {t('windowsAppCatalog.form.installArgs')}
+              </label>
+              <Textarea
+                id="edit-version-install-args"
+                value={editInstallArgs}
+                rows={3}
+                placeholder="/VERYSILENT /SUPPRESSMSGBOXES"
+                autoComplete="off"
+                onChange={(event) => setEditInstallArgs(event.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setEditTarget(null)}>
+              {t('common.cancel')}
+            </Button>
+            <Button type="button" disabled={updateMutation.isPending} onClick={() => void handleSaveVersionEdit()}>
+              {t('common.save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDeleteDialog
         open={deleteTarget != null}

@@ -284,6 +284,61 @@ func (h *WindowsHandler) CreateApplicationVersion(c *gin.Context) {
 	c.JSON(http.StatusCreated, item)
 }
 
+// UpdateApplicationVersion updates install args and expected version string for one catalog version.
+func (h *WindowsHandler) UpdateApplicationVersion(c *gin.Context) {
+	appID, ok := parseUintParam(c.Param("id"))
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid app id"})
+		return
+	}
+	versionID, ok := parseUintParam(c.Param("versionId"))
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid version id"})
+		return
+	}
+
+	var req models.UpdateApplicationVersionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var version models.ApplicationVersion
+	if err := db.DB.Where("id = ? AND app_id = ?", versionID, appID).First(&version).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "application version not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup application version"})
+		return
+	}
+
+	versionNumber := strings.TrimSpace(req.Version)
+	if versionNumber == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "version is required"})
+		return
+	}
+
+	version.Version = versionNumber
+	version.InstallArgs = strings.TrimSpace(req.InstallArgs)
+	version.UpdatedAt = time.Now()
+
+	if err := db.DB.Save(&version).Error; err != nil {
+		log.Printf("[update-application-version] save failed: app_id=%d version_id=%d err=%v", appID, versionID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update application version"})
+		return
+	}
+
+	if err := requeueAppVersionDeployments(appID, version); err != nil {
+		log.Printf("[update-application-version] requeue failed: app_id=%d version_id=%d err=%v", appID, versionID, err)
+	}
+
+	item := models.ToApplicationVersionJSON(version)
+	item.DownloadURL = normalizeDownloadURL(item.DownloadURL)
+	log.Printf("[update-application-version] updated app_id=%d version_id=%d version=%q", appID, versionID, version.Version)
+	c.JSON(http.StatusOK, item)
+}
+
 // DeleteApplicationVersion removes one catalog version and its stored installer file.
 func (h *WindowsHandler) DeleteApplicationVersion(c *gin.Context) {
 	appID, ok := parseUintParam(c.Param("id"))
