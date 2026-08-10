@@ -32,15 +32,29 @@ func (AndroidDevice) TableName() string {
 
 // AndroidDeviceInfoJSON mirrors the fields the console reads from devices.infojson.
 type AndroidDeviceInfoJSON struct {
-	Model          string `json:"model"`
-	IMEI           string `json:"imei"`
-	Phone          string `json:"phone"`
-	AndroidVersion string `json:"androidVersion"`
-	Serial         string `json:"serial"`
-	MDMMode        *bool  `json:"mdmMode"`
-	KioskMode      *bool  `json:"kioskMode"`
-	BatteryLevel   *int   `json:"batteryLevel"`
-	DefaultLauncher *bool `json:"defaultLauncher"`
+	Model           string `json:"model"`
+	IMEI            string `json:"imei"`
+	Phone           string `json:"phone"`
+	AndroidVersion  string `json:"androidVersion"`
+	Serial          string `json:"serial"`
+	MDMMode         *bool  `json:"mdmMode"`
+	KioskMode       *bool  `json:"kioskMode"`
+	BatteryLevel    *int   `json:"batteryLevel"`
+	DefaultLauncher *bool  `json:"defaultLauncher"`
+}
+
+// ResolveAndroidInfoJSON returns the raw device info payload for the console UI.
+func ResolveAndroidInfoJSON(raw json.RawMessage, legacy *string) json.RawMessage {
+	if len(raw) > 0 && json.Valid(raw) {
+		return raw
+	}
+	if legacy != nil {
+		trimmed := strings.TrimSpace(*legacy)
+		if trimmed != "" && json.Valid([]byte(trimmed)) {
+			return json.RawMessage(trimmed)
+		}
+	}
+	return nil
 }
 
 func ParseAndroidDeviceInfo(raw json.RawMessage, legacy *string) AndroidDeviceInfoJSON {

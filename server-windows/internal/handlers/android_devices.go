@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -27,18 +28,6 @@ type androidLookupItem struct {
 	Name string `json:"name"`
 }
 
-type androidDeviceInfoView struct {
-	Model           string `json:"model,omitempty"`
-	IMEI            string `json:"imei,omitempty"`
-	Phone           string `json:"phone,omitempty"`
-	AndroidVersion  string `json:"androidVersion,omitempty"`
-	Serial          string `json:"serial,omitempty"`
-	MDMMode         *bool  `json:"mdmMode,omitempty"`
-	KioskMode       *bool  `json:"kioskMode,omitempty"`
-	BatteryLevel    *int   `json:"batteryLevel,omitempty"`
-	DefaultLauncher *bool  `json:"defaultLauncher,omitempty"`
-}
-
 type androidDeviceView struct {
 	ID                uint                  `json:"id"`
 	Platform          string                `json:"platform"`
@@ -63,7 +52,7 @@ type androidDeviceView struct {
 	StatusCode        string                `json:"statusCode,omitempty"`
 	OldNumber         string                `json:"oldNumber,omitempty"`
 	Groups            []androidLookupItem   `json:"groups,omitempty"`
-	Info              *androidDeviceInfoView `json:"info,omitempty"`
+	Info              json.RawMessage       `json:"info,omitempty"`
 }
 
 type androidConfigurationView struct {
@@ -311,17 +300,7 @@ func buildAndroidDeviceListResponse(rows []androidDeviceSearchRow) androidDevice
 				StatusCode:      models.AndroidOnlineStatus(row.LastUpdate, now),
 				MDMMode:         infoParsed.MDMMode,
 				KioskMode:       infoParsed.KioskMode,
-				Info: &androidDeviceInfoView{
-					Model:           infoParsed.Model,
-					IMEI:            infoParsed.IMEI,
-					Phone:           infoParsed.Phone,
-					AndroidVersion:  infoParsed.AndroidVersion,
-					Serial:          infoParsed.Serial,
-					MDMMode:         infoParsed.MDMMode,
-					KioskMode:       infoParsed.KioskMode,
-					BatteryLevel:    infoParsed.BatteryLevel,
-					DefaultLauncher: infoParsed.DefaultLauncher,
-				},
+				Info:            models.ResolveAndroidInfoJSON(row.InfoJSON, row.Info),
 			}
 			if row.ConfigName != nil {
 				device.ConfigurationName = strings.TrimSpace(*row.ConfigName)
