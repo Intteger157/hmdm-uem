@@ -21,6 +21,7 @@ type DeviceGroupJSON struct {
 	Name              string `json:"name"`
 	Description       string `json:"description,omitempty"`
 	DeviceCount       int64  `json:"deviceCount"`
+	DeviceIDs         []uint `json:"deviceIds,omitempty"`
 	ConfigurationID   uint   `json:"configurationId,omitempty"`
 	ConfigurationName string `json:"configurationName,omitempty"`
 }
@@ -31,14 +32,22 @@ type DeviceGroupListResponse struct {
 	TotalItemsCount int64             `json:"totalItemsCount"`
 }
 
+// DeviceGroupAssignmentPayload is shared by create and update requests.
+type DeviceGroupAssignmentPayload struct {
+	ConfigurationID *uint  `json:"configurationId"`
+	DeviceIDs       []uint `json:"deviceIds"`
+}
+
 // CreateDeviceGroupRequest creates a Windows device group.
 type CreateDeviceGroupRequest struct {
 	Name        string `json:"name" binding:"required"`
 	Description string `json:"description"`
+	DeviceGroupAssignmentPayload
 }
 
 // UpdateDeviceGroupRequest updates a Windows device group.
 type UpdateDeviceGroupRequest struct {
 	Name        string `json:"name" binding:"required"`
 	Description string `json:"description"`
+	DeviceGroupAssignmentPayload
 }

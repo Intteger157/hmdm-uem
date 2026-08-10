@@ -21,6 +21,11 @@ export async function fetchWindowsGroups(): Promise<WindowsGroupListResponse> {
   return response.data
 }
 
+export async function fetchWindowsGroup(id: number): Promise<WindowsGroup> {
+  const response = await windowsApi.get<WindowsGroup>(`/groups/${id}`)
+  return response.data
+}
+
 export async function createWindowsGroup(payload: UpsertWindowsGroupPayload): Promise<WindowsGroup> {
   const response = await windowsApi.post<WindowsGroup>('/groups', payload)
   return response.data

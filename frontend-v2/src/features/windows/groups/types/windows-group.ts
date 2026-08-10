@@ -3,6 +3,7 @@ export interface WindowsGroup {
   name: string
   description?: string
   deviceCount: number
+  deviceIds?: number[]
   configurationId?: number
   configurationName?: string
 }
@@ -15,4 +16,6 @@ export interface WindowsGroupListResponse {
 export interface UpsertWindowsGroupPayload {
   name: string
   description?: string
+  configurationId?: number | null
+  deviceIds?: number[]
 }

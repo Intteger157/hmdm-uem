@@ -55,6 +55,66 @@ func (h *WindowsHandler) ListDeviceGroups(c *gin.Context) {
 	})
 }
 
+// GetDeviceGroup returns one Windows device group with assignments.
+func (h *WindowsHandler) GetDeviceGroup(c *gin.Context) {
+	groupID, ok := parseUintParam(c.Param("id"))
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid group id"})
+		return
+	}
+
+	var group models.WindowsDeviceGroup
+	if err := db.DB.First(&group, groupID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "group not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup group"})
+		return
+	}
+
+	item, err := buildDeviceGroupDetailJSON(group)
+	if err != nil {
+		log.Printf("[get-device-group] build failed: id=%d err=%v", groupID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load device group"})
+		return
+	}
+
+	c.JSON(http.StatusOK, item)
+}
+
+func saveDeviceGroupWithAssignments(
+	group *models.WindowsDeviceGroup,
+	configurationID *uint,
+	deviceIDs []uint,
+) (models.DeviceGroupJSON, int, string) {
+	var result models.DeviceGroupJSON
+
+	err := db.DB.Transaction(func(tx *gorm.DB) error {
+		if group.ID == 0 {
+			if err := tx.Create(group).Error; err != nil {
+				return err
+			}
+		} else if err := tx.Save(group).Error; err != nil {
+			return err
+		}
+		return applyGroupAssignments(tx, group.ID, configurationID, deviceIDs)
+	})
+	if err != nil {
+		status, message := mapGroupAssignmentError(err)
+		if status == 500 && err.Error() != "configuration profile not found" && err.Error() != "one or more devices were not found" {
+			return result, status, "failed to save device group"
+		}
+		return result, status, message
+	}
+
+	item, buildErr := buildDeviceGroupDetailJSON(*group)
+	if buildErr != nil {
+		return result, http.StatusInternalServerError, "failed to load device group"
+	}
+	return item, http.StatusOK, ""
+}
+
 // CreateDeviceGroup creates a Windows device group.
 func (h *WindowsHandler) CreateDeviceGroup(c *gin.Context) {
 	var req models.CreateDeviceGroupRequest
@@ -73,17 +133,16 @@ func (h *WindowsHandler) CreateDeviceGroup(c *gin.Context) {
 		Name:        name,
 		Description: strings.TrimSpace(req.Description),
 	}
-	if err := db.DB.Create(&group).Error; err != nil {
-		log.Printf("[create-device-group] save failed: name=%q err=%v", name, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create device group"})
+	item, status, message := saveDeviceGroupWithAssignments(&group, req.ConfigurationID, req.DeviceIDs)
+	if status != http.StatusOK {
+		if status >= 500 {
+			log.Printf("[create-device-group] save failed: name=%q err=%s", name, message)
+		}
+		c.JSON(status, gin.H{"error": message})
 		return
 	}
 
-	c.JSON(http.StatusCreated, models.DeviceGroupJSON{
-		ID:          group.ID,
-		Name:        group.Name,
-		Description: group.Description,
-	})
+	c.JSON(http.StatusCreated, item)
 }
 
 // UpdateDeviceGroup updates a Windows device group.
@@ -118,21 +177,13 @@ func (h *WindowsHandler) UpdateDeviceGroup(c *gin.Context) {
 
 	group.Name = name
 	group.Description = strings.TrimSpace(req.Description)
-	if err := db.DB.Save(&group).Error; err != nil {
-		log.Printf("[update-device-group] save failed: id=%d err=%v", groupID, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update device group"})
+	item, status, message := saveDeviceGroupWithAssignments(&group, req.ConfigurationID, req.DeviceIDs)
+	if status != http.StatusOK {
+		if status >= 500 {
+			log.Printf("[update-device-group] save failed: id=%d err=%s", groupID, message)
+		}
+		c.JSON(status, gin.H{"error": message})
 		return
-	}
-
-	item := models.DeviceGroupJSON{
-		ID:          group.ID,
-		Name:        group.Name,
-		Description: group.Description,
-		DeviceCount: countDevicesByGroup([]uint{group.ID})[group.ID],
-	}
-	if profile, ok := lookupGroupProfiles([]uint{group.ID})[group.ID]; ok {
-		item.ConfigurationID = profile.ID
-		item.ConfigurationName = profile.Name
 	}
 
 	c.JSON(http.StatusOK, item)

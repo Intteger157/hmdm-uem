@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createWindowsGroup,
   deleteWindowsGroup,
+  fetchWindowsGroup,
   fetchWindowsGroups,
   updateWindowsGroup,
 } from '@/features/windows/groups/api/windows-groups-api'
@@ -21,6 +22,14 @@ export function useWindowsGroupsQuery(enabled = true) {
       return response.items
     },
     enabled,
+  })
+}
+
+export function useWindowsGroupDetailQuery(groupId: number | null, enabled = true) {
+  return useQuery({
+    queryKey: [...windowsGroupsQueryKeys.all, 'detail', groupId ?? 0],
+    queryFn: () => fetchWindowsGroup(groupId as number),
+    enabled: enabled && groupId != null && groupId > 0,
   })
 }
 

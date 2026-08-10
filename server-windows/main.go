@@ -238,6 +238,7 @@ func registerRoutes(router *gin.Engine, windowsHandler *handlers.WindowsHandler,
 			admin.DELETE("/devices/:hardwareId/apps/:appId/assign", windowsHandler.UnassignDeviceApp)
 			admin.POST("/devices/:hardwareId/apps/:appId/retry", windowsHandler.RetryDeviceApp)
 			admin.GET("/groups", windowsHandler.ListDeviceGroups)
+			admin.GET("/groups/:id", windowsHandler.GetDeviceGroup)
 			admin.POST("/groups", windowsHandler.CreateDeviceGroup)
 			admin.PUT("/groups/:id", windowsHandler.UpdateDeviceGroup)
 			admin.DELETE("/groups/:id", windowsHandler.DeleteDeviceGroup)
