@@ -180,7 +180,7 @@ func ToWindowsDeviceJSON(device WindowsDevice) WindowsDeviceJSON {
 		DiskUsed_GB:       device.DiskUsed_GB,
 		Manufacturer:      device.Manufacturer,
 		Model:             device.Model,
-		SerialNumber:      device.SerialNumber,
+		SerialNumber:      SanitizeSerialNumber(device.SerialNumber),
 		CurrentUser:       device.CurrentUser,
 		DiskEncrypted:     device.DiskEncrypted,
 		EncryptionStatus:  device.EncryptionStatus,

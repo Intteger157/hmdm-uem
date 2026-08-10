@@ -189,7 +189,13 @@ func (h *WindowsHandler) Inventory(c *gin.Context) {
 	device.DiskUsed_GB = req.DiskUsed_GB
 	device.Manufacturer = req.Manufacturer
 	device.Model = req.Model
-	device.SerialNumber = req.SerialNumber
+	if sanitized := models.SanitizeSerialNumber(req.SerialNumber); sanitized != "" {
+		device.SerialNumber = sanitized
+	} else if strings.TrimSpace(req.SerialNumber) != "" {
+		device.SerialNumber = ""
+	} else if models.SanitizeSerialNumber(device.SerialNumber) == "" && strings.TrimSpace(device.SerialNumber) != "" {
+		device.SerialNumber = ""
+	}
 	device.CurrentUser = req.CurrentUser
 	device.UptimeSeconds = req.UptimeSeconds
 	device.AntivirusName = req.AntivirusName

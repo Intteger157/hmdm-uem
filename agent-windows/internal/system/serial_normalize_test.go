@@ -28,6 +28,21 @@ func TestNormalizeSerial(t *testing.T) {
 	}
 }
 
+func TestParseWMICSerialOutput(t *testing.T) {
+	output := "SerialNumber\r\n\r\nNXKHRSN00133011E477600\r\n\r\n"
+	got := parseWMICSerialOutput(output)
+	if got != "NXKHRSN00133011E477600" {
+		t.Fatalf("parseWMICSerialOutput() = %q", got)
+	}
+}
+
+func TestParseWMICSerialOutputRejectsPlaceholder(t *testing.T) {
+	output := "SerialNumber\r\n\r\nChassis Serial Number\r\n\r\n"
+	if got := parseWMICSerialOutput(output); got != "" {
+		t.Fatalf("parseWMICSerialOutput() = %q, want empty", got)
+	}
+}
+
 func TestLooksLikeSerialLabel(t *testing.T) {
 	if !looksLikeSerialLabel("Chassis Serial Number") {
 		t.Fatal("expected Chassis Serial Number to be treated as label")

@@ -116,6 +116,8 @@ func isGenericModel(value string) bool {
 
 func collectSerialNumber() string {
 	candidates := []func() string{
+		collectSerialFromWMIC,
+		collectSerialFromPowerShell,
 		collectSerialFromBIOS,
 		collectSerialFromComputerSystemProduct,
 		collectSerialFromBaseBoard,
@@ -124,6 +126,40 @@ func collectSerialNumber() string {
 
 	for _, source := range candidates {
 		if serial := source(); serial != "" {
+			return serial
+		}
+	}
+	return ""
+}
+
+func collectSerialFromWMIC() string {
+	cmd := exec.Command("wmic", "bios", "get", "serialnumber")
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return ""
+	}
+	return parseWMICSerialOutput(string(output))
+}
+
+func collectSerialFromPowerShell() string {
+	script := "(Get-CimInstance -ClassName Win32_BIOS | Select-Object -First 1 -ExpandProperty SerialNumber)"
+	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return ""
+	}
+	return normalizeSerial(string(output))
+}
+
+func parseWMICSerialOutput(output string) string {
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.EqualFold(line, "SerialNumber") {
+			continue
+		}
+		if serial := normalizeSerial(line); serial != "" {
 			return serial
 		}
 	}
