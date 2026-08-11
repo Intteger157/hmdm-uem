@@ -42,17 +42,18 @@ var (
 
 // RequiredApp is one application the agent must install or update.
 type RequiredApp struct {
-	ID              uint   `json:"id"`
-	VersionID       uint   `json:"versionId,omitempty"`
-	Name            string `json:"name"`
-	Version         string `json:"version"`
-	UpdatedAt       string `json:"updatedAt"`
-	DownloadURL     string `json:"downloadUrl"`
-	InstallArgs     string `json:"installArgs"`
-	AppType         string `json:"appType"`
-	WingetID        string `json:"wingetId"`
-	AutoUpdate      bool   `json:"autoUpdate"`
-	UpdateFrequency string `json:"updateFrequency"`
+	ID                   uint   `json:"id"`
+	VersionID            uint   `json:"versionId,omitempty"`
+	Name                 string `json:"name"`
+	Version              string `json:"version"`
+	ExpectedVersionField string `json:"expectedVersion,omitempty"`
+	UpdatedAt            string `json:"updatedAt"`
+	DownloadURL          string `json:"downloadUrl"`
+	InstallArgs          string `json:"installArgs"`
+	AppType              string `json:"appType"`
+	WingetID             string `json:"wingetId"`
+	AutoUpdate           bool   `json:"autoUpdate"`
+	UpdateFrequency      string `json:"updateFrequency"`
 }
 
 type StatusReporter func(appID uint, appName, status, errMsg string) error
@@ -246,8 +247,8 @@ func deployWingetApp(app RequiredApp, opts DeployOptions, state *AppsState) (boo
 	}
 
 	if !shouldCheckUpdate(app, state) {
-		progress.Report(InstallStatusSuccess, fmt.Sprintf("Package %q already installed; update check skipped", wingetID))
-		reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusSuccess, "Already installed")
+		progress.Report(InstallStatusSuccess, fmt.Sprintf("Package %q already installed; up to date", wingetID))
+		reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusSkipped, "Already installed / up to date")
 		state.MarkDeployed(app)
 		return true, nil
 	}
@@ -277,22 +278,23 @@ func deployURLApp(app RequiredApp, opts DeployOptions, state *AppsState, install
 		return reportDeployFailure(opts, progress, app, state, "missing downloadUrl", fmt.Errorf("missing downloadUrl"))
 	}
 
-	alreadyInstalled := isAppInstalled(app.Name, app.Version, installed)
+	expectedVersion := app.ExpectedVersion()
+	presence := EvaluateInstallPresence(app.Name, expectedVersion, installed)
 	progress.Report(
 		InstallStatusDownloading,
 		fmt.Sprintf(
-			"Checking app %q version=%q alreadyInstalled=%v autoUpdate=%v",
+			"Checking app %q expectedVersion=%q presence=%s autoUpdate=%v",
 			app.Name,
-			strings.TrimSpace(app.Version),
-			alreadyInstalled,
+			expectedVersion,
+			presenceLabel(presence),
 			app.AutoUpdate,
 		),
 	)
 
-	if alreadyInstalled && !shouldCheckUpdate(app, state) {
+	if presence == InstallUpToDate && !shouldCheckUpdate(app, state) {
 		state.MarkDeployed(app)
-		progress.Report(InstallStatusSuccess, "App already installed; skipping deployment")
-		reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusSuccess, "Already installed")
+		progress.Report(InstallStatusSuccess, "App already installed and up to date; skipping deployment")
+		reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusSkipped, "Already installed / up to date")
 		return true, nil
 	}
 
@@ -506,26 +508,15 @@ func reportStatus(reporter StatusReporter, appID uint, appName, status, errMsg s
 	log.Printf("app status report failed id=%d status=%s: %v", appID, status, lastErr)
 }
 
-func isAppInstalled(name, version string, installed []system.InstalledSoftwareInfo) bool {
-	targetName := strings.ToLower(strings.TrimSpace(name))
-	if targetName == "" {
-		return false
+func presenceLabel(presence InstallPresence) string {
+	switch presence {
+	case InstallUpToDate:
+		return "up_to_date"
+	case InstallOutdated:
+		return "outdated"
+	default:
+		return "missing"
 	}
-
-	targetVersion := strings.TrimSpace(version)
-	for _, item := range installed {
-		itemName := strings.ToLower(strings.TrimSpace(item.Name))
-		if itemName != targetName && !strings.Contains(itemName, targetName) {
-			continue
-		}
-		if targetVersion == "" {
-			return true
-		}
-		if strings.EqualFold(strings.TrimSpace(item.Version), targetVersion) {
-			return true
-		}
-	}
-	return false
 }
 
 func downloadInstaller(downloadURL string) (string, error) {
@@ -643,7 +634,7 @@ func batchNeedsDownloadJitter(required []RequiredApp, state AppsState, installed
 		if normalizeAppType(app.AppType) == AppTypeWinget {
 			continue
 		}
-		if isAppInstalled(app.Name, app.Version, installed) && !shouldCheckUpdate(app, &state) {
+		if isAppInstalled(app.Name, app.ExpectedVersion(), installed) && !shouldCheckUpdate(app, &state) {
 			continue
 		}
 		if strings.TrimSpace(app.DownloadURL) != "" {

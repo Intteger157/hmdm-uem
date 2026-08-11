@@ -13,6 +13,7 @@ export function appDeploymentStatusBadgeVariant(
     case 'Installing':
       return 'secondary'
     case 'Canceled':
+    case 'Skipped':
       return 'outline'
     default:
       return 'outline'
@@ -29,6 +30,7 @@ export function appDeploymentStatusBadgeClassName(status: AppDeploymentStatus): 
     case 'Installing':
       return 'border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300'
     case 'Canceled':
+    case 'Skipped':
       return 'border-slate-500/40 bg-slate-500/10 text-slate-600 dark:text-slate-300'
     case 'Failed':
     case 'Timeout':

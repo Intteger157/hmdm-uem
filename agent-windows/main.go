@@ -503,17 +503,23 @@ func fetchEffectiveConfigFromServer(cfg *config.Config, apiClient *api.APIClient
 
 	requiredApps := make([]apps.RequiredApp, 0, len(response.RequiredApps))
 	for _, app := range response.RequiredApps {
+		expectedVersion := strings.TrimSpace(app.ExpectedVersion)
+		if expectedVersion == "" {
+			expectedVersion = strings.TrimSpace(app.Version)
+		}
 		requiredApps = append(requiredApps, apps.RequiredApp{
-			ID:              app.ID,
-			Name:            app.Name,
-			Version:         app.Version,
-			UpdatedAt:       app.UpdatedAt,
-			DownloadURL:     app.DownloadURL,
-			InstallArgs:     app.InstallArgs,
-			AppType:         app.AppType,
-			WingetID:        app.WingetID,
-			AutoUpdate:      app.AutoUpdate,
-			UpdateFrequency: app.UpdateFrequency,
+			ID:                   app.ID,
+			VersionID:            app.VersionID,
+			Name:                 app.Name,
+			Version:              app.Version,
+			ExpectedVersionField: expectedVersion,
+			UpdatedAt:            app.UpdatedAt,
+			DownloadURL:          app.DownloadURL,
+			InstallArgs:          app.InstallArgs,
+			AppType:              app.AppType,
+			WingetID:             app.WingetID,
+			AutoUpdate:           app.AutoUpdate,
+			UpdateFrequency:      app.UpdateFrequency,
 		})
 	}
 

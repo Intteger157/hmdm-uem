@@ -94,6 +94,7 @@ func applicationVersionToRequiredApp(app models.Application, version models.Appl
 		VersionID:       version.ID,
 		Name:            app.Name,
 		Version:         version.Version,
+		ExpectedVersion: version.Version,
 		UpdatedAt:       updatedAt,
 		DownloadURL:     normalizeDownloadURL(version.FileURL),
 		InstallArgs:     version.InstallArgs,

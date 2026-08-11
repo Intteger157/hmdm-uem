@@ -76,6 +76,21 @@ func TestShouldExcludeRequiredAppFailedRevision(t *testing.T) {
 	}
 }
 
+func TestShouldExcludeRequiredAppSkippedRevision(t *testing.T) {
+	t.Parallel()
+
+	baseTime := time.Date(2026, 7, 22, 12, 0, 0, 0, time.UTC)
+	app := models.RequiredApp{ID: 10, UpdatedAt: baseTime}
+	skipped := models.DeviceAppStatus{
+		AppID:                     10,
+		Status:                    models.AppStatusSkipped,
+		AttemptedCatalogUpdatedAt: ptrTime(baseTime),
+	}
+	if !shouldExcludeRequiredApp(app, skipped) {
+		t.Fatal("expected Skipped at current catalog revision to be excluded")
+	}
+}
+
 func ptrTime(value time.Time) *time.Time {
 	return &value
 }

@@ -14,7 +14,7 @@ func TestEvaluateRequiredAppAlreadyInstalled(t *testing.T) {
 	app := RequiredApp{ID: 1, Name: "Example App", Version: "1.0.0"}
 	installed := []system.InstalledSoftwareInfo{{Name: "Example App", Version: "1.0.0"}}
 	line := EvaluateRequiredApp(app, newEmptyAppsState(), installed)
-	if line != "- App [Example App]: Already installed" {
+	if line != "- App [Example App]: Already installed / up to date" {
 		t.Fatalf("EvaluateRequiredApp() = %q", line)
 	}
 }

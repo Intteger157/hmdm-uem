@@ -344,7 +344,7 @@ func excludeTerminalAppStatuses(deviceID uint, apps []models.RequiredApp) ([]mod
 			"device_id = ? AND app_id IN ? AND status IN ?",
 			deviceID,
 			appIDs,
-			[]string{models.AppStatusSuccess, models.AppStatusFailed, models.AppStatusCanceled, models.AppStatusTimeout},
+			[]string{models.AppStatusSuccess, models.AppStatusSkipped, models.AppStatusFailed, models.AppStatusCanceled, models.AppStatusTimeout},
 		).
 		Find(&statuses).Error; err != nil {
 		return nil, err
@@ -372,7 +372,7 @@ func excludeTerminalAppStatuses(deviceID uint, apps []models.RequiredApp) ([]mod
 
 func shouldExcludeRequiredApp(app models.RequiredApp, status models.DeviceAppStatus) bool {
 	switch status.Status {
-	case models.AppStatusSuccess:
+	case models.AppStatusSuccess, models.AppStatusSkipped:
 		if status.AttemptedCatalogUpdatedAt == nil {
 			return false
 		}

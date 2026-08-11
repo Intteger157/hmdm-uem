@@ -27,6 +27,7 @@ type RequiredApp struct {
 	VersionID       uint      `json:"versionId,omitempty"`
 	Name            string    `json:"name"`
 	Version         string    `json:"version"`
+	ExpectedVersion string    `json:"expectedVersion,omitempty"`
 	UpdatedAt       time.Time `json:"updatedAt"`
 	DownloadURL     string    `json:"downloadUrl"`
 	InstallArgs     string    `json:"installArgs"`

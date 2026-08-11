@@ -1756,6 +1756,7 @@
   "deviceDetail.appDeployments.status.Failed": "Failed",
   "deviceDetail.appDeployments.status.Canceled": "Canceled",
   "deviceDetail.appDeployments.status.Timeout": "Timed out",
+  "deviceDetail.appDeployments.status.Skipped": "Skipped — already installed / up to date",
   "deviceDetail.appDeployments.deployAction": "Deploy Application",
   "deviceDetail.appDeployments.deployTitle": "Deploy Application",
   "deviceDetail.appDeployments.deployAppLabel": "Application",

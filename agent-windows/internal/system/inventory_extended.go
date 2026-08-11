@@ -384,13 +384,14 @@ func collectInstalledSoftware() []InstalledSoftwareInfo {
 	seen := make(map[string]struct{})
 	items := make([]InstalledSoftwareInfo, 0, 64)
 
-	for _, root := range []registry.Key{
-		registry.LOCAL_MACHINE,
-	} {
-		for _, path := range []string{
-			`SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall`,
-			`SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall`,
-		} {
+	roots := []registry.Key{registry.LOCAL_MACHINE, registry.CURRENT_USER}
+	paths := []string{
+		`SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall`,
+		`SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall`,
+	}
+
+	for _, root := range roots {
+		for _, path := range paths {
 			appendSoftwareFromRegistry(root, path, seen, &items)
 			if len(items) >= maxInstalledSoftwareEntries {
 				return items

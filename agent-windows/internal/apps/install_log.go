@@ -14,6 +14,7 @@ const (
 	InstallStatusSuccess     = "Success"
 	InstallStatusFailed      = "Failed"
 	InstallStatusCanceled    = "Canceled"
+	InstallStatusSkipped     = "Skipped"
 
 	InstallTimeoutStatusMessage = "Execution timeout (20m)"
 	InstallCanceledMessage      = "Removed from configuration before installation started"

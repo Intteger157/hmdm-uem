@@ -119,6 +119,7 @@ type RequiredAppPayload struct {
 	VersionID       uint   `json:"versionId,omitempty"`
 	Name            string `json:"name"`
 	Version         string `json:"version"`
+	ExpectedVersion string `json:"expectedVersion,omitempty"`
 	VersionPolicy   string `json:"versionPolicy,omitempty"`
 	UpdatedAt       string `json:"updatedAt"`
 	DownloadURL     string `json:"downloadUrl"`

@@ -20,13 +20,17 @@ func EvaluateRequiredApp(app RequiredApp, state AppsState, installed []system.In
 		if wingetID != "" {
 			present, err := isWingetInstalled(wingetID)
 			if err == nil && present {
-				return fmt.Sprintf("- App [%s]: Already installed", name)
+				return fmt.Sprintf("- App [%s]: Already installed / up to date", name)
 			}
 		}
 		return fmt.Sprintf("- App [%s]: Queued for installation", name)
 	}
-	if isAppInstalled(app.Name, app.Version, installed) {
-		return fmt.Sprintf("- App [%s]: Already installed", name)
+	if isAppInstalled(app.Name, app.ExpectedVersion(), installed) {
+		return fmt.Sprintf("- App [%s]: Already installed / up to date", name)
+	}
+	presence := EvaluateInstallPresence(app.Name, app.ExpectedVersion(), installed)
+	if presence == InstallOutdated {
+		return fmt.Sprintf("- App [%s]: Queued for update", name)
 	}
 	return fmt.Sprintf("- App [%s]: Queued for installation", name)
 }

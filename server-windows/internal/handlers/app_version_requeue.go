@@ -105,10 +105,10 @@ func requeueAppVersionDeployments(appID uint, version models.ApplicationVersion)
 
 	var statuses []models.DeviceAppStatus
 	if err := db.DB.Where(
-		"device_id IN ? AND app_id = ? AND status = ?",
+		"device_id IN ? AND app_id = ? AND status IN ?",
 		deviceIDs,
 		appID,
-		models.AppStatusSuccess,
+		[]string{models.AppStatusSuccess, models.AppStatusSkipped},
 	).Find(&statuses).Error; err != nil {
 		return err
 	}

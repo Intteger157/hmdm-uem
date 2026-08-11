@@ -10,6 +10,7 @@ const (
 	AppStatusFailed      = "Failed"
 	AppStatusCanceled    = "Canceled"
 	AppStatusTimeout     = "Timeout"
+	AppStatusSkipped     = "Skipped"
 )
 
 const AppDeploymentTimeoutMessage = "Deployment timed out waiting for agent progress"
