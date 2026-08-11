@@ -20,6 +20,7 @@ import {
   resolveLauncherVersion,
   resolvePublicIp,
 } from '@/features/devices/utils/device-detail-formatters'
+import { DEVICE_ENROLLMENT_QR_SIZE } from '@/features/devices/lib/enrollment-qr-size'
 
 function normalizeConfigurationsMap(
   raw: DeviceListView['configurations'],
@@ -225,7 +226,7 @@ export async function deleteDevice(id: number): Promise<void> {
 export async function fetchDeviceQrCodeBlob(
   qrCodeKey: string,
   deviceId: string,
-  size = 280,
+  size = DEVICE_ENROLLMENT_QR_SIZE,
 ): Promise<Blob> {
   if (isMockApiEnabled()) {
     await mockNetworkDelay()

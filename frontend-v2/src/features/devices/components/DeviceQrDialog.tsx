@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { AlertCircle, Copy, Loader2 } from 'lucide-react'
 import { buildDeviceQrCodePublicUrl } from '@/features/devices/api/devices-api'
 import { useDeviceQrCode } from '@/features/devices/hooks/use-device-qr-code'
+import { DEVICE_ENROLLMENT_QR_SIZE } from '@/features/devices/lib/enrollment-qr-size'
 import { copyTextToClipboard } from '@/shared/lib/copy-to-clipboard'
 import { Button } from '@/components/ui/button'
 import {
@@ -45,7 +46,12 @@ export function DeviceQrDialog({
   const { t } = useTranslation()
   const hasQrCodeKey = qrCodeKey != null && qrCodeKey.length > 0
 
-  const { data: blob, isLoading, isError } = useDeviceQrCode(qrCodeKey, deviceNumber, open)
+  const { data: blob, isLoading, isError } = useDeviceQrCode(
+    qrCodeKey,
+    deviceNumber,
+    open,
+    DEVICE_ENROLLMENT_QR_SIZE,
+  )
 
   const [objectUrl, setObjectUrl] = useState<string | null>(null)
 
@@ -69,7 +75,7 @@ export function DeviceQrDialog({
     }
 
     const url = buildDeviceQrCodePublicUrl(qrCodeKey, deviceNumber, {
-      size: 280,
+      size: DEVICE_ENROLLMENT_QR_SIZE,
       name: deviceName,
     })
 
@@ -91,7 +97,7 @@ export function DeviceQrDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{t('devices.qr.title')}</DialogTitle>
           <DialogDescription>
@@ -102,8 +108,10 @@ export function DeviceQrDialog({
         {!hasQrCodeKey ? (
           <QrCallout message={t('devices.qr.loadError')} />
         ) : isLoading ? (
-          <div className="flex flex-col items-center gap-3 py-2">
-            <Skeleton className="size-64 rounded-lg" />
+          <div className="flex flex-col items-center gap-4 py-2">
+            <div className="w-full max-w-[450px] rounded-lg border bg-white p-1.5">
+              <Skeleton className="aspect-square w-full rounded-md" />
+            </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
               {t('devices.qr.loading')}
@@ -115,12 +123,16 @@ export function DeviceQrDialog({
             <div className="flex justify-center">{copyButton}</div>
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-3 py-2">
-            <img
-              src={objectUrl}
-              alt={t('devices.qr.alt', { number: deviceNumber })}
-              className="size-64 rounded-lg border bg-white object-contain p-2"
-            />
+          <div className="flex flex-col items-center gap-4 py-2">
+            <div className="w-full max-w-[450px] rounded-lg border bg-white p-1.5">
+              <img
+                src={objectUrl}
+                alt={t('devices.qr.alt', { number: deviceNumber })}
+                width={DEVICE_ENROLLMENT_QR_SIZE}
+                height={DEVICE_ENROLLMENT_QR_SIZE}
+                className="aspect-square w-full object-contain"
+              />
+            </div>
             {copyButton}
           </div>
         )}

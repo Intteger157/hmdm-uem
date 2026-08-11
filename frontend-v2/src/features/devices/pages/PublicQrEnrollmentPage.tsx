@@ -6,6 +6,7 @@ import {
   buildDeviceQrCodePublicUrl,
   buildQrCodeImageUrl,
 } from '@/features/devices/api/devices-api'
+import { DEVICE_ENROLLMENT_QR_SIZE } from '@/features/devices/lib/enrollment-qr-size'
 import { BoolField } from '@/shared/components/BoolField'
 import { FormSelect } from '@/shared/components/FormSelect'
 import { copyTextToClipboard } from '@/shared/lib/copy-to-clipboard'
@@ -27,7 +28,7 @@ export function PublicQrEnrollmentPage({
   qrCodeKey,
   deviceId: initialDeviceId,
   deviceName: initialDeviceName,
-  qrSize: initialSize,
+  qrSize: initialSize = DEVICE_ENROLLMENT_QR_SIZE,
 }: PublicQrEnrollmentPageProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -98,7 +99,7 @@ export function PublicQrEnrollmentPage({
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-100 via-white to-slate-100 px-4 py-8 sm:py-12">
-      <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-6">
+      <div className="mx-auto flex w-full max-w-xl flex-col items-center gap-6">
         <div className="flex flex-col items-center gap-2 text-center">
           <div className="flex size-12 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg">
             <QrCode className="size-6" />
@@ -133,14 +134,14 @@ export function PublicQrEnrollmentPage({
           <CardContent className="space-y-6 px-6 pb-6 pt-6">
             <div className="flex justify-center">
               {!imageError ? (
-                <div className="rounded-2xl border bg-white p-4 shadow-sm">
+                <div className="w-full max-w-[450px] rounded-2xl border bg-white p-2 shadow-sm">
                   <img
                     key={qrImageUrl}
                     src={qrImageUrl}
                     alt={t('devices.qr.alt', { number: deviceNumber || qrCodeKey })}
                     width={qrSize}
                     height={qrSize}
-                    className="size-64 max-w-full object-contain sm:size-[280px]"
+                    className="aspect-square w-full object-contain"
                     onError={() => setImageError(true)}
                   />
                 </div>

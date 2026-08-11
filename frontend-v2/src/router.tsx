@@ -24,6 +24,7 @@ import { AppLayout } from '@/layouts/AppLayout'
 import { AuthLayout } from '@/layouts/AuthLayout'
 import { FilesListPage } from '@/features/files/pages/FilesListPage'
 import { PublicQrEnrollmentPage } from '@/features/devices/pages/PublicQrEnrollmentPage'
+import { DEVICE_ENROLLMENT_QR_SIZE } from '@/features/devices/lib/enrollment-qr-size'
 import { PublicDeviceInfoPage } from '@/features/devices/pages/PublicDeviceInfoPage'
 import { WindowsConfigurationsPage } from '@/features/windows/configurations/pages/WindowsConfigurationsPage'
 import { WindowsConfigEditorPage } from '@/features/windows/configurations/pages/WindowsConfigEditorPage'
@@ -323,7 +324,7 @@ const publicQrRoute = createRoute({
     size:
       typeof search.size === 'string' && !Number.isNaN(Number(search.size))
         ? Number(search.size)
-        : 280,
+        : DEVICE_ENROLLMENT_QR_SIZE,
   }),
   component: function PublicQrRoute() {
     const { qrCodeKey } = publicQrRoute.useParams()
