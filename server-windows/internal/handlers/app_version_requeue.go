@@ -103,12 +103,21 @@ func requeueAppVersionDeployments(appID uint, version models.ApplicationVersion)
 		catalogTime = version.UploadedAt.UTC()
 	}
 
+	// A new catalog revision must reach every device, including the ones that
+	// previously failed, timed out or were canceled: those statuses are terminal
+	// and would otherwise keep the app out of the effective configuration.
 	var statuses []models.DeviceAppStatus
 	if err := db.DB.Where(
 		"device_id IN ? AND app_id = ? AND status IN ?",
 		deviceIDs,
 		appID,
-		[]string{models.AppStatusSuccess, models.AppStatusSkipped},
+		[]string{
+			models.AppStatusSuccess,
+			models.AppStatusSkipped,
+			models.AppStatusFailed,
+			models.AppStatusTimeout,
+			models.AppStatusCanceled,
+		},
 	).Find(&statuses).Error; err != nil {
 		return err
 	}

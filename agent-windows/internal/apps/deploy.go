@@ -66,6 +66,10 @@ type DeployOptions struct {
 	StatusReporter     StatusReporter
 	StepLogger         StepLogger
 	IsAppStillRequired func(appID uint) bool
+	// ForceRecheck ignores the local deploy cache so the machine state itself
+	// (registry inventory / winget) decides whether to install. Used by admin
+	// driven "Force apply configuration" to heal locally uninstalled apps.
+	ForceRecheck bool
 }
 
 // DeployRequiredAsync starts app deployment in a background goroutine so jitter,
@@ -100,7 +104,10 @@ func DeployRequired(required []RequiredApp, opts DeployOptions) {
 	}
 
 	installed := system.CollectInstalledSoftware()
-	if batchNeedsDownloadJitter(required, state, installed) {
+	if opts.ForceRecheck {
+		log.Printf("app deploy: force recheck requested; local deploy cache is ignored for %d app(s)", len(required))
+	}
+	if !opts.ForceRecheck && batchNeedsDownloadJitter(required, state, installed) {
 		log.Printf("app deploy: applying batch jitter before processing %d app(s)", len(required))
 		applyDownloadJitter()
 	}
@@ -136,14 +143,33 @@ func deployApp(app RequiredApp, opts DeployOptions, state *AppsState, installed 
 		return false, nil
 	}
 
-	if state.ShouldSkipDeploy(app) {
-		log.Printf(
-			"app deploy: skip id=%d name=%q fingerprint=%q (already deployed per local cache)",
-			app.ID,
-			app.Name,
-			AppDeploymentFingerprint(app),
-		)
-		return false, nil
+	driftRepair := false
+	if !opts.ForceRecheck && state.ShouldSkipDeploy(app) {
+		switch {
+		case !appMissingLocally(app, installed):
+			log.Printf(
+				"app deploy: skip id=%d name=%q fingerprint=%q (already deployed per local cache)",
+				app.ID,
+				app.Name,
+				AppDeploymentFingerprint(app),
+			)
+			return false, nil
+		case state.DriftRepairAttempted(app):
+			log.Printf(
+				"app deploy: skip id=%d name=%q, inventory still reports it as missing after an earlier redeploy of this revision",
+				app.ID,
+				app.Name,
+			)
+			return false, nil
+		default:
+			log.Printf(
+				"app deploy: local cache claims id=%d name=%q is deployed, but inventory has no trace of it; deploying again",
+				app.ID,
+				app.Name,
+			)
+			state.MarkDriftRepairAttempted(app)
+			driftRepair = true
+		}
 	}
 
 	if !beginAppDeploy(app.ID, app.Name) {
@@ -156,13 +182,15 @@ func deployApp(app RequiredApp, opts DeployOptions, state *AppsState, installed 
 		delete(state.FailedApps, appKey(app.ID))
 	}
 
-	appType := normalizeAppType(app.AppType)
-	switch appType {
+	var deployed bool
+	switch normalizeAppType(app.AppType) {
 	case AppTypeWinget:
-		return deployWingetApp(app, opts, state)
+		deployed, err = deployWingetApp(app, opts, state)
 	default:
-		return deployURLApp(app, opts, state, installed)
+		deployed, err = deployURLApp(app, opts, state, installed)
 	}
+	// The drift marker must be persisted even when the deployment itself failed.
+	return deployed || driftRepair, err
 }
 
 func reportDeployFailure(opts DeployOptions, progress *InstallProgressReporter, app RequiredApp, state *AppsState, message string, err error) (bool, error) {
@@ -247,7 +275,7 @@ func deployWingetApp(app RequiredApp, opts DeployOptions, state *AppsState) (boo
 		return true, nil
 	}
 
-	if !shouldCheckUpdate(app, state) {
+	if !catalogRevisionChanged(app, state) && !shouldCheckUpdate(app, state) {
 		progress.Report(InstallStatusSuccess, fmt.Sprintf("Package %q already installed; up to date", wingetID))
 		reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusSkipped, "Already installed / up to date")
 		state.MarkDeployed(app)
@@ -281,18 +309,20 @@ func deployURLApp(app RequiredApp, opts DeployOptions, state *AppsState, install
 
 	expectedVersion := app.ExpectedVersion()
 	presence := EvaluateInstallPresence(app.Name, expectedVersion, installed)
+	revisionChanged := catalogRevisionChanged(app, state)
 	progress.Report(
 		InstallStatusDownloading,
 		fmt.Sprintf(
-			"Checking app %q expectedVersion=%q presence=%s autoUpdate=%v",
+			"Checking app %q expectedVersion=%q presence=%s autoUpdate=%v newCatalogRevision=%v",
 			app.Name,
 			expectedVersion,
 			presenceLabel(presence),
 			app.AutoUpdate,
+			revisionChanged,
 		),
 	)
 
-	if presence == InstallUpToDate && !shouldCheckUpdate(app, state) {
+	if presence == InstallUpToDate && !revisionChanged && !shouldCheckUpdate(app, state) {
 		state.MarkDeployed(app)
 		progress.Report(InstallStatusSuccess, "App already installed and up to date; skipping deployment")
 		reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusSkipped, "Already installed / up to date")
@@ -412,6 +442,32 @@ func formatInstallFailureMessage(err error, result installRunResult) string {
 		message = err.Error()
 	}
 	return message
+}
+
+// appMissingLocally reports whether the software inventory has no trace of the app.
+// When that happens the local deploy cache is stale, e.g. the app was uninstalled
+// on the device, and the deployment must run again. Version is deliberately ignored
+// here: only presence matters. An empty inventory (collection failure) is never
+// treated as "missing" to avoid mass reinstalls.
+func appMissingLocally(app RequiredApp, installed []system.InstalledSoftwareInfo) bool {
+	if normalizeAppType(app.AppType) == AppTypeWinget {
+		return false
+	}
+	if strings.TrimSpace(app.Name) == "" || len(installed) == 0 {
+		return false
+	}
+	return EvaluateInstallPresence(app.Name, "", installed) == InstallMissing
+}
+
+// catalogRevisionChanged reports whether the server advertises a catalog revision
+// this agent has not deployed yet, while an older revision was deployed before.
+// An admin can upload a new installer under the same version string, so a fresh
+// revision must be installed even when the installed version already matches.
+func catalogRevisionChanged(app RequiredApp, state *AppsState) bool {
+	if state == nil {
+		return false
+	}
+	return state.HasDeployedRevision(app.ID) && !state.ShouldSkipDeploy(app)
 }
 
 func shouldCheckUpdate(app RequiredApp, state *AppsState) bool {
@@ -629,13 +685,15 @@ func normalizeDeployAppName(name string) string {
 
 func batchNeedsDownloadJitter(required []RequiredApp, state AppsState, installed []system.InstalledSoftwareInfo) bool {
 	for _, app := range required {
-		if state.ShouldSkipDeploy(app) {
+		if state.ShouldSkipDeploy(app) && !appMissingLocally(app, installed) {
 			continue
 		}
 		if normalizeAppType(app.AppType) == AppTypeWinget {
 			continue
 		}
-		if isAppInstalled(app.Name, app.ExpectedVersion(), installed) && !shouldCheckUpdate(app, &state) {
+		if isAppInstalled(app.Name, app.ExpectedVersion(), installed) &&
+			!catalogRevisionChanged(app, &state) &&
+			!shouldCheckUpdate(app, &state) {
 			continue
 		}
 		if strings.TrimSpace(app.DownloadURL) != "" {

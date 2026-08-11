@@ -23,6 +23,9 @@ type AppsState struct {
 	DeployedApps map[string]string `json:"deployedApps,omitempty"`
 	// FailedApps maps catalog app ID to the last failed deployment timestamp.
 	FailedApps map[string]string `json:"failedApps,omitempty"`
+	// DriftRepairs maps catalog app ID to the revision fingerprint that was already
+	// redeployed once because the app vanished from local inventory.
+	DriftRepairs map[string]string `json:"driftRepairs,omitempty"`
 }
 
 func appsStateFilePath() string {
@@ -69,6 +72,7 @@ func newEmptyAppsState() AppsState {
 		LastCheckTimes: map[string]string{},
 		DeployedApps:   map[string]string{},
 		FailedApps:     map[string]string{},
+		DriftRepairs:   map[string]string{},
 	}
 }
 
@@ -81,6 +85,9 @@ func normalizeAppsState(state *AppsState) {
 	}
 	if state.FailedApps == nil {
 		state.FailedApps = map[string]string{}
+	}
+	if state.DriftRepairs == nil {
+		state.DriftRepairs = map[string]string{}
 	}
 }
 
@@ -128,6 +135,34 @@ func (state AppsState) ShouldSkipDeploy(app RequiredApp) bool {
 		return !cachedTime.Before(serverTime)
 	}
 	return false
+}
+
+// DriftRepairAttempted reports whether this revision was already redeployed once
+// because the app was missing from local inventory. It keeps a permanent name
+// mismatch between the catalog and the registry DisplayName from turning into a
+// reinstall loop on every compliance check.
+func (state AppsState) DriftRepairAttempted(app RequiredApp) bool {
+	if state.DriftRepairs == nil {
+		return false
+	}
+	return strings.TrimSpace(state.DriftRepairs[appKey(app.ID)]) == AppDeploymentFingerprint(app)
+}
+
+// MarkDriftRepairAttempted records that the app was redeployed for this revision
+// because local inventory reported it as missing.
+func (state *AppsState) MarkDriftRepairAttempted(app RequiredApp) {
+	if state.DriftRepairs == nil {
+		state.DriftRepairs = map[string]string{}
+	}
+	state.DriftRepairs[appKey(app.ID)] = AppDeploymentFingerprint(app)
+}
+
+// HasDeployedRevision reports whether this agent already deployed any revision of the app.
+func (state AppsState) HasDeployedRevision(appID uint) bool {
+	if state.DeployedApps == nil {
+		return false
+	}
+	return strings.TrimSpace(state.DeployedApps[appKey(appID)]) != ""
 }
 
 // MarkDeployed records the catalog revision fingerprint for a successful deployment.

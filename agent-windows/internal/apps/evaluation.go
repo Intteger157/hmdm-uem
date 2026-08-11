@@ -12,7 +12,7 @@ import (
 // EvaluateRequiredApp returns one evaluation report line for a required application.
 func EvaluateRequiredApp(app RequiredApp, state AppsState, installed []system.InstalledSoftwareInfo) string {
 	name := displayAppName(app)
-	if state.ShouldSkipDeploy(app) {
+	if state.ShouldSkipDeploy(app) && !appMissingLocally(app, installed) {
 		return fmt.Sprintf("- App [%s]: Already deployed", name)
 	}
 	if normalizeAppType(app.AppType) == AppTypeWinget {
@@ -25,14 +25,18 @@ func EvaluateRequiredApp(app RequiredApp, state AppsState, installed []system.In
 		}
 		return fmt.Sprintf("- App [%s]: Queued for installation", name)
 	}
-	if isAppInstalled(app.Name, app.ExpectedVersion(), installed) {
-		return fmt.Sprintf("- App [%s]: Already installed / up to date", name)
-	}
 	presence := EvaluateInstallPresence(app.Name, app.ExpectedVersion(), installed)
-	if presence == InstallOutdated {
+	switch presence {
+	case InstallUpToDate:
+		if catalogRevisionChanged(app, &state) {
+			return fmt.Sprintf("- App [%s]: Queued for update (new installer revision)", name)
+		}
+		return fmt.Sprintf("- App [%s]: Already installed / up to date", name)
+	case InstallOutdated:
 		return fmt.Sprintf("- App [%s]: Queued for update", name)
+	default:
+		return fmt.Sprintf("- App [%s]: Queued for installation", name)
 	}
-	return fmt.Sprintf("- App [%s]: Queued for installation", name)
 }
 
 func displayAppName(app RequiredApp) string {

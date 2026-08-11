@@ -476,12 +476,15 @@ func runForceApplyConfiguration(cfg *config.Config, apiClient *api.APIClient) (s
 	}
 
 	deployOpts := policies.NewAppDeployOptions(apiClient, cfg.AuthToken, cfg.HardwareID)
+	// Force apply is admin driven: ignore the local deploy cache and let the real
+	// machine state decide, so apps uninstalled on the device get reinstalled.
+	deployOpts.ForceRecheck = true
 	fileDeployOpts := policies.NewFileDeployOptions(apiClient, cfg.AuthToken, cfg.HardwareID)
 	bitlockerUpload := policies.NewBitLockerKeyUploader(apiClient, cfg.AuthToken, cfg.HardwareID)
 
 	return policies.ForceApplyConfiguration(
 		func() (policies.EffectiveConfig, error) {
-			return fetchEffectiveConfigFromServer(cfg, apiClient)
+			return fetchEffectiveConfigForRecheck(cfg, apiClient)
 		},
 		func() (policies.RegistryPoliciesConfig, error) {
 			return fetchRegistryPoliciesFromServer(cfg, apiClient)
@@ -493,7 +496,14 @@ func runForceApplyConfiguration(cfg *config.Config, apiClient *api.APIClient) (s
 }
 
 func fetchEffectiveConfigFromServer(cfg *config.Config, apiClient *api.APIClient) (policies.EffectiveConfig, error) {
-	response, err := apiClient.FetchEffectiveConfig(cfg.AuthToken, cfg.HardwareID)
+	return effectiveConfigFromResponse(apiClient.FetchEffectiveConfig(cfg.AuthToken, cfg.HardwareID))
+}
+
+func fetchEffectiveConfigForRecheck(cfg *config.Config, apiClient *api.APIClient) (policies.EffectiveConfig, error) {
+	return effectiveConfigFromResponse(apiClient.FetchEffectiveConfigForRecheck(cfg.AuthToken, cfg.HardwareID))
+}
+
+func effectiveConfigFromResponse(response api.EffectiveConfigResponse, err error) (policies.EffectiveConfig, error) {
 	if err != nil {
 		if errors.Is(err, api.ErrNoEffectivePolicy) {
 			return policies.EffectiveConfig{}, nil

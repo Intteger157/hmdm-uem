@@ -521,8 +521,21 @@ func (c *APIClient) SubmitCommandResult(authToken, hwid string, commandID uint, 
 
 // FetchEffectiveConfig returns the merged effective policy for this device.
 func (c *APIClient) FetchEffectiveConfig(authToken, hwid string) (EffectiveConfigResponse, error) {
-	url := c.baseURL + fmt.Sprintf(effectiveConfigPath, url.PathEscape(hwid))
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	return c.fetchEffectiveConfig(authToken, hwid, false)
+}
+
+// FetchEffectiveConfigForRecheck also returns apps already reported as completed,
+// so a force apply can verify them against the real machine state.
+func (c *APIClient) FetchEffectiveConfigForRecheck(authToken, hwid string) (EffectiveConfigResponse, error) {
+	return c.fetchEffectiveConfig(authToken, hwid, true)
+}
+
+func (c *APIClient) fetchEffectiveConfig(authToken, hwid string, recheck bool) (EffectiveConfigResponse, error) {
+	requestURL := c.baseURL + fmt.Sprintf(effectiveConfigPath, url.PathEscape(hwid))
+	if recheck {
+		requestURL += "?force=1"
+	}
+	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	if err != nil {
 		return EffectiveConfigResponse{}, fmt.Errorf("create effective-config request: %w", err)
 	}

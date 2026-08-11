@@ -35,11 +35,21 @@ func (h *WindowsHandler) GetDeviceEffectiveConfig(c *gin.Context) {
 		return
 	}
 
-	response, err := buildEffectiveConfig(device)
+	includeCompletedApps := queryFlagEnabled(c, "force") || queryFlagEnabled(c, "includeCompleted")
+
+	response, err := buildEffectiveConfigForDevice(device, includeCompletedApps)
 	if err != nil {
 		log.Printf("[effective-config] build failed: hardware_id=%q err=%v", hardwareID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to build effective configuration"})
 		return
+	}
+
+	if includeCompletedApps {
+		log.Printf(
+			"[effective-config] recheck requested: hardware_id=%q required_apps=%d (completed apps included)",
+			hardwareID,
+			len(response.RequiredApps),
+		)
 	}
 
 	if len(response.AppliedProfiles) == 0 && len(response.RequiredApps) == 0 && len(response.FileDeployments) == 0 {
@@ -50,7 +60,29 @@ func (h *WindowsHandler) GetDeviceEffectiveConfig(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// queryFlagEnabled reports whether a boolean-ish query parameter is set to a truthy value.
+func queryFlagEnabled(c *gin.Context, name string) bool {
+	raw, ok := c.GetQuery(name)
+	if !ok {
+		return false
+	}
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "", "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
+}
+
 func buildEffectiveConfig(device models.WindowsDevice) (models.EffectiveConfigResponse, error) {
+	return buildEffectiveConfigForDevice(device, false)
+}
+
+// buildEffectiveConfigForDevice merges assigned profiles and apps. When
+// includeCompletedApps is set, apps already reported as terminal (Success,
+// Skipped, Failed, ...) stay in the payload so the agent can re-evaluate the
+// real machine state, e.g. after an app was uninstalled locally.
+func buildEffectiveConfigForDevice(device models.WindowsDevice, includeCompletedApps bool) (models.EffectiveConfigResponse, error) {
 	groupEntries, err := loadGroupAssignedProfiles(device.GroupID)
 	if err != nil {
 		return models.EffectiveConfigResponse{}, err
@@ -108,9 +140,12 @@ func buildEffectiveConfig(device models.WindowsDevice) (models.EffectiveConfigRe
 	}
 
 	mergedApps := mergeRequiredApps(requiredApps, directApps)
-	filteredApps, err := excludeTerminalAppStatuses(device.ID, mergedApps)
-	if err != nil {
-		return models.EffectiveConfigResponse{}, err
+	filteredApps := mergedApps
+	if !includeCompletedApps {
+		filteredApps, err = excludeTerminalAppStatuses(device.ID, mergedApps)
+		if err != nil {
+			return models.EffectiveConfigResponse{}, err
+		}
 	}
 
 	fileDeployments, err := fileDeploymentsFromProfiles(loadedProfiles)
@@ -380,17 +415,7 @@ func shouldExcludeRequiredApp(app models.RequiredApp, status models.DeviceAppSta
 			return true
 		}
 		return !app.UpdatedAt.After(status.AttemptedCatalogUpdatedAt.UTC())
-	case models.AppStatusCanceled:
-		return true
-	case models.AppStatusTimeout:
-		if status.AttemptedCatalogUpdatedAt == nil {
-			return true
-		}
-		if app.ID == 0 {
-			return true
-		}
-		return !app.UpdatedAt.After(status.AttemptedCatalogUpdatedAt.UTC())
-	case models.AppStatusFailed:
+	case models.AppStatusCanceled, models.AppStatusTimeout, models.AppStatusFailed:
 		if status.AttemptedCatalogUpdatedAt == nil {
 			return true
 		}
