@@ -32,10 +32,11 @@ var exeSilentArgSets = [][]string{
 }
 
 type installRunResult struct {
-	ExitCode    int
-	CommandLine string
-	Stdout      string
-	Stderr      string
+	ExitCode     int
+	InstallerPID int
+	CommandLine  string
+	Stdout       string
+	Stderr       string
 }
 
 func isInstallerSuccess(exitCode int) bool {
@@ -151,6 +152,7 @@ func runURLInstaller(installerPath, installArgs string) (installRunResult, error
 		if err == nil {
 			return result, nil
 		}
+		cleanupInstallerProcessTree(result.InstallerPID)
 		if isInstallTimeout(err) {
 			break
 		}
@@ -168,6 +170,7 @@ func runURLInstaller(installerPath, installArgs string) (installRunResult, error
 	if ctx.Err() == context.DeadlineExceeded {
 		return last, fmt.Errorf("%s", InstallTimeoutStatusMessage)
 	}
+	cleanupManagedInstallerProcesses()
 	return last, fmt.Errorf("all silent install attempts failed")
 }
 
@@ -204,10 +207,16 @@ func runPreparedInstaller(ctx context.Context, execPath string, execArgs []strin
 
 	runResult, err := procexec.Run(ctx, cmd, captureOutput)
 	result := installRunResult{
-		ExitCode:    runResult.ExitCode,
-		CommandLine: cmdLine,
-		Stdout:      runResult.Stdout,
-		Stderr:      runResult.Stderr,
+		ExitCode:     runResult.ExitCode,
+		InstallerPID: runResult.PID,
+		CommandLine:  cmdLine,
+		Stdout:       runResult.Stdout,
+		Stderr:       runResult.Stderr,
+	}
+
+	success := err == nil && isInstallerSuccess(result.ExitCode)
+	if !success {
+		cleanupInstallerProcessTree(runResult.PID)
 	}
 
 	if procexec.IsTimeout(err) || errors.Is(ctx.Err(), context.DeadlineExceeded) {

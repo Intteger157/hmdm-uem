@@ -51,6 +51,7 @@ func IsTimeout(err error) bool {
 
 // RunResult holds captured process output and exit code.
 type RunResult struct {
+	PID      int
 	ExitCode int
 	Stdout   string
 	Stderr   string
@@ -77,6 +78,7 @@ func Run(ctx context.Context, cmd *exec.Cmd, captureOutput bool) (RunResult, err
 	select {
 	case err := <-done:
 		return RunResult{
+			PID:      pid,
 			ExitCode: exitCode(cmd, err),
 			Stdout:   strings.TrimSpace(stdout.String()),
 			Stderr:   strings.TrimSpace(stderr.String()),
@@ -85,6 +87,7 @@ func Run(ctx context.Context, cmd *exec.Cmd, captureOutput bool) (RunResult, err
 		_ = KillProcessTree(pid)
 		<-done
 		return RunResult{
+			PID:      pid,
 			ExitCode: -1,
 			Stdout:   strings.TrimSpace(stdout.String()),
 			Stderr:   strings.TrimSpace(stderr.String()),

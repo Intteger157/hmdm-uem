@@ -199,6 +199,7 @@ func reportDeployCanceled(opts DeployOptions, app RequiredApp) {
 		app.ID,
 		app.Name,
 	)
+	cleanupManagedInstallerProcesses()
 	reportInstallProgress(opts.StepLogger, app.ID, app.Name, InstallStatusCanceled, InstallCanceledMessage)
 	reportStatus(opts.StatusReporter, app.ID, app.Name, InstallStatusCanceled, InstallCanceledMessage)
 }
