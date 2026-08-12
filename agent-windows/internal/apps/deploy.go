@@ -683,6 +683,33 @@ func normalizeDeployAppName(name string) string {
 	return strings.ToLower(strings.TrimSpace(name))
 }
 
+// DeploymentInProgress reports whether any required app is being deployed right now.
+func DeploymentInProgress() bool {
+	deployAppsMu.Lock()
+	defer deployAppsMu.Unlock()
+	return len(deployingAppIDs) > 0
+}
+
+// AllRequiredAppsSettled reports whether every required app reached a deployed or
+// skipped state for the catalog revision the server currently advertises.
+func AllRequiredAppsSettled(required []RequiredApp) bool {
+	if len(required) == 0 {
+		return true
+	}
+
+	state, err := LoadAppsState()
+	if err != nil {
+		log.Printf("app deploy: settled check skipped, state load failed: %v", err)
+		return false
+	}
+	for _, app := range required {
+		if !state.ShouldSkipDeploy(app) {
+			return false
+		}
+	}
+	return true
+}
+
 func batchNeedsDownloadJitter(required []RequiredApp, state AppsState, installed []system.InstalledSoftwareInfo) bool {
 	for _, app := range required {
 		if state.ShouldSkipDeploy(app) && !appMissingLocally(app, installed) {

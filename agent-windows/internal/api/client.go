@@ -29,6 +29,7 @@ const (
 	deviceConfigurationsPath  = "/rest/windows/devices/%s/configurations"
 	policyEnforcementLogPath  = "/rest/windows/devices/%s/policy-enforcement"
 	bitlockerKeyPath          = "/rest/windows/devices/%s/bitlocker-key"
+	provisioningCompletePath  = "/rest/windows/devices/%s/provisioning-complete"
 	appStatusPath             = "/rest/windows/devices/%s/apps/status"
 	appInstallLogPath         = "/rest/windows/devices/%s/logs/app-install"
 	fileDeploymentLogPath     = "/rest/windows/devices/%s/logs/file-deployment"
@@ -672,6 +673,62 @@ func (c *APIClient) ReportPolicyEnforcement(authToken, hwid string, success bool
 		return nil
 	default:
 		return fmt.Errorf("policy enforcement log failed with HTTP %d", resp.StatusCode)
+	}
+}
+
+// ProvisioningCompleteResponse tells the agent whether the server moved the device
+// to the post-enrollment configuration.
+type ProvisioningCompleteResponse struct {
+	Changed           bool   `json:"changed"`
+	ConfigurationID   uint   `json:"configurationId,omitempty"`
+	ConfigurationName string `json:"configurationName,omitempty"`
+}
+
+// ReportProvisioningComplete tells the MDM server that the initial provisioning phase
+// finished so it can hand the device over to the post-enrollment configuration.
+func (c *APIClient) ReportProvisioningComplete(authToken, hwid string) (ProvisioningCompleteResponse, error) {
+	requestURL := c.baseURL + fmt.Sprintf(provisioningCompletePath, url.PathEscape(hwid))
+	req, err := http.NewRequest(http.MethodPost, requestURL, bytes.NewReader([]byte("{}")))
+	if err != nil {
+		return ProvisioningCompleteResponse{}, fmt.Errorf("create provisioning complete request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+authToken)
+	req.Header.Set("X-Device-Id", hwid)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return ProvisioningCompleteResponse{}, fmt.Errorf("send provisioning complete request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ProvisioningCompleteResponse{}, fmt.Errorf("read provisioning complete response: %w", err)
+	}
+
+	switch resp.StatusCode {
+	case http.StatusUnauthorized:
+		return ProvisioningCompleteResponse{}, ErrUnauthorized
+	case http.StatusNotFound:
+		return ProvisioningCompleteResponse{}, ErrDeviceNotFound
+	case http.StatusOK:
+		var parsed ProvisioningCompleteResponse
+		trimmed := strings.TrimSpace(string(body))
+		if trimmed == "" || trimmed == "null" {
+			return ProvisioningCompleteResponse{}, nil
+		}
+		if err := json.Unmarshal(body, &parsed); err != nil {
+			return ProvisioningCompleteResponse{}, fmt.Errorf("decode provisioning complete response: %w", err)
+		}
+		return parsed, nil
+	default:
+		return ProvisioningCompleteResponse{}, fmt.Errorf(
+			"provisioning complete failed with HTTP %d: %s",
+			resp.StatusCode,
+			strings.TrimSpace(string(body)),
+		)
 	}
 }
 

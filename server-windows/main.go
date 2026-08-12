@@ -165,6 +165,7 @@ func registerRoutes(router *gin.Engine, windowsHandler *handlers.WindowsHandler,
 			agent.GET("/devices/:hardwareId/configurations", windowsHandler.GetDeviceConfigurations)
 			agent.POST("/devices/:hardwareId/policy-enforcement", windowsHandler.ReportPolicyEnforcement)
 			agent.POST("/devices/:hardwareId/bitlocker-key", windowsHandler.SubmitBitLockerKey)
+			agent.POST("/devices/:hardwareId/provisioning-complete", windowsHandler.ReportProvisioningComplete)
 			agent.POST("/devices/:hardwareId/apps/status", windowsHandler.ReportDeviceAppStatus)
 			agent.POST("/devices/:hardwareId/logs/app-install", windowsHandler.ReportAppInstallLog)
 			agent.POST("/devices/:hardwareId/logs/file-deployment", windowsHandler.ReportFileDeploymentLog)

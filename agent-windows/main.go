@@ -184,6 +184,11 @@ func enrollUntilSuccess(cfg *config.Config, apiClient *api.APIClient, stop <-cha
 		}
 
 		cfg.AuthToken = authToken
+		// A fresh enrollment runs its provisioning phase again, so the handover
+		// to the post-enrollment configuration must be re-armed.
+		if err := policies.ClearProvisioningState(); err != nil {
+			log.Printf("failed to reset provisioning state: %v", err)
+		}
 		log.Printf("enrollment succeeded, auth token stored")
 		return nil
 	}
@@ -428,7 +433,54 @@ func schedulePolicySync(cfg *config.Config, apiClient *api.APIClient) {
 	go func() {
 		defer atomic.StoreInt32(&policySyncRunning, 0)
 		syncPolicyFromServer(cfg, apiClient)
+		reportProvisioningCompleteIfSettled(cfg, apiClient)
 	}()
+}
+
+// reportProvisioningCompleteIfSettled hands the device over to the post-enrollment
+// configuration once every pipeline of the enrollment configuration is applied.
+// Deployments run asynchronously, so this is re-evaluated on every sync until the
+// device settles, and then signaled exactly once per enrollment.
+func reportProvisioningCompleteIfSettled(cfg *config.Config, apiClient *api.APIClient) {
+	if cfg.AuthToken == "" || cfg.HardwareID == "" {
+		return
+	}
+	if policies.ProvisioningCompletionSignaled() {
+		return
+	}
+
+	readiness := policies.EvaluateProvisioningReadiness()
+	if !readiness.Settled {
+		log.Printf("provisioning: not complete yet (%s)", readiness.Reason)
+		return
+	}
+
+	profileID := policies.AssignedProfileID()
+	log.Printf("provisioning: configuration fully applied, reporting completion to server")
+	result, err := apiClient.ReportProvisioningComplete(cfg.AuthToken, cfg.HardwareID)
+	if err != nil {
+		if handleReenrollNeeded(cfg, err) {
+			return
+		}
+		log.Printf("provisioning: completion report failed: %v", err)
+		return
+	}
+
+	if err := policies.MarkProvisioningCompletionSignaled(profileID); err != nil {
+		log.Printf("provisioning: failed to save provisioning state: %v", err)
+	}
+
+	if !result.Changed {
+		log.Printf("provisioning: server kept the current configuration")
+		return
+	}
+
+	log.Printf(
+		"provisioning: server moved device to configuration id=%d name=%q, applying it now",
+		result.ConfigurationID,
+		result.ConfigurationName,
+	)
+	syncPolicyFromServer(cfg, apiClient)
 }
 
 func syncPolicyFromServer(cfg *config.Config, apiClient *api.APIClient) {

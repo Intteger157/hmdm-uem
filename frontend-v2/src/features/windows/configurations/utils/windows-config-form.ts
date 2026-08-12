@@ -19,6 +19,7 @@ export const configProfileFormSchema = z.object({
   description: z.string().optional(),
   isActive: z.boolean(),
   isDefault: z.boolean(),
+  isPostEnrollmentDefault: z.boolean(),
   payload: z.object({
     defenderEnabled: z.boolean(),
     blockUsbStorage: z.boolean(),
@@ -83,6 +84,7 @@ export function createEmptyConfigProfileFormValues(): ConfigProfileFormValues {
     description: '',
     isActive: false,
     isDefault: false,
+    isPostEnrollmentDefault: false,
     payload: { ...DEFAULT_WINDOWS_CONFIG_PROFILE_PAYLOAD },
     groupIds: [],
     deviceIds: [],
@@ -109,6 +111,7 @@ export function toConfigProfileFormValues(
     description: profile.description ?? '',
     isActive: profile.isActive,
     isDefault: profile.isDefault,
+    isPostEnrollmentDefault: profile.isPostEnrollmentDefault ?? false,
     payload: normalizeConfigProfilePayload(profile.payload),
     groupIds: sanitizeAssignmentIds(assignments?.groupIds),
     deviceIds: sanitizeAssignmentIds(assignments?.deviceIds),

@@ -17,16 +17,19 @@ type WindowsConfigProfilePayload struct {
 
 // WindowsConfigProfile is a reusable Windows device policy profile.
 type WindowsConfigProfile struct {
-	ID                  uint                    `gorm:"primaryKey"`
-	Name                string                  `gorm:"not null"`
-	Description         string
-	Payload             json.RawMessage         `gorm:"type:jsonb"`
-	IsActive            bool                    `gorm:"default:false"`
-	IsDefault           bool                    `gorm:"column:is_default;default:false"`
-	CreatedAt           time.Time
-	UpdatedAt           time.Time
-	RequiredApps        []ProfileApp            `gorm:"foreignKey:ProfileID;references:ID"`
-	FileDeploymentRules []ProfileFileDeployment `gorm:"foreignKey:ProfileID;references:ID"`
+	ID          uint   `gorm:"primaryKey"`
+	Name        string `gorm:"not null"`
+	Description string
+	Payload     json.RawMessage `gorm:"type:jsonb"`
+	IsActive    bool            `gorm:"default:false"`
+	IsDefault   bool            `gorm:"column:is_default;default:false"`
+	// IsPostEnrollmentDefault marks the profile devices move to once their
+	// initial provisioning phase is finished.
+	IsPostEnrollmentDefault bool `gorm:"column:is_post_enrollment_default;default:false"`
+	CreatedAt               time.Time
+	UpdatedAt               time.Time
+	RequiredApps            []ProfileApp            `gorm:"foreignKey:ProfileID;references:ID"`
+	FileDeploymentRules     []ProfileFileDeployment `gorm:"foreignKey:ProfileID;references:ID"`
 }
 
 func (WindowsConfigProfile) TableName() string {
@@ -35,14 +38,15 @@ func (WindowsConfigProfile) TableName() string {
 
 // UpsertConfigProfileRequest is sent by the admin UI to create or update a profile.
 type UpsertConfigProfileRequest struct {
-	Name         string                      `json:"name" binding:"required"`
-	Description  string                      `json:"description"`
-	Payload      WindowsConfigProfilePayload `json:"payload" binding:"required"`
-	IsActive     bool                        `json:"isActive"`
-	IsDefault    bool                        `json:"isDefault"`
-	RequiredApps []RequiredAppRequest        `json:"requiredApps"`
-	AppIDs       []uint                      `json:"appIds"`
-	Assignments  []ProfileAppAssignment      `json:"assignments"`
+	Name                    string                      `json:"name" binding:"required"`
+	Description             string                      `json:"description"`
+	Payload                 WindowsConfigProfilePayload `json:"payload" binding:"required"`
+	IsActive                bool                        `json:"isActive"`
+	IsDefault               bool                        `json:"isDefault"`
+	IsPostEnrollmentDefault bool                        `json:"isPostEnrollmentDefault"`
+	RequiredApps            []RequiredAppRequest        `json:"requiredApps"`
+	AppIDs                  []uint                      `json:"appIds"`
+	Assignments             []ProfileAppAssignment      `json:"assignments"`
 }
 
 // RequiredAppsProvided reports whether the client sent required app selections.
@@ -114,14 +118,23 @@ func (req *UpsertConfigProfileRequest) UnmarshalJSON(data []byte) error {
 
 // ConfigProfileJSON is one configuration profile for the admin UI.
 type ConfigProfileJSON struct {
-	ID          uint                        `json:"id"`
-	Name        string                      `json:"name"`
-	Description string                      `json:"description"`
-	Payload     WindowsConfigProfilePayload `json:"payload"`
-	IsActive    bool                        `json:"isActive"`
-	IsDefault   bool                        `json:"isDefault"`
-	CreatedAt   time.Time                   `json:"createdAt"`
-	UpdatedAt   time.Time                   `json:"updatedAt"`
+	ID                      uint                        `json:"id"`
+	Name                    string                      `json:"name"`
+	Description             string                      `json:"description"`
+	Payload                 WindowsConfigProfilePayload `json:"payload"`
+	IsActive                bool                        `json:"isActive"`
+	IsDefault               bool                        `json:"isDefault"`
+	IsPostEnrollmentDefault bool                        `json:"isPostEnrollmentDefault"`
+	CreatedAt               time.Time                   `json:"createdAt"`
+	UpdatedAt               time.Time                   `json:"updatedAt"`
+}
+
+// DeviceProvisioningCompleteResponse is returned when an agent reports that the
+// initial provisioning phase finished.
+type DeviceProvisioningCompleteResponse struct {
+	Changed           bool   `json:"changed"`
+	ConfigurationID   uint   `json:"configurationId,omitempty"`
+	ConfigurationName string `json:"configurationName,omitempty"`
 }
 
 // ConfigProfileListResponse is returned by GET /configurations.
@@ -158,13 +171,14 @@ func ToConfigProfileJSON(profile WindowsConfigProfile) (ConfigProfileJSON, error
 		return ConfigProfileJSON{}, err
 	}
 	return ConfigProfileJSON{
-		ID:          profile.ID,
-		Name:        profile.Name,
-		Description: profile.Description,
-		Payload:     payload,
-		IsActive:    profile.IsActive,
-		IsDefault:   profile.IsDefault,
-		CreatedAt:   profile.CreatedAt,
-		UpdatedAt:   profile.UpdatedAt,
+		ID:                      profile.ID,
+		Name:                    profile.Name,
+		Description:             profile.Description,
+		Payload:                 payload,
+		IsActive:                profile.IsActive,
+		IsDefault:               profile.IsDefault,
+		IsPostEnrollmentDefault: profile.IsPostEnrollmentDefault,
+		CreatedAt:               profile.CreatedAt,
+		UpdatedAt:               profile.UpdatedAt,
 	}, nil
 }

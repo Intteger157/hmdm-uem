@@ -93,11 +93,12 @@ func (h *WindowsHandler) CreateConfigProfile(c *gin.Context) {
 	}
 
 	profile := models.WindowsConfigProfile{
-		Name:        name,
-		Description: strings.TrimSpace(req.Description),
-		Payload:     payload,
-		IsActive:    req.IsActive || req.IsDefault,
-		IsDefault:   req.IsDefault,
+		Name:                    name,
+		Description:             strings.TrimSpace(req.Description),
+		Payload:                 payload,
+		IsActive:                req.IsActive || req.IsDefault || req.IsPostEnrollmentDefault,
+		IsDefault:               req.IsDefault,
+		IsPostEnrollmentDefault: req.IsPostEnrollmentDefault,
 	}
 
 	if err := db.DB.Create(&profile).Error; err != nil {
@@ -119,6 +120,15 @@ func (h *WindowsHandler) CreateConfigProfile(c *gin.Context) {
 			return
 		}
 		profile.IsDefault = true
+	}
+
+	if profile.IsPostEnrollmentDefault {
+		if err := applyExclusivePostEnrollmentDefaultProfile(profile.ID, true); err != nil {
+			log.Printf("[create-config-profile] post-enrollment default flag failed: id=%d err=%v", profile.ID, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to set post-enrollment default configuration profile"})
+			return
+		}
+		profile.IsPostEnrollmentDefault = true
 	}
 
 	item, err := models.ToConfigProfileJSON(profile)
@@ -171,8 +181,9 @@ func (h *WindowsHandler) UpdateConfigProfile(c *gin.Context) {
 	profile.Name = name
 	profile.Description = strings.TrimSpace(req.Description)
 	profile.Payload = payload
-	profile.IsActive = req.IsActive || req.IsDefault
+	profile.IsActive = req.IsActive || req.IsDefault || req.IsPostEnrollmentDefault
 	profile.IsDefault = req.IsDefault
+	profile.IsPostEnrollmentDefault = req.IsPostEnrollmentDefault
 
 	if err := db.DB.Save(&profile).Error; err != nil {
 		log.Printf("[update-config-profile] save failed: id=%d err=%v", profileID, err)
@@ -189,6 +200,12 @@ func (h *WindowsHandler) UpdateConfigProfile(c *gin.Context) {
 	if err := applyExclusiveDefaultProfile(profile.ID, profile.IsDefault); err != nil {
 		log.Printf("[update-config-profile] default flag failed: id=%d err=%v", profileID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update default configuration profile"})
+		return
+	}
+
+	if err := applyExclusivePostEnrollmentDefaultProfile(profile.ID, profile.IsPostEnrollmentDefault); err != nil {
+		log.Printf("[update-config-profile] post-enrollment default flag failed: id=%d err=%v", profileID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update post-enrollment default configuration profile"})
 		return
 	}
 

@@ -20,6 +20,7 @@ export interface WindowsConfigProfile {
   payload: WindowsConfigProfilePayload
   isActive: boolean
   isDefault: boolean
+  isPostEnrollmentDefault: boolean
   createdAt: string
   updatedAt: string
 }
@@ -35,6 +36,7 @@ export interface UpsertWindowsConfigProfilePayload {
   payload: WindowsConfigProfilePayload
   isActive: boolean
   isDefault: boolean
+  isPostEnrollmentDefault: boolean
   requiredApps?: RequiredAppRequest[]
   appIds?: number[]
   assignments?: ProfileAppAssignment[]

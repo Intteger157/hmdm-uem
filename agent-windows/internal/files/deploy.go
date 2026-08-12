@@ -13,12 +13,41 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 
 	"github.com/hmdm/agent-windows/internal/brand"
 )
 
-var deployFilesMu sync.Mutex
+var (
+	deployFilesMu      sync.Mutex
+	deployFilesRunning atomic.Bool
+)
+
+// DeploymentInProgress reports whether file deployment rules are executing right now.
+func DeploymentInProgress() bool {
+	return deployFilesRunning.Load()
+}
+
+// AllDeploymentsSettled reports whether every file rule was applied for its current
+// fingerprint, i.e. nothing is pending or failed.
+func AllDeploymentsSettled(deployments []RequiredFileDeployment) bool {
+	if len(deployments) == 0 {
+		return true
+	}
+
+	state, err := LoadFilesState()
+	if err != nil {
+		log.Printf("file deploy: settled check skipped, state load failed: %v", err)
+		return false
+	}
+	for _, deployment := range deployments {
+		if !state.ShouldSkipDeploy(deployment) {
+			return false
+		}
+	}
+	return true
+}
 
 // RequiredFileDeployment is one file deployment rule from effective config.
 type RequiredFileDeployment struct {
@@ -57,6 +86,9 @@ func DeployRequiredAsync(deployments []RequiredFileDeployment, opts DeployOption
 func DeployRequired(deployments []RequiredFileDeployment, opts DeployOptions) {
 	deployFilesMu.Lock()
 	defer deployFilesMu.Unlock()
+
+	deployFilesRunning.Store(true)
+	defer deployFilesRunning.Store(false)
 
 	state, err := LoadFilesState()
 	if err != nil {

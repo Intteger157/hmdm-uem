@@ -1485,6 +1485,8 @@
   "windowsConfigurations.form.isActive": "Mark profile as active",
   "windowsConfigurations.form.isDefault": "Make default for new enrollments",
   "windowsConfigurations.form.isDefaultHint": "New Windows devices will automatically receive this profile upon registration.",
+  "windowsConfigurations.form.isPostEnrollmentDefault": "Make default for post-enrollment",
+  "windowsConfigurations.form.isPostEnrollmentDefaultHint": "Devices will automatically be moved to this profile once their initial provisioning phase is completely finished.",
   "windowsConfigurations.badge.default": "Default",
   "windowsConfigurations.form.defenderEnabled": "Enable Windows Defender Real-time Protection",
   "windowsConfigurations.form.blockUsbStorage": "Block USB Removable Storage",

@@ -170,8 +170,9 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
     const upsertPayload = {
       name: values.name.trim(),
       description: values.description?.trim() || undefined,
-      isActive: values.isActive || values.isDefault,
+      isActive: values.isActive || values.isDefault || values.isPostEnrollmentDefault,
       isDefault: values.isDefault,
+      isPostEnrollmentDefault: values.isPostEnrollmentDefault,
       payload: values.payload,
       requiredApps: buildRequiredAppsSubmitPayload(values.appAssignments),
     }
@@ -421,6 +422,28 @@ export function WindowsConfigEditorPage({ profileId, isNew = false }: WindowsCon
                             id="windows-config-is-default"
                             label={t('windowsConfigurations.form.isDefault')}
                             hint={t('windowsConfigurations.form.isDefaultHint')}
+                            checked={field.value}
+                            onCheckedChange={(checked) => {
+                              field.onChange(checked)
+                              if (checked) {
+                                form.setValue('isActive', true)
+                              }
+                            }}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="isPostEnrollmentDefault"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <BoolField
+                            id="windows-config-is-post-enrollment-default"
+                            label={t('windowsConfigurations.form.isPostEnrollmentDefault')}
+                            hint={t('windowsConfigurations.form.isPostEnrollmentDefaultHint')}
                             checked={field.value}
                             onCheckedChange={(checked) => {
                               field.onChange(checked)
