@@ -1488,6 +1488,7 @@
   "windowsConfigurations.form.isPostEnrollmentDefault": "Make default for post-enrollment",
   "windowsConfigurations.form.isPostEnrollmentDefaultHint": "Devices will automatically be moved to this profile once their initial provisioning phase is completely finished.",
   "windowsConfigurations.badge.default": "Default",
+  "windowsConfigurations.badge.postEnrollmentDefault": "POST-ENROLL DEFAULT",
   "windowsConfigurations.form.defenderEnabled": "Enable Windows Defender Real-time Protection",
   "windowsConfigurations.form.blockUsbStorage": "Block USB Removable Storage",
   "windowsConfigurations.form.usbReadOnly": "Prevent writing to USB drives (Read-Only)",

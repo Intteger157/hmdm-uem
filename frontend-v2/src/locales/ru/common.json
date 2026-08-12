@@ -1488,6 +1488,7 @@
   "windowsConfigurations.form.isPostEnrollmentDefault": "Сделать дефолтным после регистрации",
   "windowsConfigurations.form.isPostEnrollmentDefaultHint": "Устройства автоматически перейдут на этот профиль, как только начальный этап подготовки будет полностью завершён.",
   "windowsConfigurations.badge.default": "Default",
+  "windowsConfigurations.badge.postEnrollmentDefault": "POST-ENROLL DEFAULT",
   "windowsConfigurations.form.defenderEnabled": "Включить Windows Defender Real-time Protection",
   "windowsConfigurations.form.blockUsbStorage": "Блокировать съёмные USB-накопители",
   "windowsConfigurations.form.usbReadOnly": "Запретить запись на USB-накопители (только чтение)",

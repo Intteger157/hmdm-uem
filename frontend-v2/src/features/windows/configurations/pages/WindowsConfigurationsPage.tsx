@@ -148,6 +148,11 @@ export function WindowsConfigurationsPage() {
                               {t('windowsConfigurations.badge.default')}
                             </Badge>
                           ) : null}
+                          {profile.isPostEnrollmentDefault ? (
+                            <Badge className="shrink-0 border-indigo-400/50 bg-indigo-600/90 text-[10px] font-bold uppercase tracking-wide text-white hover:bg-indigo-600/90">
+                              {t('windowsConfigurations.badge.postEnrollmentDefault')}
+                            </Badge>
+                          ) : null}
                         </div>
                         {profile.description ? (
                           <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{profile.description}</div>
