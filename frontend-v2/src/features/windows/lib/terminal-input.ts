@@ -1,11 +1,8 @@
 import type { Terminal } from 'xterm'
 
-/** Maps browser/xterm DEL (0x7f) to Windows backspace (0x08) for remote shells. */
+/** xterm sends DEL (0x7f) for Backspace; PSReadLine expects that for single-char delete. */
 export function normalizeTerminalInput(data: string): string {
-  if (!data.includes('\x7f')) {
-    return data
-  }
-  return data.replace(/\x7f/g, '\x08')
+  return data
 }
 
 export function buildTerminalResizeMessage(cols: number, rows: number): string {

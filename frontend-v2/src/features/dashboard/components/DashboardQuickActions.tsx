@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { usePermissions } from '@/features/auth/hooks/use-permissions'
 import { dashboardEnterClass, dashboardSectionClass } from '@/features/dashboard/lib/dashboard-styles'
 import { cn } from '@/lib/utils'
+import type { Platform } from '@/shared/api/types/platform'
 
 const linkClassName =
   'flex items-center gap-2 -ml-1.5 rounded-md p-1.5 text-sm text-slate-300 transition-colors hover:bg-white/5 hover:text-white'
@@ -39,7 +40,7 @@ function QuickActionColumn({ title, children }: QuickActionColumnProps) {
   )
 }
 
-export function DashboardQuickActions() {
+export function DashboardQuickActions({ platform }: { platform: Platform }) {
   const { t } = useTranslation()
   const { canMutate, allowsPlatform } = usePermissions()
 
@@ -47,14 +48,12 @@ export function DashboardQuickActions() {
     return null
   }
 
-  const showAndroid = allowsPlatform('android')
-  const showWindows = allowsPlatform('windows')
+  const showAndroid = platform === 'android' && allowsPlatform('android')
+  const showWindows = platform === 'windows' && allowsPlatform('windows')
 
   if (!showAndroid && !showWindows) {
     return null
   }
-
-  const columnCount = showAndroid && showWindows ? 2 : 1
 
   return (
     <section className={cn(dashboardSectionClass(), dashboardEnterClass(3), 'h-full')}>
@@ -63,12 +62,7 @@ export function DashboardQuickActions() {
         <p className="mt-1 text-xs text-muted-foreground">{t('dashboard.quickActions.description')}</p>
       </div>
 
-      <div
-        className={cn(
-          'grid gap-4 sm:gap-6',
-          columnCount === 2 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1',
-        )}
-      >
+      <div className="grid grid-cols-1 gap-4 sm:gap-6">
         {showAndroid ? (
           <QuickActionColumn title={t('dashboard.quickActions.androidSection')}>
             <QuickActionLink
@@ -123,7 +117,7 @@ export function DashboardQuickActions() {
   )
 }
 
-export function DashboardQuickActionsInline() {
+export function DashboardQuickActionsInline({ platform }: { platform: Platform }) {
   const { t } = useTranslation()
   const { canMutate, allowsPlatform } = usePermissions()
 
@@ -131,8 +125,12 @@ export function DashboardQuickActionsInline() {
     return null
   }
 
-  const showAndroid = allowsPlatform('android')
-  const showWindows = allowsPlatform('windows')
+  const showAndroid = platform === 'android' && allowsPlatform('android')
+  const showWindows = platform === 'windows' && allowsPlatform('windows')
+
+  if (!showAndroid && !showWindows) {
+    return null
+  }
 
   return (
     <div className={cn('flex flex-wrap gap-2', dashboardEnterClass(1))}>

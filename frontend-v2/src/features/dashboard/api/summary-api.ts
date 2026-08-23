@@ -6,7 +6,7 @@ import { isMockApiEnabled } from '@/shared/api/mock-utils'
 import { mockFetchDeviceSummary } from '@/shared/api/mocks/summary'
 import type { ApiResponse } from '@/shared/api/types/api-response'
 import { unwrapApiResponse } from '@/shared/api/types/api-response'
-import type { ChartItem, SummaryFetchResult, SummaryResponse } from '@/shared/api/types/summary'
+import type { SummaryFetchResult, SummaryResponse } from '@/shared/api/types/summary'
 import { searchWindowsDevices } from '@/features/windows/api/windows-api'
 import { resolveDeviceOnlineStatusCode } from '@/features/devices/utils/device-online-status'
 import type { AttentionDeviceRow, AttentionSeverity } from '@/features/dashboard/lib/dashboard-attention'
@@ -34,24 +34,6 @@ interface DashboardAttentionDeviceDto {
 interface DashboardAttentionDevicesDto {
   items: DashboardAttentionDeviceDto[]
   warnings?: string[]
-}
-
-function emptySummary(): SummaryResponse {
-  return {
-    devicesTotal: 0,
-    devicesEnrolled: 0,
-    devicesEnrolledLastMonth: 0,
-    statusSummary: [],
-    installSummary: [],
-    devicesEnrolledMonthly: [],
-    topConfigs: [],
-    statusOfflineByConfig: [],
-    statusIdleByConfig: [],
-    statusOnlineByConfig: [],
-    appFailureByConfig: [],
-    appMismatchByConfig: [],
-    appSuccessByConfig: [],
-  }
 }
 
 async function fetchWindowsDeviceSummary(): Promise<SummaryResponse> {
@@ -94,100 +76,46 @@ async function fetchJavaAndroidSummary(): Promise<SummaryResponse> {
   return unwrapApiResponse(response.data)
 }
 
-async function fetchUnifiedGoSummary(): Promise<SummaryResponse> {
-  const response = await windowsApi.get<SummaryResponse>('/dashboard/summary')
+async function fetchUnifiedGoSummary(platform: Platform): Promise<SummaryResponse> {
+  const response = await windowsApi.get<SummaryResponse>('/dashboard/summary', {
+    params: { platform },
+  })
   return response.data
 }
 
-function mergeChartItems(...groups: ChartItem[][]): ChartItem[] {
-  const totals = new Map<string, number>()
-  for (const group of groups) {
-    for (const item of group) {
-      const key = item.stringAttr
-      totals.set(key, (totals.get(key) ?? 0) + item.number)
+async function fetchPlatformFallbackSummary(platform: Platform): Promise<SummaryFetchResult> {
+  const warnings: string[] = []
+
+  if (platform === 'android') {
+    try {
+      return { summary: await fetchJavaAndroidSummary(), warnings }
+    } catch {
+      warnings.push('Android fleet metrics are temporarily unavailable.')
+      throw new Error('dashboard summary unavailable')
     }
   }
-  return Array.from(totals.entries()).map(([stringAttr, number]) => ({
-    stringAttr,
-    intAttr: 0,
-    number,
-  }))
-}
-
-function mergeSummaries(
-  android: SummaryResponse | null,
-  windows: SummaryResponse | null,
-): SummaryResponse {
-  if (!android && !windows) {
-    return emptySummary()
-  }
-  if (!android) {
-    return windows as SummaryResponse
-  }
-  if (!windows) {
-    return android
-  }
-
-  return {
-    devicesTotal: android.devicesTotal + windows.devicesTotal,
-    devicesEnrolled: android.devicesEnrolled + windows.devicesEnrolled,
-    devicesEnrolledLastMonth: android.devicesEnrolledLastMonth + windows.devicesEnrolledLastMonth,
-    statusSummary: mergeChartItems(android.statusSummary, windows.statusSummary),
-    installSummary: mergeChartItems(android.installSummary, windows.installSummary),
-    devicesEnrolledMonthly:
-      android.devicesEnrolledMonthly.length > 0
-        ? android.devicesEnrolledMonthly
-        : windows.devicesEnrolledMonthly,
-    topConfigs: android.topConfigs.length > 0 ? android.topConfigs : windows.topConfigs,
-    statusOfflineByConfig: android.statusOfflineByConfig,
-    statusIdleByConfig: android.statusIdleByConfig,
-    statusOnlineByConfig: android.statusOnlineByConfig,
-    appFailureByConfig: android.appFailureByConfig,
-    appMismatchByConfig: android.appMismatchByConfig,
-    appSuccessByConfig: android.appSuccessByConfig,
-  }
-}
-
-async function fetchMergedFallbackSummary(): Promise<SummaryFetchResult> {
-  const warnings: string[] = []
-  let android: SummaryResponse | null = null
-  let windows: SummaryResponse | null = null
 
   try {
-    android = await fetchJavaAndroidSummary()
-  } catch {
-    warnings.push('Android fleet metrics are temporarily unavailable.')
-  }
-
-  try {
-    windows = await fetchWindowsDeviceSummary()
+    return { summary: await fetchWindowsDeviceSummary(), warnings }
   } catch {
     warnings.push('Windows fleet metrics are temporarily unavailable.')
-  }
-
-  if (!android && !windows) {
     throw new Error('dashboard summary unavailable')
-  }
-
-  return {
-    summary: mergeSummaries(android, windows),
-    warnings,
   }
 }
 
-export async function fetchDeviceSummary(): Promise<SummaryFetchResult> {
+export async function fetchDeviceSummary(platform: Platform): Promise<SummaryFetchResult> {
   if (isMockApiEnabled()) {
     return { summary: await mockFetchDeviceSummary(), warnings: [] }
   }
 
   try {
-    const summary = await fetchUnifiedGoSummary()
+    const summary = await fetchUnifiedGoSummary(platform)
     return {
       summary,
       warnings: summary.warnings ?? [],
     }
   } catch {
-    return fetchMergedFallbackSummary()
+    return fetchPlatformFallbackSummary(platform)
   }
 }
 
@@ -238,7 +166,10 @@ function mapAttentionDevice(item: DashboardAttentionDeviceDto): AttentionDeviceR
   }
 }
 
-export async function fetchDashboardAttentionDevices(limit = 5): Promise<{
+export async function fetchDashboardAttentionDevices(
+  limit = 5,
+  platform: Platform,
+): Promise<{
   devices: AttentionDeviceRow[]
   warnings: string[]
 }> {
@@ -248,7 +179,7 @@ export async function fetchDashboardAttentionDevices(limit = 5): Promise<{
 
   try {
     const response = await windowsApi.get<DashboardAttentionDevicesDto>('/dashboard/attention-devices', {
-      params: { limit },
+      params: { limit, platform },
     })
     return {
       devices: response.data.items.map(mapAttentionDevice),

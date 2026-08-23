@@ -835,6 +835,8 @@
   "devices.delete.success": "Устройство удалено",
   "devices.delete.error": "Не удалось удалить устройство",
   "dashboard.subtitle": "Обзор парка и состояние устройств",
+  "dashboard.subtitleAndroid": "Обзор Android-парка и состояние устройств",
+  "dashboard.subtitleWindows": "Обзор Windows-парка и состояние устройств",
   "dashboard.loading": "Загрузка обзора…",
   "dashboard.errorTitle": "Не удалось загрузить обзор",
   "dashboard.errorDescription": "Не удалось получить статистику устройств.",

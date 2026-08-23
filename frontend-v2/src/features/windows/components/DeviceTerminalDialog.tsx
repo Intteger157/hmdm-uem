@@ -94,6 +94,20 @@ export function DeviceTerminalDialog({ open, onOpenChange, hardwareId }: DeviceT
     terminal.open(container)
     fitAddon.fit()
 
+    terminal.attachCustomKeyEventHandler((event) => {
+      if (event.type !== 'keydown' || event.key !== 'Backspace') {
+        return true
+      }
+      if (!event.ctrlKey || event.altKey || event.metaKey) {
+        return true
+      }
+      const socket = socketRef.current
+      if (socket?.readyState === WebSocket.OPEN) {
+        socket.send('\x08')
+      }
+      return false
+    })
+
     terminal.onData((data) => {
       const socket = socketRef.current
       if (socket?.readyState === WebSocket.OPEN) {

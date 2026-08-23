@@ -835,6 +835,8 @@
   "devices.delete.success": "Device deleted",
   "devices.delete.error": "Failed to delete device",
   "dashboard.subtitle": "Fleet overview and device health",
+  "dashboard.subtitleAndroid": "Android fleet overview and device health",
+  "dashboard.subtitleWindows": "Windows fleet overview and device health",
   "dashboard.loading": "Loading dashboard…",
   "dashboard.errorTitle": "Failed to load dashboard",
   "dashboard.errorDescription": "Could not fetch device statistics.",

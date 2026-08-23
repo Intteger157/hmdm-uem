@@ -38,11 +38,12 @@ import {
 } from '@/components/ui/sidebar'
 import { AndroidIcon, WindowsIcon } from '@/components/icons/platform-icons'
 import { usePermissions } from '@/features/auth/hooks/use-permissions'
+import { dashboardRouteSearch } from '@/shared/lib/dashboard-route'
 
 function useNavState() {
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   const searchStr = useRouterState({ select: (state) => state.location.searchStr })
-  const devicePlatform = searchStr.includes('platform=windows') ? 'windows' : 'android'
+  const devicePlatform: 'android' | 'windows' = searchStr.includes('platform=windows') ? 'windows' : 'android'
 
   return {
     pathname,
@@ -325,7 +326,7 @@ export function AppSidebar() {
   // Go enforces both rules on the routes it serves; the Java-served Android and
   // administration routes check neither, so there this is the only thing keeping
   // an operator out of screens they should not use.
-  const { allowsPlatform, isAdministrator } = usePermissions()
+  const { allowsPlatform, isAdministrator, lockedPlatform } = usePermissions()
   const showAndroid = allowsPlatform('android')
   const showWindows = allowsPlatform('windows')
 
@@ -336,7 +337,15 @@ export function AppSidebar() {
         <SidebarGroupContent>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton isActive={nav.isDashboard} render={<Link to="/dashboard" />}>
+              <SidebarMenuButton
+                isActive={nav.isDashboard}
+                render={
+                  <Link
+                    to="/dashboard"
+                    search={dashboardRouteSearch(lockedPlatform ?? nav.devicePlatform)}
+                  />
+                }
+              >
                 <LayoutDashboard />
                 <span>{t('nav.dashboard')}</span>
               </SidebarMenuButton>

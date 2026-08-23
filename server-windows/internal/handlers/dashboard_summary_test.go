@@ -7,6 +7,30 @@ import (
 	"github.com/hmdm/server-windows/internal/models"
 )
 
+func TestResolveDashboardPlatformFilter(t *testing.T) {
+	t.Parallel()
+
+	androidOnly, windowsOnly := resolveDashboardPlatformFilter("android", true, true)
+	if !androidOnly || windowsOnly {
+		t.Fatalf("android filter = (%v, %v), want (true, false)", androidOnly, windowsOnly)
+	}
+
+	androidOnly, windowsOnly = resolveDashboardPlatformFilter("windows", true, true)
+	if androidOnly || !windowsOnly {
+		t.Fatalf("windows filter = (%v, %v), want (false, true)", androidOnly, windowsOnly)
+	}
+
+	androidOnly, windowsOnly = resolveDashboardPlatformFilter("", true, true)
+	if !androidOnly || !windowsOnly {
+		t.Fatalf("combined filter = (%v, %v), want (true, true)", androidOnly, windowsOnly)
+	}
+
+	androidOnly, windowsOnly = resolveDashboardPlatformFilter("android", false, true)
+	if androidOnly || windowsOnly {
+		t.Fatalf("scoped android filter = (%v, %v), want (false, false)", androidOnly, windowsOnly)
+	}
+}
+
 func TestAndroidConnectivityBucket(t *testing.T) {
 	t.Parallel()
 	now := time.Unix(1_700_000_000_000, 0).UTC()

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { DashboardAlerts } from '@/features/dashboard/components/DashboardAlerts'
@@ -16,19 +17,32 @@ import { DashboardRecentActivity } from '@/features/dashboard/components/Dashboa
 import { deriveDashboardMetrics } from '@/features/dashboard/lib/dashboard-metrics'
 import {
   useDashboardAttentionDevicesQuery,
-  useDashboardPlatform,
   useDeviceSummaryQuery,
 } from '@/features/dashboard/hooks/use-device-summary-query'
+import { usePermissions } from '@/features/auth/hooks/use-permissions'
 import { Button } from '@/components/ui/button'
 import { PageContainer } from '@/shared/layout/page-layout'
 import { usePeriodicNow } from '@/shared/hooks/use-periodic-now'
+import type { Platform } from '@/shared/api/types/platform'
 
-export function DashboardPage() {
+interface DashboardPageProps {
+  platform: Platform
+}
+
+export function DashboardPage({ platform: requestedPlatform }: DashboardPageProps) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+  const { lockedPlatform } = usePermissions()
+  const platform = lockedPlatform ?? requestedPlatform
   usePeriodicNow()
-  const platform = useDashboardPlatform()
-  const summaryQuery = useDeviceSummaryQuery()
-  const attentionQuery = useDashboardAttentionDevicesQuery(5)
+  const summaryQuery = useDeviceSummaryQuery(platform)
+  const attentionQuery = useDashboardAttentionDevicesQuery(platform, 5)
+
+  useEffect(() => {
+    if (lockedPlatform && requestedPlatform !== lockedPlatform) {
+      void navigate({ to: '/dashboard', search: { platform: lockedPlatform }, replace: true })
+    }
+  }, [lockedPlatform, requestedPlatform, navigate])
 
   const summary = summaryQuery.data?.summary
   const metrics = useMemo(
@@ -88,12 +102,13 @@ export function DashboardPage() {
   return (
     <PageContainer size="full" className="pb-8">
       <DashboardHeader
+        platform={platform}
         dataUpdatedAt={summaryQuery.dataUpdatedAt}
         isFetching={summaryQuery.isFetching}
         onRefresh={() => void summaryQuery.refetch()}
       />
 
-      <DashboardQuickActionsInline />
+      <DashboardQuickActionsInline platform={platform} />
 
       <DashboardAlerts metrics={metrics} platform={platform} />
 
@@ -104,7 +119,7 @@ export function DashboardPage() {
           <DashboardFleetHealth buckets={metrics.fleetHealth} total={metrics.total} />
         </div>
         <div className="xl:col-span-2">
-          <DashboardQuickActions />
+          <DashboardQuickActions platform={platform} />
         </div>
       </div>
 

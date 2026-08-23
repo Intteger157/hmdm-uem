@@ -36,6 +36,12 @@ import { WindowsEnrollmentPage } from '@/features/windows/enrollment/pages/Windo
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { resolvePermissions } from '@/features/auth/hooks/use-permissions'
 import { isPlatform, type Platform } from '@/shared/api/types/platform'
+import { dashboardRouteSearch } from '@/shared/lib/dashboard-route'
+
+function redirectToDashboard(): never {
+  const locked = useAuthStore.getState().scopedPlatform()
+  throw redirect({ to: '/dashboard', search: dashboardRouteSearch(locked ?? 'android') })
+}
 
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
@@ -54,7 +60,7 @@ const rootRoute = createRootRoute({
 function requirePlatform(platform: Platform) {
   return () => {
     if (!useAuthStore.getState().allowsPlatform(platform)) {
-      throw redirect({ to: '/dashboard' })
+      redirectToDashboard()
     }
   }
 }
@@ -67,6 +73,20 @@ function requireScopedDevicePlatform({ search }: { search: { platform: Platform 
   }
 }
 
+/** Rewrites ?platform= on the dashboard to the one the role can manage. */
+function requireScopedDashboardPlatform({ search }: { search: { platform: Platform } }) {
+  const locked = useAuthStore.getState().scopedPlatform()
+  if (locked && search.platform !== locked) {
+    throw redirect({ to: '/dashboard', search: dashboardRouteSearch(locked) })
+  }
+}
+
+const dashboardSearchSchema = (search: Record<string, unknown>) => ({
+  platform: isPlatform(search.platform as string | undefined)
+    ? (search.platform as Platform)
+    : 'android',
+})
+
 /**
  * Keeps the console's own administration out of reach of the roles it governs.
  *
@@ -77,7 +97,7 @@ function requireScopedDevicePlatform({ search }: { search: { platform: Platform 
  */
 function requireAdministrator() {
   if (!resolvePermissions(useAuthStore.getState().access).isAdministrator) {
-    throw redirect({ to: '/dashboard' })
+    redirectToDashboard()
   }
 }
 
@@ -92,7 +112,7 @@ const loginRoute = createRoute({
   path: '/login',
   beforeLoad: () => {
     if (useAuthStore.getState().isAuthenticated()) {
-      throw redirect({ to: '/dashboard' })
+      redirectToDashboard()
     }
   },
   component: LoginPage,
@@ -112,17 +132,18 @@ const appLayoutRoute = createRoute({
 const dashboardRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/dashboard',
-  component: DashboardPage,
+  validateSearch: dashboardSearchSchema,
+  beforeLoad: requireScopedDashboardPlatform,
+  component: function DashboardRoute() {
+    const { platform } = dashboardRoute.useSearch()
+    return <DashboardPage platform={platform} />
+  },
 })
 
 const devicesRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/devices',
-  validateSearch: (search: Record<string, unknown>) => ({
-    platform: isPlatform(search.platform as string | undefined)
-      ? (search.platform as 'android' | 'windows')
-      : 'android',
-  }),
+  validateSearch: dashboardSearchSchema,
   beforeLoad: requireScopedDevicePlatform,
   component: function DevicesRoute() {
     const { platform } = devicesRoute.useSearch()
@@ -344,7 +365,7 @@ const indexRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/',
   beforeLoad: () => {
-    throw redirect({ to: '/dashboard' })
+    redirectToDashboard()
   },
 })
 

@@ -2,13 +2,9 @@
 
 package terminal
 
-import "bytes"
-
-// normalizeTerminalInput maps xterm/backspace (DEL, 0x7f) to Windows BS (0x08)
-// so PowerShell line editing works through the relay.
+// normalizeTerminalInput passes keystrokes through unchanged.
+// xterm sends DEL (0x7f) for Backspace; PSReadLine uses that for single-char delete.
+// Mapping DEL to BS (0x08) makes PSReadLine treat Backspace as Ctrl+H (kill word).
 func normalizeTerminalInput(data []byte) []byte {
-	if bytes.IndexByte(data, 0x7f) < 0 {
-		return data
-	}
-	return bytes.ReplaceAll(data, []byte{0x7f}, []byte{0x08})
+	return data
 }

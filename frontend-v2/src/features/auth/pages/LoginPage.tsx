@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { z } from 'zod'
 import { Logo } from '@/components/Logo'
 import { MOCK_AUTH } from '@/shared/api/mocks/auth'
+import { dashboardRouteSearch } from '@/shared/lib/dashboard-route'
 import { isMockApiEnabled } from '@/shared/api/mock-utils'
 import { fetchCurrentUser, loginWithJwt } from '@/features/auth/api/auth-api'
 import { fetchPublicSsoStatus, MICROSOFT_LOGIN_PATH } from '@/features/auth/api/sso-status-api'
@@ -132,7 +133,7 @@ export function LoginPage() {
           return
         }
         setAuth(jwt, userFromConsoleProfile(profile), toConsoleAccess(profile))
-        void navigate({ to: '/dashboard' })
+        void navigate({ to: '/dashboard', search: dashboardRouteSearch('android') })
       } catch {
         if (!cancelled) {
           useAuthStore.getState().logout()
@@ -165,7 +166,7 @@ export function LoginPage() {
         localStorage.removeItem(REMEMBER_LOGIN_KEY)
       }
 
-      void navigate({ to: '/dashboard' })
+      void navigate({ to: '/dashboard', search: dashboardRouteSearch('android') })
     } catch (err) {
       const isUnauthorized =
         (err instanceof Error && 'status' in err && err.status === 401) ||

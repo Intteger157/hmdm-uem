@@ -6,8 +6,7 @@ import {
 import { rankAttentionDevices } from '@/features/dashboard/lib/dashboard-attention'
 import { searchDevices } from '@/features/devices/api/devices-api'
 import { searchWindowsDevices } from '@/features/windows/api/windows-api'
-import { usePermissions } from '@/features/auth/hooks/use-permissions'
-import type { DeviceView } from '@/shared/api/types/device'
+import type { Platform } from '@/shared/api/types/platform'
 
 export const summaryQueryKeys = {
   devices: ['summary', 'devices'] as const,
@@ -16,60 +15,49 @@ export const summaryQueryKeys = {
 
 const SUMMARY_POLL_INTERVAL_MS = 60_000
 
-export function useDeviceSummaryQuery() {
+export function useDeviceSummaryQuery(platform: Platform) {
   return useQuery({
-    queryKey: summaryQueryKeys.devices,
-    queryFn: fetchDeviceSummary,
+    queryKey: [...summaryQueryKeys.devices, platform],
+    queryFn: () => fetchDeviceSummary(platform),
     refetchInterval: SUMMARY_POLL_INTERVAL_MS,
   })
 }
 
-async function fetchAttentionDevicesClient(
-  limit: number,
-  lockedPlatform: 'android' | 'windows' | null,
-  allowsPlatform: (platform: 'android' | 'windows') => boolean,
-) {
-  const includeAndroid = lockedPlatform ? lockedPlatform === 'android' : allowsPlatform('android')
-  const includeWindows = lockedPlatform ? lockedPlatform === 'windows' : allowsPlatform('windows')
+async function fetchAttentionDevicesClient(limit: number, platform: Platform) {
+  const combined =
+    platform === 'android'
+      ? (
+          await searchDevices({
+            platform: 'android',
+            pageNum: 1,
+            pageSize: 100,
+            sortBy: 'LAST_UPDATE',
+            sortDir: 'ASC',
+          })
+        ).devices.items
+      : (
+          await searchWindowsDevices({
+            platform: 'windows',
+            pageNum: 1,
+            pageSize: 100,
+            sortBy: 'LAST_UPDATE',
+            sortDir: 'ASC',
+          })
+        ).devices.items
 
-  const combined: DeviceView[] = []
-  const tasks: Promise<void>[] = []
-
-  if (includeAndroid) {
-    tasks.push(
-      searchDevices({ platform: 'android', pageNum: 1, pageSize: 100, sortBy: 'LAST_UPDATE', sortDir: 'ASC' }).then(
-        (result) => {
-          combined.push(...result.devices.items)
-        },
-      ),
-    )
-  }
-  if (includeWindows) {
-    tasks.push(
-      searchWindowsDevices({ platform: 'windows', pageNum: 1, pageSize: 100, sortBy: 'LAST_UPDATE', sortDir: 'ASC' }).then(
-        (result) => {
-          combined.push(...result.devices.items)
-        },
-      ),
-    )
-  }
-
-  await Promise.allSettled(tasks)
   return rankAttentionDevices(combined, Date.now(), limit)
 }
 
-export function useDashboardAttentionDevicesQuery(limit = 5) {
-  const { lockedPlatform, allowsPlatform } = usePermissions()
-
+export function useDashboardAttentionDevicesQuery(platform: Platform, limit = 5) {
   return useQuery({
-    queryKey: [...summaryQueryKeys.attention, limit, lockedPlatform ?? 'all'],
+    queryKey: [...summaryQueryKeys.attention, platform, limit],
     queryFn: async () => {
-      const unified = await fetchDashboardAttentionDevices(limit)
+      const unified = await fetchDashboardAttentionDevices(limit, platform)
       if (unified.devices.length > 0) {
         return unified
       }
 
-      const fallbackDevices = await fetchAttentionDevicesClient(limit, lockedPlatform, allowsPlatform)
+      const fallbackDevices = await fetchAttentionDevicesClient(limit, platform)
       return {
         devices: fallbackDevices,
         warnings: unified.warnings,
@@ -77,9 +65,4 @@ export function useDashboardAttentionDevicesQuery(limit = 5) {
     },
     refetchInterval: SUMMARY_POLL_INTERVAL_MS,
   })
-}
-
-export function useDashboardPlatform(): 'android' | 'windows' {
-  const { lockedPlatform, allowsPlatform } = usePermissions()
-  return lockedPlatform ?? (allowsPlatform('android') ? 'android' : 'windows')
 }

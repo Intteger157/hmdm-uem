@@ -40,6 +40,21 @@ type partialDashboardSummary struct {
 	Install           dashboardInstallCounts
 }
 
+func resolveDashboardPlatformFilter(
+	queryPlatform string,
+	includeAndroid bool,
+	includeWindows bool,
+) (bool, bool) {
+	switch strings.ToLower(strings.TrimSpace(queryPlatform)) {
+	case "android":
+		return includeAndroid, false
+	case "windows":
+		return false, includeWindows
+	default:
+		return includeAndroid, includeWindows
+	}
+}
+
 // GetDashboardSummary aggregates Android and Windows fleet KPIs for the unified console dashboard.
 func (h *WindowsHandler) GetDashboardSummary(c *gin.Context) {
 	user, userOK := middleware.CurrentUser(c)
@@ -55,6 +70,7 @@ func (h *WindowsHandler) GetDashboardSummary(c *gin.Context) {
 
 	includeAndroid := role.AllowsPlatform(models.PlatformScopeAndroid)
 	includeWindows := role.AllowsPlatform(models.PlatformScopeWindows)
+	includeAndroid, includeWindows = resolveDashboardPlatformFilter(c.Query("platform"), includeAndroid, includeWindows)
 
 	accumulator := partialDashboardSummary{}
 	response := models.DashboardSummaryResponse{
@@ -125,6 +141,7 @@ func (h *WindowsHandler) GetDashboardAttentionDevices(c *gin.Context) {
 
 	includeAndroid := role.AllowsPlatform(models.PlatformScopeAndroid)
 	includeWindows := role.AllowsPlatform(models.PlatformScopeWindows)
+	includeAndroid, includeWindows = resolveDashboardPlatformFilter(c.Query("platform"), includeAndroid, includeWindows)
 
 	customerID := user.CustomerID
 	if customerID <= 0 {
