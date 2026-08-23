@@ -134,10 +134,6 @@ func (h *WindowsHandler) GetLatestCommand(c *gin.Context) {
 
 // PollCommand returns the oldest pending command for the authenticated device.
 func (h *WindowsHandler) PollCommand(c *gin.Context) {
-	if !validateAgentAuth(c) {
-		return
-	}
-
 	deviceID := strings.TrimSpace(c.GetHeader("X-Device-Id"))
 	if deviceID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing X-Device-Id header"})
@@ -178,10 +174,6 @@ func (h *WindowsHandler) PollCommand(c *gin.Context) {
 
 // CompleteCommand records the agent execution result.
 func (h *WindowsHandler) CompleteCommand(c *gin.Context) {
-	if !validateAgentAuth(c) {
-		return
-	}
-
 	deviceID := strings.TrimSpace(c.GetHeader("X-Device-Id"))
 	if deviceID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing X-Device-Id header"})
@@ -233,15 +225,6 @@ func (h *WindowsHandler) CompleteCommand(c *gin.Context) {
 
 	log.Printf("[complete-command] id=%d hardware_id=%q action=%q success=%v", commandID, deviceID, command.Action, req.Success)
 	c.Status(http.StatusOK)
-}
-
-func validateAgentAuth(c *gin.Context) bool {
-	authHeader := c.GetHeader("Authorization")
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing or invalid authorization header"})
-		return false
-	}
-	return true
 }
 
 func parseUintParam(raw string) (uint, bool) {

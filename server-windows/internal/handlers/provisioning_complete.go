@@ -14,10 +14,6 @@ import (
 // ReportProvisioningComplete moves a device to the post-enrollment default profile
 // once its agent reports that the initial provisioning phase is fully applied.
 func (h *WindowsHandler) ReportProvisioningComplete(c *gin.Context) {
-	if !validateAgentAuth(c) {
-		return
-	}
-
 	deviceID := stringsTrimDeviceHeader(c)
 	if deviceID == "" {
 		return

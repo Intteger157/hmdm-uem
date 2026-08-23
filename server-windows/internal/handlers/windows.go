@@ -11,11 +11,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/hmdm/server-windows/internal/db"
+	"github.com/hmdm/server-windows/internal/middleware"
 	"github.com/hmdm/server-windows/internal/models"
 	"gorm.io/gorm"
 )
-
-const mockAuthToken = "mock-jwt-token-777"
 
 // WindowsHandler serves REST endpoints for the Windows MDM agent.
 type WindowsHandler struct {
@@ -35,7 +34,7 @@ func NewWindowsHandler() *WindowsHandler {
 	}
 }
 
-// Enroll accepts an enrollment token and hardware ID, returning a mock JWT.
+// Enroll accepts an enrollment token and hardware ID, returning a per-device secret.
 func (h *WindowsHandler) Enroll(c *gin.Context) {
 	var req models.EnrollRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -93,45 +92,49 @@ func (h *WindowsHandler) Enroll(c *gin.Context) {
 		log.Printf("[enroll] mark token used failed: hardware_id=%q err=%v", req.HardwareID, err)
 	}
 
+	authToken, err := issueAgentToken(&device)
+	if err != nil {
+		log.Printf("[enroll] issue agent token failed: hardware_id=%q err=%v", req.HardwareID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to issue agent token"})
+		return
+	}
+
 	c.JSON(http.StatusOK, models.EnrollResponse{
-		AuthToken: mockAuthToken,
+		AuthToken: authToken,
 	})
 }
 
 // Checkin records lightweight agent presence without a full inventory upload.
 func (h *WindowsHandler) Checkin(c *gin.Context) {
-	if !validateAgentAuth(c) {
+	device, ok := middleware.ValidatedDevice(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "device not authenticated"})
 		return
 	}
 
-	deviceID := strings.TrimSpace(c.GetHeader("X-Device-Id"))
-	if deviceID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "missing X-Device-Id header"})
-		return
-	}
-
-	var device models.WindowsDevice
-	if err := db.DB.Where("hardware_id = ?", deviceID).First(&device).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "device not found"})
+	var req models.CheckinRequest
+	if c.Request.ContentLength > 0 {
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		log.Printf("[checkin] lookup failed: hardware_id=%q err=%v", deviceID, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup device"})
-		return
+	}
+
+	if version := strings.TrimSpace(req.AgentVersion); version != "" && version != device.AgentVersion {
+		device.AgentVersion = version
 	}
 
 	device.LastCheckin = time.Now()
 	markDeviceAgentActive(&device)
 	if err := db.DB.Save(&device).Error; err != nil {
-		log.Printf("[checkin] save failed: hardware_id=%q err=%v", deviceID, err)
+		log.Printf("[checkin] save failed: hardware_id=%q err=%v", device.HardwareID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update device checkin"})
 		return
 	}
 
 	effective, err := buildEffectiveConfig(device)
 	if err != nil {
-		log.Printf("[checkin] effective config failed: hardware_id=%q err=%v", deviceID, err)
+		log.Printf("[checkin] effective config failed: hardware_id=%q err=%v", device.HardwareID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to build effective configuration"})
 		return
 	}
@@ -148,13 +151,7 @@ func (h *WindowsHandler) Checkin(c *gin.Context) {
 
 // Inventory accepts authenticated inventory uploads from enrolled agents.
 func (h *WindowsHandler) Inventory(c *gin.Context) {
-	authHeader := c.GetHeader("Authorization")
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing or invalid authorization header"})
-		return
-	}
-
-	deviceID := c.GetHeader("X-Device-Id")
+	deviceID := strings.TrimSpace(c.GetHeader("X-Device-Id"))
 	if deviceID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing X-Device-Id header"})
 		return
@@ -304,12 +301,6 @@ func (h *WindowsHandler) Uninstall(c *gin.Context) {
 }
 
 func agentDeviceIDFromRequest(c *gin.Context) (string, bool) {
-	authHeader := c.GetHeader("Authorization")
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing or invalid authorization header"})
-		return "", false
-	}
-
 	deviceID := strings.TrimSpace(c.GetHeader("X-Device-Id"))
 	if deviceID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing X-Device-Id header"})

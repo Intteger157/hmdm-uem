@@ -139,10 +139,6 @@ func (h *WindowsHandler) HandleAdminTaskManager(c *gin.Context) {
 // HandleAgentTaskManager upgrades the agent connection, attaches it to the waiting
 // admin session, and keeps the handler alive until the relay ends.
 func (h *WindowsHandler) HandleAgentTaskManager(c *gin.Context) {
-	if !validateAgentAuth(c) {
-		return
-	}
-
 	relay := h.taskManagerRelay
 	sessionID := resolveTaskManagerSessionID(c)
 	if sessionID == "" {

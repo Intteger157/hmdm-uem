@@ -139,10 +139,6 @@ func (h *WindowsHandler) HandleAdminTerminal(c *gin.Context) {
 // HandleAgentTerminal upgrades the agent connection, attaches it to the waiting
 // admin session, and keeps the handler alive until the relay ends.
 func (h *WindowsHandler) HandleAgentTerminal(c *gin.Context) {
-	if !validateAgentAuth(c) {
-		return
-	}
-
 	relay := h.terminalRelay
 	sessionID := resolveTerminalSessionID(c)
 	if sessionID == "" {

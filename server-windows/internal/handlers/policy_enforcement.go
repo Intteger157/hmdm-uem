@@ -13,10 +13,6 @@ import (
 
 // ReportPolicyEnforcement stores agent policy enforcement output in Action Logs.
 func (h *WindowsHandler) ReportPolicyEnforcement(c *gin.Context) {
-	if !validateAgentAuth(c) {
-		return
-	}
-
 	deviceID := strings.TrimSpace(c.GetHeader("X-Device-Id"))
 	if deviceID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing X-Device-Id header"})

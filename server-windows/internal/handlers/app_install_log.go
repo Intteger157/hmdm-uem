@@ -14,10 +14,6 @@ import (
 
 // ReportAppInstallLog upserts one Action Log row per app deployment attempt.
 func (h *WindowsHandler) ReportAppInstallLog(c *gin.Context) {
-	if !validateAgentAuth(c) {
-		return
-	}
-
 	deviceID := strings.TrimSpace(c.GetHeader("X-Device-Id"))
 	if deviceID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing X-Device-Id header"})

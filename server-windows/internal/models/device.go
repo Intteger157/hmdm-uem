@@ -99,6 +99,8 @@ type WindowsDevice struct {
 	AgentStatus       string     `gorm:"not null;default:active"`
 	UninstalledAt     *time.Time
 	GroupID           *uint      `gorm:"column:group_id;index"`
+	AgentTokenHash    string     `gorm:"column:agent_token_hash;size:64"`
+	AgentVersion      string     `gorm:"column:agent_version;size:32"`
 	CreatedAt         time.Time  `gorm:"column:created_at;autoCreateTime"`
 }
 

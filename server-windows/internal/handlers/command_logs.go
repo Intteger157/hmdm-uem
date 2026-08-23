@@ -130,10 +130,6 @@ func (h *WindowsHandler) ListDeviceCommandLogs(c *gin.Context) {
 
 // SubmitCommandResult records agent execution output for a DeviceCommandLog entry.
 func (h *WindowsHandler) SubmitCommandResult(c *gin.Context) {
-	if !validateAgentAuth(c) {
-		return
-	}
-
 	deviceID := strings.TrimSpace(c.GetHeader("X-Device-Id"))
 	if deviceID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing X-Device-Id header"})

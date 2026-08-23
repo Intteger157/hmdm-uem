@@ -93,6 +93,8 @@ func main() {
 func registerRoutes(router *gin.Engine, windowsHandler *handlers.WindowsHandler, jwtSecret string) {
 	adminOnly := middleware.AdminAuth(jwtSecret)
 	adminOrAgent := middleware.AdminOrAgent(jwtSecret)
+	deviceAuth := middleware.RequireDeviceAuth()
+	consoleOrDeviceAuth := middleware.RequireConsoleOrDeviceAuth()
 	// Ordered after adminOnly everywhere it is used: it authorises the role that
 	// AdminAuth resolves. The shared agent/console group is deliberately left
 	// out — its only route is a read, and an agent request carries no role for
@@ -120,10 +122,10 @@ func registerRoutes(router *gin.Engine, windowsHandler *handlers.WindowsHandler,
 
 	// Agent-side WebSocket relays. Agents present their enrollment token, which
 	// each handler checks itself.
-	router.GET("/api/terminal/client", windowsHandler.HandleAgentTerminal)
-	router.GET("/api/terminal/agent", windowsHandler.HandleAgentTerminal)
-	router.GET("/api/taskmgr/agent", windowsHandler.HandleAgentTaskManager)
-	router.GET("/api/filexplorer/agent", windowsHandler.HandleAgentFileExplorer)
+	router.GET("/api/terminal/client", deviceAuth, windowsHandler.HandleAgentTerminal)
+	router.GET("/api/terminal/agent", deviceAuth, windowsHandler.HandleAgentTerminal)
+	router.GET("/api/taskmgr/agent", deviceAuth, windowsHandler.HandleAgentTaskManager)
+	router.GET("/api/filexplorer/agent", deviceAuth, windowsHandler.HandleAgentFileExplorer)
 
 	// Operator-side WebSocket relays. The browser cannot set headers on a
 	// handshake, so the console JWT arrives as the "token" query parameter.
@@ -150,30 +152,34 @@ func registerRoutes(router *gin.Engine, windowsHandler *handlers.WindowsHandler,
 			public.GET("/public/auth/callback/microsoft", windowsHandler.MicrosoftOAuthCallback)
 		}
 
-		// Windows agent protocol. These routes keep their existing enrollment
-		// token / bearer checks inside the handlers; a console JWT is neither
-		// sent nor expected here.
+		// Windows agent protocol. Enrollment is public; all other routes require
+		// a validated per-device or legacy grace-period token.
 		agent := rest.Group("/windows")
 		{
 			agent.POST("/enroll", windowsHandler.Enroll)
-			agent.POST("/checkin", windowsHandler.Checkin)
-			agent.POST("/inventory", windowsHandler.Inventory)
-			agent.POST("/uninstall", windowsHandler.Uninstall)
-			agent.GET("/commands/poll", windowsHandler.PollCommand)
-			agent.POST("/commands/:commandId/complete", windowsHandler.CompleteCommand)
-			agent.POST("/commands/:commandId/result", windowsHandler.SubmitCommandResult)
-			agent.GET("/devices/:hardwareId/configurations", windowsHandler.GetDeviceConfigurations)
-			agent.POST("/devices/:hardwareId/policy-enforcement", windowsHandler.ReportPolicyEnforcement)
-			agent.POST("/devices/:hardwareId/bitlocker-key", windowsHandler.SubmitBitLockerKey)
-			agent.POST("/devices/:hardwareId/provisioning-complete", windowsHandler.ReportProvisioningComplete)
-			agent.POST("/devices/:hardwareId/apps/status", windowsHandler.ReportDeviceAppStatus)
-			agent.POST("/devices/:hardwareId/logs/app-install", windowsHandler.ReportAppInstallLog)
-			agent.POST("/devices/:hardwareId/logs/file-deployment", windowsHandler.ReportFileDeploymentLog)
+			agent.POST("/token/refresh", windowsHandler.RefreshAgentToken)
+
+			authenticated := agent.Group("", deviceAuth)
+			{
+				authenticated.POST("/checkin", windowsHandler.Checkin)
+				authenticated.POST("/inventory", windowsHandler.Inventory)
+				authenticated.POST("/uninstall", windowsHandler.Uninstall)
+				authenticated.GET("/commands/poll", windowsHandler.PollCommand)
+				authenticated.POST("/commands/:commandId/complete", windowsHandler.CompleteCommand)
+				authenticated.POST("/commands/:commandId/result", windowsHandler.SubmitCommandResult)
+				authenticated.GET("/devices/:hardwareId/configurations", windowsHandler.GetDeviceConfigurations)
+				authenticated.POST("/devices/:hardwareId/policy-enforcement", windowsHandler.ReportPolicyEnforcement)
+				authenticated.POST("/devices/:hardwareId/bitlocker-key", windowsHandler.SubmitBitLockerKey)
+				authenticated.POST("/devices/:hardwareId/provisioning-complete", windowsHandler.ReportProvisioningComplete)
+				authenticated.POST("/devices/:hardwareId/apps/status", windowsHandler.ReportDeviceAppStatus)
+				authenticated.POST("/devices/:hardwareId/logs/app-install", windowsHandler.ReportAppInstallLog)
+				authenticated.POST("/devices/:hardwareId/logs/file-deployment", windowsHandler.ReportFileDeploymentLog)
+			}
 		}
 
 		// Called by both the agent (to apply policy) and the console (to preview
 		// it), so either credential is accepted.
-		shared := rest.Group("/windows", adminOrAgent)
+		shared := rest.Group("/windows", adminOrAgent, consoleOrDeviceAuth)
 		{
 			shared.GET("/devices/:hardwareId/effective-config", windowsHandler.GetDeviceEffectiveConfig)
 		}

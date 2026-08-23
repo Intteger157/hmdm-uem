@@ -153,6 +153,7 @@ func performHandshake(cfg *config.Config, apiClient *api.APIClient, stop <-chan 
 
 	if cfg.AuthToken != "" {
 		log.Printf("AuthToken found. Agent is authenticated.")
+		migrateAuthTokenIfNeeded(cfg, apiClient)
 		return nil
 	}
 
@@ -329,7 +330,9 @@ func runAgentCycle(stop <-chan struct{}, cfg *config.Config, apiClient *api.APIC
 		}
 	}
 
-	checkinResult, err := apiClient.SendCheckin(cfg.AuthToken, cfg.HardwareID, policies.LoadLastSyncedConfigHash())
+	migrateAuthTokenIfNeeded(cfg, apiClient)
+
+	checkinResult, err := apiClient.SendCheckin(cfg.AuthToken, cfg.HardwareID, policies.LoadLastSyncedConfigHash(), brand.AgentVersion)
 	if err != nil {
 		if handleReenrollNeeded(cfg, err) {
 			return

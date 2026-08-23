@@ -153,6 +153,7 @@ func TestAgentRoutesKeepTheirOwnAuth(t *testing.T) {
 		path   string
 	}{
 		{http.MethodPost, "/rest/windows/enroll"},
+		{http.MethodPost, "/rest/windows/token/refresh"},
 		{http.MethodPost, "/rest/windows/checkin"},
 		{http.MethodPost, "/rest/windows/inventory"},
 		{http.MethodPost, "/rest/windows/uninstall"},

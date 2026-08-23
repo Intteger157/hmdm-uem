@@ -139,10 +139,6 @@ func (h *WindowsHandler) HandleAdminFileExplorer(c *gin.Context) {
 // HandleAgentFileExplorer upgrades the agent connection, attaches it to the waiting
 // admin session, and keeps the handler alive until the relay ends.
 func (h *WindowsHandler) HandleAgentFileExplorer(c *gin.Context) {
-	if !validateAgentAuth(c) {
-		return
-	}
-
 	relay := h.fileExplorerRelay
 	sessionID := resolveFileExplorerSessionID(c)
 	if sessionID == "" {

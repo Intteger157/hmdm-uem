@@ -79,10 +79,6 @@ func (h *WindowsHandler) ReplaceConfigProfilePolicies(c *gin.Context) {
 
 // GetDeviceConfigurations returns merged registry policies assigned to one device.
 func (h *WindowsHandler) GetDeviceConfigurations(c *gin.Context) {
-	if !validateAgentAuth(c) {
-		return
-	}
-
 	deviceID := stringsTrimDeviceHeader(c)
 	if deviceID == "" {
 		return

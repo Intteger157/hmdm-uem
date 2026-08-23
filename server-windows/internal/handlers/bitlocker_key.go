@@ -26,10 +26,6 @@ func (req submitBitLockerKeyRequest) normalizedKey() string {
 
 // SubmitBitLockerKey stores a BitLocker recovery password reported by the agent.
 func (h *WindowsHandler) SubmitBitLockerKey(c *gin.Context) {
-	if !validateAgentAuth(c) {
-		return
-	}
-
 	deviceID := strings.TrimSpace(c.GetHeader("X-Device-Id"))
 	if deviceID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing X-Device-Id header"})

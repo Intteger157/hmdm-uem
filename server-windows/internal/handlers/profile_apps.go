@@ -248,10 +248,6 @@ func (h *WindowsHandler) GetDeviceAppStatuses(c *gin.Context) {
 
 // ReportDeviceAppStatus stores agent deployment progress for one app.
 func (h *WindowsHandler) ReportDeviceAppStatus(c *gin.Context) {
-	if !validateAgentAuth(c) {
-		return
-	}
-
 	deviceID := stringsTrimDeviceHeader(c)
 	if deviceID == "" {
 		return

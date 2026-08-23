@@ -20,6 +20,7 @@ import (
 const (
 	checkinPath               = "/rest/windows/checkin"
 	enrollPath                = "/rest/windows/enroll"
+	tokenRefreshPath          = "/rest/windows/token/refresh"
 	inventoryPath             = "/rest/windows/inventory"
 	uninstallPath             = "/rest/windows/uninstall"
 	pollCommandPath           = "/rest/windows/commands/poll"
@@ -37,6 +38,15 @@ const (
 
 // ErrUnauthorized indicates the server rejected the current auth token.
 var ErrUnauthorized = errors.New("unauthorized")
+
+// LegacyAuthToken is the deprecated shared token accepted during server migration.
+const LegacyAuthToken = "mock-jwt-token-777"
+
+// IsLegacyAuthToken reports whether token is empty or still the shared legacy secret.
+func IsLegacyAuthToken(token string) bool {
+	token = strings.TrimSpace(token)
+	return token == "" || token == LegacyAuthToken
+}
 
 // ErrNoEffectivePolicy indicates the device has no assigned configuration profile.
 var ErrNoEffectivePolicy = errors.New("no effective policy")
@@ -252,13 +262,72 @@ func (c *APIClient) Enroll(enrollToken, hwid string) (string, error) {
 	return parsed.AuthToken, nil
 }
 
+// RefreshAuthToken exchanges a legacy or current token for a new per-device secret.
+func (c *APIClient) RefreshAuthToken(currentToken, hwid string) (string, error) {
+	currentToken = strings.TrimSpace(currentToken)
+	hwid = strings.TrimSpace(hwid)
+	if currentToken == "" {
+		return "", fmt.Errorf("current auth token is empty")
+	}
+	if hwid == "" {
+		return "", fmt.Errorf("hardware id is empty")
+	}
+
+	req, err := http.NewRequest(http.MethodPost, c.baseURL+tokenRefreshPath, http.NoBody)
+	if err != nil {
+		return "", fmt.Errorf("create token refresh request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+currentToken)
+	req.Header.Set("X-Device-Id", hwid)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("send token refresh request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("read token refresh response: %w", err)
+	}
+
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		return "", ErrUnauthorized
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return "", ErrDeviceNotFound
+	}
+	if resp.StatusCode >= http.StatusBadRequest {
+		return "", fmt.Errorf("token refresh failed with HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+
+	var parsed enrollResponse
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		return "", fmt.Errorf("decode token refresh response: %w", err)
+	}
+	if strings.TrimSpace(parsed.AuthToken) == "" {
+		return "", fmt.Errorf("token refresh response missing auth_token")
+	}
+	return parsed.AuthToken, nil
+}
+
+type checkinRequest struct {
+	AgentVersion string `json:"agent_version"`
+}
+
 // SendCheckin updates server-side presence without uploading full inventory.
-func (c *APIClient) SendCheckin(authToken, hwid, configHash string) (CheckinResponse, error) {
-	req, err := http.NewRequest(http.MethodPost, c.baseURL+checkinPath, http.NoBody)
+func (c *APIClient) SendCheckin(authToken, hwid, configHash, agentVersion string) (CheckinResponse, error) {
+	payload, err := json.Marshal(checkinRequest{AgentVersion: strings.TrimSpace(agentVersion)})
+	if err != nil {
+		return CheckinResponse{}, fmt.Errorf("marshal checkin request: %w", err)
+	}
+
+	req, err := http.NewRequest(http.MethodPost, c.baseURL+checkinPath, bytes.NewReader(payload))
 	if err != nil {
 		return CheckinResponse{}, fmt.Errorf("create checkin request: %w", err)
 	}
 
+	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+authToken)
 	req.Header.Set("X-Device-Id", hwid)
 	if trimmedHash := strings.TrimSpace(configHash); trimmedHash != "" {
