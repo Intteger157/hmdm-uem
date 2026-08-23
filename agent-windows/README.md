@@ -38,8 +38,8 @@ Prerequisites: Go 1.25+, WiX v4 (`dotnet tool install --global wix`).
 
 ```powershell
 .\agent-windows\build-agent.ps1 `
-  -ServerUrl "https://test-dev-mdm.intteger.uk" `
-  -Token "win-enroll-org-5282347fbbb415157568466115938efd" `
+  -ServerUrl "https://mdm.intermark.global" `
+  -Token "win-enroll-org-57c28c11c112460f6a8141869313d626" `
   -Msi
 ```
 
@@ -106,3 +106,14 @@ Start-Service SingularityMDMAgent
 The tray helper menu item **Device Information** opens a public page on the MDM server at `{ServerURL}/device-info/{DeviceID}` (for example `https://test-dev-mdm.intteger.uk/device-info/<hardware-id>`). The page shows hostname, MDM server URL, agent version, and last sync time from the central server — no local HTTP listener is used on the device.
 
 If the menu still opens `127.0.0.1:49152`, an old tray helper process is still running. Restart the `SingularityMDMAgent` service (or sign out and back in) after deploying a new agent build so the updated `-tray` helper is launched.
+
+If multiple tray icons accumulate after service restarts, kill orphaned helpers and restart the service:
+
+```powershell
+Get-CimInstance Win32_Process -Filter "Name='singularity-agent.exe'" |
+  Where-Object { $_.CommandLine -like '*-tray*' } |
+  Stop-Process -Force
+Restart-Service SingularityMDMAgent
+```
+
+Current agent builds enforce a single tray instance (global mutex) and stop stale `-tray` processes before launching a new helper.

@@ -71,6 +71,10 @@ func run() error {
 	if *trayMode {
 		console.HideWindow()
 		detachStdin()
+		if !tray.AcquireSingleInstance() {
+			log.Printf("tray helper already running, exiting")
+			return nil
+		}
 		log.Printf("starting Singularity MDM tray helper")
 		tray.Run(iconData)
 		return nil
@@ -278,6 +282,8 @@ func startTrayHelper() {
 		log.Printf("tray helper: resolve executable path: %v", err)
 		return
 	}
+
+	tray.StopExistingTrayHelpers()
 
 	commandLine := fmt.Sprintf(`"%s" -tray`, filepath.Clean(exePath))
 	if err := session.RunInteractive(commandLine); err != nil {
