@@ -289,6 +289,7 @@ export function ApplicationFormDialog({
       const result = await saveAndroidApplicationRequest(request, {
         fileSelected,
         uploadComplete,
+        parentApplication,
       })
 
       if (result.createdNewVersion) {
@@ -322,6 +323,11 @@ export function ApplicationFormDialog({
         } else {
           setErrorMessage(t('configurations.editor.appSaveError'))
         }
+      } else if (error instanceof ApiError) {
+        const key = error.messageKey
+        setErrorMessage(key ? String(t(key, { defaultValue: key })) : t('configurations.editor.appSaveError'))
+      } else if (axios.isAxiosError(error) && error.response?.status === 403) {
+        setErrorMessage(t('errors.permissionDenied', { defaultValue: 'Permission denied' }))
       } else {
         setErrorMessage(t('configurations.editor.appSaveError'))
       }

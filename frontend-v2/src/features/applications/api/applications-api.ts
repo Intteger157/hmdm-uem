@@ -271,11 +271,56 @@ export interface SaveAndroidApplicationResult {
 /** Create a new app or add a new version when package already exists (legacy behavior). */
 export async function saveAndroidApplicationRequest(
   request: Application,
-  options: { uploadComplete?: boolean; fileSelected?: boolean } = {}
+  options: {
+    uploadComplete?: boolean
+    fileSelected?: boolean
+    /** When set, add a version to this app (Applications → Versions) without validatePkg. */
+    parentApplication?: Application
+  } = {}
 ): Promise<SaveAndroidApplicationResult> {
   if (request.id) {
     const saved = await upsertAndroidApplication(request)
     return { application: saved ?? request, createdNewVersion: false }
+  }
+
+  const parent = options.parentApplication
+  if (parent?.id) {
+    const reqCode = request.versionCode ?? 0
+    const existCode = parent.versionCode ?? 0
+
+    if (reqCode > 0 && existCode > 0 && reqCode < existCode) {
+      throw new SaveAndroidApplicationError('VERSION_TOO_OLD')
+    }
+
+    if (
+      reqCode > 0 &&
+      existCode > 0 &&
+      reqCode === existCode &&
+      options.uploadComplete &&
+      options.fileSelected
+    ) {
+      throw new SaveAndroidApplicationError('VERSION_EXISTS')
+    }
+
+    const version = await upsertApplicationVersion({
+      applicationId: parent.id,
+      version: request.version,
+      versionCode: request.versionCode,
+      arch: request.arch || undefined,
+      filePath: request.filePath,
+    })
+
+    return {
+      application: {
+        ...parent,
+        name: request.name.trim() || parent.name,
+        version: version.version ?? request.version,
+        latestVersion: version.id,
+        usedVersionId: version.id,
+      },
+      versionId: version.id,
+      createdNewVersion: true,
+    }
   }
 
   const existingApps = await validateApplicationPackage(request)
