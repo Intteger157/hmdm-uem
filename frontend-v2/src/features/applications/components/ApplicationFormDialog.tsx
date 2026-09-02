@@ -5,9 +5,11 @@ import {
   saveAndroidApplicationRequest,
   SaveAndroidApplicationError,
   uploadApkFile,
+  upgradeApplicationInConfigurations,
   type Application,
   type ApkFileDetails,
 } from '@/features/applications/api/applications-api'
+import { ApplicationVersionConfigUpgradeSection } from '@/features/applications/components/ApplicationVersionConfigUpgradeSection'
 import type { ConfigurationApplication } from '@/features/configurations/types/configuration'
 import { ApiError } from '@/shared/api/types/api-response'
 import { Button } from '@/components/ui/button'
@@ -71,6 +73,8 @@ export function ApplicationFormDialog({
   const [uploadComplete, setUploadComplete] = useState(false)
   const [saving, setSaving] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | undefined>()
+  const [upgradeConfigurationIds, setUpgradeConfigurationIds] = useState<number[]>([])
+  const [notifyDevicesOnUpgrade, setNotifyDevicesOnUpgrade] = useState(true)
 
   const resetForm = () => {
     setApplication(emptyApplication())
@@ -86,6 +90,8 @@ export function ApplicationFormDialog({
     setUploadComplete(false)
     setSaving(false)
     setErrorMessage(undefined)
+    setUpgradeConfigurationIds([])
+    setNotifyDevicesOnUpgrade(true)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -123,6 +129,8 @@ export function ApplicationFormDialog({
       setWarning(undefined)
       setSuccessHint(undefined)
       setUploadComplete(false)
+      setUpgradeConfigurationIds([])
+      setNotifyDevicesOnUpgrade(true)
     }
   }, [open, parentApplication])
 
@@ -296,6 +304,26 @@ export function ApplicationFormDialog({
         toast.success(t('applications.versionAdded'))
       } else {
         toast.success(t('configurations.editor.appSaved'))
+      }
+
+      const appId = parentApplication?.id ?? result.application.id
+      if (
+        parentApplication &&
+        appId != null &&
+        upgradeConfigurationIds.length > 0
+      ) {
+        try {
+          await upgradeApplicationInConfigurations(appId, upgradeConfigurationIds, {
+            notifyDevices: notifyDevicesOnUpgrade,
+          })
+          toast.success(
+            t('applications.versions.upgradeConfigurationsSuccess', {
+              count: upgradeConfigurationIds.length,
+            })
+          )
+        } catch {
+          toast.error(t('applications.versions.upgradeConfigurationsError'))
+        }
       }
 
       onSavedApplication?.(result.application, result.createdNewVersion)
@@ -501,6 +529,17 @@ export function ApplicationFormDialog({
               )}
             </div>
           </div>
+
+          {parentApplication && (
+            <ApplicationVersionConfigUpgradeSection
+              applicationId={parentApplication.id}
+              newVersionLabel={application.version ?? parsedVersion}
+              selectedConfigurationIds={upgradeConfigurationIds}
+              onSelectedConfigurationIdsChange={setUpgradeConfigurationIds}
+              notifyDevices={notifyDevicesOnUpgrade}
+              onNotifyDevicesChange={setNotifyDevicesOnUpgrade}
+            />
+          )}
         </div>
 
         <DialogFooter>

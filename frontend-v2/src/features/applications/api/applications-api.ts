@@ -4,6 +4,7 @@ import { API_BASE } from '@/shared/api/config'
 import type { ApiResponse } from '@/shared/api/types/api-response'
 import { unwrapApiResponse } from '@/shared/api/types/api-response'
 import { useAuthStore } from '@/features/auth/store/auth-store'
+import { upgradeConfigurationApplication } from '@/features/configurations/api/configurations-api'
 
 export interface Application {
   id?: number
@@ -370,5 +371,35 @@ export async function saveAndroidApplicationRequest(
     },
     versionId: version.id,
     createdNewVersion: true,
+  }
+}
+
+/** Upgrade app to latest version in selected configurations (same as per-config Upgrade button). */
+export async function upgradeApplicationInConfigurations(
+  applicationId: number,
+  configurationIds: number[],
+  options: { notifyDevices?: boolean } = {}
+): Promise<void> {
+  if (configurationIds.length === 0) {
+    return
+  }
+
+  const uniqueConfigIds = [...new Set(configurationIds)]
+
+  await Promise.all(
+    uniqueConfigIds.map((configurationId) =>
+      upgradeConfigurationApplication({ configurationId, applicationId })
+    )
+  )
+
+  if (options.notifyDevices) {
+    const links = await fetchApplicationConfigurationsByApplicationId(applicationId)
+    await updateApplicationConfigurations({
+      applicationId,
+      configurations: links.map((link) => ({
+        ...link,
+        notify: link.configurationId != null && uniqueConfigIds.includes(link.configurationId),
+      })),
+    })
   }
 }
