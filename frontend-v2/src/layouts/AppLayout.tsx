@@ -14,6 +14,7 @@ import {
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { GlobalUploadManager } from '@/features/upload/components/GlobalUploadManager'
 import { PostUploadConfigAssignmentDialog } from '@/features/upload/components/PostUploadConfigAssignmentDialog'
+import { ApplicationVersionConfigUpgradeDialog } from '@/features/applications/components/ApplicationVersionConfigUpgradeDialog'
 
 /** Close the mobile drawer after route changes (sidebar link selected). */
 function CloseMobileSidebarOnNavigate() {
@@ -98,6 +99,7 @@ function AppLayoutShell() {
 
       <GlobalUploadManager />
       <PostUploadConfigAssignmentDialog />
+      <ApplicationVersionConfigUpgradeDialog />
     </>
   )
 }

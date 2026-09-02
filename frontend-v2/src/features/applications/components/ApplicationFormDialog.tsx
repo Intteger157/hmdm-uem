@@ -8,10 +8,7 @@ import {
   type Application,
   type ApkFileDetails,
 } from '@/features/applications/api/applications-api'
-import {
-  ApplicationVersionConfigUpgradeDialog,
-  type ApplicationVersionUpgradePrompt,
-} from '@/features/applications/components/ApplicationVersionConfigUpgradeDialog'
+import { openAppVersionUpgradePrompt } from '@/features/applications/store/app-version-upgrade-store'
 import type { ConfigurationApplication } from '@/features/configurations/types/configuration'
 import { ApiError } from '@/shared/api/types/api-response'
 import { Button } from '@/components/ui/button'
@@ -75,7 +72,6 @@ export function ApplicationFormDialog({
   const [uploadComplete, setUploadComplete] = useState(false)
   const [saving, setSaving] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | undefined>()
-  const [upgradePrompt, setUpgradePrompt] = useState<ApplicationVersionUpgradePrompt | null>(null)
 
   const resetForm = () => {
     setApplication(emptyApplication())
@@ -316,17 +312,17 @@ export function ApplicationFormDialog({
         })
       }
 
-      const savedVersionLabel =
-        result.application.version ?? application.version ?? parsedVersion ?? '—'
-
       if (closeOnSave) {
         handleOpenChange(false)
       }
 
-      if (parentApplication && result.createdNewVersion) {
-        setUpgradePrompt({
+      if (result.createdNewVersion && result.application.id != null) {
+        const savedVersionLabel =
+          result.application.version ?? application.version ?? parsedVersion ?? '—'
+
+        openAppVersionUpgradePrompt({
           application: {
-            ...parentApplication,
+            ...(parentApplication ?? result.application),
             ...result.application,
             version: savedVersionLabel,
           },
@@ -356,8 +352,7 @@ export function ApplicationFormDialog({
   }
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>
@@ -533,17 +528,7 @@ export function ApplicationFormDialog({
               {saving ? t('common.saving') : t('common.save')}
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <ApplicationVersionConfigUpgradeDialog
-        prompt={upgradePrompt}
-        onOpenChange={(nextOpen) => {
-          if (!nextOpen) {
-            setUpgradePrompt(null)
-          }
-        }}
-      />
-    </>
+      </DialogContent>
+    </Dialog>
   )
 }

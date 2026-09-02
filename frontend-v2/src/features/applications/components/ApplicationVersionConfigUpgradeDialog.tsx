@@ -8,6 +8,9 @@ import {
   type Application,
   type ApplicationConfigurationLink,
 } from '@/features/applications/api/applications-api'
+import {
+  useAppVersionUpgradeStore,
+} from '@/features/applications/store/app-version-upgrade-store'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -26,8 +29,9 @@ export interface ApplicationVersionUpgradePrompt {
 }
 
 interface ApplicationVersionConfigUpgradeDialogProps {
-  prompt: ApplicationVersionUpgradePrompt | null
-  onOpenChange: (open: boolean) => void
+  /** When omitted, reads prompt from global store (AppLayout). */
+  prompt?: ApplicationVersionUpgradePrompt | null
+  onOpenChange?: (open: boolean) => void
 }
 
 function isInstalledLink(link: ApplicationConfigurationLink): boolean {
@@ -35,9 +39,20 @@ function isInstalledLink(link: ApplicationConfigurationLink): boolean {
 }
 
 export function ApplicationVersionConfigUpgradeDialog({
-  prompt,
+  prompt: promptProp,
   onOpenChange,
-}: ApplicationVersionConfigUpgradeDialogProps) {
+}: ApplicationVersionConfigUpgradeDialogProps = {}) {
+  const storePrompt = useAppVersionUpgradeStore((state) => state.prompt)
+  const dismissStore = useAppVersionUpgradeStore((state) => state.dismiss)
+  const prompt = promptProp !== undefined ? promptProp : storePrompt
+
+  const handleDismiss = () => {
+    if (onOpenChange) {
+      onOpenChange(false)
+    } else {
+      dismissStore()
+    }
+  }
   const { t } = useTranslation()
   const isOpen = prompt != null
 
@@ -87,7 +102,7 @@ export function ApplicationVersionConfigUpgradeDialog({
     return () => {
       cancelled = true
     }
-  }, [prompt?.application.id])
+  }, [prompt?.application.id, prompt?.versionLabel])
 
   const sortedLinks = useMemo(
     () => [...links].sort((a, b) => (a.configurationName ?? '').localeCompare(b.configurationName ?? '')),
@@ -100,10 +115,6 @@ export function ApplicationVersionConfigUpgradeDialog({
     setSelectedIds((prev) =>
       checked ? [...prev, configurationId] : prev.filter((id) => id !== configurationId)
     )
-  }
-
-  const handleDismiss = () => {
-    onOpenChange(false)
   }
 
   const handleApply = async () => {
