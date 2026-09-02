@@ -312,22 +312,28 @@ export function ApplicationFormDialog({
         })
       }
 
-      if (closeOnSave) {
-        handleOpenChange(false)
-      }
+      const savedVersionLabel =
+        result.application.version ?? application.version ?? parsedVersion ?? '—'
 
-      if (result.createdNewVersion && result.application.id != null) {
-        const savedVersionLabel =
-          result.application.version ?? application.version ?? parsedVersion ?? '—'
+      const appId = result.application.id ?? parentApplication?.id
+      const shouldOfferConfigUpgrade =
+        appId != null && (Boolean(parentApplication) || result.createdNewVersion)
 
+      if (shouldOfferConfigUpgrade) {
         openAppVersionUpgradePrompt({
           application: {
             ...(parentApplication ?? result.application),
             ...result.application,
+            id: appId,
             version: savedVersionLabel,
+            latestVersion: result.versionId ?? result.application.latestVersion,
           },
           versionLabel: savedVersionLabel,
         })
+      }
+
+      if (closeOnSave) {
+        handleOpenChange(false)
       }
     } catch (error) {
       if (error instanceof SaveAndroidApplicationError) {

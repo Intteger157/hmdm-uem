@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
 import { ApplicationFormDialog } from '@/features/applications/components/ApplicationFormDialog'
+import { openAppVersionUpgradePrompt } from '@/features/applications/store/app-version-upgrade-store'
 import {
   useApplicationQuery,
   useApplicationVersionsQuery,
@@ -210,8 +211,14 @@ export function ApplicationVersionsPage({ applicationId }: ApplicationVersionsPa
         onOpenChange={setAddOpen}
         closeOnSave
         parentApplication={application}
-        onSavedApplication={() => {
+        onSavedApplication={(app) => {
           void refetch()
+          if (app.id != null) {
+            openAppVersionUpgradePrompt({
+              application: { ...application, ...app, id: app.id },
+              versionLabel: app.version ?? '—',
+            })
+          }
         }}
       />
 

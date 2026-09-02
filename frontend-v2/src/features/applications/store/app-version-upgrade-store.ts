@@ -24,9 +24,7 @@ export const useAppVersionUpgradeStore = create<AppVersionUpgradeState>((set) =>
   },
 }))
 
-/** Open after the save dialog closes so two modals do not fight for focus. */
+/** Open upgrade dialog (call before closing the save dialog to avoid modal conflicts). */
 export function openAppVersionUpgradePrompt(prompt: AppVersionUpgradePrompt): void {
-  window.setTimeout(() => {
-    useAppVersionUpgradeStore.getState().open(prompt)
-  }, 150)
+  useAppVersionUpgradeStore.getState().open(prompt)
 }

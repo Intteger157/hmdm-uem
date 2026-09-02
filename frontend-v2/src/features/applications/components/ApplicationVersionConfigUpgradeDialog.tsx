@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CheckCircle2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -55,6 +55,7 @@ export function ApplicationVersionConfigUpgradeDialog({
   }
   const { t } = useTranslation()
   const isOpen = prompt != null
+  const ignoreCloseUntilRef = useRef(0)
 
   const [links, setLinks] = useState<ApplicationConfigurationLink[]>([])
   const [loading, setLoading] = useState(false)
@@ -62,6 +63,12 @@ export function ApplicationVersionConfigUpgradeDialog({
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [notifyDevices, setNotifyDevices] = useState(true)
   const [applying, setApplying] = useState(false)
+
+  useEffect(() => {
+    if (isOpen) {
+      ignoreCloseUntilRef.current = Date.now() + 600
+    }
+  }, [isOpen, prompt?.application.id, prompt?.versionLabel])
 
   useEffect(() => {
     if (!prompt?.application.id) {
@@ -142,6 +149,9 @@ export function ApplicationVersionConfigUpgradeDialog({
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
+          if (Date.now() < ignoreCloseUntilRef.current) {
+            return
+          }
           handleDismiss()
         }
       }}
