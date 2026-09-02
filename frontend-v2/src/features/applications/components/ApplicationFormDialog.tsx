@@ -5,11 +5,13 @@ import {
   saveAndroidApplicationRequest,
   SaveAndroidApplicationError,
   uploadApkFile,
-  upgradeApplicationInConfigurations,
   type Application,
   type ApkFileDetails,
 } from '@/features/applications/api/applications-api'
-import { ApplicationVersionConfigUpgradeSection } from '@/features/applications/components/ApplicationVersionConfigUpgradeSection'
+import {
+  ApplicationVersionConfigUpgradeDialog,
+  type ApplicationVersionUpgradePrompt,
+} from '@/features/applications/components/ApplicationVersionConfigUpgradeDialog'
 import type { ConfigurationApplication } from '@/features/configurations/types/configuration'
 import { ApiError } from '@/shared/api/types/api-response'
 import { Button } from '@/components/ui/button'
@@ -73,8 +75,7 @@ export function ApplicationFormDialog({
   const [uploadComplete, setUploadComplete] = useState(false)
   const [saving, setSaving] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | undefined>()
-  const [upgradeConfigurationIds, setUpgradeConfigurationIds] = useState<number[]>([])
-  const [notifyDevicesOnUpgrade, setNotifyDevicesOnUpgrade] = useState(true)
+  const [upgradePrompt, setUpgradePrompt] = useState<ApplicationVersionUpgradePrompt | null>(null)
 
   const resetForm = () => {
     setApplication(emptyApplication())
@@ -90,8 +91,6 @@ export function ApplicationFormDialog({
     setUploadComplete(false)
     setSaving(false)
     setErrorMessage(undefined)
-    setUpgradeConfigurationIds([])
-    setNotifyDevicesOnUpgrade(true)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -129,8 +128,6 @@ export function ApplicationFormDialog({
       setWarning(undefined)
       setSuccessHint(undefined)
       setUploadComplete(false)
-      setUpgradeConfigurationIds([])
-      setNotifyDevicesOnUpgrade(true)
     }
   }, [open, parentApplication])
 
@@ -306,26 +303,6 @@ export function ApplicationFormDialog({
         toast.success(t('configurations.editor.appSaved'))
       }
 
-      const appId = parentApplication?.id ?? result.application.id
-      if (
-        parentApplication &&
-        appId != null &&
-        upgradeConfigurationIds.length > 0
-      ) {
-        try {
-          await upgradeApplicationInConfigurations(appId, upgradeConfigurationIds, {
-            notifyDevices: notifyDevicesOnUpgrade,
-          })
-          toast.success(
-            t('applications.versions.upgradeConfigurationsSuccess', {
-              count: upgradeConfigurationIds.length,
-            })
-          )
-        } catch {
-          toast.error(t('applications.versions.upgradeConfigurationsError'))
-        }
-      }
-
       onSavedApplication?.(result.application, result.createdNewVersion)
 
       if (onSavedForConfiguration) {
@@ -339,8 +316,22 @@ export function ApplicationFormDialog({
         })
       }
 
+      const savedVersionLabel =
+        result.application.version ?? application.version ?? parsedVersion ?? '—'
+
       if (closeOnSave) {
         handleOpenChange(false)
+      }
+
+      if (parentApplication && result.createdNewVersion) {
+        setUpgradePrompt({
+          application: {
+            ...parentApplication,
+            ...result.application,
+            version: savedVersionLabel,
+          },
+          versionLabel: savedVersionLabel,
+        })
       }
     } catch (error) {
       if (error instanceof SaveAndroidApplicationError) {
@@ -365,192 +356,194 @@ export function ApplicationFormDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle>
-            {parentApplication
-              ? t('applications.versions.addVersionTitle', { name: parentApplication.name })
-              : t('configurations.editor.newApplicationTitle')}
-          </DialogTitle>
-          <DialogDescription>
-            {parentApplication
-              ? t('applications.versions.addVersionDescription')
-              : t('configurations.editor.newApplicationDescription')}
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>
+              {parentApplication
+                ? t('applications.versions.addVersionTitle', { name: parentApplication.name })
+                : t('configurations.editor.newApplicationTitle')}
+            </DialogTitle>
+            <DialogDescription>
+              {parentApplication
+                ? t('applications.versions.addVersionDescription')
+                : t('configurations.editor.newApplicationDescription')}
+            </DialogDescription>
+          </DialogHeader>
 
-        {(uploadMessage || errorMessage || warning) && (
-          <div className="space-y-2">
-            {uploadMessage && (
-              <p className="text-sm text-green-700 dark:text-green-300">{uploadMessage}</p>
-            )}
-            {warning && <p className="text-sm text-amber-700 dark:text-amber-300">{warning}</p>}
-            {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
-          </div>
-        )}
-
-        {uploadProgress != null && (
-          <Progress value={uploadProgress}>
-            <ProgressTrack>
-              <ProgressIndicator />
-            </ProgressTrack>
-            <ProgressValue />
-          </Progress>
-        )}
-
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="app-pkg">{t('configurations.editor.fields.packageId')}</Label>
-            {fileSelected && parsedPkg ? (
-              <Input id="app-pkg" value={parsedPkg} disabled />
-            ) : (
-              <Input
-                id="app-pkg"
-                value={application.pkg ?? ''}
-                placeholder={t('configurations.editor.packageIdPlaceholder')}
-                onChange={(e) => setApplication((prev) => ({ ...prev, pkg: e.target.value }))}
-              />
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="app-name">{t('applications.columns.name')}</Label>
-            <Input
-              id="app-name"
-              value={application.name}
-              placeholder={t('configurations.editor.appNamePlaceholder')}
-              onChange={(e) => setApplication((prev) => ({ ...prev, name: e.target.value }))}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="app-version">{t('applications.columns.version')}</Label>
-            {fileSelected && parsedVersion ? (
-              <Input id="app-version" value={parsedVersion} disabled />
-            ) : (
-              <Input
-                id="app-version"
-                value={application.version ?? ''}
-                placeholder={t('configurations.editor.versionPlaceholder')}
-                onChange={(e) => setApplication((prev) => ({ ...prev, version: e.target.value }))}
-              />
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="app-arch">{t('configurations.editor.fields.nativeCode')}</Label>
-            <NativeSelect
-              id="app-arch"
-              className="h-9 px-3"
-              value={application.arch ?? ''}
-              onChange={(e) => setApplication((prev) => ({ ...prev, arch: e.target.value }))}
-            >
-              <option value="">{t('configurations.editor.archUniversal')}</option>
-              <option value="armeabi">{t('configurations.editor.archArmeabi')}</option>
-              <option value="arm64">{t('configurations.editor.archArm64')}</option>
-            </NativeSelect>
-            {warning && <p className="text-sm text-amber-700 dark:text-amber-300">{warning}</p>}
-            {successHint && <p className="text-sm text-green-700 dark:text-green-300">{successHint}</p>}
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={Boolean(application.system)}
-                onChange={(e) =>
-                  setApplication((prev) => ({ ...prev, system: e.target.checked }))
-                }
-              />
-              {t('configurations.editor.fields.preinstalledApp')}
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={Boolean(application.showIcon)}
-                onChange={(e) =>
-                  setApplication((prev) => ({ ...prev, showIcon: e.target.checked }))
-                }
-              />
-              {t('configurations.editor.showIcon')}
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={Boolean(application.runAfterInstall)}
-                disabled={Boolean(application.system)}
-                onChange={(e) =>
-                  setApplication((prev) => ({ ...prev, runAfterInstall: e.target.checked }))
-                }
-              />
-              {t('configurations.editor.fields.runAfterInstall')}
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={Boolean(application.runAtBoot)}
-                disabled={Boolean(application.system)}
-                onChange={(e) =>
-                  setApplication((prev) => ({ ...prev, runAtBoot: e.target.checked }))
-                }
-              />
-              {t('configurations.editor.fields.runAtBoot')}
-            </label>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="app-url">{t('configurations.editor.fields.appUrl')}</Label>
-            <Input
-              id="app-url"
-              value={application.url ?? ''}
-              onChange={(e) => setApplication((prev) => ({ ...prev, url: e.target.value }))}
-            />
-            <p className="text-xs text-muted-foreground">{t('configurations.editor.appUrlHint')}</p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="app-file">{t('configurations.editor.fields.apkFile')}</Label>
-            <div className="flex flex-wrap items-center gap-2">
-              <Input
-                ref={fileInputRef}
-                id="app-file"
-                type="file"
-                accept=".apk,.xapk"
-                onChange={(e) => void handleFileChange(e)}
-              />
-              {fileName && (
-                <>
-                  <span className="text-sm text-muted-foreground">{fileName}</span>
-                  <Button type="button" variant="outline" size="sm" onClick={clearFile}>
-                    {t('common.clear')}
-                  </Button>
-                </>
+          {(uploadMessage || errorMessage || warning) && (
+            <div className="space-y-2">
+              {uploadMessage && (
+                <p className="text-sm text-green-700 dark:text-green-300">{uploadMessage}</p>
               )}
+              {warning && <p className="text-sm text-amber-700 dark:text-amber-300">{warning}</p>}
+              {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
+            </div>
+          )}
+
+          {uploadProgress != null && (
+            <Progress value={uploadProgress}>
+              <ProgressTrack>
+                <ProgressIndicator />
+              </ProgressTrack>
+              <ProgressValue />
+            </Progress>
+          )}
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="app-pkg">{t('configurations.editor.fields.packageId')}</Label>
+              {fileSelected && parsedPkg ? (
+                <Input id="app-pkg" value={parsedPkg} disabled />
+              ) : (
+                <Input
+                  id="app-pkg"
+                  value={application.pkg ?? ''}
+                  placeholder={t('configurations.editor.packageIdPlaceholder')}
+                  onChange={(e) => setApplication((prev) => ({ ...prev, pkg: e.target.value }))}
+                />
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="app-name">{t('applications.columns.name')}</Label>
+              <Input
+                id="app-name"
+                value={application.name}
+                placeholder={t('configurations.editor.appNamePlaceholder')}
+                onChange={(e) => setApplication((prev) => ({ ...prev, name: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="app-version">{t('applications.columns.version')}</Label>
+              {fileSelected && parsedVersion ? (
+                <Input id="app-version" value={parsedVersion} disabled />
+              ) : (
+                <Input
+                  id="app-version"
+                  value={application.version ?? ''}
+                  placeholder={t('configurations.editor.versionPlaceholder')}
+                  onChange={(e) => setApplication((prev) => ({ ...prev, version: e.target.value }))}
+                />
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="app-arch">{t('configurations.editor.fields.nativeCode')}</Label>
+              <NativeSelect
+                id="app-arch"
+                className="h-9 px-3"
+                value={application.arch ?? ''}
+                onChange={(e) => setApplication((prev) => ({ ...prev, arch: e.target.value }))}
+              >
+                <option value="">{t('configurations.editor.archUniversal')}</option>
+                <option value="armeabi">{t('configurations.editor.archArmeabi')}</option>
+                <option value="arm64">{t('configurations.editor.archArm64')}</option>
+              </NativeSelect>
+              {warning && <p className="text-sm text-amber-700 dark:text-amber-300">{warning}</p>}
+              {successHint && (
+                <p className="text-sm text-green-700 dark:text-green-300">{successHint}</p>
+              )}
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={Boolean(application.system)}
+                  onChange={(e) =>
+                    setApplication((prev) => ({ ...prev, system: e.target.checked }))
+                  }
+                />
+                {t('configurations.editor.fields.preinstalledApp')}
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={Boolean(application.showIcon)}
+                  onChange={(e) =>
+                    setApplication((prev) => ({ ...prev, showIcon: e.target.checked }))
+                  }
+                />
+                {t('configurations.editor.showIcon')}
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={Boolean(application.runAfterInstall)}
+                  disabled={Boolean(application.system)}
+                  onChange={(e) =>
+                    setApplication((prev) => ({ ...prev, runAfterInstall: e.target.checked }))
+                  }
+                />
+                {t('configurations.editor.fields.runAfterInstall')}
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={Boolean(application.runAtBoot)}
+                  disabled={Boolean(application.system)}
+                  onChange={(e) =>
+                    setApplication((prev) => ({ ...prev, runAtBoot: e.target.checked }))
+                  }
+                />
+                {t('configurations.editor.fields.runAtBoot')}
+              </label>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="app-url">{t('configurations.editor.fields.appUrl')}</Label>
+              <Input
+                id="app-url"
+                value={application.url ?? ''}
+                onChange={(e) => setApplication((prev) => ({ ...prev, url: e.target.value }))}
+              />
+              <p className="text-xs text-muted-foreground">{t('configurations.editor.appUrlHint')}</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="app-file">{t('configurations.editor.fields.apkFile')}</Label>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  ref={fileInputRef}
+                  id="app-file"
+                  type="file"
+                  accept=".apk,.xapk"
+                  onChange={(e) => void handleFileChange(e)}
+                />
+                {fileName && (
+                  <>
+                    <span className="text-sm text-muted-foreground">{fileName}</span>
+                    <Button type="button" variant="outline" size="sm" onClick={clearFile}>
+                      {t('common.clear')}
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
-          {parentApplication && (
-            <ApplicationVersionConfigUpgradeSection
-              application={parentApplication}
-              newVersionLabel={application.version ?? parsedVersion}
-              selectedConfigurationIds={upgradeConfigurationIds}
-              onSelectedConfigurationIdsChange={setUpgradeConfigurationIds}
-              notifyDevices={notifyDevicesOnUpgrade}
-              onNotifyDevicesChange={setNotifyDevicesOnUpgrade}
-            />
-          )}
-        </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button type="button" disabled={saving} onClick={() => void handleSave()}>
+              {saving ? t('common.saving') : t('common.save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
-            {t('common.cancel')}
-          </Button>
-          <Button type="button" disabled={saving} onClick={() => void handleSave()}>
-            {saving ? t('common.saving') : t('common.save')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <ApplicationVersionConfigUpgradeDialog
+        prompt={upgradePrompt}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setUpgradePrompt(null)
+          }
+        }}
+      />
+    </>
   )
 }
