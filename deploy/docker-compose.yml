@@ -46,7 +46,7 @@ services:
       - ./volumes/webapps:/usr/local/tomcat/webapps
       - ./volumes/files:/opt/hmdm/files
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/rest/public/sync/info || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 30

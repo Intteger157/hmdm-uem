@@ -20,7 +20,7 @@ Admin UI (deviceremote plugin)
 
 | Path | Purpose |
 |------|---------|
-| `plugins/deviceremote/` | MDM server plugin (Java + Angular UI) |
+| `plugins/deviceremote/` | MDM server plugin (Java REST) |
 | `plugins/deviceremote/apuppet-android/` | Patched Android agent (`com.hmdm.control`) |
 | `plugins/deviceremote/h-mdm-remote-control/` | Optional local Remote server checkout |
 | `android-launcher/` | Launcher patches: `RemoteControlHelper`, sync handling |

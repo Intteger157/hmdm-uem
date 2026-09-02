@@ -258,7 +258,7 @@
   "configurations.editor.fields.contentApplication": "Content application",
   "configurations.editor.fields.qrCodeUrl": "QR code URL",
   "configurations.editor.searchApplication": "Search for an application",
-  "configurations.editor.noInstallableApps": "No installable applications in this configuration. Add hmdm Launcher with action Install in the legacy UI or assign it to this configuration first.",
+  "configurations.editor.noInstallableApps": "No installable applications in this configuration. Add hmdm Launcher with action Install and assign it to this configuration first.",
   "configurations.editor.mdmApplicationHint": "Only applications assigned to this configuration with action Install are listed. mainAppId is stored as the application version ID (usedVersionId).",
   "configurations.editor.qrNotReadyHint": "Set MDM application and admin receiver class, then save. QR code URL appears when both are configured.",
   "configurations.editor.invalidMainApp": "Selected MDM application must have action Install in this configuration.",

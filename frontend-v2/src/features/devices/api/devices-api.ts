@@ -222,7 +222,7 @@ export async function deleteDevice(id: number): Promise<void> {
   unwrapApiResponse(response.data)
 }
 
-/** Public QR PNG for device enrollment (same as legacy UI). */
+/** Public QR PNG for device enrollment. */
 export async function fetchDeviceQrCodeBlob(
   qrCodeKey: string,
   deviceId: string,

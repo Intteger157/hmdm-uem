@@ -1,9 +1,12 @@
 Headwind MDM: a corporate launcher for Android
 ==============================================
-=    BUILD INSTRUCTIONS FOR THE WEB PANEL    =
+=         BUILD INSTRUCTIONS FOR MDM SERVER    =
 ==============================================
 
 This instruction has been tested on Ubuntu Linux 20.04 LTS/22.04 LTS.
+
+The admin UI is frontend-v2 (React). Build and deploy it separately; see
+frontend-v2/README.md and deploy/README.md.
 
 1. Install required software
 
@@ -15,7 +18,7 @@ For Ubuntu Linux 22.04 LTS:
 
 2. Make sure Tomcat is running
 
-curl localhost:8080
+curl localhost:8080/rest/public/sync/info
 (if you get "Failed to connect" error, fix the installation issue)
 
 3. Clone the repository
@@ -30,7 +33,7 @@ file from the sample
 
 and update the contents of the server/build.properties file.
 
-5. Build the source code
+5. Build the source code (Java REST API WAR only; no Node/Grunt required)
 
 # mvn install
 
@@ -60,4 +63,3 @@ postgres=# \q
 sudo ./hmdm_install.sh
 
 8. On success, the installer script provides you with the URL. Open Headwind MDM in browser.
-
