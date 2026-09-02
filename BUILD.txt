@@ -18,7 +18,7 @@ For Ubuntu Linux 22.04 LTS:
 
 2. Make sure Tomcat is running
 
-curl localhost:8080/rest/public/sync/info
+curl localhost:8080/rest/public/name
 (if you get "Failed to connect" error, fix the installation issue)
 
 3. Clone the repository

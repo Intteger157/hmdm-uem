@@ -172,7 +172,7 @@ Verify locally:
 
 ```bash
 curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8080/
-curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8080/rest/public/sync/info
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8080/rest/public/name
 curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8080/rest/windows/health
 ```
 
@@ -208,7 +208,7 @@ Test:
 
 ```bash
 curl -I https://mdm.intermark.global/
-curl -I https://mdm.intermark.global/rest/public/sync/info
+curl -I https://mdm.intermark.global/rest/public/name
 ```
 
 ### Gateway won't start: `address already in use` on `:8080`
@@ -258,6 +258,82 @@ chmod 644 ~/hmdm-uem/deploy/volumes/work/files/*.apk
 ```
 
 Console: **Devices** — all phones should appear. Check 2–3 devices online.
+
+---
+
+## Weekly cert cron must not reset `be_mdm`
+
+Remote-control installs `/etc/cron.d/headwind-cert-renew` (Mondays **04:00 UTC**). Older
+`renew-certificates.sh` called `install_haproxy_config`, which **rewrote** `/etc/haproxy/haproxy.cfg`
+from the legacy template (`127.0.0.1:8443` Tomcat SSL) and caused **503** on `hmdm-uem` gateway stacks.
+
+After migration to `:8080`:
+
+1. Fix `be_mdm` once (Step 7 below).
+2. On the server, ensure `~/h-mdm-remote-control/scripts/single-port/config.env` has:
+   `MDM_USE_GATEWAY="true"` and `MDM_GATEWAY_PORT="8080"`.
+3. Use an updated `renew-certificates.sh` that **does not** call `install_haproxy_config` on renew
+   (only `sync_haproxy_certs` + `reload_haproxy`).
+
+If MDM breaks again on Monday morning, check:
+
+```bash
+grep 'server mdm' /etc/haproxy/haproxy.cfg
+tail -50 /var/log/headwind-cert-renew.log
+```
+
+---
+
+## Large uploads (Windows apps / files)
+
+Upload path: **browser → HAProxy :443 → gateway nginx :8080 → server-windows**.
+
+### HAProxy (host `/etc/haproxy/haproxy.cfg`)
+
+In **`defaults`**, raise the full-request timeout (default `60s` aborts 100+ MiB uploads on slow links):
+
+```haproxy
+timeout http-request 1h
+timeout client         1h
+timeout server         1h
+```
+
+Do **not** enable `option http-buffer-request` on `be_mdm` — it buffers the whole POST before forwarding.
+
+```bash
+grep -i buffer /etc/haproxy/haproxy.cfg   # should not show http-buffer-request on be_mdm
+sudo haproxy -c -f /etc/haproxy/haproxy.cfg && sudo systemctl reload haproxy
+```
+
+### Gateway nginx (`deploy/nginx/default.conf`)
+
+For `location ^~ /rest/windows/` the repo sets:
+
+- `proxy_request_buffering off` — stream body to Go instead of spooling to disk first
+- `proxy_buffering off`
+- `client_body_timeout 3600s` at server level
+
+After `git pull`, recreate gateway:
+
+```bash
+docker compose --env-file deploy/.env \
+  -f deploy/docker-compose.yml -f deploy/docker-compose.haproxy-host.yml \
+  up -d --force-recreate gateway
+```
+
+### Measure where time is spent
+
+Local upload (bypasses internet uplink):
+
+```bash
+JWT="..."   # console JWT
+curl -o /dev/null -w "speed: %{speed_upload} B/s\n" \
+  -H "Authorization: Bearer $JWT" \
+  -F "file=@/path/to/installer.exe" \
+  http://127.0.0.1:8080/rest/windows/applications/upload
+```
+
+If localhost is **fast** but the browser is **slow**, the limit is the client→VPS link (~1–3 MiB/s is normal). Workaround: `scp` the installer to the server and upload via `curl` on localhost as above.
 
 ---
 

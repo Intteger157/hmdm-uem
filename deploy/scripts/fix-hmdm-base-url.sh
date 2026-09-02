@@ -86,7 +86,7 @@ fi
 echo "[fix-hmdm-base-url] Waiting for MDM backend..."
 for _ in $(seq 1 60); do
   if docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" exec -T hmdm \
-    wget -q -O /dev/null http://127.0.0.1:8080/rest/public/sync/info 2>/dev/null; then
+    wget -q -O /dev/null http://127.0.0.1:8080/rest/public/name 2>/dev/null; then
     break
   fi
   sleep 5

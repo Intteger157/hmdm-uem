@@ -217,7 +217,7 @@ done
 log "Waiting for MDM backend (launcher APK URLs are written on first boot)"
 for _ in $(seq 1 60); do
   if docker compose --env-file "${ENV_FILE}" -f "${DEPLOY_DIR}/docker-compose.yml" exec -T hmdm \
-    wget -q -O /dev/null http://127.0.0.1:8080/rest/public/sync/info 2>/dev/null; then
+    wget -q -O /dev/null http://127.0.0.1:8080/rest/public/name 2>/dev/null; then
     break
   fi
   sleep 5

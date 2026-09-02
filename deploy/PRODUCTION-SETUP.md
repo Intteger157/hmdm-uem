@@ -139,7 +139,7 @@ Check:
 
 ```bash
 curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8080/
-curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8080/rest/public/sync/info
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8080/rest/public/name
 ```
 
 ---
