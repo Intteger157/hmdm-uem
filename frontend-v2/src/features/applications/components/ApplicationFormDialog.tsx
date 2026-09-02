@@ -532,7 +532,7 @@ export function ApplicationFormDialog({
 
           {parentApplication && (
             <ApplicationVersionConfigUpgradeSection
-              applicationId={parentApplication.id}
+              application={parentApplication}
               newVersionLabel={application.version ?? parsedVersion}
               selectedConfigurationIds={upgradeConfigurationIds}
               onSelectedConfigurationIdsChange={setUpgradeConfigurationIds}

@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   fetchApplicationConfigurations,
+  type Application,
   type ApplicationConfigurationLink,
 } from '@/features/applications/api/applications-api'
 
 interface ApplicationVersionConfigUpgradeSectionProps {
-  applicationId: number | undefined
+  application: Application | undefined
   newVersionLabel: string | undefined
   selectedConfigurationIds: number[]
   onSelectedConfigurationIdsChange: (ids: number[]) => void
@@ -19,7 +20,7 @@ function isInstalledLink(link: ApplicationConfigurationLink): boolean {
 }
 
 export function ApplicationVersionConfigUpgradeSection({
-  applicationId,
+  application,
   newVersionLabel,
   selectedConfigurationIds,
   onSelectedConfigurationIdsChange,
@@ -32,7 +33,7 @@ export function ApplicationVersionConfigUpgradeSection({
   const [loadError, setLoadError] = useState(false)
 
   useEffect(() => {
-    if (applicationId == null) {
+    if (application?.id == null) {
       setLinks([])
       return
     }
@@ -41,7 +42,7 @@ export function ApplicationVersionConfigUpgradeSection({
     setLoading(true)
     setLoadError(false)
 
-    void fetchApplicationConfigurations({ id: applicationId })
+    void fetchApplicationConfigurations(application)
       .then((data) => {
         if (cancelled) {
           return
@@ -69,7 +70,7 @@ export function ApplicationVersionConfigUpgradeSection({
     }
     // Pre-select outdated configs only when applicationId changes (dialog opened for another app).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [applicationId])
+  }, [application?.id])
 
   const sortedLinks = useMemo(
     () => [...links].sort((a, b) => (a.configurationName ?? '').localeCompare(b.configurationName ?? '')),
@@ -100,7 +101,7 @@ export function ApplicationVersionConfigUpgradeSection({
     onSelectedConfigurationIdsChange([])
   }
 
-  if (applicationId == null) {
+  if (application?.id == null) {
     return null
   }
 
