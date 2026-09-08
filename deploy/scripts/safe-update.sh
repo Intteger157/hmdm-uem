@@ -7,6 +7,7 @@ DEPLOY_DIR="${ROOT_DIR}/deploy"
 ENV_FILE="${DEPLOY_DIR}/.env"
 LOCAL_OVERRIDE="${DEPLOY_DIR}/nginx/local.override.conf"
 LOCAL_EXAMPLE="${DEPLOY_DIR}/nginx/local.override.conf.example"
+DEFAULT_CONF="${DEPLOY_DIR}/nginx/default.conf"
 
 log() { printf '[safe-update] %s\n' "$*"; }
 die() { printf '[safe-update] ERROR: %s\n' "$*" >&2; exit 1; }
@@ -34,16 +35,38 @@ for path in deploy/nginx/local.override.conf deploy/.env; do
   fi
 done
 
-if git diff --quiet deploy/nginx/default.conf 2>/dev/null; then
-  :
-else
-  log "WARNING: deploy/nginx/default.conf has local edits."
-  log "Move them to deploy/nginx/local.override.conf, then:"
-  log "  git checkout -- deploy/nginx/default.conf"
+# Production nginx tweaks belong in local.override.conf, not default.conf.
+if ! git diff --quiet "$DEFAULT_CONF" 2>/dev/null; then
+  log "Resetting ${DEFAULT_CONF} to git version (use ${LOCAL_OVERRIDE} for custom nginx)."
+  git checkout -- "$DEFAULT_CONF"
 fi
 
-log "Pulling latest code..."
-git pull --rebase
+BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+REMOTE="origin/${BRANCH}"
+
+log "Fetching ${REMOTE}..."
+git fetch origin
+
+LOCAL_REV="$(git rev-parse HEAD)"
+if git rev-parse --verify "${REMOTE}" >/dev/null 2>&1; then
+  REMOTE_REV="$(git rev-parse "${REMOTE}")"
+else
+  REMOTE_REV=""
+fi
+
+if [[ -n "$REMOTE_REV" && "$LOCAL_REV" == "$REMOTE_REV" ]]; then
+  log "Already up to date ($(git rev-parse --short HEAD))."
+else
+  if ! git diff --quiet || ! git diff --cached --quiet; then
+    CHANGED="$(git diff --name-only; git diff --cached --name-only | sort -u)"
+    log "Stashing other local changes before pull:"
+    printf '%s\n' "$CHANGED" | sed 's/^/  /'
+    git stash push -u -m "safe-update $(date -u +%Y-%m-%dT%H:%M:%SZ)" -- ${CHANGED} || true
+  fi
+
+  log "Pulling ${REMOTE}..."
+  git pull --ff-only origin "${BRANCH}"
+fi
 
 COMPOSE=(docker compose --env-file "$ENV_FILE" -f "${DEPLOY_DIR}/docker-compose.yml")
 if [[ -f "${DEPLOY_DIR}/docker-compose.haproxy-host.yml" ]] && grep -q 'be_mdm' /etc/haproxy/haproxy.cfg 2>/dev/null; then
@@ -61,7 +84,7 @@ log "Container status:"
 "${COMPOSE[@]}" ps gateway hmdm frontend-v2 server-windows
 
 log "Health checks:"
-curl -sf -o /dev/null -w '  gateway / → HTTP %{http_code}\n' "http://127.0.0.1:${GATEWAY_PORT:-8080}/" || log "  gateway / failed"
-curl -sf -o /dev/null -w '  gateway /rest/public/name → HTTP %{http_code}\n' "http://127.0.0.1:${GATEWAY_PORT:-8080}/rest/public/name" || log "  /rest/public/name failed"
+curl -sf -o /dev/null -w '  gateway / → HTTP %{http_code}\n' "http://127.0.0.1:${GATEWAY_PORT}/" || log "  gateway / failed"
+curl -sf -o /dev/null -w '  gateway /rest/public/name → HTTP %{http_code}\n' "http://127.0.0.1:${GATEWAY_PORT}/rest/public/name" || log "  /rest/public/name failed"
 
 log "Done. If HAProxy still returns 503, check: grep 'server mdm' /etc/haproxy/haproxy.cfg"
