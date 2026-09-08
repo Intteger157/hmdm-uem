@@ -316,6 +316,12 @@ For `location ^~ /rest/windows/` the repo sets:
 After `git pull`, recreate gateway:
 
 ```bash
+./deploy/scripts/safe-update.sh
+```
+
+Or manually:
+
+```bash
 docker compose --env-file deploy/.env \
   -f deploy/docker-compose.yml -f deploy/docker-compose.haproxy-host.yml \
   up -d --force-recreate gateway

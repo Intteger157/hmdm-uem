@@ -1,0 +1,18 @@
+# Production-only nginx overrides (gateway container).
+#
+# Setup once on the server:
+#   cp deploy/nginx/local.override.conf.example deploy/nginx/local.override.conf
+#
+# This file is gitignored — git pull will NOT overwrite it.
+# Included at the end of default.conf inside the server {} block.
+#
+# Examples (uncomment if needed):
+#
+# client_body_timeout 7200s;
+#
+# location ^~ /rest/windows/ {
+#     proxy_request_buffering off;
+#     proxy_buffering off;
+#     proxy_read_timeout 7200s;
+#     proxy_send_timeout 7200s;
+# }

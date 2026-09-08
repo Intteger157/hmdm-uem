@@ -158,6 +158,17 @@ validate_deploy_env
 mkdir -p "${WEBAPPS_DIR}" "${DEPLOY_DIR}/volumes/work" "${DEPLOY_DIR}/volumes/hmdm-config" "${DEPLOY_DIR}/volumes/db"
 validate_deploy_env_for_first_boot
 
+LOCAL_OVERRIDE="${DEPLOY_DIR}/nginx/local.override.conf"
+LOCAL_EXAMPLE="${DEPLOY_DIR}/nginx/local.override.conf.example"
+if [[ ! -f "${LOCAL_OVERRIDE}" ]]; then
+  if [[ -f "${LOCAL_EXAMPLE}" ]]; then
+    cp "${LOCAL_EXAMPLE}" "${LOCAL_OVERRIDE}"
+    log "Created ${LOCAL_OVERRIDE} (gitignored production nginx overrides)"
+  else
+    touch "${LOCAL_OVERRIDE}"
+  fi
+fi
+
 ensure_build_properties() {
   local docker_template="${ROOT_DIR}/server/build.properties.docker"
   local pom_file="${ROOT_DIR}/server/pom.xml"
