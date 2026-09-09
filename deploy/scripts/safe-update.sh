@@ -87,4 +87,9 @@ log "Health checks:"
 curl -sf -o /dev/null -w '  gateway / → HTTP %{http_code}\n' "http://127.0.0.1:${GATEWAY_PORT}/" || log "  gateway / failed"
 curl -sf -o /dev/null -w '  gateway /rest/public/name → HTTP %{http_code}\n' "http://127.0.0.1:${GATEWAY_PORT}/rest/public/name" || log "  /rest/public/name failed"
 
-log "Done. If HAProxy still returns 503, check: grep 'server mdm' /etc/haproxy/haproxy.cfg"
+if grep -q '127.0.0.1:8443' /etc/haproxy/haproxy.cfg 2>/dev/null; then
+  log "WARNING: HAProxy be_mdm still points to :8443 (503 from outside)."
+  log "Run: sudo ${DEPLOY_DIR}/scripts/fix-haproxy-be-mdm.sh"
+fi
+
+log "Done."
