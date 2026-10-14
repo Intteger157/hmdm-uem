@@ -166,6 +166,62 @@ function mapAttentionDevice(item: DashboardAttentionDeviceDto): AttentionDeviceR
   }
 }
 
+export type AppVersionDriftDirection = 'lower' | 'higher'
+
+export interface AppVersionMismatchRow {
+  platform: Platform
+  deviceHardwareId: string
+  deviceDisplayName: string
+  profileName?: string
+  appId: number
+  appName: string
+  expectedVersion: string
+  installedVersion: string
+  direction: AppVersionDriftDirection
+}
+
+interface DashboardAppVersionMismatchesDto {
+  items: AppVersionMismatchRow[]
+  totalRows: number
+  devicesAffected: number
+  warnings?: string[]
+}
+
+export async function fetchDashboardAppVersionMismatches(
+  platform: Platform,
+  limit = 200,
+): Promise<{
+  items: AppVersionMismatchRow[]
+  devicesAffected: number
+  warnings: string[]
+}> {
+  if (isMockApiEnabled()) {
+    return { items: [], devicesAffected: 0, warnings: [] }
+  }
+
+  if (platform !== 'windows') {
+    return { items: [], devicesAffected: 0, warnings: [] }
+  }
+
+  try {
+    const response = await windowsApi.get<DashboardAppVersionMismatchesDto>(
+      '/dashboard/app-version-mismatches',
+      { params: { platform, limit } },
+    )
+    return {
+      items: response.data.items ?? [],
+      devicesAffected: response.data.devicesAffected ?? 0,
+      warnings: response.data.warnings ?? [],
+    }
+  } catch {
+    return {
+      items: [],
+      devicesAffected: 0,
+      warnings: ['Windows application version drift data is temporarily unavailable.'],
+    }
+  }
+}
+
 export async function fetchDashboardAttentionDevices(
   limit = 5,
   platform: Platform,

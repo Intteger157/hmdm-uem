@@ -309,6 +309,11 @@ func decodeLocalUsers(raw json.RawMessage) []LocalUserRecord {
 }
 
 func decodeInstalledSoftware(raw json.RawMessage) []InstalledSoftwareRecord {
+	return DecodeInstalledSoftwareRecords(raw)
+}
+
+// DecodeInstalledSoftwareRecords parses windows_devices.installed_software JSONB.
+func DecodeInstalledSoftwareRecords(raw json.RawMessage) []InstalledSoftwareRecord {
 	if len(raw) == 0 {
 		return nil
 	}

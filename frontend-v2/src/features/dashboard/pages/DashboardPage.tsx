@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { DashboardAlerts } from '@/features/dashboard/components/DashboardAlerts'
+import { DashboardAppVersionMismatches } from '@/features/dashboard/components/DashboardAppVersionMismatches'
 import { DashboardApplicationHealth } from '@/features/dashboard/components/DashboardApplicationHealth'
 import { DashboardAttentionDevices } from '@/features/dashboard/components/DashboardAttentionDevices'
 import { DashboardEnrollmentTrend } from '@/features/dashboard/components/DashboardEnrollmentTrend'
@@ -16,6 +17,7 @@ import {
 import { DashboardRecentActivity } from '@/features/dashboard/components/DashboardRecentActivity'
 import { deriveDashboardMetrics } from '@/features/dashboard/lib/dashboard-metrics'
 import {
+  useDashboardAppVersionMismatchesQuery,
   useDashboardAttentionDevicesQuery,
   useDeviceSummaryQuery,
 } from '@/features/dashboard/hooks/use-device-summary-query'
@@ -37,6 +39,7 @@ export function DashboardPage({ platform: requestedPlatform }: DashboardPageProp
   usePeriodicNow()
   const summaryQuery = useDeviceSummaryQuery(platform)
   const attentionQuery = useDashboardAttentionDevicesQuery(platform, 5)
+  const appVersionDriftQuery = useDashboardAppVersionMismatchesQuery(platform)
 
   useEffect(() => {
     if (lockedPlatform && requestedPlatform !== lockedPlatform) {
@@ -137,6 +140,14 @@ export function DashboardPage({ platform: requestedPlatform }: DashboardPageProp
         />
         <DashboardRecentActivity />
       </div>
+
+      {platform === 'windows' ? (
+        <DashboardAppVersionMismatches
+          items={appVersionDriftQuery.data?.items ?? []}
+          devicesAffected={appVersionDriftQuery.data?.devicesAffected ?? 0}
+          isLoading={appVersionDriftQuery.isLoading}
+        />
+      ) : null}
 
       {metrics.total === 0 ? (
         <div className="rounded-xl border border-dashed border-border/70 px-6 py-8 text-center dark:border-[#242424]">

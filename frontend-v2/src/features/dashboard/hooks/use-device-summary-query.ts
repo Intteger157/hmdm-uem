@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import {
+  fetchDashboardAppVersionMismatches,
   fetchDashboardAttentionDevices,
   fetchDeviceSummary,
 } from '@/features/dashboard/api/summary-api'
@@ -11,6 +12,7 @@ import type { Platform } from '@/shared/api/types/platform'
 export const summaryQueryKeys = {
   devices: ['summary', 'devices'] as const,
   attention: ['dashboard', 'attention-devices'] as const,
+  appVersionDrift: ['dashboard', 'app-version-mismatches'] as const,
 }
 
 const SUMMARY_POLL_INTERVAL_MS = 60_000
@@ -46,6 +48,15 @@ async function fetchAttentionDevicesClient(limit: number, platform: Platform) {
         ).devices.items
 
   return rankAttentionDevices(combined, Date.now(), limit)
+}
+
+export function useDashboardAppVersionMismatchesQuery(platform: Platform, limit = 200) {
+  return useQuery({
+    queryKey: [...summaryQueryKeys.appVersionDrift, platform, limit],
+    queryFn: () => fetchDashboardAppVersionMismatches(platform, limit),
+    enabled: platform === 'windows',
+    refetchInterval: SUMMARY_POLL_INTERVAL_MS,
+  })
 }
 
 export function useDashboardAttentionDevicesQuery(platform: Platform, limit = 5) {

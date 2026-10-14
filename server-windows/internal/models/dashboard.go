@@ -46,3 +46,24 @@ type DashboardAttentionDevicesResponse struct {
 	Sources  DashboardSummarySources      `json:"sources,omitempty"`
 	Warnings []string                     `json:"warnings,omitempty"`
 }
+
+// DashboardAppVersionMismatch is one app on one device where inventory differs from policy.
+type DashboardAppVersionMismatch struct {
+	Platform          string `json:"platform"`
+	DeviceHardwareID  string `json:"deviceHardwareId"`
+	DeviceDisplayName string `json:"deviceDisplayName"`
+	ProfileName       string `json:"profileName,omitempty"`
+	AppID             uint   `json:"appId"`
+	AppName           string `json:"appName"`
+	ExpectedVersion   string `json:"expectedVersion"`
+	InstalledVersion  string `json:"installedVersion"`
+	Direction         string `json:"direction"`
+}
+
+type DashboardAppVersionMismatchesResponse struct {
+	Items           []DashboardAppVersionMismatch `json:"items"`
+	TotalRows       int64                         `json:"totalRows"`
+	DevicesAffected int64                         `json:"devicesAffected"`
+	Sources         DashboardSummarySources       `json:"sources,omitempty"`
+	Warnings        []string                      `json:"warnings,omitempty"`
+}

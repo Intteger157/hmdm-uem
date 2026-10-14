@@ -191,6 +191,7 @@ func registerRoutes(router *gin.Engine, windowsHandler *handlers.WindowsHandler,
 		{
 			admin.GET("/dashboard/summary", windowsHandler.GetDashboardSummary)
 			admin.GET("/dashboard/attention-devices", windowsHandler.GetDashboardAttentionDevices)
+			admin.GET("/dashboard/app-version-mismatches", windowsHandler.GetDashboardAppVersionMismatches)
 			admin.GET("/devices", windowsHandler.ListDevices)
 			admin.GET("/devices/:hardwareId", windowsHandler.GetDevice)
 			admin.PATCH("/devices/:hardwareId/group", windowsHandler.UpdateDeviceGroupMembership)

@@ -323,6 +323,12 @@ func loadWindowsDashboardSummary(now time.Time) (partialDashboardSummary, error)
 		return part, err
 	}
 
+	_, _, mismatchDevices, err := collectWindowsAppVersionDrifts(0)
+	if err != nil {
+		return part, err
+	}
+	part.Install.VersionMismatch = mismatchDevices
+
 	return part, nil
 }
 
